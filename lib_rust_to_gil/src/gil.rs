@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 pub type LVar = String;
 
+#[derive(Debug)]
 pub enum Constant {
     Min_float,
     Max_float,
@@ -13,6 +14,7 @@ pub enum Constant {
     LocalTime,
 }
 
+#[derive(Debug)]
 pub enum Type {
     UndefinedType,
     NullType,
@@ -28,6 +30,7 @@ pub enum Type {
     SetType,
 }
 
+#[derive(Debug)]
 pub enum BinOp {
     Equal,
     ILessThan,
@@ -69,6 +72,7 @@ pub enum BinOp {
     BSetSub,
 }
 
+#[derive(Debug)]
 pub enum UnOp {
     IUnaryMinus,
     FUnaryMinus,
@@ -104,12 +108,14 @@ pub enum UnOp {
     StrLen,
 }
 
+#[derive(Debug)]
 pub enum NOp {
     LstCat,
     SetUnion,
     SetInter,
 }
 
+#[derive(Debug)]
 pub enum Literal {
     Undefined,
     Null,
@@ -125,6 +131,7 @@ pub enum Literal {
     Nono,
 }
 
+#[derive(Debug)]
 pub enum Expr {
     Lit(Literal),
     PVar(String),
@@ -152,6 +159,7 @@ pub enum Expr {
     ESet(Vec<Expr>),
 }
 
+#[derive(Debug)]
 pub enum Formula {
     True,
     False,
@@ -194,6 +202,7 @@ pub enum Formula {
     },
 }
 
+#[derive(Debug)]
 pub enum Assertion {
     Emp,
     Star {
@@ -213,11 +222,13 @@ pub enum Assertion {
     },
 }
 
+#[derive(Debug)]
 pub struct Bindings {
     name: String,
     binds: Vec<(String, Expr)>,
 }
 
+#[derive(Debug)]
 pub enum SLCmd {
     Fold {
         pred_name: String,
@@ -246,6 +257,7 @@ pub enum SLCmd {
     },
 }
 
+#[derive(Debug)]
 pub enum LCmd {
     If {
         guard: Expr,
@@ -267,12 +279,14 @@ pub enum LCmd {
     SL(SLCmd),
 }
 
+#[derive(Debug)]
 pub struct SinglePhiAssignment {
     variable: String,
     values: Vec<Expr>,
 }
 
-pub enum Cmd<L> {
+#[derive(Debug)]
+pub enum Cmd {
     Skip,
     Assignment {
         variable: String,
@@ -284,29 +298,29 @@ pub enum Cmd<L> {
         parameters: Vec<Expr>,
     },
     Logic(LCmd),
-    Goto(L),
+    Goto(String),
     GuardedGoto {
         guard: Expr,
-        then_branch: L,
-        else_branch: L,
+        then_branch: String,
+        else_branch: String,
     },
     Call {
         variable: String,
         proc_ident: Expr,
         parameters: Vec<Expr>,
-        error_lab: Option<L>,
+        error_lab: Option<String>,
         bindings: Bindings,
     },
     ECall {
         variable: String,
         proc_ident: Expr,
         parameters: Vec<Expr>,
-        error_lab: Option<L>,
+        error_lab: Option<String>,
     },
     Apply {
         variable: String,
         args: Expr,
-        error_lab: Option<L>,
+        error_lab: Option<String>,
     },
     PhiAssignment(Vec<SinglePhiAssignment>),
     ReturnNormal,
@@ -317,21 +331,25 @@ pub enum Cmd<L> {
     },
 }
 
+#[derive(Debug)]
 pub enum Flag {
     Normal,
     Error,
 }
 
+#[derive(Debug)]
 pub struct DefinitionLabel {
     name: String,
     existentials: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct PredDefinition {
     lab_opt: Option<DefinitionLabel>,
     assertion: Assertion,
 }
 
+#[derive(Debug)]
 pub struct Pred {
     pred_name: String,
     pred_num_params: i32,
@@ -342,6 +360,7 @@ pub struct Pred {
     pred_normalised: bool,
 }
 
+#[derive(Debug)]
 pub struct Lemma {
     lemma_name: String,
     lemma_params: Vec<String>,
@@ -351,6 +370,7 @@ pub struct Lemma {
     lemma_existentials: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct SingleSpec {
     ss_pre: Assertion,
     ss_posts: Vec<Assertion>,
@@ -359,6 +379,7 @@ pub struct SingleSpec {
     ss_label: Option<DefinitionLabel>,
 }
 
+#[derive(Debug)]
 pub struct Spec {
     spec_name: String,
     spec_params: Vec<String>,
@@ -367,6 +388,7 @@ pub struct Spec {
     spec_to_verify: bool,
 }
 
+#[derive(Debug)]
 pub struct BiSpec {
     bispec_name: String,
     bispec_params: Vec<String>,
@@ -374,36 +396,88 @@ pub struct BiSpec {
     bispec_normalised: bool,
 }
 
+#[derive(Debug)]
 pub struct Macro {
     macro_name: String,
     macro_params: Vec<String>,
     macro_definition: Vec<LCmd>,
 }
 
-pub struct ProcBodyItem<A, L> {
-    annot: A,
-    label: Option<L>,
-    cmd: Cmd<L>,
+#[derive(Debug)]
+pub struct Position {
+    pos_line: i32,
+    pos_column: i32
 }
 
-pub struct Proc<A, L> {
+impl Default for Position{
+    fn default() -> Self {
+        Position {
+            pos_line: -1,
+            pos_column: -1
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Location {
+    loc_start : Position,
+    loc_end : Position,
+    loc_source : String
+}
+
+impl Default for Location {
+    fn default() -> Self {
+        Location {
+            loc_start: Position::default(),
+            loc_end: Position::default(),
+            loc_source: "(none)".to_string()
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Annot {
+    origin_loc: Location,
+    loop_info:  Vec<String>, 
+}
+
+#[derive(Debug)]
+pub struct ProcBodyItem {
+    annot: Annot,
+    label: Option<String>,
+    cmd: Cmd,
+}
+
+#[derive(Debug, Default)]
+pub struct Proc {
     proc_name: String,
-    proc_body: Vec<ProcBodyItem<A, L>>,
+    proc_body: Vec<ProcBodyItem>,
     proc_params: Vec<String>,
     proc_spec: Option<Spec>,
 }
 
+impl Proc {
+    pub fn new(proc_name: String) -> Self {
+        Proc {
+            proc_name,
+            .. Proc::default()
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Import {
     path: String,
     verify: bool,
 }
 
-pub struct Prog<A, L> {
+#[derive(Default, Debug)]
+pub struct Prog {
     imports: Vec<Import>,
     lemmas: HashMap<String, Lemma>,
     preds: HashMap<String, Pred>,
     only_specs: HashMap<String, Spec>,
-    procs: HashMap<String, Proc<A, L>>,
+    procs: HashMap<String, Proc>,
     macros: HashMap<String, Macro>,
     bi_specs: HashMap<String, BiSpec>,
     proc_names: Vec<String>,
