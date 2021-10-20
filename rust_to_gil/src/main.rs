@@ -6,7 +6,6 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_lint;
 extern crate rustc_middle;
-extern crate rustc_mir;
 
 use lib_rtg::compile::ToGilTyCtxt;
 use lib_rtg::config::{Config as RtgConfig, ExecMode};
@@ -32,7 +31,8 @@ impl rustc_driver::Callbacks for RTGCompilerCalls {
         log::debug!("{:?}", self);
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            let _gprog = ToGilTyCtxt::new(tcx).compile_prog();
+            let tctx = ToGilTyCtxt::new(&tcx);
+            let _gprog = tctx.compile_prog();
         });
 
         compiler.session().abort_if_errors();

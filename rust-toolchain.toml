@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly-2021-04-25"
+channel = "nightly-2021-10-18"
 targets = [ "x86_64-apple-darwin" ]
-components = [ "rustc-dev", "llvm-tools-preview", "rustfmt" ]
+components = [ "rustc-dev", "llvm-tools-preview", "rustfmt", "miri", "miri", "rustc", "rust-src" ]

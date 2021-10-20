@@ -20,7 +20,7 @@ pub enum Type {
     NullType,
     EmptyType,
     NoneType,
-    BooleanType,
+    BoolType,
     IntType,
     NumberType,
     StringType,
@@ -406,23 +406,23 @@ pub struct Macro {
 #[derive(Debug)]
 pub struct Position {
     pos_line: i32,
-    pos_column: i32
+    pos_column: i32,
 }
 
-impl Default for Position{
+impl Default for Position {
     fn default() -> Self {
         Position {
             pos_line: -1,
-            pos_column: -1
+            pos_column: -1,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Location {
-    loc_start : Position,
-    loc_end : Position,
-    loc_source : String
+    loc_start: Position,
+    loc_end: Position,
+    loc_source: String,
 }
 
 impl Default for Location {
@@ -430,38 +430,63 @@ impl Default for Location {
         Location {
             loc_start: Position::default(),
             loc_end: Position::default(),
-            loc_source: "(none)".to_string()
+            loc_source: "(none)".to_string(),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Annot {
     origin_loc: Location,
-    loop_info:  Vec<String>, 
+    loop_info: Vec<String>,
 }
 
 #[derive(Debug)]
 pub struct ProcBodyItem {
-    annot: Annot,
-    label: Option<String>,
-    cmd: Cmd,
+    pub annot: Annot,
+    pub label: Option<String>,
+    pub cmd: Cmd,
+}
+
+impl From<Cmd> for ProcBodyItem {
+    fn from(cmd: Cmd) -> Self {
+        ProcBodyItem {
+            cmd,
+            annot: Annot::default(),
+            label: None,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
 pub struct Proc {
-    proc_name: String,
-    proc_body: Vec<ProcBodyItem>,
-    proc_params: Vec<String>,
-    proc_spec: Option<Spec>,
+    pub proc_name: String,
+    pub proc_body: Vec<ProcBodyItem>,
+    pub proc_params: Vec<String>,
+    pub proc_spec: Option<Spec>,
 }
 
 impl Proc {
-    pub fn new(proc_name: String) -> Self {
+    pub fn new(proc_name: String, proc_params: Vec<String>, proc_body: Vec<ProcBodyItem>) -> Self {
         Proc {
             proc_name,
-            .. Proc::default()
+            proc_params,
+            proc_body,
+            ..Proc::default()
         }
+    }
+
+    pub fn longest_label(&self) -> usize {
+        let mut max = 0;
+        for ProcBodyItem { label, .. } in &self.proc_body {
+            match label {
+                None => (),
+                Some(lab) => {
+                    max = std::cmp::max(max, lab.len());
+                }
+            };
+        }
+        max
     }
 }
 
