@@ -1,4 +1,4 @@
-use super::names::ret_var;
+use super::names::{ret_var, temp_name_from_local};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -41,7 +41,7 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
         } else {
             match self.original_name_from_local(local) {
                 Some(name) => name,
-                None => String::from("gvar") + &local.as_u32().to_string(),
+                None => temp_name_from_local(local),
             }
         }
     }

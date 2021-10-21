@@ -159,6 +159,12 @@ pub enum Expr {
     ESet(Vec<Expr>),
 }
 
+impl Expr {
+    pub fn string(str: String) -> Expr {
+        Expr::Lit(Literal::String(str))
+    }
+}
+
 #[derive(Debug)]
 pub enum Formula {
     True,
@@ -233,12 +239,12 @@ pub enum SLCmd {
     Fold {
         pred_name: String,
         parameters: Vec<Expr>,
-        bindings: Bindings,
+        bindings: Option<Bindings>,
     },
     Unfold {
         pred_name: String,
         parameters: Vec<Expr>,
-        bindings: Bindings,
+        bindings: Option<Bindings>,
         rec: bool,
     },
     GUnfold(String),
@@ -309,7 +315,7 @@ pub enum Cmd {
         proc_ident: Expr,
         parameters: Vec<Expr>,
         error_lab: Option<String>,
-        bindings: Bindings,
+        bindings: Option<Bindings>,
     },
     ECall {
         variable: String,

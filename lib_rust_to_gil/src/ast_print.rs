@@ -235,6 +235,22 @@ impl fmt::Display for Cmd {
                 comma_separated_display(parameters, f)?;
                 f.write_str(")")
             }
+            Call {
+                variable,
+                proc_ident,
+                parameters,
+                error_lab,
+                bindings,
+            } => {
+                assert!(bindings.is_none(), "Cannot print bindings yet");
+                write!(f, "{} := {}(", variable, proc_ident)?;
+                comma_separated_display(parameters, f)?;
+                f.write_str(")")?;
+                if let Some(s) = error_lab {
+                    write!(f, " with {}", s)?;
+                }
+                Ok (())
+            }
             Goto(str) => write!(f, "goto {}", str),
             ReturnNormal => write!(f, "return"),
             _ => panic!("Cannot write following command yet: {:#?}", self),
@@ -267,6 +283,8 @@ impl fmt::Display for Proc {
             write!(f, "{}", label)?;
             if semi {
                 f.write_char(':')?;
+            } else {
+                f.write_char(' ')?;
             }
             for _ in 0..(longest_label - label.len() + 1) {
                 f.write_str(" ")?;

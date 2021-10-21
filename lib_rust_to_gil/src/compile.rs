@@ -8,7 +8,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::Constant as MirConstant;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Const, ConstKind, TyCtxt};
+use rustc_middle::ty::{Const, ConstKind, TyCtxt, TyKind};
+use rustc_target::abi::Size;
 use std::convert::TryInto;
 
 // Here, we're talking a lot of inspiration from the semantics described by the MIR interpreter :
@@ -80,12 +81,37 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
         }
     }
 
+    pub fn is_zst(val: &ConstKind) -> bool {
+        match val {
+            ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
+            _ => false,
+        }
+    }
+
+    pub fn fname_from_operand(&self, operand: &Operand<'tcx>, _body_ctx: &BodyCtxt<'gil, 'tcx>) -> String {
+        match &operand {
+            Operand::Constant(box MirConstant {
+                literal: ConstantKind::Ty(Const { ty, val }),
+                ..
+            }) if Self::is_zst(val) && ty.is_fn() => {
+                match ty.kind() {
+                    TyKind::FnDef(did, _) => self.0.item_name(*did).to_string(),
+                    tyk => panic!("unhandled TyKind for function name: {:#?}", tyk)
+                }
+            }
+            _ => panic!(
+                "Can't handle dynami calls yet! Got fun operand: {:#?}",
+                operand
+            ),
+        }
+    }
+
     pub fn compile_terminator(
         &self,
         terminator: &Terminator<'tcx>,
-        _body_ctx: &BodyCtxt<'gil, 'tcx>,
+        body_ctx: &BodyCtxt<'gil, 'tcx>,
     ) -> Vec<ProcBodyItem> {
-        match terminator.kind {
+        match &terminator.kind {
             TerminatorKind::Goto { target } => {
                 let cmd = Cmd::Goto(bb_label(&target));
                 let item = ProcBodyItem::from(cmd);
@@ -95,6 +121,33 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
                 let cmd = Cmd::ReturnNormal;
                 let item = ProcBodyItem::from(cmd);
                 vec![item]
+            }
+            TerminatorKind::Call {
+                func,
+                args,
+                destination,
+                cleanup,
+                ..
+            } => {
+                assert!(args.is_empty(), "Cannot handle function arguments yet! {:#?}", terminator);
+                assert!(
+                    cleanup.is_none(),
+                    "Don't know how to handle cleanups in calls yet"
+                );
+                assert!(destination.is_some(), "no destination for function call!");
+                let (place, bb) = destination.unwrap();
+                let fname = self.fname_from_operand(func, body_ctx);
+                let call = Cmd::Call {
+                    variable: self.compile_place(&place, body_ctx),
+                    parameters: vec![],
+                    proc_ident: Expr::string(fname),
+                    error_lab: None,
+                    bindings: None
+                };
+                let item_call = ProcBodyItem::from(call);
+                let goto = Cmd::Goto(bb_label(&bb));
+                let item_goto = ProcBodyItem::from(goto);
+                vec![item_call, item_goto]
             }
             _ => panic!("Terminator not handled yet: {:#?}", terminator),
         }
@@ -129,7 +182,7 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
         let proc_name = self.0.item_name(did);
         let mir_body = self.0.optimized_mir(did);
         let body_ctx = BodyCtxt::new(mir_body, &self.0);
-        // log::debug!("{} : {:#?}", proc_name, mir_body);
+        log::debug!("{} : {:#?}", proc_name, mir_body);
         if mir_body.is_polymorphic {
             panic!("Polymorphism is not handled yet.")
         }
