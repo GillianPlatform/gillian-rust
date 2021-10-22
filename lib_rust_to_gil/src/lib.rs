@@ -11,9 +11,7 @@ extern crate rustc_middle;
 extern crate rustc_span;
 extern crate rustc_target;
 
-pub mod ast_print;
 pub mod body_ctx;
 pub mod compile;
 pub mod config;
-pub mod gil;
 pub mod names;

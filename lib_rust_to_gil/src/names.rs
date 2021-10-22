@@ -2,7 +2,7 @@ use rustc_middle::mir::{BasicBlock, Local};
 
 const BB_LABEL: &str = "bb";
 const RET_VAR: &str = "ret";
-const TEMP_PREFIX : &str = "mirgiltemp___";
+const TEMP_PREFIX: &str = "mirgiltemp___";
 
 pub fn bb_label(bb: &BasicBlock) -> String {
     format!("{}{}", BB_LABEL, bb.as_u32())

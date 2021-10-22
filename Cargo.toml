@@ -2,5 +2,6 @@
 
 members = [
   "lib_rust_to_gil",
-  "rust_to_gil"
+  "rust_to_gil",
+  "gillian"
 ]

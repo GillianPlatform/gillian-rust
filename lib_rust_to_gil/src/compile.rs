@@ -3,7 +3,7 @@ use std::vec::Vec;
 use crate::names::bb_label;
 
 use super::body_ctx::BodyCtxt;
-use super::gil::*;
+use gillian::gil::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::Constant as MirConstant;
@@ -88,17 +88,19 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
         }
     }
 
-    pub fn fname_from_operand(&self, operand: &Operand<'tcx>, _body_ctx: &BodyCtxt<'gil, 'tcx>) -> String {
+    pub fn fname_from_operand(
+        &self,
+        operand: &Operand<'tcx>,
+        _body_ctx: &BodyCtxt<'gil, 'tcx>,
+    ) -> String {
         match &operand {
             Operand::Constant(box MirConstant {
                 literal: ConstantKind::Ty(Const { ty, val }),
                 ..
-            }) if Self::is_zst(val) && ty.is_fn() => {
-                match ty.kind() {
-                    TyKind::FnDef(did, _) => self.0.item_name(*did).to_string(),
-                    tyk => panic!("unhandled TyKind for function name: {:#?}", tyk)
-                }
-            }
+            }) if Self::is_zst(val) && ty.is_fn() => match ty.kind() {
+                TyKind::FnDef(did, _) => self.0.item_name(*did).to_string(),
+                tyk => panic!("unhandled TyKind for function name: {:#?}", tyk),
+            },
             _ => panic!(
                 "Can't handle dynami calls yet! Got fun operand: {:#?}",
                 operand
@@ -129,7 +131,11 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
                 cleanup,
                 ..
             } => {
-                assert!(args.is_empty(), "Cannot handle function arguments yet! {:#?}", terminator);
+                assert!(
+                    args.is_empty(),
+                    "Cannot handle function arguments yet! {:#?}",
+                    terminator
+                );
                 assert!(
                     cleanup.is_none(),
                     "Don't know how to handle cleanups in calls yet"
@@ -142,7 +148,7 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
                     parameters: vec![],
                     proc_ident: Expr::string(fname),
                     error_lab: None,
-                    bindings: None
+                    bindings: None,
                 };
                 let item_call = ProcBodyItem::from(call);
                 let goto = Cmd::Goto(bb_label(&bb));
