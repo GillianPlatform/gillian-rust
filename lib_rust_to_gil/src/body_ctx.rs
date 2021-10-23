@@ -1,7 +1,11 @@
 use super::names::{ret_var, temp_name_from_local};
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::Constant as MirConstant;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Const, ConstKind, TyKind};
+use rustc_target::abi::Size;
 
 pub struct BodyCtxt<'gil, 'tcx> {
     var_debug_info: &'gil Vec<VarDebugInfo<'tcx>>,
@@ -43,6 +47,29 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
                 Some(name) => name,
                 None => temp_name_from_local(local),
             }
+        }
+    }
+
+    pub fn is_zst(val: &ConstKind) -> bool {
+        match val {
+            ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
+            _ => false,
+        }
+    }
+
+    pub fn fname_from_operand(&self, operand: &Operand<'tcx>) -> String {
+        match &operand {
+            Operand::Constant(box MirConstant {
+                literal: ConstantKind::Ty(Const { ty, val }),
+                ..
+            }) if Self::is_zst(val) && ty.is_fn() => match ty.kind() {
+                TyKind::FnDef(did, _) => self.ty_ctxt.item_name(*did).to_string(),
+                tyk => panic!("unhandled TyKind for function name: {:#?}", tyk),
+            },
+            _ => panic!(
+                "Can't handle dynami calls yet! Got fun operand: {:#?}",
+                operand
+            ),
         }
     }
 }

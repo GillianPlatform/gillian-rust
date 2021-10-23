@@ -11,6 +11,11 @@ extern crate rustc_middle;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod block;
+mod place;
+mod rvalue;
+mod statement;
+
 pub mod body_ctx;
 pub mod compile;
 pub mod config;
