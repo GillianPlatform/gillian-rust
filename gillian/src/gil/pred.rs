@@ -1,4 +1,4 @@
-use super::{Type, Assertion};
+use super::{Assertion, Type};
 
 #[derive(Debug)]
 pub struct DefinitionLabel {

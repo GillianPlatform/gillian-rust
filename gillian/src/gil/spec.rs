@@ -1,10 +1,10 @@
-use std::fmt;
 use super::{Assertion, DefinitionLabel};
+use std::fmt;
 
 #[derive(Debug)]
 pub enum Flag {
-  Normal,
-  Error
+    Normal,
+    Error,
 }
 
 #[derive(Debug)]
@@ -26,10 +26,10 @@ pub struct Spec {
 }
 
 impl fmt::Display for Flag {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-      match self {
-          Flag::Normal => write!(f, "normal"),
-          Flag::Error => write!(f, "error"),
-      }
-  }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Flag::Normal => write!(f, "normal"),
+            Flag::Error => write!(f, "error"),
+        }
+    }
 }

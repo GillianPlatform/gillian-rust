@@ -1,5 +1,5 @@
+use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
 use std::collections::HashMap;
-use super::{Lemma, Proc, Macro, BiSpec, Pred, Spec};
 
 #[derive(Debug)]
 pub struct Import {

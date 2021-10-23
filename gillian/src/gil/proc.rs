@@ -1,6 +1,6 @@
+use super::print_utils::comma_separated_display;
 use super::{Annot, Cmd, Spec};
 use std::fmt::{self, Write};
-use super::print_utils::comma_separated_display;
 
 #[derive(Debug)]
 pub struct ProcBodyItem {
@@ -17,15 +17,14 @@ pub struct Proc {
     pub spec: Option<Spec>,
 }
 
-
 impl From<Cmd> for ProcBodyItem {
-  fn from(cmd: Cmd) -> Self {
-      ProcBodyItem {
-          cmd,
-          annot: Annot::default(),
-          label: None,
-      }
-  }
+    fn from(cmd: Cmd) -> Self {
+        ProcBodyItem {
+            cmd,
+            annot: Annot::default(),
+            label: None,
+        }
+    }
 }
 
 impl Proc {
@@ -52,7 +51,6 @@ impl Proc {
     }
 }
 
-
 impl fmt::Display for Proc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let longest_label = self.longest_label();
@@ -78,5 +76,14 @@ impl fmt::Display for Proc {
             write!(f, "{};\n", cmd)?;
         }
         f.write_str("}")
+    }
+}
+
+pub mod proc_body {
+    use super::*;
+    pub fn set_first_label(items: &mut Vec<ProcBodyItem>, label: String) {
+        assert!(!items.is_empty(), "Empty block!");
+        let item = items.get_mut(0).unwrap();
+        item.label = Some(label);
     }
 }
