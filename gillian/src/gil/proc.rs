@@ -86,4 +86,9 @@ pub mod proc_body {
         let item = items.get_mut(0).unwrap();
         item.label = Some(label);
     }
+    
+    pub fn body_from_commands(items: Vec<Cmd>) -> Vec<ProcBodyItem> {
+        items.into_iter().map(|x| ProcBodyItem::from(x)).collect()
+    }
+    
 }

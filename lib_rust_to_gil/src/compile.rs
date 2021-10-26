@@ -18,7 +18,9 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
         let did = key.to_def_id();
         let proc_name = self.0.item_name(did);
         let mir_body = self.0.optimized_mir(did);
-        let body_ctx = BodyCtxt::new(mir_body, &self.0);
+        // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
+        // We can then shrink it to size when needed.
+        let mut body_ctx = BodyCtxt::new(mir_body, &self.0);
         log::debug!("{} : {:#?}", proc_name, mir_body);
         if mir_body.is_polymorphic {
             panic!("Polymorphism is not handled yet.")
@@ -27,7 +29,6 @@ impl<'gil, 'tcx> ToGilTyCtxt<'gil, 'tcx> {
             panic!("Generators are not handled yet.")
         }
 
-        // let ret_ptr = mir_body.local_decls.get(RETURN_PLACE);
         let args: Vec<String> = mir_body
             .args_iter()
             .map(|local| body_ctx.original_name_from_local(&local).unwrap())

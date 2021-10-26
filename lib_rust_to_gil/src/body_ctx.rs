@@ -1,16 +1,16 @@
-use super::names::{ret_var, temp_name_from_local};
+use super::names::{ret_var, temp_name_from_local, gil_temp_from_id};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::mir::Constant as MirConstant;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{Const, ConstKind, TyKind};
+use rustc_middle::ty::{ConstKind};
 use rustc_target::abi::Size;
 
 pub struct BodyCtxt<'gil, 'tcx> {
     var_debug_info: &'gil Vec<VarDebugInfo<'tcx>>,
     source_scopes: &'gil IndexVec<SourceScope, SourceScopeData<'tcx>>,
-    ty_ctxt: &'gil TyCtxt<'tcx>,
+    pub(crate) ty_ctxt: &'gil TyCtxt<'tcx>,
+    gil_temp_counter: u32,
 }
 
 impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
@@ -19,6 +19,7 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
             var_debug_info: &body.var_debug_info,
             source_scopes: &body.source_scopes,
             ty_ctxt,
+            gil_temp_counter: 0,
         }
     }
 
@@ -56,20 +57,10 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
             _ => false,
         }
     }
-
-    pub fn fname_from_operand(&self, operand: &Operand<'tcx>) -> String {
-        match &operand {
-            Operand::Constant(box MirConstant {
-                literal: ConstantKind::Ty(Const { ty, val }),
-                ..
-            }) if Self::is_zst(val) && ty.is_fn() => match ty.kind() {
-                TyKind::FnDef(did, _) => self.ty_ctxt.item_name(*did).to_string(),
-                tyk => panic!("unhandled TyKind for function name: {:#?}", tyk),
-            },
-            _ => panic!(
-                "Can't handle dynami calls yet! Got fun operand: {:#?}",
-                operand
-            ),
-        }
-    }
+    
+    pub fn temp_var(&mut self) -> String {
+        let current = self.gil_temp_counter;
+        self.gil_temp_counter += 1;
+        gil_temp_from_id(current)
+    } 
 }
