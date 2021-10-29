@@ -1,11 +1,11 @@
 #![no_std]
 use core::panic::PanicInfo;
 
-fn main(){
+pub fn test() -> isize {
     let x = 4;
-    let _z = x + 3;
+    let z = x + 3;
+    z
 }
-
 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {

@@ -1,34 +1,35 @@
-use super::names::{ret_var, temp_name_from_local, gil_temp_from_id};
-use rustc_index::vec::IndexVec;
+use super::names::{gil_temp_from_id, ret_var, temp_name_from_local};
+use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{ConstKind};
+use rustc_middle::ty::ConstKind;
 use rustc_target::abi::Size;
 
-pub struct BodyCtxt<'gil, 'tcx> {
-    var_debug_info: &'gil Vec<VarDebugInfo<'tcx>>,
-    source_scopes: &'gil IndexVec<SourceScope, SourceScopeData<'tcx>>,
-    pub(crate) ty_ctxt: &'gil TyCtxt<'tcx>,
+pub struct BodyCtxt<'tcx> {
+    pub(crate) instance: Instance<'tcx>,
+    pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_temp_counter: u32,
 }
 
-impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
-    pub fn new(body: &'tcx Body, ty_ctxt: &'gil TyCtxt<'tcx>) -> Self {
+impl<'tcx> BodyCtxt<'tcx> {
+    pub fn new(instance: Instance<'tcx>, ty_ctxt: TyCtxt<'tcx>) -> Self {
         BodyCtxt {
-            var_debug_info: &body.var_debug_info,
-            source_scopes: &body.source_scopes,
+            instance,
             ty_ctxt,
             gil_temp_counter: 0,
         }
     }
 
-    pub fn location(&self, scope: &SourceScope) {
-        let _source = self.source_scopes.get(*scope);
+    pub fn mir(&self) -> &'tcx Body<'tcx> {
+        self.ty_ctxt.instance_mir(self.instance.def)
+    }
+
+    pub fn _location(&self, scope: &SourceScope) {
+        let _source = self.mir().source_scopes.get(*scope);
     }
 
     pub fn original_name_from_local(&self, local: &Local) -> Option<String> {
-        self.var_debug_info
+        self.mir()
+            .var_debug_info
             .iter()
             .find_map(|debug_info| match debug_info.value {
                 VarDebugInfoContents::Place(place)
@@ -57,10 +58,10 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
             _ => false,
         }
     }
-    
+
     pub fn temp_var(&mut self) -> String {
         let current = self.gil_temp_counter;
         self.gil_temp_counter += 1;
         gil_temp_from_id(current)
-    } 
+    }
 }

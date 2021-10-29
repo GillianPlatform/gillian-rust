@@ -2,15 +2,14 @@
 use core::panic::PanicInfo;
 
 fn seven() -> i32 {
-  let x = 4;
-  let y = 3;
-  x + y
+    let x = 4;
+    let y = 3;
+    x + y
 }
 
-fn main(){
+pub fn test() {
     let _x = seven();
 }
-
 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {

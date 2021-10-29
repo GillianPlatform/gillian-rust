@@ -1,12 +1,16 @@
 [package]
-name = "lib_rtg"
+name = "rtg"
 version = "0.1.0"
 authors = ["Sacha Ayoun <sachaayoun@gmail.com>"]
 description = "Library of a compiler from Rust to GIL, for analysis with Gillian"
-edition = "2018"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gillian = { path = "../gillian" }
 log = "0.4"
+simple_logger = "1.11"

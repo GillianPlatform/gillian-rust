@@ -1,11 +1,20 @@
 EXAMPLE_FILES = $(shell ls examples/*.rs)
 EXAMPLE_TASKS = $(basename $(notdir ${EXAMPLE_FILES}))
+RUSTC = $(shell rustup which rustc)
+SYSROOT = $(shell ${RUSTC} --print sysroot)
+LIBDIR = "lib"
+BACKEND = ${LIBDIR}/librtg.dylib
+ARGS =  -C panic=abort --sysroot ${SYSROOT} -Z codegen-backend=${BACKEND}
 
-BOOK_FILES = $(shell find book/src -name "*.md")
+.PHONY: $(EXAMPLE_TASKS) build
 
-.PHONY: $(EXAMPLE_TASKS) book book-serve
+all: $(EXAMPLE_TASKS)
 
-all: $(EXAMPLE_TASKS) book
+$(EXAMPLE_TASKS): build
+	@${RUSTC} ${ARGS} examples/$@.rs --crate-type lib --out-dir output
 
-$(EXAMPLE_TASKS):
-	cargo run -- examples/$@.rs --sysroot ~/.rustup/toolchains/nightly-2021-10-18-x86_64-apple-darwin -C panic=abort
+build:
+	cargo build --out-dir ${LIBDIR} -Z unstable-options
+	
+help:
+	${RUSTC} --help

@@ -59,13 +59,19 @@ impl fmt::Display for Proc {
         write!(f, "proc {}(", self.name)?;
         comma_separated_display(&self.params, f)?;
         write!(f, ") {{\n")?;
+        let mut is_first = true;
         for ProcBodyItem { label, cmd, .. } in &self.body {
-            let semi = label.is_some();
+            if is_first {
+                is_first = false;
+            } else {
+                f.write_str(";\n")?;
+            }
+            let colon = label.is_some();
             let label = label.as_ref();
             let label: &String = label.unwrap_or(&empty_string);
             f.write_str(indent)?;
             write!(f, "{}", label)?;
-            if semi {
+            if colon {
                 f.write_char(':')?;
             } else {
                 f.write_char(' ')?;
@@ -73,9 +79,9 @@ impl fmt::Display for Proc {
             for _ in 0..(longest_label - label.len() + 1) {
                 f.write_str(" ")?;
             }
-            write!(f, "{};\n", cmd)?;
+            write!(f, "{}", cmd)?;
         }
-        f.write_str("}")
+        f.write_str("\n};")
     }
 }
 
@@ -86,9 +92,8 @@ pub mod proc_body {
         let item = items.get_mut(0).unwrap();
         item.label = Some(label);
     }
-    
+
     pub fn body_from_commands(items: Vec<Cmd>) -> Vec<ProcBodyItem> {
         items.into_iter().map(|x| ProcBodyItem::from(x)).collect()
     }
-    
 }

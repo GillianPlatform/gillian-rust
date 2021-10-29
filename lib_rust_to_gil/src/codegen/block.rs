@@ -1,9 +1,7 @@
-use super::body_ctx::BodyCtxt;
 use super::names::*;
-use gillian::gil::*;
-use rustc_middle::mir::*;
+use crate::prelude::*;
 
-impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
+impl<'tcx> BodyCtxt<'tcx> {
     pub fn compile_terminator(&mut self, terminator: &Terminator<'tcx>) -> Vec<ProcBodyItem> {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
@@ -26,7 +24,7 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
                     "Don't know how to handle cleanups in calls yet"
                 );
                 assert!(destination.is_some(), "no destination for function call!");
-                let mut compiled_terminator = vec![]; 
+                let mut compiled_terminator = vec![];
                 let mut gil_args = Vec::with_capacity(args.len());
                 for arg in args {
                     let (mut ops, v) = self.encode_operand(arg);

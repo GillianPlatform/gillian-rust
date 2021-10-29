@@ -1,13 +1,9 @@
-use crate::body_ctx::BodyCtxt;
-use gillian::gil::*;
+use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::mir::Constant as MirConstant;
-use rustc_middle::mir::*;
 // use rustc_middle::ty::Ty;
 use rustc_middle::ty::{Const, ConstKind, TyKind};
-use std::convert::TryInto;
 
-impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
+impl<'tcx> BodyCtxt<'tcx> {
     pub fn compile_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> (Vec<ProcBodyItem>, Expr) {
         match rvalue {
             Rvalue::Use(operand) => self.encode_operand(operand),
@@ -23,9 +19,9 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
             _ => panic!("Unhandled rvalue: {:#?}", rvalue),
         }
     }
-    
+
     // pub fn encode_binop(&mut self, left: &Operand<'tcx>, right: &Operand<'tcx>, left_ty: &Ty, right_ty: &Ty) {
-        
+
     // }
 
     /// Returns a series of GIL commands necessary to access a place, as well as the
@@ -68,7 +64,7 @@ impl<'gil, 'tcx> BodyCtxt<'gil, 'tcx> {
                     .unwrap();
                 Expr::Lit(Literal::Int(x))
             }
-            _ => panic!("Cannot encode constant yet! {:#?}", constant)
+            _ => panic!("Cannot encode constant yet! {:#?}", constant),
         }
     }
 
