@@ -3,15 +3,14 @@ use rustc_middle::mir::interpret::{ConstValue, Scalar};
 // use rustc_middle::ty::Ty;
 use rustc_middle::ty::{Const, ConstKind, TyKind};
 
-impl<'tcx> BodyCtxt<'tcx> {
-    pub fn compile_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> (Vec<ProcBodyItem>, Expr) {
+impl<'tcx> GilCtxt<'tcx> {
+    pub fn compile_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
         match rvalue {
             Rvalue::Use(operand) => self.encode_operand(operand),
             Rvalue::CheckedBinaryOp(_binop, box (left, right)) => {
-                let (mut v1, _e1) = self.encode_operand(left);
-                let (mut v2, _e2) = self.encode_operand(right);
-                v1.append(&mut v2);
-                panic!("Cannot handle checked binops yet! {:#?}", rvalue)
+                let _l = self.encode_operand(left);
+                let _r = self.encode_operand(right);
+                panic!("Cannot compile binop yet");
                 // let (mut v3, res) = self.encode_binop(binop, v1, v2, self.ty_ctxt.);
                 // v1.append(v3);
                 // (v1, res)
@@ -26,28 +25,23 @@ impl<'tcx> BodyCtxt<'tcx> {
 
     /// Returns a series of GIL commands necessary to access a place, as well as the
     /// name of the variable that will contain the place in the end.
-    pub fn encode_operand(&mut self, operand: &Operand<'tcx>) -> (Vec<ProcBodyItem>, Expr) {
+    pub fn encode_operand(&mut self, operand: &Operand<'tcx>) -> Expr {
         match operand {
-            Operand::Constant(box cst) => (vec![], self.encode_constant(cst)),
+            Operand::Constant(box cst) => self.encode_constant(cst),
             Operand::Move(place) => {
                 let temp = self.temp_var();
-                let (mut body, s) = self.encode_place(place);
-                let assign_temp = Cmd::Assignment {
+                let s = self.encode_place(place);
+                self.push_cmd(Cmd::Assignment {
                     variable: temp.clone(),
                     assigned_expr: Expr::PVar(s.clone()),
-                };
-                let clear_place = Cmd::Assignment {
+                });
+                self.push_cmd(Cmd::Assignment {
                     variable: s,
                     assigned_expr: Expr::Lit(Literal::Nono),
-                };
-                body.push(assign_temp.into());
-                body.push(clear_place.into());
-                (body, Expr::PVar(temp))
+                });
+                Expr::PVar(temp)
             }
-            Operand::Copy(place) => {
-                let (vec, s) = self.encode_place(place);
-                (vec, Expr::PVar(s))
-            }
+            Operand::Copy(place) => Expr::PVar(self.encode_place(place)),
         }
     }
 

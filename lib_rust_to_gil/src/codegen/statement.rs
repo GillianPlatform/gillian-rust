@@ -1,26 +1,19 @@
 use crate::prelude::*;
 
-impl<'tcx> BodyCtxt<'tcx> {
+impl<'tcx> GilCtxt<'tcx> {
     /* Returns the variable name */
-    pub fn compile_assignment(
-        &mut self,
-        place: &Place<'tcx>,
-        rvalue: &Rvalue<'tcx>,
-    ) -> Vec<ProcBodyItem> {
-        let (mut pre, variable) = self.encode_place(place);
-        let (mut expr_ops, assigned_expr) = self.compile_rvalue(rvalue);
-        pre.append(&mut expr_ops);
-        let cmd = Cmd::Assignment {
+    pub fn push_assignment(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>) {
+        let variable = self.encode_place(place);
+        let assigned_expr = self.compile_rvalue(rvalue);
+        self.push_cmd(Cmd::Assignment {
             variable,
             assigned_expr,
-        };
-        pre.push(cmd.into());
-        pre
+        });
     }
 
-    pub fn compile_statement(&mut self, stmt: &Statement<'tcx>) -> Vec<ProcBodyItem> {
+    pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
-            StatementKind::Assign(box (place, rvalue)) => self.compile_assignment(place, rvalue),
+            StatementKind::Assign(box (place, rvalue)) => self.push_assignment(place, rvalue),
             _ => panic!("Statment not handled yet: {:#?}", stmt),
         }
     }

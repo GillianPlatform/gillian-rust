@@ -38,7 +38,7 @@ pub use lemma::Lemma;
 pub use literal::Literal;
 pub use nop::NOp;
 pub use pred::{DefinitionLabel, Pred, PredDefinition};
-pub use proc::{proc_body, Proc, ProcBodyItem};
+pub use proc::{Proc, ProcBody, ProcBodyItem};
 pub use prog::{Import, Prog};
 pub use slcmd::{LogicBindings, SLCmd};
 pub use spec::{Flag, SingleSpec, Spec};

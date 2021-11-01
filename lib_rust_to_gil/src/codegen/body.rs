@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-impl<'tcx> BodyCtxt<'tcx> {
-    pub fn compile_body(&mut self) -> Proc {
+impl<'tcx> GilCtxt<'tcx> {
+    pub fn compile_body(mut self) -> Proc {
         let mir_body = self.mir();
         let proc_name = self.ty_ctxt.item_name(self.instance.def_id());
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
@@ -18,11 +18,9 @@ impl<'tcx> BodyCtxt<'tcx> {
             .args_iter()
             .map(|local| self.original_name_from_local(&local).unwrap())
             .collect();
-        let compiled_body: Vec<ProcBodyItem> = mir_body
-            .basic_blocks()
-            .iter_enumerated()
-            .flat_map(|(bb, bb_data)| self.compile_basic_block(&bb, &bb_data))
-            .collect();
-        Proc::new(proc_name.to_string(), args, compiled_body)
+        for (bb, bb_data) in mir_body.basic_blocks().iter_enumerated() {
+            self.push_basic_block(&bb, &bb_data);
+        }
+        self.make_proc(proc_name.to_string(), args)
     }
 }

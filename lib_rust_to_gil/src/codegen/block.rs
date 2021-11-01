@@ -1,16 +1,14 @@
 use super::names::*;
 use crate::prelude::*;
 
-impl<'tcx> BodyCtxt<'tcx> {
-    pub fn compile_terminator(&mut self, terminator: &Terminator<'tcx>) -> Vec<ProcBodyItem> {
+impl<'tcx> GilCtxt<'tcx> {
+    pub fn push_terminator(&mut self, terminator: &Terminator<'tcx>) {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
-                let cmd = Cmd::Goto(bb_label(&target));
-                vec![cmd.into()]
+                self.push_cmd(Cmd::Goto(bb_label(&target)));
             }
             TerminatorKind::Return => {
-                let cmd = Cmd::ReturnNormal;
-                vec![cmd.into()]
+                self.push_cmd(Cmd::ReturnNormal);
             }
             TerminatorKind::Call {
                 func,
@@ -24,47 +22,33 @@ impl<'tcx> BodyCtxt<'tcx> {
                     "Don't know how to handle cleanups in calls yet"
                 );
                 assert!(destination.is_some(), "no destination for function call!");
-                let mut compiled_terminator = vec![];
                 let mut gil_args = Vec::with_capacity(args.len());
                 for arg in args {
-                    let (mut ops, v) = self.encode_operand(arg);
-                    compiled_terminator.append(&mut ops);
-                    gil_args.push(v);
+                    gil_args.push(self.encode_operand(arg));
                 }
                 let (place, bb) = destination.unwrap();
                 let fname = self.fname_from_operand(func);
-                let (mut place_ops, encoded_place) = self.encode_place(&place);
-                compiled_terminator.append(&mut place_ops);
-                let call = Cmd::Call {
+                let encoded_place = self.encode_place(&place);
+                self.push_cmd(Cmd::Call {
                     variable: encoded_place,
                     parameters: vec![],
                     proc_ident: Expr::string(fname),
                     error_lab: None,
                     bindings: None,
-                };
-                compiled_terminator.push(call.into());
-                let goto = Cmd::Goto(bb_label(&bb));
-                compiled_terminator.push(goto.into());
-                compiled_terminator
+                });
+                self.push_cmd(Cmd::Goto(bb_label(&bb)));
             }
             _ => panic!("Terminator not handled yet: {:#?}", terminator),
         }
     }
 
-    pub fn compile_basic_block(
-        &mut self,
-        bb: &BasicBlock,
-        bb_data: &BasicBlockData<'tcx>,
-    ) -> Vec<ProcBodyItem> {
-        let mut compiled_block: Vec<ProcBodyItem> = bb_data
-            .statements
-            .iter()
-            .flat_map(|stmt| self.compile_statement(&stmt))
-            .collect();
-        if let Some(terminator) = &bb_data.terminator {
-            compiled_block.append(&mut self.compile_terminator(&terminator));
+    pub fn push_basic_block(&mut self, bb: &BasicBlock, bb_data: &BasicBlockData<'tcx>) {
+        self.push_label(bb_label(bb));
+        for stmt in &bb_data.statements {
+            self.push_statement(&stmt);
         }
-        proc_body::set_first_label(&mut compiled_block, bb_label(bb));
-        compiled_block
+        if let Some(terminator) = &bb_data.terminator {
+            self.push_terminator(&terminator);
+        }
     }
 }

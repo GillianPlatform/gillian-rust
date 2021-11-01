@@ -1,5 +1,6 @@
-#![feature(rustc_private)]
 #![deny(rustc::internal)]
+#![feature(rustc_private)]
+#![feature(try_trait_v2)]
 #![feature(box_patterns)]
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
@@ -18,7 +19,7 @@ extern crate rustc_span;
 extern crate rustc_target;
 
 mod prelude {
-    pub(crate) use crate::codegen::body_ctx::BodyCtxt;
+    pub(crate) use crate::codegen::body_ctx::GilCtxt;
     pub(crate) use gillian::gil::*;
     pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_middle::mir::{Constant as MirConstant, *};

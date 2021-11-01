@@ -1,21 +1,22 @@
 use super::names::{gil_temp_from_id, ret_var, temp_name_from_local};
 use crate::prelude::*;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::ConstKind;
-use rustc_target::abi::Size;
 
-pub struct BodyCtxt<'tcx> {
+pub struct GilCtxt<'tcx> {
     pub(crate) instance: Instance<'tcx>,
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
+    gil_body: ProcBody,
     gil_temp_counter: u32,
+    next_label: Option<String>,
 }
 
-impl<'tcx> BodyCtxt<'tcx> {
+impl<'tcx> GilCtxt<'tcx> {
     pub fn new(instance: Instance<'tcx>, ty_ctxt: TyCtxt<'tcx>) -> Self {
-        BodyCtxt {
+        GilCtxt {
             instance,
             ty_ctxt,
             gil_temp_counter: 0,
+            gil_body: ProcBody::default(),
+            next_label: None,
         }
     }
 
@@ -52,16 +53,27 @@ impl<'tcx> BodyCtxt<'tcx> {
         }
     }
 
-    pub fn is_zst(val: &ConstKind) -> bool {
-        match val {
-            ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
-            _ => false,
-        }
-    }
-
     pub fn temp_var(&mut self) -> String {
         let current = self.gil_temp_counter;
         self.gil_temp_counter += 1;
         gil_temp_from_id(current)
+    }
+
+    pub fn push_label(&mut self, label: String) {
+        self.next_label = Some(label);
+    }
+
+    fn next_label(&mut self) -> Option<String> {
+        std::mem::take(&mut self.next_label)
+    }
+
+    pub fn push_cmd(&mut self, cmd: Cmd) {
+        let label = self.next_label();
+        self.gil_body.push_cmd(cmd, label);
+        self.next_label = None;
+    }
+
+    pub fn make_proc(self, name: String, args: Vec<String>) -> Proc {
+        Proc::new(name, args, self.gil_body.into())
     }
 }

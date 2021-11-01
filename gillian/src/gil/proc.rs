@@ -85,15 +85,50 @@ impl fmt::Display for Proc {
     }
 }
 
-pub mod proc_body {
-    use super::*;
-    pub fn set_first_label(items: &mut Vec<ProcBodyItem>, label: String) {
-        assert!(!items.is_empty(), "Empty block!");
-        let item = items.get_mut(0).unwrap();
-        item.label = Some(label);
+#[derive(Debug, Default)]
+pub struct ProcBody(Vec<ProcBodyItem>);
+
+impl Into<Vec<ProcBodyItem>> for ProcBody {
+    fn into(self) -> Vec<ProcBodyItem> {
+        self.0
+    }
+}
+
+impl From<Vec<ProcBodyItem>> for ProcBody {
+    fn from(items: Vec<ProcBodyItem>) -> Self {
+        ProcBody(items)
+    }
+}
+
+impl From<Vec<Cmd>> for ProcBody {
+    fn from(cmds: Vec<Cmd>) -> Self {
+        cmds.into_iter()
+            .map(|x| ProcBodyItem::from(x))
+            .collect::<Vec<_>>()
+            .into()
+    }
+}
+
+impl ProcBody {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
-    pub fn body_from_commands(items: Vec<Cmd>) -> Vec<ProcBodyItem> {
-        items.into_iter().map(|x| ProcBodyItem::from(x)).collect()
+    pub fn append(&mut self, mut other: Self) {
+        self.0.append(&mut other.0)
+    }
+
+    pub fn push_cmd(&mut self, cmd: Cmd, label: Option<String>) {
+        self.0.push(ProcBodyItem {
+            annot: Annot::default(),
+            label,
+            cmd,
+        })
+    }
+
+    pub fn set_first_label(&mut self, label: String) {
+        assert!(!self.0.is_empty(), "Cannot add label to empty block!");
+        let item = self.0.get_mut(0).unwrap();
+        item.label = Some(label);
     }
 }
