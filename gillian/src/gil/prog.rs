@@ -1,8 +1,9 @@
+use super::print_utils::comma_separated_display;
 use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Import {
     pub path: String,
     pub verify: bool,
@@ -21,6 +22,26 @@ pub struct Prog {
 }
 
 impl Prog {
+    pub fn new(imports: Vec<Import>) -> Self {
+        Prog {
+            imports,
+            ..Default::default()
+        }
+    }
+
+    pub fn partition_imports(&self) -> (Vec<String>, Vec<String>) {
+        let mut regs = vec![];
+        let mut vers = vec![];
+        for Import { verify, path } in &self.imports {
+            if *verify {
+                vers.push(format!("\"{}\"", &path));
+            } else {
+                regs.push(format!("\"{}\"", &path));
+            }
+        }
+        (regs, vers)
+    }
+
     pub fn add_proc(&mut self, proc: Proc) {
         self.proc_names.push(proc.name.clone());
         self.procs.insert(proc.name.clone(), proc);
@@ -29,6 +50,13 @@ impl Prog {
 
 impl Display for Prog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (reg_imports, ver_imports) = self.partition_imports();
+        f.write_str("import ")?;
+        comma_separated_display(&reg_imports, f)?;
+        assert!(ver_imports.is_empty(), "So far, imports cannot work");
+        // f.write_str(";\nimport verify ")?;
+        // comma_separated_display(&ver_imports, f)?;
+        f.write_str(";\n\n")?;
         for (_, proc) in &self.procs {
             proc.fmt(f)?;
             f.write_str("\n\n")?;

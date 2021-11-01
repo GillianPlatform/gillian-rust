@@ -27,4 +27,24 @@ impl<'tcx> GilCtxt<'tcx> {
     pub fn operand_ty(&self, o: &Operand<'tcx>) -> Ty<'tcx> {
         self.monomorphize(o.ty(self.mir().local_decls(), self.ty_ctxt))
     }
+
+    pub fn _place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
+        self.monomorphize(Place::ty_from(
+            place.local,
+            &place.projection,
+            self.mir().local_decls(),
+            self.ty_ctxt,
+        ))
+        .ty
+    }
+
+    pub fn place_ty_until(&self, place: &Place<'tcx>, i: usize) -> Ty<'tcx> {
+        let place_ty = Place::ty_from(
+            place.local,
+            &place.projection[..i],
+            self.mir().local_decls(),
+            self.ty_ctxt,
+        );
+        self.monomorphize(place_ty).ty
+    }
 }

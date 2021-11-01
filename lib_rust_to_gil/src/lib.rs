@@ -20,8 +20,9 @@ extern crate rustc_target;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
+    pub(crate) use crate::codegen::{names, runtime};
     pub(crate) use crate::utils::macros::*;
-    pub(crate) use gillian::gil::{self, *};
+    pub(crate) use gillian::gil::*;
     pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind, TyS};

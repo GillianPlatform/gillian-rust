@@ -13,10 +13,9 @@ impl<'tcx> GilCtxt<'tcx> {
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
         }
-
         let args: Vec<String> = mir_body
             .args_iter()
-            .map(|local| self.original_name_from_local(&local).unwrap())
+            .map(|local| self.sanitized_original_name_from_local(&local).unwrap())
             .collect();
         for (bb, bb_data) in mir_body.basic_blocks().iter_enumerated() {
             self.push_basic_block(&bb, &bb_data);

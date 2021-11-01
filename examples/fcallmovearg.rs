@@ -7,8 +7,8 @@ fn add_four(x: i32) -> i32 {
 
 pub fn test() {
     let x = 3;
-    let _z = add_four(x);
-    let _y = x + _z;
+    let z = add_four(x);
+    let _y = x + z;
 }
 
 #[panic_handler]

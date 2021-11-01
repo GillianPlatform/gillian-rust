@@ -2,7 +2,7 @@ use super::print_utils::comma_separated_display;
 use super::{BinOp, Literal, NOp, UnOp};
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Lit(Literal),
     PVar(String),
@@ -31,8 +31,36 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn string(str: String) -> Expr {
-        Expr::Lit(Literal::String(str))
+    pub fn string(str: String) -> Self {
+        Self::Lit(Literal::String(str))
+    }
+
+    pub fn float(f: f32) -> Self {
+        Self::Lit(Literal::Num(f))
+    }
+
+    pub fn int(i: i64) -> Self {
+        Self::Lit(Literal::Int(i))
+    }
+
+    pub fn lnth(e: Expr, i: u32) -> Self {
+        let f: f32 = i as f32;
+        Self::BinOp {
+            operator: BinOp::LstNth,
+            left_operand: Box::new(e),
+            right_operand: Box::new(Self::float(f)),
+        }
+    }
+
+    pub fn not(e: Expr) -> Self {
+        Self::UnOp {
+            operator: UnOp::UNot,
+            operand: Box::new(e),
+        }
+    }
+
+    pub fn undefined() -> Self {
+        Self::Lit(Literal::Undefined)
     }
 }
 

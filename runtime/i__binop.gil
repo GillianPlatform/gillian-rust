@@ -1,0 +1,7 @@
+#internal
+
+proc i__binop_checked_add(v1, v2, max_val) {
+  sum := v1 i+ v2;
+  ret := {{ sum, max_val i< sum }};
+  return
+};

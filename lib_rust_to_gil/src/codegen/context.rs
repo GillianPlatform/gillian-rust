@@ -28,7 +28,7 @@ impl<'tcx> GilCtxt<'tcx> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
-    pub fn original_name_from_local(&self, local: &Local) -> Option<String> {
+    fn original_name_from_local(&self, local: &Local) -> Option<String> {
         self.mir()
             .var_debug_info
             .iter()
@@ -42,11 +42,16 @@ impl<'tcx> GilCtxt<'tcx> {
             })
     }
 
+    pub fn sanitized_original_name_from_local(&self, local: &Local) -> Option<String> {
+        self.original_name_from_local(local)
+            .map(names::sanitize_name)
+    }
+
     pub fn name_from_local(&self, local: &Local) -> String {
         if *local == RETURN_PLACE {
             ret_var()
         } else {
-            match self.original_name_from_local(local) {
+            match self.sanitized_original_name_from_local(local) {
                 Some(name) => name,
                 None => temp_name_from_local(local),
             }

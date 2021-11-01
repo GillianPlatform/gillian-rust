@@ -2,7 +2,7 @@ use super::print_utils::comma_separated_display;
 use super::{Constant, Type};
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Undefined,
     Null,

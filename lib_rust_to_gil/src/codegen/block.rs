@@ -8,6 +8,14 @@ impl<'tcx> GilCtxt<'tcx> {
                 self.push_cmd(Cmd::Goto(bb_label(&target)));
             }
             TerminatorKind::Return => {
+                if self.mir().return_ty().is_unit() {
+                    // We need to assign something to the ret variable,
+                    // otherwise Gillian will complain
+                    self.push_cmd(Cmd::Assignment {
+                        variable: names::ret_var(),
+                        assigned_expr: Expr::undefined(),
+                    });
+                }
                 self.push_cmd(Cmd::ReturnNormal);
             }
             TerminatorKind::Call {
@@ -29,14 +37,37 @@ impl<'tcx> GilCtxt<'tcx> {
                 let (place, bb) = destination.unwrap();
                 let fname = self.fname_from_operand(func);
                 let encoded_place = self.encode_place(&place);
+                let target = if encoded_place.is_var() {
+                    self.place_base(&encoded_place)
+                } else {
+                    self.temp_var()
+                };
                 self.push_cmd(Cmd::Call {
-                    variable: encoded_place,
-                    parameters: vec![],
+                    variable: target.clone(),
+                    parameters: gil_args,
                     proc_ident: Expr::string(fname),
                     error_lab: None,
                     bindings: None,
                 });
+                if !encoded_place.is_var() {
+                    // If the place was not a var, we need to assign the result to the actual place.
+                    self.push_assignment(&encoded_place, Expr::PVar(target));
+                }
                 self.push_cmd(Cmd::Goto(bb_label(&bb)));
+            }
+            TerminatorKind::Assert {
+                cond: op,
+                expected,
+                msg: _,
+                target,
+                cleanup: _,
+            } => {
+                let msg = "Ugly assert message for now".to_string();
+                let cond = self.encode_operand(op);
+                let to_assert = if !expected { Expr::not(cond) } else { cond };
+                let assert_call = runtime::lang_assert(to_assert, msg);
+                self.push_cmd(assert_call);
+                self.push_cmd(Cmd::Goto(bb_label(&target)));
             }
             _ => fatal!(self, "Terminator not handled yet: {:#?}", terminator),
         }
