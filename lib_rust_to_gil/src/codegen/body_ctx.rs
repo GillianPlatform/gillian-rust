@@ -74,6 +74,9 @@ impl<'tcx> GilCtxt<'tcx> {
     }
 
     pub fn make_proc(self, name: String, args: Vec<String>) -> Proc {
-        Proc::new(name, args, self.gil_body.into())
+        // Get the body and make it fit first
+        let mut items: Vec<ProcBodyItem> = self.gil_body.into();
+        items.shrink_to_fit();
+        Proc::new(name, args, items)
     }
 }

@@ -85,7 +85,7 @@ impl fmt::Display for Proc {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ProcBody(Vec<ProcBodyItem>);
 
 impl Into<Vec<ProcBodyItem>> for ProcBody {
@@ -106,6 +106,13 @@ impl From<Vec<Cmd>> for ProcBody {
             .map(|x| ProcBodyItem::from(x))
             .collect::<Vec<_>>()
             .into()
+    }
+}
+
+impl Default for ProcBody {
+    fn default() -> Self {
+        // Estimate of an ok capacity
+        Self::from(Vec::<ProcBodyItem>::with_capacity(20))
     }
 }
 
