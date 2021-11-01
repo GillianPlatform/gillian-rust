@@ -38,7 +38,7 @@ impl<'tcx> GilCtxt<'tcx> {
                 });
                 self.push_cmd(Cmd::Goto(bb_label(&bb)));
             }
-            _ => panic!("Terminator not handled yet: {:#?}", terminator),
+            _ => fatal!(self, "Terminator not handled yet: {:#?}", terminator),
         }
     }
 

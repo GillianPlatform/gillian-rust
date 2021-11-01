@@ -8,10 +8,10 @@ impl<'tcx> GilCtxt<'tcx> {
         // We can then shrink it to size when needed.
         // log::debug!("{} : {:#?}", proc_name, mir_body);
         if mir_body.is_polymorphic {
-            panic!("Polymorphism is not handled yet.")
+            fatal!(self, "Polymorphism is not handled yet.")
         }
         if mir_body.generator_kind().is_some() {
-            panic!("Generators are not handled yet.")
+            fatal!(self, "Generators are not handled yet.")
         }
 
         let args: Vec<String> = mir_body

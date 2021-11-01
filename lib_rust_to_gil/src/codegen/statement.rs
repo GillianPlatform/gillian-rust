@@ -14,7 +14,7 @@ impl<'tcx> GilCtxt<'tcx> {
     pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, rvalue)) => self.push_assignment(place, rvalue),
-            _ => panic!("Statment not handled yet: {:#?}", stmt),
+            _ => fatal!(self, "Statment not handled yet: {:#?}", stmt),
         }
     }
 }

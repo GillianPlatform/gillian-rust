@@ -6,7 +6,7 @@ impl<'tcx> GilCtxt<'tcx> {
         if place.projection.len() == 0 {
             self.name_from_local(&place.local)
         } else {
-            panic!("Can't handle places with projection yet!");
+            fatal!(self, "Can't handle places with projection yet!");
         }
     }
 }

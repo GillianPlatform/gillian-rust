@@ -5,7 +5,7 @@ use rustc_target::abi::Size;
 
 impl<'tcx> GilCtxt<'tcx> {
     // Adapted from RMC under MIT/Apache license.
-    pub fn _monomorphize<T>(&self, value: T) -> T
+    pub fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -22,5 +22,9 @@ impl<'tcx> GilCtxt<'tcx> {
             ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
             _ => false,
         }
+    }
+
+    pub fn operand_ty(&self, o: &Operand<'tcx>) -> Ty<'tcx> {
+        self.monomorphize(o.ty(self.mir().local_decls(), self.ty_ctxt))
     }
 }

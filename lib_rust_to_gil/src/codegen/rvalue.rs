@@ -1,27 +1,48 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 // use rustc_middle::ty::Ty;
-use rustc_middle::ty::{Const, ConstKind, TyKind};
+use rustc_middle::ty::{Const, ConstKind};
 
 impl<'tcx> GilCtxt<'tcx> {
     pub fn compile_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
         match rvalue {
             Rvalue::Use(operand) => self.encode_operand(operand),
-            Rvalue::CheckedBinaryOp(_binop, box (left, right)) => {
-                let _l = self.encode_operand(left);
-                let _r = self.encode_operand(right);
-                panic!("Cannot compile binop yet");
-                // let (mut v3, res) = self.encode_binop(binop, v1, v2, self.ty_ctxt.);
-                // v1.append(v3);
-                // (v1, res)
+            Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
+                self.encode_binop(binop, left, right)
             }
-            _ => panic!("Unhandled rvalue: {:#?}", rvalue),
+            _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
         }
     }
 
-    // pub fn encode_binop(&mut self, left: &Operand<'tcx>, right: &Operand<'tcx>, left_ty: &Ty, right_ty: &Ty) {
-
-    // }
+    pub fn encode_binop(
+        &mut self,
+        binop: &mir::BinOp,
+        left: &Operand<'tcx>,
+        right: &Operand<'tcx>,
+    ) -> Expr {
+        let _left_operand = Box::new(self.encode_operand(left));
+        let _right_operand = Box::new(self.encode_operand(right));
+        let left_ty = self.operand_ty(left);
+        let right_ty = self.operand_ty(right);
+        assert!(TyS::same_type(left_ty, right_ty));
+        match binop {
+            _ => fatal!(
+                self,
+                "Cannot yet encode binop {:#?} with operands {:#?} and {:#?}",
+                binop,
+                left,
+                right
+            ),
+        }
+        // Expr::BinOp {
+        //     operator: gil::BinOp::IPlus,
+        //     left_operand,
+        //     right_operand,
+        // }
+        // match binop {
+        //     Add when
+        // }
+    }
 
     /// Returns a series of GIL commands necessary to access a place, as well as the
     /// name of the variable that will contain the place in the end.
@@ -45,7 +66,7 @@ impl<'tcx> GilCtxt<'tcx> {
         }
     }
 
-    pub fn encode_constant(&self, constant: &MirConstant) -> Expr {
+    pub fn encode_constant(&self, constant: &mir::Constant) -> Expr {
         match constant.literal {
             ConstantKind::Ty(Const {
                 val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(scalar_int))),
@@ -58,20 +79,21 @@ impl<'tcx> GilCtxt<'tcx> {
                     .unwrap();
                 Expr::Lit(Literal::Int(x))
             }
-            _ => panic!("Cannot encode constant yet! {:#?}", constant),
+            _ => fatal!(self, "Cannot encode constant yet! {:#?}", constant),
         }
     }
 
     pub fn fname_from_operand(&self, operand: &Operand<'tcx>) -> String {
         match &operand {
-            Operand::Constant(box MirConstant {
+            Operand::Constant(box mir::Constant {
                 literal: ConstantKind::Ty(Const { ty, val }),
                 ..
             }) if Self::is_zst(val) && ty.is_fn() => match ty.kind() {
                 TyKind::FnDef(did, _) => self.ty_ctxt.item_name(*did).to_string(),
-                tyk => panic!("unhandled TyKind for function name: {:#?}", tyk),
+                tyk => fatal!(self, "unhandled TyKind for function name: {:#?}", tyk),
             },
-            _ => panic!(
+            _ => fatal!(
+                self,
                 "Can't handle dynami calls yet! Got fun operand: {:#?}",
                 operand
             ),

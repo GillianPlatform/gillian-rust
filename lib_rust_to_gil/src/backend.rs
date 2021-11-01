@@ -32,7 +32,9 @@ fn codegen_cgu<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: rustc_span::Symbol) -> ModuleC
                 let proc = ctx.compile_body();
                 prog.add_proc(proc);
             }
-            _ => panic!("MonoItem not handled yet: {:#?}", item),
+            _ => tcx
+                .sess
+                .fatal(&format!("MonoItem not handled yet: {:#?}", item)),
         }
     }
     emit_module(
