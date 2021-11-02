@@ -43,7 +43,7 @@ impl Expr {
         Self::Lit(Literal::Int(i))
     }
 
-    pub fn lnth(e: Expr, i: u32) -> Self {
+    pub fn lnth(e: Expr, i: usize) -> Self {
         let f: f32 = i as f32;
         Self::BinOp {
             operator: BinOp::LstNth,

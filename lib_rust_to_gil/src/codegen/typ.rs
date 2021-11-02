@@ -47,4 +47,12 @@ impl<'tcx> GilCtxt<'tcx> {
         );
         self.monomorphize(place_ty).ty
     }
+
+    /// Gets the length of the tuple.
+    /// Panics if the type is not a Tuple
+    pub fn tuple_length(&self, ty: Ty<'tcx>) -> usize {
+        let mut i = 0;
+        ty.tuple_fields().for_each(|_| i += 1);
+        i
+    }
 }

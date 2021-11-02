@@ -29,7 +29,7 @@ fn codegen_cgu<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: rustc_span::Symbol) -> ModuleC
         match item {
             MonoItem::Fn(instance) => {
                 let ctx = GilCtxt::new(instance, tcx);
-                let proc = ctx.compile_body();
+                let proc = ctx.push_body();
                 prog.add_proc(proc);
             }
             _ => tcx

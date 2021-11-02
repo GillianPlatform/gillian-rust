@@ -5,8 +5,8 @@ pub enum PlaceEncoding {
     Var(Local), // The encoding is simply the variable
     ListAccess {
         lst: Box<PlaceEncoding>,
-        idx: u32,
-        size: u32,
+        idx: usize,
+        size: usize,
     }, // In GIL, this place is going to be an element in a list of known total size
 }
 
@@ -34,11 +34,10 @@ impl<'tcx> GilCtxt<'tcx> {
             let parent_ty = self.place_ty_until(place, i);
             match place.projection[i] {
                 ProjectionElem::Field(k, _ty) if matches!(parent_ty.kind(), TyKind::Tuple(_)) => {
-                    let mut size = 0;
-                    parent_ty.tuple_fields().for_each(|_| size += 1);
+                    let size = self.tuple_length(parent_ty);
                     encoding = PlaceEncoding::ListAccess {
                         lst: Box::new(encoding),
-                        idx: k.as_u32(),
+                        idx: k.as_usize(),
                         size,
                     };
                 }

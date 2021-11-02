@@ -8,7 +8,7 @@ const GIL_UNUSED_VAR: &str = "gil____THROAWAY";
 const UNDERSCORED_PREFIX: &str = "underscored___";
 
 pub fn bb_label(bb: &BasicBlock) -> String {
-    format!("{}{}", BB_LABEL, bb.as_u32())
+    format!("{}{}", BB_LABEL, bb.as_usize())
 }
 
 pub fn ret_var() -> String {
@@ -16,10 +16,10 @@ pub fn ret_var() -> String {
 }
 
 pub fn temp_name_from_local(local: &Local) -> String {
-    format!("{}{}", MIR_TEMP_PREFIX, local.as_u32())
+    format!("{}{}", MIR_TEMP_PREFIX, local.as_usize())
 }
 
-pub fn gil_temp_from_id(id: u32) -> String {
+pub fn gil_temp_from_id(id: usize) -> String {
     format!("{}{}", GIL_TEMP_PREFIX, id)
 }
 
@@ -41,9 +41,9 @@ mod tests {
 
     #[test]
     fn bb_label_test() {
-        let bb = BasicBlock::from(0u32);
+        let bb = BasicBlock::from(0usize);
         assert_eq!(bb_label(&bb), String::from("bb0"));
-        let bb = BasicBlock::from(100u32);
+        let bb = BasicBlock::from(100usize);
         assert_eq!(bb_label(&bb), String::from("bb100"));
     }
 }

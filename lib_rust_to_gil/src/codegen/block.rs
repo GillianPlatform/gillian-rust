@@ -8,14 +8,6 @@ impl<'tcx> GilCtxt<'tcx> {
                 self.push_cmd(Cmd::Goto(bb_label(&target)));
             }
             TerminatorKind::Return => {
-                if self.mir().return_ty().is_unit() {
-                    // We need to assign something to the ret variable,
-                    // otherwise Gillian will complain
-                    self.push_cmd(Cmd::Assignment {
-                        variable: names::ret_var(),
-                        assigned_expr: Expr::undefined(),
-                    });
-                }
                 self.push_cmd(Cmd::ReturnNormal);
             }
             TerminatorKind::Call {

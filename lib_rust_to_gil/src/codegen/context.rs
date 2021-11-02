@@ -5,7 +5,7 @@ pub struct GilCtxt<'tcx> {
     pub(crate) instance: Instance<'tcx>,
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_body: ProcBody,
-    gil_temp_counter: u32,
+    gil_temp_counter: usize,
     next_label: Option<String>,
 }
 
