@@ -1,5 +1,6 @@
 mod block;
 mod body;
+mod memory;
 mod place;
 mod rvalue;
 mod statement;

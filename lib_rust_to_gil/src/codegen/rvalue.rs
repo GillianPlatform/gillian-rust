@@ -5,9 +5,9 @@ use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{Const, ConstKind};
 
 impl<'tcx> GilCtxt<'tcx> {
-    pub fn compile_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
+    pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
         match rvalue {
-            Rvalue::Use(operand) => self.encode_operand(operand),
+            Rvalue::Use(operand) => self.push_encode_operand(operand),
             Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.encode_binop(binop, left, right)
             }
@@ -21,8 +21,8 @@ impl<'tcx> GilCtxt<'tcx> {
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
     ) -> Expr {
-        let e1 = self.encode_operand(left);
-        let e2 = self.encode_operand(right);
+        let e1 = self.push_encode_operand(left);
+        let e2 = self.push_encode_operand(right);
         let left_ty = self.operand_ty(left);
         let right_ty = self.operand_ty(right);
         assert!(TyS::same_type(left_ty, right_ty));
@@ -60,20 +60,17 @@ impl<'tcx> GilCtxt<'tcx> {
 
     /// Returns a series of GIL commands necessary to access a place, as well as the
     /// name of the variable that will contain the place in the end.
-    pub fn encode_operand(&mut self, operand: &Operand<'tcx>) -> Expr {
+    pub fn push_encode_operand(&mut self, operand: &Operand<'tcx>) -> Expr {
         match operand {
             Operand::Constant(box cst) => self.encode_constant(cst),
             Operand::Move(place) => {
-                let temp = self.temp_var();
-                let s = self.encode_place(place);
-                self.push_cmd(Cmd::Assignment {
-                    variable: temp.clone(),
-                    assigned_expr: self.place_read(&s),
-                });
-                self.push_assignment(&s, Expr::Lit(Literal::Nono));
-                Expr::PVar(temp)
+                let var = self.push_place_read(place, false);
+                Expr::PVar(var)
             }
-            Operand::Copy(place) => self.place_read(&self.encode_place(place)),
+            Operand::Copy(place) => {
+                let var = self.push_place_read(place, true);
+                Expr::PVar(var)
+            }
         }
     }
 
@@ -87,9 +84,17 @@ impl<'tcx> GilCtxt<'tcx> {
     pub fn encode_const(&self, cst: &Const) -> Expr {
         match cst {
             Const {
-                val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(scalar_int))),
+                val: ConstKind::Value(v),
                 ..
-            } => {
+            } => self.encode_value(v),
+
+            _ => fatal!(self, "Cannot encode const yet! {:#?}", cst),
+        }
+    }
+
+    pub fn encode_value(&self, val: &ConstValue) -> Expr {
+        match val {
+            ConstValue::Scalar(Scalar::Int(scalar_int)) => {
                 let x: i64 = scalar_int
                     .to_bits(scalar_int.size())
                     .unwrap()
@@ -97,7 +102,7 @@ impl<'tcx> GilCtxt<'tcx> {
                     .unwrap();
                 Expr::Lit(Literal::Int(x))
             }
-            _ => fatal!(self, "Cannot encode const yet! {:#?}", cst),
+            _ => fatal!(self, "Cannot encode value yet: {:#?}", val),
         }
     }
 

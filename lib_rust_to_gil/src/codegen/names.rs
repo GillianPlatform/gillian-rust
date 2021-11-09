@@ -28,7 +28,7 @@ pub fn unused_var() -> String {
 }
 
 pub fn sanitize_name(name: String) -> String {
-    if name.chars().next().unwrap() == '_' {
+    if name.starts_with('_') {
         UNDERSCORED_PREFIX.to_string() + &name
     } else {
         name

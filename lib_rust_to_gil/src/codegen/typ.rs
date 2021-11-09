@@ -28,10 +28,14 @@ impl<'tcx> GilCtxt<'tcx> {
         self.monomorphize(o.ty(self.mir().local_decls(), self.ty_ctxt))
     }
 
-    pub fn _place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
+    pub fn rvalue_ty(&self, rv: &Rvalue<'tcx>) -> Ty<'tcx> {
+        self.monomorphize(rv.ty(self.mir().local_decls(), self.ty_ctxt))
+    }
+
+    pub fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
         self.monomorphize(Place::ty_from(
             place.local,
-            &place.projection,
+            place.projection,
             self.mir().local_decls(),
             self.ty_ctxt,
         ))
@@ -48,11 +52,11 @@ impl<'tcx> GilCtxt<'tcx> {
         self.monomorphize(place_ty).ty
     }
 
-    /// Gets the length of the tuple.
-    /// Panics if the type is not a Tuple
-    pub fn tuple_length(&self, ty: Ty<'tcx>) -> usize {
-        let mut i = 0;
-        ty.tuple_fields().for_each(|_| i += 1);
-        i
-    }
+    // Gets the length of the tuple.
+    // Panics if the type is not a Tuple
+    // pub fn tuple_length(&self, ty: Ty<'tcx>) -> usize {
+    //     let mut i = 0;
+    //     ty.tuple_fields().for_each(|_| i += 1);
+    //     i
+    // }
 }

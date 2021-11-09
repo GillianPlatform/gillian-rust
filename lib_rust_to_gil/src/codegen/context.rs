@@ -1,4 +1,4 @@
-use super::names::{gil_temp_from_id, ret_var, temp_name_from_local};
+use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx> {
@@ -48,13 +48,9 @@ impl<'tcx> GilCtxt<'tcx> {
     }
 
     pub fn name_from_local(&self, local: &Local) -> String {
-        if *local == RETURN_PLACE {
-            ret_var()
-        } else {
-            match self.sanitized_original_name_from_local(local) {
-                Some(name) => name,
-                None => temp_name_from_local(local),
-            }
+        match self.sanitized_original_name_from_local(local) {
+            Some(name) => name,
+            None => temp_name_from_local(local),
         }
     }
 

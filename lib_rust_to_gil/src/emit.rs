@@ -17,7 +17,7 @@ pub fn emit_module(
     kind: ModuleKind,
     module: Prog,
 ) -> ModuleCodegenResult {
-    let tmp_file = tcx.output_filenames(()).temp_path_ext(&"gil", Some(&name));
+    let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", Some(&name));
     log::debug!("Writing to {:#?}", &tmp_file);
     if let Err(err) = std::fs::write(&tmp_file, format!("{}", module)) {
         tcx.sess.fatal(&format!("Error writing GIL file: {}", err));

@@ -21,7 +21,7 @@ impl GilCodegenBackend {
     }
 }
 
-fn codegen_cgu<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
+fn codegen_cgu(tcx: TyCtxt, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
     let cgu = tcx.codegen_unit(cgu_name);
     let items = cgu.items_in_deterministic_order(tcx);
     let mut prog = Prog::new(runtime::imports());
