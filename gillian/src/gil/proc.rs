@@ -58,7 +58,7 @@ impl fmt::Display for Proc {
         let empty_string = String::new();
         write!(f, "proc {}(", self.name)?;
         comma_separated_display(&self.params, f)?;
-        write!(f, ") {{\n")?;
+        writeln!(f, ") {{")?;
         let mut is_first = true;
         for ProcBodyItem { label, cmd, .. } in &self.body {
             if is_first {
@@ -88,9 +88,9 @@ impl fmt::Display for Proc {
 #[derive(Debug)]
 pub struct ProcBody(Vec<ProcBodyItem>);
 
-impl Into<Vec<ProcBodyItem>> for ProcBody {
-    fn into(self) -> Vec<ProcBodyItem> {
-        self.0
+impl From<ProcBody> for Vec<ProcBodyItem> {
+    fn from(body: ProcBody) -> Self {
+        body.0
     }
 }
 
@@ -103,7 +103,7 @@ impl From<Vec<ProcBodyItem>> for ProcBody {
 impl From<Vec<Cmd>> for ProcBody {
     fn from(cmds: Vec<Cmd>) -> Self {
         cmds.into_iter()
-            .map(|x| ProcBodyItem::from(x))
+            .map(ProcBodyItem::from)
             .collect::<Vec<_>>()
             .into()
     }

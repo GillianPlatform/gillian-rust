@@ -1,7 +1,7 @@
 use std::fmt;
 
 pub fn comma_separated_display(
-    vec: &Vec<impl fmt::Display>,
+    vec: &[impl fmt::Display],
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     let mut sep = "";

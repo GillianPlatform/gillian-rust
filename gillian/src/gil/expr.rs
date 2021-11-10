@@ -30,9 +30,24 @@ pub enum Expr {
     ESet(Vec<Expr>),
 }
 
+impl std::ops::Not for Expr {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self::UnOp {
+            operator: UnOp::UNot,
+            operand: Box::new(self),
+        }
+    }
+}
+
 impl Expr {
     pub fn string(str: String) -> Self {
         Self::Lit(Literal::String(str))
+    }
+
+    pub fn bool(b: bool) -> Self {
+        Self::Lit(Literal::Bool(b))
     }
 
     pub fn float(f: f32) -> Self {
@@ -45,17 +60,39 @@ impl Expr {
 
     pub fn lnth(e: Expr, i: usize) -> Self {
         let f: f32 = i as f32;
-        Self::BinOp {
-            operator: BinOp::LstNth,
-            left_operand: Box::new(e),
-            right_operand: Box::new(Self::float(f)),
+        match e {
+            Expr::EList(vec) => vec.get(i).expect("lnth of a small vector!").to_owned(),
+            Expr::Lit(Literal::LList(vec)) => {
+                Expr::Lit(vec.get(i).expect("lnth of a small vector!").to_owned())
+            }
+            _ => Self::BinOp {
+                operator: BinOp::LstNth,
+                left_operand: Box::new(e),
+                right_operand: Box::new(Self::float(f)),
+            },
         }
     }
 
-    pub fn not(e: Expr) -> Self {
-        Self::UnOp {
-            operator: UnOp::UNot,
-            operand: Box::new(e),
+    pub fn lst_concat(e1: Expr, e2: Expr) -> Self {
+        match (e1, e2) {
+            (Expr::EList(mut vec1), Expr::EList(mut vec2)) => {
+                vec1.append(&mut vec2);
+                Expr::EList(vec1)
+            }
+            (Expr::Lit(Literal::LList(mut vec1)), Expr::Lit(Literal::LList(mut vec2))) => {
+                vec1.append(&mut vec2);
+                Expr::Lit(Literal::LList(vec1))
+            }
+            (Expr::EList(vec), x) | (x, Expr::EList(vec)) if vec.is_empty() => x,
+            (x, Expr::Lit(Literal::LList(vec))) | (Expr::Lit(Literal::LList(vec)), x)
+                if vec.is_empty() =>
+            {
+                x
+            }
+            (e1, e2) => Self::NOp {
+                operator: NOp::LstCat,
+                operands: vec![e1, e2],
+            },
         }
     }
 

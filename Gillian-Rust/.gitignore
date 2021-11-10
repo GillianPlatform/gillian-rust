@@ -1,0 +1,7 @@
+node_modules
+esy.lock
+_esy
+_build
+file.log
+*.install
+!lib

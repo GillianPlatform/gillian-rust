@@ -1,0 +1,4 @@
+(executable
+ (public_name gillian-rust)
+ (name main)
+ (libraries gillian_rust gillian))

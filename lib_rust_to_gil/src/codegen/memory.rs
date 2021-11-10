@@ -28,33 +28,40 @@ impl<'tcx> GilCtxt<'tcx> {
     }
 
     pub fn push_action(&mut self, target: String, action: MemoryAction<'tcx>) {
-        let cmd = match action {
-            MemoryAction::Alloc(ty) => Cmd::Action {
+        match action {
+            MemoryAction::Alloc(ty) => self.push_cmd(Cmd::Action {
                 variable: target,
                 action_name: ALLOC_ACTION_NAME.to_string(),
                 parameters: vec![Expr::Lit(self.encode_type(ty))],
-            },
+            }),
             MemoryAction::Load {
                 location,
                 projection,
                 typ,
                 copy,
-            } => Cmd::Action {
-                variable: target,
-                action_name: LOAD_ACTION_NAME.to_string(),
-                parameters: vec![
-                    location,
-                    projection,
-                    Expr::Lit(self.encode_type(typ)),
-                    Expr::bool(copy),
-                ],
-            },
+            } => {
+                let temp = self.temp_var();
+                self.push_cmd(Cmd::Action {
+                    variable: temp.clone(),
+                    action_name: LOAD_ACTION_NAME.to_string(),
+                    parameters: vec![
+                        location,
+                        projection,
+                        Expr::Lit(self.encode_type(typ)),
+                        Expr::bool(copy),
+                    ],
+                });
+                self.push_cmd(Cmd::Assignment {
+                    variable: target,
+                    assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
+                })
+            }
             MemoryAction::Store {
                 location,
                 projection,
                 typ,
                 value,
-            } => Cmd::Action {
+            } => self.push_cmd(Cmd::Action {
                 variable: target,
                 action_name: STORE_ACTION_NAME.to_string(),
                 parameters: vec![
@@ -63,8 +70,7 @@ impl<'tcx> GilCtxt<'tcx> {
                     Expr::Lit(self.encode_type(typ)),
                     value,
                 ],
-            },
+            }),
         };
-        self.push_cmd(cmd);
     }
 }

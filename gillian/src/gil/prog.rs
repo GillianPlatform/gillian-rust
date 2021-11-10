@@ -57,7 +57,7 @@ impl Display for Prog {
         // f.write_str(";\nimport verify ")?;
         // comma_separated_display(&ver_imports, f)?;
         f.write_str(";\n\n")?;
-        for (_, proc) in &self.procs {
+        for proc in self.procs.values() {
             proc.fmt(f)?;
             f.write_str("\n\n")?;
         }

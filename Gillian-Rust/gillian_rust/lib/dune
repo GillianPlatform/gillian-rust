@@ -1,0 +1,3 @@
+(library
+ (name gillian_rust)
+ (libraries gillian))

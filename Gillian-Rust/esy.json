@@ -1,0 +1,46 @@
+{
+  "name": "gillian-rust",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rust instantiation for Gillian",
+  "author": {
+    "name": "Verified Trustworthy Software Specification Group at Imperial College",
+    "url": "https://vtss.doc.ic.ac.uk"
+  },
+  "homepage": "GillianDev.github.io",
+  "license": "BSD-3-Clause",
+  "esy": {
+    "build": "dune build @install",
+    "buildsInSource": "_build",
+    "exportedEnv": {
+      "GILLIAN_RUST_RUNTIME_PATH": {
+        "scope": "global",
+        "val": "#{self.share}/gillian-rust"
+      }
+    }
+  },
+  "scripts": {
+    "watch": "dune build @install --watch",
+    "format-check": "dune build @fmt",
+    "format": "dune build @fmt --auto-promote",
+    "test": "dune test -j 4",
+    "clean": "dune clean"
+  },
+  "dependencies": {
+    "@opam/cmdliner": "^1.0.4",
+    "@opam/dune": "^2.0",
+    "@opam/fmt": "^0.8.8",
+    "@opam/ppx_deriving_yojson": "*",
+    "@opam/ppxlib": ">=0.18.0",
+    "@opam/printbox": "0.5",
+    "@opam/yojson": "^1.7.0",
+    "gillian": "GillianPlatform/Gillian:gillian.json#2cb5f8d73baf7f7a811b0be6044d533a62c3f50b",
+    "ocaml": "^4.12.x"
+  },
+  "devDependencies": {
+    "ocaml": "4.12.x",
+    "@opam/ocaml-lsp-server": "*",
+    "@opam/odoc": "*",
+    "@opam/ocamlformat": "0.18.0"
+  }
+}
