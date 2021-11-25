@@ -1,0 +1,83 @@
+use super::place::GilPlace;
+use crate::prelude::*;
+
+#[derive(Debug)]
+pub enum TypeInStoreEncoding {
+    Value,
+    List(Vec<TypeInStoreEncoding>),
+}
+
+impl<'tcx> TypeInStoreEncoding {
+    pub fn new(ty: Ty<'tcx>) -> Self {
+        use TyKind::*;
+        match ty.kind() {
+            Bool | Char | Int(..) | Uint(..) | Float(..) | Ref(..) => Self::Value,
+            Tuple(_) => Self::List(ty.tuple_fields().map(Self::new).collect()),
+            _ => panic!("Cannot handle type yet: {:#?}", ty),
+        }
+    }
+
+    pub fn uninitialized(&self) -> Literal {
+        match self {
+            Self::Value => Literal::Undefined,
+            Self::List(v) => Literal::LList(v.iter().map(|x| x.uninitialized()).collect()),
+        }
+    }
+}
+
+impl<'tcx> GilCtxt<'tcx> {
+    /// Returns the expressions that corresponds to reading a value in the store at some place
+    pub fn reader_expr_for_place_in_store(&self, place: &GilPlace<'tcx>) -> Expr {
+        let init = Expr::PVar(place.base.clone());
+        place
+            .proj
+            .iter()
+            .fold(init, |curr, next| Expr::lnth(curr, *next))
+    }
+
+    pub fn writer_expr_for_place_in_store(
+        &self,
+        to_write: Expr,
+        place: &GilPlace<'tcx>,
+        enc: &TypeInStoreEncoding,
+    ) -> Expr {
+        fn rec_call(
+            base: Expr,
+            mut rev_rest: Vec<usize>,
+            rest_enc: &TypeInStoreEncoding,
+            to_write: Expr,
+        ) -> Expr {
+            if rev_rest.is_empty() {
+                return to_write;
+            }
+            // If the proj is not empty, the encoding has to be a list
+            let rest_enc_vec = match rest_enc {
+                TypeInStoreEncoding::List(v) => v,
+                TypeInStoreEncoding::Value => {
+                    panic!("Invalid encoding for given projection:\nENCODING: {:#?}\nPROJ: {:#?}\nBASE: {:#?}", rest_enc, rev_rest, base)
+                }
+            };
+            let curr_proj = rev_rest.pop().unwrap();
+            let new_base = Expr::lnth(base.clone(), curr_proj);
+            let expr_for_proj = rec_call(
+                new_base,
+                rev_rest,
+                rest_enc_vec.get(curr_proj).unwrap(),
+                to_write,
+            );
+            let mut vec_of_rewrites = Vec::with_capacity(rest_enc_vec.len());
+            for i in 0..curr_proj {
+                vec_of_rewrites.push(Expr::lnth(base.clone(), i))
+            }
+            vec_of_rewrites.push(expr_for_proj);
+            for i in curr_proj + 1..rest_enc_vec.len() {
+                vec_of_rewrites.push(Expr::lnth(base.clone(), i))
+            }
+            Expr::EList(vec_of_rewrites)
+        }
+        let base = Expr::PVar(place.base.clone());
+        let mut rev_proj = place.proj.clone();
+        rev_proj.reverse();
+        rec_call(base, rev_proj, enc, to_write)
+    }
+}

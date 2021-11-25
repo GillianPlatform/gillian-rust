@@ -29,11 +29,15 @@ impl<'tcx> GilCtxt<'tcx> {
 
     pub fn push_action(&mut self, target: String, action: MemoryAction<'tcx>) {
         match action {
-            MemoryAction::Alloc(ty) => self.push_cmd(Cmd::Action {
-                variable: target,
-                action_name: ALLOC_ACTION_NAME.to_string(),
-                parameters: vec![Expr::Lit(self.encode_type(ty))],
-            }),
+            MemoryAction::Alloc(ty) => {
+                let ty = Expr::Lit(self.encode_type(ty));
+                log::debug!("Allocating: {}", &ty);
+                self.push_cmd(Cmd::Action {
+                    variable: target,
+                    action_name: ALLOC_ACTION_NAME.to_string(),
+                    parameters: vec![ty],
+                })
+            }
             MemoryAction::Load {
                 location,
                 projection,

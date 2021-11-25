@@ -41,6 +41,12 @@ impl std::ops::Not for Expr {
     }
 }
 
+impl From<&str> for Expr {
+    fn from(str: &str) -> Self {
+        Self::Lit(Literal::String(str.to_string()))
+    }
+}
+
 impl Expr {
     pub fn string(str: String) -> Self {
         Self::Lit(Literal::String(str))

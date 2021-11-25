@@ -1,3 +1,4 @@
+use super::store_encoding::TypeInStoreEncoding;
 use crate::prelude::*;
 
 impl<'tcx> GilCtxt<'tcx> {
@@ -7,7 +8,15 @@ impl<'tcx> GilCtxt<'tcx> {
                 // Don't bind arguments, they're already bound
                 return;
             };
-            self.push_alloc_into_local(loc, decl.ty);
+            if self.place_is_in_memory(&loc.into()) {
+                self.push_alloc_into_local(loc, decl.ty);
+            } else {
+                let uninitialized = TypeInStoreEncoding::new(decl.ty).uninitialized();
+                self.push_cmd(Cmd::Assignment {
+                    variable: self.name_from_local(&loc),
+                    assigned_expr: Expr::Lit(uninitialized),
+                })
+            }
         });
     }
 

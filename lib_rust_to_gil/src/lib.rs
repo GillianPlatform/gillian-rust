@@ -20,6 +20,7 @@ extern crate rustc_target;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
+    pub(crate) use crate::codegen::place::PlaceAccess;
     pub(crate) use crate::codegen::{names, runtime};
     pub(crate) use crate::utils::macros::*;
     pub(crate) use gillian::gil::*;

@@ -1,7 +1,7 @@
 #![no_std]
 
-pub fn test() -> isize {
+pub fn main() {
     let x = 4;
-    let z = x + 3;
-    z
+    let _z = x + 3;
+    // _z is 7
 }

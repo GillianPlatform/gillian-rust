@@ -18,6 +18,18 @@ pub enum Literal {
     Nono,
 }
 
+impl From<&str> for Literal {
+    fn from(str: &str) -> Self {
+        Self::String(str.to_string())
+    }
+}
+
+impl From<Vec<Literal>> for Literal {
+    fn from(vec: Vec<Literal>) -> Self {
+        Self::LList(vec)
+    }
+}
+
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Literal::*;
@@ -40,9 +52,9 @@ impl fmt::Display for Literal {
             Loc(loc) => write!(f, "{}", loc),
             Type(typ) => write!(f, "{}", typ),
             LList(vec) => {
-                f.write_str("(")?;
+                f.write_str("{{ ")?;
                 comma_separated_display(vec, f)?;
-                f.write_str(")")
+                f.write_str(" }}")
             }
         }
     }

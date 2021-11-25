@@ -28,9 +28,14 @@ impl<'tcx> GilCtxt<'tcx> {
                     gil_args.push(self.push_encode_operand(arg));
                 }
                 let (place, bb) = destination.unwrap();
-                let call_ret_ty = self.place_ty(&place);
+                let write_directly_in_var =
+                    place.projection.is_empty() && !self.place_is_in_memory(&place);
+                let target = if write_directly_in_var {
+                    self.name_from_local(&place.local)
+                } else {
+                    self.temp_var()
+                };
                 let fname = self.fname_from_operand(func);
-                let target = self.temp_var();
                 self.push_cmd(Cmd::Call {
                     variable: target.clone(),
                     parameters: gil_args,
@@ -38,7 +43,10 @@ impl<'tcx> GilCtxt<'tcx> {
                     error_lab: None,
                     bindings: None,
                 });
-                self.push_place_write(&place, Expr::PVar(target), call_ret_ty);
+                if !write_directly_in_var {
+                    let call_ret_ty = self.place_ty(&place);
+                    self.push_place_write(&place, Expr::PVar(target), call_ret_ty);
+                }
                 self.push_cmd(Cmd::Goto(bb_label(&bb)));
             }
             TerminatorKind::Assert {

@@ -1,5 +1,12 @@
 use super::memory::MemoryAction;
+use super::store_encoding::*;
 use crate::prelude::*;
+
+pub struct GilPlace<'tcx> {
+    pub base: String,
+    pub base_ty: Ty<'tcx>,
+    pub proj: Vec<usize>,
+}
 
 fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
     let base = Expr::PVar(base);
@@ -10,15 +17,36 @@ fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
     (loc, total_proj)
 }
 
+impl<'tcx> GilPlace<'tcx> {
+    pub fn into_expr_ptr(self) -> Expr {
+        if self.proj.is_empty() {
+            return Expr::PVar(self.base);
+        }
+        let proj = self.proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        let (loc, total_proj) = add_proj(self.base, proj);
+        Expr::EList(vec![loc, total_proj])
+    }
+}
+
+pub enum PlaceAccess<'tcx> {
+    InMemory(GilPlace<'tcx>),
+    InStore(GilPlace<'tcx>),
+}
+
 impl<'tcx> GilCtxt<'tcx> {
-    fn push_no_deref_place_read(
+    pub fn place_is_in_memory(&self, place: &Place) -> bool {
+        self.is_referenced(&place.local)
+    }
+
+    fn push_read_gil_place_in_memory(
         &mut self,
         res: String,
-        base: String,
-        proj: Vec<Expr>,
+        gil_place: GilPlace,
         typ: Ty<'tcx>,
         copy: bool,
     ) {
+        let GilPlace { base, proj, .. } = gil_place;
+        let proj = proj.iter().map(|x| Expr::int(*x as i64)).collect();
         let (location, projection) = add_proj(base, proj);
         let action = MemoryAction::Load {
             location,
@@ -29,13 +57,9 @@ impl<'tcx> GilCtxt<'tcx> {
         self.push_action(res, action);
     }
 
-    fn push_no_deref_place_write(
-        &mut self,
-        base: String,
-        proj: Vec<Expr>,
-        value: Expr,
-        typ: Ty<'tcx>,
-    ) {
+    fn push_write_gil_place_in_memory(&mut self, gil_place: GilPlace, value: Expr, typ: Ty<'tcx>) {
+        let GilPlace { base, proj, .. } = gil_place;
+        let proj = proj.iter().map(|x| Expr::int(*x as i64)).collect();
         let (location, projection) = add_proj(base, proj);
         let action = MemoryAction::Store {
             location,
@@ -43,48 +67,123 @@ impl<'tcx> GilCtxt<'tcx> {
             typ,
             value,
         };
-        let ret = self.temp_var();
+        let ret = names::unused_var();
         self.push_action(ret, action);
     }
 
-    fn encode_projection_elem(&self, _proj: &ProjectionElem<Local, Ty<'tcx>>) -> Expr {
-        Expr::Lit(Literal::Undefined)
-    }
-
-    pub fn push_get_place_pointer_no_deref(&mut self, place: &Place<'tcx>) -> (String, Vec<Expr>) {
-        let mut cur_base = self.name_from_local(&place.local);
-        let mut cur_proj = vec![];
-        for (idx, proj) in place.projection.into_iter().enumerate() {
-            match proj {
-                ProjectionElem::Deref => {
-                    let typ = self.place_ty_until(place, idx);
-                    let new_base = self.temp_var();
-                    self.push_no_deref_place_read(new_base.clone(), cur_base, cur_proj, typ, true);
-                    cur_proj = vec![];
-                    cur_base = new_base;
-                }
-                _ => {
-                    let encoded_proj_elem = self.encode_projection_elem(&proj);
-                    cur_proj.push(encoded_proj_elem)
+    fn push_read_place_access(
+        &mut self,
+        access: PlaceAccess<'tcx>,
+        read_ty: Ty<'tcx>,
+        copy: bool,
+    ) -> Expr {
+        match access {
+            PlaceAccess::InMemory(gil_place) => {
+                let ret = self.temp_var();
+                self.push_read_gil_place_in_memory(ret.clone(), gil_place, read_ty, copy);
+                Expr::PVar(ret)
+            }
+            PlaceAccess::InStore(gil_place) => {
+                let read_expr = self.reader_expr_for_place_in_store(&gil_place);
+                if copy {
+                    read_expr
+                } else {
+                    let ret_var = self.temp_var();
+                    let ret = Expr::PVar(ret_var.clone());
+                    let assign = Cmd::Assignment {
+                        variable: ret_var,
+                        assigned_expr: read_expr,
+                    };
+                    self.push_cmd(assign);
+                    let write_expr = self.writer_expr_for_place_in_store(
+                        Expr::Lit(Literal::Empty),
+                        &gil_place,
+                        &TypeInStoreEncoding::new(gil_place.base_ty),
+                    );
+                    let assign = Cmd::Assignment {
+                        variable: gil_place.base,
+                        assigned_expr: write_expr,
+                    };
+                    self.push_cmd(assign);
+                    ret
                 }
             }
         }
-        (cur_base, cur_proj)
+    }
+
+    pub fn push_get_place_access(&mut self, place: &Place<'tcx>) -> PlaceAccess<'tcx> {
+        let mut in_store = !self.place_is_in_memory(place);
+        let mut cur_gil_place = GilPlace {
+            base: self.name_from_local(&place.local),
+            proj: vec![],
+            base_ty: self.place_ty(&place.local.into()),
+        };
+        for (idx, proj) in place.projection.into_iter().enumerate() {
+            match proj {
+                ProjectionElem::Deref => {
+                    let new_base = self.temp_var();
+                    let typ = self.place_ty_until(place, idx);
+                    if in_store {
+                        let place = self.reader_expr_for_place_in_store(&cur_gil_place);
+                        self.push_cmd(Cmd::Assignment {
+                            variable: new_base.clone(),
+                            assigned_expr: place,
+                        });
+                        in_store = false;
+                    } else {
+                        self.push_read_gil_place_in_memory(
+                            new_base.clone(),
+                            cur_gil_place,
+                            typ,
+                            true,
+                        );
+                    }
+                    cur_gil_place = GilPlace {
+                        base: new_base,
+                        proj: vec![],
+                        base_ty: typ,
+                    };
+                }
+                ProjectionElem::Field(u, _) => cur_gil_place.proj.push(u.as_u32() as usize),
+                _ => fatal!(self, "Invalid projection element: {:#?}", proj),
+            }
+        }
+        if in_store {
+            PlaceAccess::InStore(cur_gil_place)
+        } else {
+            PlaceAccess::InMemory(cur_gil_place)
+        }
+    }
+
+    pub fn push_place_read(&mut self, place: &Place<'tcx>, copy: bool) -> Expr {
+        let read_ty = self.place_ty(place);
+        let access = self.push_get_place_access(place);
+        self.push_read_place_access(access, read_ty, copy)
     }
 
     pub fn push_place_read_into(&mut self, ret: String, place: &Place<'tcx>, copy: bool) {
-        let (base, proj) = self.push_get_place_pointer_no_deref(place);
-        self.push_no_deref_place_read(ret, base, proj, self.place_ty(place), copy);
-    }
-
-    pub fn push_place_read(&mut self, place: &Place<'tcx>, copy: bool) -> String {
-        let res = self.temp_var();
-        self.push_place_read_into(res.clone(), place, copy);
-        res
+        let assigned_expr = self.push_place_read(place, copy);
+        let assign = Cmd::Assignment {
+            variable: ret,
+            assigned_expr,
+        };
+        self.push_cmd(assign)
     }
 
     pub fn push_place_write(&mut self, place: &Place<'tcx>, value: Expr, value_ty: Ty<'tcx>) {
-        let (base, proj) = self.push_get_place_pointer_no_deref(place);
-        self.push_no_deref_place_write(base, proj, value, value_ty);
+        match self.push_get_place_access(place) {
+            PlaceAccess::InMemory(place) => {
+                self.push_write_gil_place_in_memory(place, value, value_ty)
+            }
+            PlaceAccess::InStore(gil_place) => {
+                let enc = TypeInStoreEncoding::new(self.place_ty(&place.local.into()));
+                let write_expr = self.writer_expr_for_place_in_store(value, &gil_place, &enc);
+                let assign = Cmd::Assignment {
+                    variable: gil_place.base,
+                    assigned_expr: write_expr,
+                };
+                self.push_cmd(assign)
+            }
+        }
     }
 }

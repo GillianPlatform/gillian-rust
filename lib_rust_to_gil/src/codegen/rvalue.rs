@@ -11,6 +11,18 @@ impl<'tcx> GilCtxt<'tcx> {
             Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.encode_binop(binop, left, right)
             }
+            Rvalue::Ref(_, _, place) => {
+                // I need to know how to handle the BorrowKind
+                // I don't know what needs to be done, maybe nothing
+                let access = self.push_get_place_access(place);
+                let gil_place = match access {
+                    PlaceAccess::InStore(..) => {
+                        fatal!(self, "Reference to something in the store!")
+                    }
+                    PlaceAccess::InMemory(gp) => gp,
+                };
+                gil_place.into_expr_ptr()
+            }
             _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
         }
     }
@@ -63,14 +75,8 @@ impl<'tcx> GilCtxt<'tcx> {
     pub fn push_encode_operand(&mut self, operand: &Operand<'tcx>) -> Expr {
         match operand {
             Operand::Constant(box cst) => self.encode_constant(cst),
-            Operand::Move(place) => {
-                let var = self.push_place_read(place, false);
-                Expr::PVar(var)
-            }
-            Operand::Copy(place) => {
-                let var = self.push_place_read(place, true);
-                Expr::PVar(var)
-            }
+            Operand::Move(place) => self.push_place_read(place, false),
+            Operand::Copy(place) => self.push_place_read(place, true),
         }
     }
 
