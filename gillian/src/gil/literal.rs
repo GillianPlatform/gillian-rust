@@ -24,6 +24,12 @@ impl From<&str> for Literal {
     }
 }
 
+impl From<bool> for Literal {
+    fn from(b: bool) -> Self {
+        Self::Bool(b)
+    }
+}
+
 impl From<Vec<Literal>> for Literal {
     fn from(vec: Vec<Literal>) -> Self {
         Self::LList(vec)

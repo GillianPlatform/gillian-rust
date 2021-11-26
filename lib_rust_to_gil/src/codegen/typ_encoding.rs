@@ -23,11 +23,22 @@ impl<'tcx> GilCtxt<'tcx> {
             Uint(UintTy::U32) => "u32".into(),
             Uint(UintTy::U64) => "u64".into(),
             Uint(UintTy::U128) => "u128".into(),
-            Tuple(_) => ty
-                .tuple_fields()
-                .map(|x| self.encode_type(x))
-                .collect::<Vec<_>>()
-                .into(),
+            // (i32, i32) -> ["tuple", ["i32", "i32"]]
+            Tuple(_) => Literal::LList(vec![
+                "tuple".into(),
+                ty.tuple_fields()
+                    .map(|x| self.encode_type(x))
+                    .collect::<Vec<_>>()
+                    .into(),
+            ]),
+            // &mut t -> ["ref", true, encode(t)]
+            Ref(_, ty, mutability) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                Literal::LList(vec!["ref".into(), mutability.into(), self.encode_type(ty)])
+            }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty),
         }
     }

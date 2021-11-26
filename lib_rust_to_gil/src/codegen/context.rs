@@ -109,7 +109,13 @@ impl ReferencedLocalsVisitor {
 
 impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, _: Location) {
-        if let Rvalue::Ref(_, _, Place { local, .. }) = rvalue {
+        if let Rvalue::Ref(_, _, Place { local, projection }) = rvalue {
+            if projection.contains(&ProjectionElem::Deref) {
+                // If we're referencing a dereferenced local,
+                // We don't need to put that local in memory, the referenced value is already
+                // There
+                return;
+            }
             self.0.insert(*local);
         }
     }
