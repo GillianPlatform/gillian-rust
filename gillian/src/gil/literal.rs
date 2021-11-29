@@ -36,6 +36,12 @@ impl From<Vec<Literal>> for Literal {
     }
 }
 
+impl From<String> for Literal {
+    fn from(str: String) -> Self {
+        Self::String(str)
+    }
+}
+
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Literal::*;

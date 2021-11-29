@@ -25,10 +25,11 @@ fn codegen_cgu(tcx: TyCtxt, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult
     let cgu = tcx.codegen_unit(cgu_name);
     let items = cgu.items_in_deterministic_order(tcx);
     let mut prog = Prog::new(runtime::imports());
+    let mut global_env = GlobalEnv::new();
     for (item, _) in items {
         match item {
             MonoItem::Fn(instance) => {
-                let ctx = GilCtxt::new(instance, tcx);
+                let ctx = GilCtxt::new(instance, tcx, &mut global_env);
                 let proc = ctx.push_body();
                 prog.add_proc(proc);
             }
@@ -37,6 +38,8 @@ fn codegen_cgu(tcx: TyCtxt, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult
                 .fatal(&format!("MonoItem not handled yet: {:#?}", item)),
         }
     }
+    let global_env_proc = global_env.declaring_proc(&tcx);
+    prog.add_proc(global_env_proc);
     emit_module(
         tcx,
         cgu.name().as_str().to_string(),

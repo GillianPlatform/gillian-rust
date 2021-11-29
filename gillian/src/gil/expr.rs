@@ -43,7 +43,13 @@ impl std::ops::Not for Expr {
 
 impl From<&str> for Expr {
     fn from(str: &str) -> Self {
-        Self::Lit(Literal::String(str.to_string()))
+        Self::Lit(str.into())
+    }
+}
+
+impl From<String> for Expr {
+    fn from(str: String) -> Self {
+        Self::Lit(str.into())
     }
 }
 

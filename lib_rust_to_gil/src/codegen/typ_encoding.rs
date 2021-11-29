@@ -1,14 +1,26 @@
 use crate::prelude::*;
-use rustc_middle::ty::{IntTy, UintTy};
+use rustc_middle::ty::{AdtDef, IntTy, UintTy};
 
-impl<'tcx> GilCtxt<'tcx> {
-    pub fn encode_type(&self, ty: Ty) -> Literal {
+pub trait TypeEncoderable<'tcx> {
+    fn add_type_to_genv(&mut self, ty: Ty<'tcx>);
+    fn atd_def_name(&self, def: &AdtDef) -> String;
+}
+
+pub trait TypeEncoder<'tcx> {
+    fn encode_type(&mut self, ty: Ty<'tcx>) -> Literal;
+}
+
+impl<'tcx, T> TypeEncoder<'tcx> for T
+where
+    T: TypeEncoderable<'tcx>,
+{
+    fn encode_type(&mut self, ty: Ty<'tcx>) -> Literal {
         use TyKind::*;
         if ty.is_unit() {
             return Literal::String("()".to_string());
         };
         match &ty.kind() {
-            Never => fatal!(self, "Should not encode never for memory"),
+            Never => panic!("Should not encode never for memory"),
             Bool => "bool".into(),
             Char => "char".into(),
             Int(IntTy::Isize) => "isize".into(),
@@ -39,7 +51,22 @@ impl<'tcx> GilCtxt<'tcx> {
                 };
                 Literal::LList(vec!["ref".into(), mutability.into(), self.encode_type(ty)])
             }
-            _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty),
+            Adt(def, _) if def.is_struct() => {
+                let name = self.atd_def_name(def);
+                self.add_type_to_genv(ty);
+                Literal::LList(vec!["struct".into(), name.into()])
+            }
+            _ => panic!("Cannot encode this type yet: {:#?}", ty),
         }
+    }
+}
+
+impl<'tcx, 'body> TypeEncoderable<'tcx> for GilCtxt<'tcx, 'body> {
+    fn add_type_to_genv(&mut self, ty: Ty<'tcx>) {
+        self.global_env.add_type(ty);
+    }
+
+    fn atd_def_name(&self, def: &AdtDef) -> String {
+        self.ty_ctxt.item_name(def.did).to_string()
     }
 }

@@ -32,5 +32,8 @@ build-rust:
 build-ocaml:
 	cd ${OCAML_DIR}; esy
 	
+watch:
+	cd ${OCAML_DIR}; esy watch
+	
 help:
 	${RUSTC} --help

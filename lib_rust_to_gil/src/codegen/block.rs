@@ -1,7 +1,7 @@
 use super::names::*;
 use crate::prelude::*;
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_terminator(&mut self, terminator: &Terminator<'tcx>) {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
@@ -69,7 +69,9 @@ impl<'tcx> GilCtxt<'tcx> {
 
     pub fn push_basic_block(&mut self, bb: &BasicBlock, bb_data: &BasicBlockData<'tcx>) {
         self.push_label(bb_label(bb));
+        log::debug!("----{:#?}----", bb);
         for stmt in &bb_data.statements {
+            // log::debug!("Pushing statement: {:#?}", stmt); // Somehow, this may panic..
             self.push_statement(stmt);
         }
         if let Some(terminator) = &bb_data.terminator {

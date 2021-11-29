@@ -6,6 +6,7 @@ const MIR_TEMP_PREFIX: &str = "mirtemp___";
 const GIL_TEMP_PREFIX: &str = "giltemp___";
 const GIL_UNUSED_VAR: &str = "gil____THROAWAY";
 const UNDERSCORED_PREFIX: &str = "underscored___";
+const GLOBAL_ENV_DECL: &str = "i__global_env";
 
 pub fn bb_label(bb: &BasicBlock) -> String {
     format!("{}{}", BB_LABEL, bb.as_usize())
@@ -33,6 +34,10 @@ pub fn sanitize_name(name: String) -> String {
     } else {
         name
     }
+}
+
+pub fn global_env_proc() -> String {
+    String::from(GLOBAL_ENV_DECL)
 }
 
 #[cfg(test)]

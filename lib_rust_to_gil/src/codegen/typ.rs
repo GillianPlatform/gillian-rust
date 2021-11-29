@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{ConstKind, ParamEnv, TypeFoldable};
+use rustc_middle::ty::{subst::SubstsRef, ConstKind, FieldDef, ParamEnv, TypeFoldable};
 use rustc_target::abi::Size;
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     // Adapted from RMC under MIT/Apache license.
     pub fn monomorphize<T>(&self, value: T) -> T
     where
@@ -50,6 +50,10 @@ impl<'tcx> GilCtxt<'tcx> {
             self.ty_ctxt,
         );
         self.monomorphize(place_ty).ty
+    }
+
+    pub fn field_def_type(&self, field_def: &FieldDef, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
+        self.monomorphize(field_def.ty(self.ty_ctxt, subst))
     }
 
     // Gets the length of the tuple.

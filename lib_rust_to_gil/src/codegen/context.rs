@@ -5,7 +5,7 @@ use rustc_middle::mir::visit::Visitor;
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
 
-pub struct GilCtxt<'tcx> {
+pub struct GilCtxt<'tcx, 'body> {
     pub(crate) instance: Instance<'tcx>,
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_body: ProcBody,
@@ -13,10 +13,15 @@ pub struct GilCtxt<'tcx> {
     next_label: Option<String>,
     mir: &'tcx Body<'tcx>,
     referenced_locals: HashSet<Local>,
+    pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
-impl<'tcx> GilCtxt<'tcx> {
-    pub fn new(instance: Instance<'tcx>, ty_ctxt: TyCtxt<'tcx>) -> Self {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    pub fn new(
+        instance: Instance<'tcx>,
+        ty_ctxt: TyCtxt<'tcx>,
+        global_env: &'body mut GlobalEnv<'tcx>,
+    ) -> Self {
         let mir = ty_ctxt.instance_mir(instance.def);
         let mut visitor = ReferencedLocalsVisitor::default();
         visitor.visit_body(mir);
@@ -29,9 +34,9 @@ impl<'tcx> GilCtxt<'tcx> {
             next_label: None,
             mir,
             referenced_locals,
+            global_env,
         }
     }
-
     pub fn mir(&self) -> &'tcx Body<'tcx> {
         self.mir
     }

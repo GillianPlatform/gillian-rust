@@ -1,8 +1,7 @@
-use super::store_encoding::TypeInStoreEncoding;
 use crate::prelude::*;
 
-impl<'tcx> GilCtxt<'tcx> {
-    pub fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
             if let LocalKind::Arg = mir.local_kind(loc) {
                 // Don't bind arguments, they're already bound
@@ -11,7 +10,7 @@ impl<'tcx> GilCtxt<'tcx> {
             if self.place_is_in_memory(&loc.into()) {
                 self.push_alloc_into_local(loc, decl.ty);
             } else {
-                let uninitialized = TypeInStoreEncoding::new(decl.ty).uninitialized();
+                let uninitialized = self.type_in_store_encoding(decl.ty).uninitialized();
                 self.push_cmd(Cmd::Assignment {
                     variable: self.name_from_local(&loc),
                     assigned_expr: Expr::Lit(uninitialized),
@@ -29,9 +28,21 @@ impl<'tcx> GilCtxt<'tcx> {
     //     }
     // }
 
+    fn push_global_env_call(&mut self) {
+        let call = Cmd::Call {
+            variable: names::unused_var(),
+            proc_ident: Expr::string(names::global_env_proc()),
+            parameters: vec![],
+            error_lab: None,
+            bindings: None,
+        };
+        self.push_cmd(call)
+    }
+
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
         let proc_name = self.ty_ctxt.item_name(self.instance.def_id());
+
         log::debug!("Compiling {}", proc_name);
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
         // We can then shrink it to size when needed.
@@ -41,6 +52,9 @@ impl<'tcx> GilCtxt<'tcx> {
         }
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
+        }
+        if proc_name.to_string() == "main" {
+            self.push_global_env_call();
         }
         let args: Vec<String> = mir_body
             .args_iter()

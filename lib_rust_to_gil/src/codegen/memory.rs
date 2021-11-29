@@ -20,7 +20,7 @@ pub enum MemoryAction<'tcx> {
     },
 }
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_alloc_into_local(&mut self, local: Local, typ: Ty<'tcx>) {
         let action = MemoryAction::Alloc(typ);
         let target = self.name_from_local(&local);
@@ -45,13 +45,14 @@ impl<'tcx> GilCtxt<'tcx> {
                 copy,
             } => {
                 let temp = self.temp_var();
+                let encoded_typ = self.encode_type(typ);
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: LOAD_ACTION_NAME.to_string(),
                     parameters: vec![
                         location,
                         projection,
-                        Expr::Lit(self.encode_type(typ)),
+                        Expr::Lit(encoded_typ),
                         Expr::bool(copy),
                     ],
                 });
@@ -65,16 +66,14 @@ impl<'tcx> GilCtxt<'tcx> {
                 projection,
                 typ,
                 value,
-            } => self.push_cmd(Cmd::Action {
-                variable: target,
-                action_name: STORE_ACTION_NAME.to_string(),
-                parameters: vec![
-                    location,
-                    projection,
-                    Expr::Lit(self.encode_type(typ)),
-                    value,
-                ],
-            }),
+            } => {
+                let encoded_typ = self.encode_type(typ);
+                self.push_cmd(Cmd::Action {
+                    variable: target,
+                    action_name: STORE_ACTION_NAME.to_string(),
+                    parameters: vec![location, projection, Expr::Lit(encoded_typ), value],
+                })
+            }
         };
     }
 }

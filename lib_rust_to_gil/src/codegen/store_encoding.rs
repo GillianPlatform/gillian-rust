@@ -8,15 +8,6 @@ pub enum TypeInStoreEncoding {
 }
 
 impl<'tcx> TypeInStoreEncoding {
-    pub fn new(ty: Ty<'tcx>) -> Self {
-        use TyKind::*;
-        match ty.kind() {
-            Bool | Char | Int(..) | Uint(..) | Float(..) | Ref(..) => Self::Value,
-            Tuple(_) => Self::List(ty.tuple_fields().map(Self::new).collect()),
-            _ => panic!("Cannot handle type yet: {:#?}", ty),
-        }
-    }
-
     pub fn uninitialized(&self) -> Literal {
         match self {
             Self::Value => Literal::Undefined,
@@ -25,7 +16,27 @@ impl<'tcx> TypeInStoreEncoding {
     }
 }
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    pub fn type_in_store_encoding(&self, ty: Ty<'tcx>) -> TypeInStoreEncoding {
+        use TyKind::*;
+        match ty.kind() {
+            Bool | Char | Int(..) | Uint(..) | Float(..) | Ref(..) | RawPtr(..) => {
+                TypeInStoreEncoding::Value
+            }
+            Tuple(_) => TypeInStoreEncoding::List(
+                ty.tuple_fields()
+                    .map(|t| self.type_in_store_encoding(t))
+                    .collect(),
+            ),
+            Adt(def, subst) if def.is_struct() => TypeInStoreEncoding::List(
+                def.all_fields()
+                    .map(|x| self.type_in_store_encoding(self.field_def_type(x, subst)))
+                    .collect(),
+            ),
+            _ => panic!("Cannot handle type yet: {:#?}", ty),
+        }
+    }
+
     /// Returns the expressions that corresponds to reading a value in the store at some place
     pub fn reader_expr_for_place_in_store(&self, place: &GilPlace<'tcx>) -> Expr {
         let init = Expr::PVar(place.base.clone());

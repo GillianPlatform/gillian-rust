@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, rvalue)) => {

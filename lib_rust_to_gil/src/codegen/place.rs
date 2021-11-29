@@ -1,5 +1,4 @@
 use super::memory::MemoryAction;
-use super::store_encoding::*;
 use crate::prelude::*;
 
 pub struct GilPlace<'tcx> {
@@ -33,7 +32,7 @@ pub enum PlaceAccess<'tcx> {
     InStore(GilPlace<'tcx>),
 }
 
-impl<'tcx> GilCtxt<'tcx> {
+impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn place_is_in_memory(&self, place: &Place) -> bool {
         self.is_referenced(&place.local)
     }
@@ -98,7 +97,7 @@ impl<'tcx> GilCtxt<'tcx> {
                     let write_expr = self.writer_expr_for_place_in_store(
                         Expr::Lit(Literal::Empty),
                         &gil_place,
-                        &TypeInStoreEncoding::new(gil_place.base_ty),
+                        &self.type_in_store_encoding(gil_place.base_ty),
                     );
                     let assign = Cmd::Assignment {
                         variable: gil_place.base,
@@ -176,7 +175,7 @@ impl<'tcx> GilCtxt<'tcx> {
                 self.push_write_gil_place_in_memory(place, value, value_ty)
             }
             PlaceAccess::InStore(gil_place) => {
-                let enc = TypeInStoreEncoding::new(self.place_ty(&place.local.into()));
+                let enc = self.type_in_store_encoding(self.place_ty(&place.local.into()));
                 let write_expr = self.writer_expr_for_place_in_store(value, &gil_place, &enc);
                 let assign = Cmd::Assignment {
                     variable: gil_place.base,
