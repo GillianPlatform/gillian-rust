@@ -1,5 +1,7 @@
 use rustc_middle::mir::{BasicBlock, Local};
 
+pub const SWITCH_LABEL: &str = "sw";
+
 const BB_LABEL: &str = "bb";
 const RET_VAR: &str = "ret";
 const MIR_TEMP_PREFIX: &str = "mirtemp___";

@@ -965,6 +965,46 @@ proc test() {
 
 ```
 
+
+
+# Notes now that I started the compiler
+
+### The discriminant Rvalue in MIR:
+
+> Discriminant: Undefined (i.e., no effort is made to make it defined, but there’s no reason why it cannot be defined to return, say, a 0) if ADT is not an enum. 
+
+So is it defined or not?
+
+### Copy vs Move
+
+In this program, it is unclear wether undefined behaviour is happening or not:
+
+```rust
+#![no_std]
+struct A {
+    v: i32,
+}
+
+fn test(u: A, v: A) -> i32 {
+    let mut x: (A, A) = (u, v);
+    let sec: *const A = &x.1;
+    x.0 = x.1;
+    unsafe { (*sec).v }
+}
+
+pub fn main() {
+    let u: A = A { v: 1 };
+    let v: A = A { v: 2 };
+    let _ret = test(u, v);
+}
+```
+
+I.e. is `move` deinitializing memory or not?
+
+
+
+
+
 # Notes from the meeting with Nathan
 
 https://github.com/firecracker-microvm/firecracker -> No use of std almost

@@ -2,13 +2,19 @@ use crate::prelude::*;
 use rustc_middle::ty::AdtDef;
 use std::collections::{HashSet, VecDeque};
 
-static DECLARE_TYPE_ACTION: &str = "genv_decl_type";
+const DECLARE_TYPE_ACTION: &str = "genv_decl_type";
 
 pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
     types_in_queue: VecDeque<Ty<'tcx>>,
     encoded_types: HashSet<Ty<'tcx>>,
+}
+
+impl<'tcx> CanFatal for GlobalEnv<'tcx> {
+    fn fatal(&self, str: &str) -> ! {
+        self.tcx.sess.fatal(str);
+    }
 }
 
 impl<'tcx> TypeEncoderable<'tcx> for GlobalEnv<'tcx> {
@@ -32,8 +38,14 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     // Panics if not called with an ADT
     fn type_decl_action(&mut self, ty: Ty<'tcx>) -> ProcBodyItem {
-        let (name, kind, decl) = match ty.kind() {
+        let (name, decl) = match ty.kind() {
             TyKind::Adt(def, subst) if def.is_struct() => {
+                if def.has_ctor() {
+                    fatal!(self, "Can't handle struct with constructors yet");
+                }
+                if def.is_variant_list_non_exhaustive() {
+                    fatal!(self, "Can't handle #[non_exhaustive] yet");
+                }
                 let name = self.tcx.item_name(def.did).to_string();
                 let fields: Vec<Literal> = def
                     .all_fields()
@@ -43,7 +55,30 @@ impl<'tcx> GlobalEnv<'tcx> {
                         vec![name, typ].into()
                     })
                     .collect();
-                (name, "struct", fields.into())
+                let decl: Literal = vec!["struct".into(), fields.into()].into();
+                (name, decl.into())
+            }
+            TyKind::Adt(def, subst) if def.is_enum() => {
+                if def.is_variant_list_non_exhaustive() {
+                    fatal!(self, "Can't handle #[non_exhaustive] yet");
+                }
+                let name = self.tcx.item_name(def.did).to_string();
+                let variants: Vec<Literal> = def
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        let fields: Literal = variant
+                            .fields
+                            .iter()
+                            .map(|field| self.encode_type(field.ty(self.tcx, subst)))
+                            .collect::<Vec<_>>()
+                            .into();
+                        let name = self.tcx.item_name(variant.def_id).to_string();
+                        vec![name.into(), fields].into()
+                    })
+                    .collect();
+                let decl: Literal = vec!["variant".into(), variants.into()].into();
+                (name, decl.into())
             }
             _ => panic!(
                 "This function should never be called with this type {:#?}",
@@ -53,7 +88,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         Cmd::Action {
             variable: names::unused_var(),
             action_name: DECLARE_TYPE_ACTION.into(),
-            parameters: vec![name.into(), kind.into(), Expr::Lit(decl)],
+            parameters: vec![name.into(), decl],
         }
         .into()
     }

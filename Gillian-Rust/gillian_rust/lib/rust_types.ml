@@ -6,7 +6,15 @@ type uint_t = Usize | U8 | U16 | U32 | U64 | U128
 
 type scalar_t = Unit | Bool | Char | Int of int_t | Uint of uint_t
 
-type t = Scalar of scalar_t | Tuple of t list
+type t =
+  | Scalar of scalar_t
+  | Tuple  of t list
+  | Struct of (string * t) list
+  | Enum   of (string * t list) list
+      (** Each variant has a name and the type of the list of fields.
+          Maybe I should add the name of each field for each variant? *)
+  | Named  of string
+      (** This will have to be looked up in the global environment *)
 
 let rec of_lit = function
   | Literal.String str_ty ->
@@ -26,7 +34,20 @@ let rec of_lit = function
         | "()"    -> Unit
         | _       -> Fmt.failwith "Incorrect type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
-  (* | Literal.LList  *)
+  | LList [ String "named"; String name ] -> Named name
+  | LList [ String "struct"; LList l ] ->
+      let parse_field = function
+        | Literal.LList [ String field_name; ty ] -> (field_name, of_lit ty)
+        | _ -> failwith "Invalid struct field"
+      in
+      Struct (List.map parse_field l)
+  | LList [ String "variant"; LList l ] ->
+      let parse_variant = function
+        | Literal.LList [ String variant_name; LList tys ] ->
+            (variant_name, List.map of_lit tys)
+        | _ -> failwith "Invalid enum field"
+      in
+      Enum (List.map parse_variant l)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
 
 let of_expr = function
@@ -52,12 +73,21 @@ let pp_scalar fmt t =
   | Uint U64   -> str "u64"
   | Uint U128  -> str "u128"
 
-let rec pp fmt t =
+let rec pp ft t =
+  let open Fmt in
   match t with
-  | Scalar s -> pp_scalar fmt s
+  | Scalar s -> pp_scalar ft s
   | Tuple t  ->
-      let pp_tuple =
-        let open Fmt in
-        parens (list ~sep:comma pp)
+      let pp_tuple = parens (list ~sep:comma pp) in
+      pp_tuple ft t
+  | Struct f ->
+      let pp_struct =
+        braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
       in
-      pp_tuple fmt t
+      pp_struct ft f
+  | Enum v   ->
+      let pp_variant ftt (name, tys) =
+        pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys
+      in
+      (list ~sep:sp pp_variant) ft v
+  | Named s  -> string ft s

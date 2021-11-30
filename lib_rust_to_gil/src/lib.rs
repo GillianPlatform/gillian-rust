@@ -24,7 +24,7 @@ mod prelude {
     pub(crate) use crate::codegen::place::PlaceAccess;
     pub(crate) use crate::codegen::typ_encoding::{TypeEncoder, TypeEncoderable};
     pub(crate) use crate::codegen::{names, runtime};
-    pub(crate) use crate::utils::macros::*;
+    pub(crate) use crate::utils::fatal::*;
     pub(crate) use gillian::gil::*;
     pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_middle::mir::{self, *};

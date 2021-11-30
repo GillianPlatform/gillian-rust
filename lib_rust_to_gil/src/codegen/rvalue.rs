@@ -1,3 +1,4 @@
+use super::memory::MemoryAction;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
@@ -22,6 +23,22 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 };
                 gil_place.into_expr_ptr()
             }
+            Rvalue::Discriminant(place) => match self.push_get_place_access(place) {
+                PlaceAccess::InMemory(gp) => {
+                    let target = self.temp_var();
+                    let (location, projection) = gp.into_loc_proj();
+                    let action = MemoryAction::LoadDiscriminant {
+                        location,
+                        projection,
+                    };
+                    self.push_action(target.clone(), action);
+                    Expr::PVar(target)
+                }
+                PlaceAccess::InStore(gp) => {
+                    let expr = self.reader_expr_for_place_in_store(&gp);
+                    Expr::lnth(expr, 0)
+                }
+            },
             _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
         }
     }
@@ -105,13 +122,36 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn encode_value(&self, val: &ConstValue<'tcx>, ty: Ty<'tcx>) -> Literal {
         match val {
-            ConstValue::Scalar(Scalar::Int(scalar_int)) => {
+            ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_scalar() => {
                 let x: i64 = scalar_int
                     .to_bits(scalar_int.size())
                     .unwrap()
                     .try_into()
                     .unwrap();
                 Literal::Int(x)
+            }
+            ConstValue::Scalar(Scalar::Int(scalar_int))
+                if matches!(
+                        ty.kind(),
+                        TyKind::Adt(def, _) if def.is_struct()
+                ) =>
+            {
+                // It's a struct with only one field
+                let x: i64 = scalar_int
+                    .to_bits(scalar_int.size())
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                vec![Literal::Int(x)].into()
+            }
+            ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_enum() => {
+                // It's an enum value with no fields
+                let x: i64 = scalar_int
+                    .to_bits(scalar_int.size())
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                vec![Literal::Int(x), vec![].into()].into()
             }
             ConstValue::ByRef {
                 alloc: _,

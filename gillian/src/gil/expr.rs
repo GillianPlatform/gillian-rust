@@ -53,6 +53,18 @@ impl From<String> for Expr {
     }
 }
 
+impl From<Literal> for Expr {
+    fn from(lit: Literal) -> Self {
+        Self::Lit(lit)
+    }
+}
+
+impl From<Vec<Expr>> for Expr {
+    fn from(lst: Vec<Expr>) -> Self {
+        Self::EList(lst)
+    }
+}
+
 impl Expr {
     pub fn string(str: String) -> Self {
         Self::Lit(Literal::String(str))
@@ -82,6 +94,14 @@ impl Expr {
                 left_operand: Box::new(e),
                 right_operand: Box::new(Self::float(f)),
             },
+        }
+    }
+
+    pub fn eq_expr(e1: Expr, e2: Expr) -> Self {
+        Expr::BinOp {
+            operator: BinOp::Equal,
+            left_operand: Box::new(e1),
+            right_operand: Box::new(e2),
         }
     }
 

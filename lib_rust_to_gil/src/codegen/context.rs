@@ -10,10 +10,17 @@ pub struct GilCtxt<'tcx, 'body> {
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
+    switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'tcx Body<'tcx>,
     referenced_locals: HashSet<Local>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
+}
+
+impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
+    fn fatal(&self, str: &str) -> ! {
+        self.ty_ctxt.sess.fatal(str);
+    }
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -30,6 +37,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             instance,
             ty_ctxt,
             gil_temp_counter: 0,
+            switch_label_counter: 0,
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
@@ -79,6 +87,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let current = self.gil_temp_counter;
         self.gil_temp_counter += 1;
         gil_temp_from_id(current)
+    }
+
+    pub fn switch_label(&mut self) -> String {
+        let current = self.switch_label_counter;
+        self.switch_label_counter += 1;
+        format!("{}{}", names::SWITCH_LABEL, current)
     }
 
     pub fn push_label(&mut self, label: String) {

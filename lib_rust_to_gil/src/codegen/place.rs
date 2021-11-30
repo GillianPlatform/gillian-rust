@@ -17,6 +17,11 @@ fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
 }
 
 impl<'tcx> GilPlace<'tcx> {
+    pub fn into_loc_proj(self) -> (Expr, Expr) {
+        let proj = self.proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        add_proj(self.base, proj)
+    }
+
     pub fn into_expr_ptr(self) -> Expr {
         if self.proj.is_empty() {
             return Expr::PVar(self.base);

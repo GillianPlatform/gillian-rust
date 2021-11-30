@@ -90,6 +90,16 @@ impl fmt::Display for Cmd {
             }
             Goto(str) => write!(f, "goto {}", str),
             ReturnNormal => write!(f, "return"),
+            GuardedGoto {
+                guard,
+                then_branch,
+                else_branch,
+            } => write!(f, "goto [{}] {} {}", guard, then_branch, else_branch),
+            Fail { name, parameters } => {
+                write!(f, "fail [{}](", name)?;
+                comma_separated_display(parameters, f)?;
+                f.write_str(")")
+            }
             _ => panic!("Cannot write following command yet: {:#?}", self),
         }
     }

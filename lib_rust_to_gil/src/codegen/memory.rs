@@ -3,6 +3,8 @@ use crate::prelude::*;
 const ALLOC_ACTION_NAME: &str = "mem_alloc";
 const LOAD_ACTION_NAME: &str = "mem_load";
 const STORE_ACTION_NAME: &str = "mem_store";
+const LOAD_DISCR_ACTION_NAME: &str = "mem_load_discr";
+const STORE_DISCR_ACTION_NAME: &str = "mem_store_discr";
 
 pub enum MemoryAction<'tcx> {
     Alloc(Ty<'tcx>),
@@ -17,6 +19,15 @@ pub enum MemoryAction<'tcx> {
         projection: Expr,
         typ: Ty<'tcx>,
         value: Expr,
+    },
+    LoadDiscriminant {
+        location: Expr,
+        projection: Expr,
+    },
+    StoreDiscriminant {
+        location: Expr,
+        projection: Expr,
+        discr: u32,
     },
 }
 
@@ -74,6 +85,23 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     parameters: vec![location, projection, Expr::Lit(encoded_typ), value],
                 })
             }
+            MemoryAction::LoadDiscriminant {
+                location,
+                projection,
+            } => self.push_cmd(Cmd::Action {
+                variable: target,
+                action_name: LOAD_DISCR_ACTION_NAME.to_string(),
+                parameters: vec![location, projection],
+            }),
+            MemoryAction::StoreDiscriminant {
+                location,
+                projection,
+                discr,
+            } => self.push_cmd(Cmd::Action {
+                variable: target,
+                action_name: STORE_DISCR_ACTION_NAME.to_string(),
+                parameters: vec![location, projection, Expr::int(discr as i64).into()],
+            }),
         };
     }
 }

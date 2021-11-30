@@ -51,10 +51,11 @@ where
                 };
                 Literal::LList(vec!["ref".into(), mutability.into(), self.encode_type(ty)])
             }
-            Adt(def, _) if def.is_struct() => {
+            Adt(def, _) => {
                 let name = self.atd_def_name(def);
+                // Adts are encoded by the environment
                 self.add_type_to_genv(ty);
-                Literal::LList(vec!["struct".into(), name.into()])
+                Literal::LList(vec!["named".into(), name.into()])
             }
             _ => panic!("Cannot encode this type yet: {:#?}", ty),
         }

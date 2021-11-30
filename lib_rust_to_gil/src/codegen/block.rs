@@ -22,32 +22,44 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     cleanup.is_none(),
                     "Don't know how to handle cleanups in calls yet"
                 );
-                assert!(destination.is_some(), "no destination for function call!");
                 let mut gil_args = Vec::with_capacity(args.len());
                 for arg in args {
                     gil_args.push(self.push_encode_operand(arg));
                 }
-                let (place, bb) = destination.unwrap();
-                let write_directly_in_var =
-                    place.projection.is_empty() && !self.place_is_in_memory(&place);
-                let target = if write_directly_in_var {
-                    self.name_from_local(&place.local)
-                } else {
-                    self.temp_var()
-                };
-                let fname = self.fname_from_operand(func);
-                self.push_cmd(Cmd::Call {
-                    variable: target.clone(),
-                    parameters: gil_args,
-                    proc_ident: Expr::string(fname),
-                    error_lab: None,
-                    bindings: None,
-                });
-                if !write_directly_in_var {
-                    let call_ret_ty = self.place_ty(&place);
-                    self.push_place_write(&place, Expr::PVar(target), call_ret_ty);
+                let fname = self.fname_from_operand(func).into();
+                match destination {
+                    Some((place, bb)) => {
+                        let write_directly_in_var =
+                            place.projection.is_empty() && !self.place_is_in_memory(place);
+                        let target = if write_directly_in_var {
+                            self.name_from_local(&place.local)
+                        } else {
+                            self.temp_var()
+                        };
+                        self.push_cmd(Cmd::Call {
+                            variable: target.clone(),
+                            parameters: gil_args,
+                            proc_ident: fname,
+                            error_lab: None,
+                            bindings: None,
+                        });
+                        if !write_directly_in_var {
+                            let call_ret_ty = self.place_ty(place);
+                            self.push_place_write(place, Expr::PVar(target), call_ret_ty);
+                        }
+                        self.push_cmd(Cmd::Goto(bb_label(bb)));
+                    }
+                    None => {
+                        let variable = names::unused_var();
+                        self.push_cmd(Cmd::Call {
+                            variable,
+                            parameters: gil_args,
+                            proc_ident: fname,
+                            error_lab: None,
+                            bindings: None,
+                        })
+                    }
                 }
-                self.push_cmd(Cmd::Goto(bb_label(&bb)));
             }
             TerminatorKind::Assert {
                 cond: op,
@@ -58,10 +70,40 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             } => {
                 let msg = "Ugly assert message for now".to_string();
                 let cond = self.push_encode_operand(op);
-                let to_assert = if !expected { !cond } else { cond };
+                let to_assert = if *expected { cond } else { !cond };
                 let assert_call = runtime::lang_assert(to_assert, msg);
                 self.push_cmd(assert_call);
                 self.push_cmd(Cmd::Goto(bb_label(target)));
+            }
+            TerminatorKind::SwitchInt {
+                discr,
+                switch_ty: _,
+                targets,
+            } => {
+                // FIXME: The switch ty should maybe be used at some point, when Gillian has ints...
+                let discr_expr = self.push_encode_operand(discr);
+                let mut else_lab = self.switch_label();
+                for (value, target) in targets.iter() {
+                    let v_expr = Expr::int(value as i64);
+                    let target = bb_label(&target);
+                    let goto = Cmd::GuardedGoto {
+                        guard: Expr::eq_expr(discr_expr.clone(), v_expr),
+                        then_branch: target,
+                        else_branch: else_lab.clone(),
+                    };
+                    self.push_cmd(goto);
+                    self.push_label(else_lab);
+                    else_lab = self.switch_label();
+                }
+                let goto = Cmd::Goto(bb_label(&targets.otherwise()));
+                self.push_cmd(goto)
+            }
+            TerminatorKind::Unreachable => {
+                let cmd = Cmd::Fail {
+                    name: "Unreachable".into(),
+                    parameters: vec![],
+                };
+                self.push_cmd(cmd);
             }
             _ => fatal!(self, "Terminator not handled yet: {:#?}", terminator),
         }

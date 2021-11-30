@@ -33,6 +33,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     .map(|x| self.type_in_store_encoding(self.field_def_type(x, subst)))
                     .collect(),
             ),
+            Adt(def, _subst) if def.is_enum() => TypeInStoreEncoding::List(vec![
+                TypeInStoreEncoding::Value,
+                TypeInStoreEncoding::Value,
+            ]),
             _ => panic!("Cannot handle type yet: {:#?}", ty),
         }
     }
