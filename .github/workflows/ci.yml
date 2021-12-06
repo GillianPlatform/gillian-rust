@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+      - name: Installing esy
+        run: sudo npm install -g esy@0.6.12 --unsafe-perm
+      - name: Restore Cache
+        id: restore-cache
+        uses: actions/cache@v1
+        with:
+          path: Gillian-Rust/_export
+          key: ${{ runner.os }}-esy-0.6.12-${{ hashFiles('Gillian-Rust/esy.lock/index.json') }}
+          restore-keys: |
+            ${{ runner.os }}-esy-0.6.12-
+      - name: Esy install
+        run: "esy install"
+        working-directory: "Gillian-Rust"
+      - name: Import Cache
+        run: |
+          esy import-dependencies _export
+          rm -rf _export
+        working-directory: "Gillian-Rust"
+      - name: build-and-test
+        run: "make"
+      - name: Setting dependency cache
+        run: |
+          esy cleanup .
+          esy export-dependencies
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        working-directory: "Gillian-Rust"
