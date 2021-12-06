@@ -8,7 +8,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
         match rvalue {
             Rvalue::Use(operand) => self.push_encode_operand(operand),
-            Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
+            Rvalue::BinaryOp(binop, box (left, right))
+            | Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.encode_binop(binop, left, right)
             }
             Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
@@ -67,9 +68,17 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 ));
                 Expr::PVar(temp)
             }
-            mir::BinOp::Add => fatal!(
+            mir::BinOp::Gt if left_ty.is_numeric() => {
+                if left_ty.is_integral() {
+                    Expr::i_gt(e1, e2)
+                } else {
+                    Expr::f_gt(e1, e2)
+                }
+            }
+            mir::BinOp::Gt | mir::BinOp::Add => fatal!(
                 self,
-                "Adding non-numeric values: {:#?} and {:#?}",
+                "Numeric operation on non-numeric values: {:#?} {:#?} and {:#?}",
+                binop,
                 left,
                 right
             ),
@@ -151,7 +160,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     .unwrap()
                     .try_into()
                     .unwrap();
-                vec![Literal::Int(x), vec![].into()].into()
+                vec![Literal::Int(x)].into()
             }
             ConstValue::ByRef {
                 alloc: _,

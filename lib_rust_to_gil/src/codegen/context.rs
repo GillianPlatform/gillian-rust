@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
@@ -13,7 +13,7 @@ pub struct GilCtxt<'tcx, 'body> {
     switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'tcx Body<'tcx>,
-    referenced_locals: HashSet<Local>,
+    locals_in_memory: HashSet<Local>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
@@ -23,6 +23,12 @@ impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
     }
 }
 
+fn locals_in_memory_for_mir(body: &Body) -> HashSet<Local> {
+    let mut visitor = ReferencedLocalsVisitor::default();
+    visitor.visit_body(body);
+    visitor.into_hashset()
+}
+
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
         instance: Instance<'tcx>,
@@ -30,9 +36,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         global_env: &'body mut GlobalEnv<'tcx>,
     ) -> Self {
         let mir = ty_ctxt.instance_mir(instance.def);
-        let mut visitor = ReferencedLocalsVisitor::default();
-        visitor.visit_body(mir);
-        let referenced_locals = visitor.into_hashset();
+        let locals_in_memory = locals_in_memory_for_mir(mir);
         GilCtxt {
             instance,
             ty_ctxt,
@@ -41,7 +45,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
-            referenced_locals,
+            locals_in_memory,
             global_env,
         }
     }
@@ -53,8 +57,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
-    pub fn is_referenced(&self, local: &Local) -> bool {
-        self.referenced_locals.contains(local)
+    pub fn local_is_in_memory(&self, local: &Local) -> bool {
+        self.locals_in_memory.contains(local)
     }
 
     fn original_name_from_local(&self, local: &Local) -> Option<String> {
@@ -105,6 +109,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn push_cmd(&mut self, cmd: Cmd) {
         let label = self.next_label();
+        log::debug!("{}", cmd);
         self.gil_body.push_cmd(cmd, label);
         self.next_label = None;
     }
@@ -127,15 +132,39 @@ impl ReferencedLocalsVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, _: Location) {
-        if let Rvalue::Ref(_, _, Place { local, projection }) = rvalue {
-            if projection.contains(&ProjectionElem::Deref) {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue, loc: Location) {
+        if let Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) = rvalue {
+            if place.projection.contains(&ProjectionElem::Deref) {
                 // If we're referencing a dereferenced local,
                 // We don't need to put that local in memory, the referenced value is already
                 // There
                 return;
             }
-            self.0.insert(*local);
+            self.0.insert(place.local);
         }
+        self.super_rvalue(rvalue, loc);
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, loc: Location) {
+        // Function arguments should be in memory, in case the callee references it.
+        if let TerminatorKind::Call { args, .. } = &terminator.kind {
+            for op in args {
+                if let Operand::Copy(place) | Operand::Move(place) = op {
+                    self.0.insert(place.local);
+                }
+            }
+        }
+        self.super_terminator(terminator, loc);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
+        // I don't know how to perform downcasting on values in store
+        for proj in place.projection {
+            if let ProjectionElem::Downcast(..) = proj {
+                self.0.insert(place.local);
+                break;
+            }
+        }
+        self.super_place(place, ctx, location)
     }
 }

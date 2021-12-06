@@ -1,4 +1,4 @@
-use super::place::GilPlace;
+use super::place::{GilPlace, GilProj};
 use crate::prelude::*;
 
 #[derive(Debug)]
@@ -44,10 +44,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     /// Returns the expressions that corresponds to reading a value in the store at some place
     pub fn reader_expr_for_place_in_store(&self, place: &GilPlace<'tcx>) -> Expr {
         let init = Expr::PVar(place.base.clone());
-        place
-            .proj
-            .iter()
-            .fold(init, |curr, next| Expr::lnth(curr, *next))
+        place.proj.iter().fold(init, |curr, next| match next {
+            GilProj::Field(u) => Expr::lnth(curr, *u as usize),
+            GilProj::Downcast(..) => panic!("READ: Downcast should never be used in the store!"),
+        })
     }
 
     pub fn writer_expr_for_place_in_store(
@@ -58,7 +58,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) -> Expr {
         fn rec_call(
             base: Expr,
-            mut rev_rest: Vec<usize>,
+            mut rev_rest: Vec<GilProj>,
             rest_enc: &TypeInStoreEncoding,
             to_write: Expr,
         ) -> Expr {
@@ -73,6 +73,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             };
             let curr_proj = rev_rest.pop().unwrap();
+            let curr_proj: usize = match curr_proj {
+                GilProj::Field(i) => i as usize,
+                GilProj::Downcast(..) =>
+                // The reason that holds is because you can only put scalars,
+                // tuples and structs in memory.
+                {
+                    panic!("WRITE: Downcast should never happen to values in the store")
+                }
+            };
             let new_base = Expr::lnth(base.clone(), curr_proj);
             let expr_for_proj = rec_call(
                 new_base,

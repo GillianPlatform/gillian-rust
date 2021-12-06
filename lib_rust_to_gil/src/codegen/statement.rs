@@ -2,6 +2,7 @@ use crate::{codegen::memory::MemoryAction, prelude::*};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
+        log::debug!("{:#?}", &stmt);
         match &stmt.kind {
             StatementKind::Assign(box (place, rvalue)) => {
                 let compiled_rvalue = self.push_encode_rvalue(rvalue);
@@ -24,17 +25,23 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
                 PlaceAccess::InStore(gp) => {
                     let variant_ty = self.place_ty(place);
-                    let uninit: Literal = if let TyKind::Adt(def, subst) = variant_ty.kind() {
+                    let uninit: Option<Literal> = if let TyKind::Adt(def, subst) = variant_ty.kind()
+                    {
                         let v_def = def.variants.get(*variant_index).unwrap();
-                        v_def
-                            .fields
-                            .iter()
-                            .map(|field| {
-                                self.type_in_store_encoding(field.ty(self.ty_ctxt, subst))
-                                    .uninitialized()
-                            })
-                            .collect::<Vec<_>>()
-                            .into()
+                        if v_def.fields.is_empty() {
+                            None
+                        } else {
+                            let fields = v_def
+                                .fields
+                                .iter()
+                                .map(|field| {
+                                    self.type_in_store_encoding(field.ty(self.ty_ctxt, subst))
+                                        .uninitialized()
+                                })
+                                .collect::<Vec<_>>()
+                                .into();
+                            Some(fields)
+                        }
                     } else {
                         fatal!(
                             self,
@@ -42,8 +49,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                             variant_ty
                         );
                     };
-                    let new_value: Expr =
-                        vec![Expr::int(variant_index.as_u32() as i64), uninit.into()].into();
+                    let new_value: Expr = match uninit {
+                        Some(uninit) => {
+                            vec![Expr::int(variant_index.as_u32() as i64), uninit.into()].into()
+                        }
+                        None => vec![Expr::int(variant_index.as_u32() as i64)].into(),
+                    };
                     // Some of the following is copy-pasted from place::push_place_write
                     // it could probably be factored out
                     let enc = self.type_in_store_encoding(self.place_ty(&place.local.into()));

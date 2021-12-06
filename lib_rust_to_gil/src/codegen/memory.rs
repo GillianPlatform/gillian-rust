@@ -3,6 +3,7 @@ use crate::prelude::*;
 const ALLOC_ACTION_NAME: &str = "mem_alloc";
 const LOAD_ACTION_NAME: &str = "mem_load";
 const STORE_ACTION_NAME: &str = "mem_store";
+const FREE_ACTION_NAME: &str = "mem_free";
 const LOAD_DISCR_ACTION_NAME: &str = "mem_load_discr";
 const STORE_DISCR_ACTION_NAME: &str = "mem_store_discr";
 
@@ -20,6 +21,11 @@ pub enum MemoryAction<'tcx> {
         typ: Ty<'tcx>,
         value: Expr,
     },
+    Free {
+        location: Expr,
+        projection: Expr,
+        typ: Ty<'tcx>,
+    },
     LoadDiscriminant {
         location: Expr,
         projection: Expr,
@@ -35,6 +41,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_alloc_into_local(&mut self, local: Local, typ: Ty<'tcx>) {
         let action = MemoryAction::Alloc(typ);
         let target = self.name_from_local(&local);
+        self.push_action(target, action);
+    }
+
+    pub fn push_free_local(&mut self, local: Local, typ: Ty<'tcx>) {
+        let target = names::unused_var();
+        let local = self.name_from_local(&local);
+        let location = Expr::lnth(Expr::PVar(local.clone()), 0);
+        let projection = Expr::lnth(Expr::PVar(local.clone()), 1);
+
+        let action = MemoryAction::Free {
+            location,
+            projection,
+            typ,
+        };
         self.push_action(target, action);
     }
 
@@ -85,6 +105,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     parameters: vec![location, projection, Expr::Lit(encoded_typ), value],
                 })
             }
+            MemoryAction::Free {
+                location,
+                projection,
+                typ,
+            } => {
+                let encoded_typ = self.encode_type(typ);
+                self.push_cmd(Cmd::Action {
+                    variable: target,
+                    action_name: FREE_ACTION_NAME.to_string(),
+                    parameters: vec![location, projection, Expr::Lit(encoded_typ)],
+                })
+            }
             MemoryAction::LoadDiscriminant {
                 location,
                 projection,
@@ -100,7 +132,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             } => self.push_cmd(Cmd::Action {
                 variable: target,
                 action_name: STORE_DISCR_ACTION_NAME.to_string(),
-                parameters: vec![location, projection, Expr::int(discr as i64).into()],
+                parameters: vec![location, projection, Expr::int(discr as i64)],
             }),
         };
     }

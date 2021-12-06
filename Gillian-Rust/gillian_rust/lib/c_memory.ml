@@ -46,7 +46,7 @@ let execute_load mem args =
 
 let execute_store mem args =
   match args with
-  | [ Literal.Loc loc; Literal.LList proj; ty; value ] ->
+  | [ Literal.Loc loc; LList proj; ty; value ] ->
       let rust_ty = Rust_types.of_lit ty in
       let proj = Projections.of_lit_list proj in
       let new_heap =
@@ -54,6 +54,19 @@ let execute_store mem args =
       in
       ASucc ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store" args
+
+let execute_free mem args =
+  match args with
+  | [ Literal.Loc loc; LList proj; ty ] ->
+      let () =
+        match proj with
+        | [] -> ()
+        | _  -> Fmt.failwith "Invalid free: (%s, %a)" loc Literal.pp (LList proj)
+      in
+      let rust_ty = Rust_types.of_lit ty in
+      let new_heap = C_heap.free ~genv:mem.genv mem.heap loc rust_ty in
+      ASucc ({ mem with heap = new_heap }, [])
+  | _ -> wrong_args "free" args
 
 let execute_genv_decl_type mem args =
   match args with
@@ -66,7 +79,7 @@ let execute_load_discr mem args =
   match args with
   | [ Literal.Loc loc; Literal.LList proj ] ->
       let proj = Projections.of_lit_list proj in
-      let discr = C_heap.load_discr mem.heap loc proj in
+      let discr = C_heap.load_discr ~genv:mem.genv mem.heap loc proj in
       ASucc (mem, [ Int discr ])
   | _ -> wrong_args "execute_load_discr" args
 
@@ -85,6 +98,7 @@ let execute_action act_name mem args =
   | Alloc          -> execute_alloc mem args
   | Load           -> execute_load mem args
   | Store          -> execute_store mem args
+  | Free           -> execute_free mem args
   | Genv_decl_type -> execute_genv_decl_type mem args
   | LoadDiscr      -> execute_load_discr mem args
   | StoreDiscr     -> execute_store_discr mem args

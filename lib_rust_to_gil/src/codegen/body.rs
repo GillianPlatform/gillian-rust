@@ -1,13 +1,11 @@
 use crate::prelude::*;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
+    fn push_alloc_local_decls_and_vars_in_memory(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
             if let LocalKind::Arg = mir.local_kind(loc) {
-                // Don't bind arguments, they're already bound
-                return;
-            };
-            if self.place_is_in_memory(&loc.into()) {
+                self.push_alloc_into_local(loc, decl.ty);
+            } else if self.place_is_in_memory(&loc.into()) {
                 self.push_alloc_into_local(loc, decl.ty);
             } else {
                 let uninitialized = self.type_in_store_encoding(decl.ty).uninitialized();
@@ -17,6 +15,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 })
             }
         });
+    }
+
+    fn push_free_local_decls_and_return(&mut self, mir: &Body<'tcx>) {
+        self.push_label(names::ret_label());
+        mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
+            if let LocalKind::Arg = mir.local_kind(loc) {
+                // Don't bind arguments, they're already bound
+                return;
+            };
+            if self.place_is_in_memory(&loc.into()) {
+                self.push_free_local(loc, decl.ty);
+            }
+        });
+        self.push_cmd(Cmd::ReturnNormal);
     }
 
     // pub fn push_free_local_decls(&mut self, mir: &Body<'tcx>) {
@@ -64,6 +76,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         for (bb, bb_data) in mir_body.basic_blocks().iter_enumerated() {
             self.push_basic_block(&bb, bb_data);
         }
+        self.push_free_local_decls_and_return(mir_body);
         self.make_proc(proc_name.to_string(), args)
     }
 }

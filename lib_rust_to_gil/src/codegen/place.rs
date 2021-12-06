@@ -1,10 +1,25 @@
 use super::memory::MemoryAction;
 use crate::prelude::*;
 
+#[derive(Clone, Copy, Debug)]
+pub enum GilProj {
+    Field(u32),
+    Downcast(u32),
+}
+
+impl GilProj {
+    pub fn into_lit(self) -> Literal {
+        match self {
+            Self::Field(u) => vec!["f".into(), Literal::Int(u as i64)].into(),
+            Self::Downcast(u) => vec!["d".into(), Literal::Int(u as i64)].into(),
+        }
+    }
+}
+
 pub struct GilPlace<'tcx> {
     pub base: String,
     pub base_ty: Ty<'tcx>,
-    pub proj: Vec<usize>,
+    pub proj: Vec<GilProj>,
 }
 
 fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
@@ -18,7 +33,7 @@ fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
 
 impl<'tcx> GilPlace<'tcx> {
     pub fn into_loc_proj(self) -> (Expr, Expr) {
-        let proj = self.proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        let proj = self.proj.iter().map(|x| x.into_lit().into()).collect();
         add_proj(self.base, proj)
     }
 
@@ -26,7 +41,7 @@ impl<'tcx> GilPlace<'tcx> {
         if self.proj.is_empty() {
             return Expr::PVar(self.base);
         }
-        let proj = self.proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        let proj = self.proj.iter().map(|x| x.into_lit().into()).collect();
         let (loc, total_proj) = add_proj(self.base, proj);
         Expr::EList(vec![loc, total_proj])
     }
@@ -39,7 +54,9 @@ pub enum PlaceAccess<'tcx> {
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn place_is_in_memory(&self, place: &Place) -> bool {
-        self.is_referenced(&place.local)
+        // true
+        // It's still unclear what can be kept in the store
+        self.local_is_in_memory(&place.local)
     }
 
     fn push_read_gil_place_in_memory(
@@ -50,7 +67,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         copy: bool,
     ) {
         let GilPlace { base, proj, .. } = gil_place;
-        let proj = proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        let proj = proj.iter().map(|x| x.into_lit().into()).collect();
         let (location, projection) = add_proj(base, proj);
         let action = MemoryAction::Load {
             location,
@@ -63,7 +80,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     fn push_write_gil_place_in_memory(&mut self, gil_place: GilPlace, value: Expr, typ: Ty<'tcx>) {
         let GilPlace { base, proj, .. } = gil_place;
-        let proj = proj.iter().map(|x| Expr::int(*x as i64)).collect();
+        let proj = proj.iter().map(|x| x.into_lit().into()).collect();
         let (location, projection) = add_proj(base, proj);
         let action = MemoryAction::Store {
             location,
@@ -148,7 +165,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         base_ty: typ,
                     };
                 }
-                ProjectionElem::Field(u, _) => cur_gil_place.proj.push(u.as_u32() as usize),
+                ProjectionElem::Field(u, _) => cur_gil_place.proj.push(GilProj::Field(u.as_u32())),
+                // Place pointer should contain their types? But so far, I think this has no effect.
+                ProjectionElem::Downcast(_, u) => {
+                    cur_gil_place.proj.push(GilProj::Downcast(u.as_u32()))
+                }
                 _ => fatal!(self, "Invalid projection element: {:#?}", proj),
             }
         }

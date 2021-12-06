@@ -15,4 +15,9 @@ let rec type_equal ~genv ty ty' =
   | Named x, t | t, Named x -> type_equal ~genv (get_type genv x) t
   | ty, ty' -> ty = ty'
 
+let rec resolve_named ~genv ty =
+  match ty with
+  | Rust_types.Named a -> get_type genv a |> resolve_named ~genv
+  | _                  -> ty
+
 let pp = Fmt.Dump.hashtbl Fmt.string Rust_types.pp

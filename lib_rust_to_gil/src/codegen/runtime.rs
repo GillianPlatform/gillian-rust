@@ -1,16 +1,16 @@
 use crate::prelude::*;
 
+macro_rules! import {
+    ($e: expr) => {
+        Import {
+            path: $e.to_string(),
+            verify: false,
+        }
+    };
+}
+
 pub fn imports() -> Vec<Import> {
-    vec![
-        Import {
-            path: "i__binop.gil".to_string(),
-            verify: false,
-        },
-        Import {
-            path: "i__lang.gil".to_string(),
-            verify: false,
-        },
-    ]
+    vec![import!("i__binop.gil"), import!("i__lang.gil")]
 }
 
 const CHECKED_ADD: &str = "i__binop_checked_add";

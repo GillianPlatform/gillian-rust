@@ -34,9 +34,12 @@ impl std::ops::Not for Expr {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        Self::UnOp {
-            operator: UnOp::UNot,
-            operand: Box::new(self),
+        match self {
+            Expr::Lit(Literal::Bool(b)) => Expr::Lit(Literal::Bool(!b)),
+            _ => Self::UnOp {
+                operator: UnOp::UNot,
+                operand: Box::new(self),
+            },
         }
     }
 }
@@ -80,6 +83,28 @@ impl Expr {
 
     pub fn int(i: i64) -> Self {
         Self::Lit(Literal::Int(i))
+    }
+
+    pub fn i_gt(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i > j),
+            _ => !Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::ILessThanEqual,
+            },
+        }
+    }
+
+    pub fn f_gt(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i > j),
+            _ => !Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::FLessThanEqual,
+            },
+        }
     }
 
     pub fn lnth(e: Expr, i: usize) -> Self {

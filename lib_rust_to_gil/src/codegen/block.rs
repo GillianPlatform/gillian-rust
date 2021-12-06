@@ -9,7 +9,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
             TerminatorKind::Return => {
                 self.push_place_read_into(names::ret_var(), &Place::return_place(), false);
-                self.push_cmd(Cmd::ReturnNormal);
+                self.push_cmd(Cmd::Goto(names::ret_label()));
             }
             TerminatorKind::Call {
                 func,

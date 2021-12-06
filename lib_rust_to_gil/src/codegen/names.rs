@@ -4,6 +4,7 @@ pub const SWITCH_LABEL: &str = "sw";
 
 const BB_LABEL: &str = "bb";
 const RET_VAR: &str = "ret";
+const RET_LABEL: &str = "rlab";
 const MIR_TEMP_PREFIX: &str = "mirtemp___";
 const GIL_TEMP_PREFIX: &str = "giltemp___";
 const GIL_UNUSED_VAR: &str = "gil____THROAWAY";
@@ -12,6 +13,10 @@ const GLOBAL_ENV_DECL: &str = "i__init_global_env";
 
 pub fn bb_label(bb: &BasicBlock) -> String {
     format!("{}{}", BB_LABEL, bb.as_usize())
+}
+
+pub fn ret_label() -> String {
+    String::from(RET_LABEL)
 }
 
 pub fn ret_var() -> String {
