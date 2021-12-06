@@ -6,3 +6,11 @@ proc i__lang_assert(b, msg) {
         return;
   err:  fail[ASSERT](msg)
 };
+
+proc i__lang_int_of_bool(b) {
+      goto [b] zer one;
+  zer: ret := 0i;
+       return;
+  one: ret := 1i;
+       return
+};

@@ -120,11 +120,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             MemoryAction::LoadDiscriminant {
                 location,
                 projection,
-            } => self.push_cmd(Cmd::Action {
-                variable: target,
-                action_name: LOAD_DISCR_ACTION_NAME.to_string(),
-                parameters: vec![location, projection],
-            }),
+            } => {
+                let temp = self.temp_var();
+                self.push_cmd(Cmd::Action {
+                    variable: temp.clone(),
+                    action_name: LOAD_DISCR_ACTION_NAME.to_string(),
+                    parameters: vec![location, projection],
+                });
+                self.push_cmd(Cmd::Assignment {
+                    variable: target,
+                    assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
+                })
+            }
             MemoryAction::StoreDiscriminant {
                 location,
                 projection,

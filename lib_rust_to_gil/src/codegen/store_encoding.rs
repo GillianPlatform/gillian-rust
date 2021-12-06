@@ -33,10 +33,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     .map(|x| self.type_in_store_encoding(self.field_def_type(x, subst)))
                     .collect(),
             ),
-            Adt(def, _subst) if def.is_enum() => TypeInStoreEncoding::List(vec![
-                TypeInStoreEncoding::Value,
-                TypeInStoreEncoding::Value,
-            ]),
+            // If an enum is encoded for the store, it means that only a discriminant access will be executed,
+            // Therefore, there are no fields.
+            Adt(def, _subst) if def.is_enum() => {
+                TypeInStoreEncoding::List(vec![TypeInStoreEncoding::Value])
+            }
             _ => panic!("Cannot handle type yet: {:#?}", ty),
         }
     }

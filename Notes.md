@@ -1001,7 +1001,9 @@ pub fn main() {
 
 I.e. is `move` deinitializing memory or not?
 
+### Semantics of enum manipulation?
 
+In particular, what does a downcast mean? How to serialize them?
 
 
 

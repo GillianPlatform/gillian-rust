@@ -113,7 +113,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_label(bb_label(bb));
         log::debug!("----{:#?}----", bb);
         for stmt in &bb_data.statements {
-            // log::debug!("Pushing statement: {:#?}", stmt); // Somehow, this may panic..
             self.push_statement(stmt);
         }
         if let Some(terminator) = &bb_data.terminator {

@@ -1,18 +1,29 @@
 use crate::prelude::*;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn push_alloc_local_decls_and_vars_in_memory(&mut self, mir: &Body<'tcx>) {
+    fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
-            if let LocalKind::Arg = mir.local_kind(loc) {
-                self.push_alloc_into_local(loc, decl.ty);
-            } else if self.place_is_in_memory(&loc.into()) {
-                self.push_alloc_into_local(loc, decl.ty);
-            } else {
-                let uninitialized = self.type_in_store_encoding(decl.ty).uninitialized();
-                self.push_cmd(Cmd::Assignment {
-                    variable: self.name_from_local(&loc),
-                    assigned_expr: Expr::Lit(uninitialized),
-                })
+            match (mir.local_kind(loc), self.place_is_in_memory(&loc.into())) {
+                (LocalKind::Arg, true) => {
+                    let temp = self.temp_var();
+                    self.push_cmd(Cmd::Assignment {
+                        variable: temp.clone(),
+                        assigned_expr: Expr::PVar(self.name_from_local(&loc)),
+                    });
+                    self.push_alloc_into_local(loc, decl.ty);
+                    self.push_place_write(&loc.into(), Expr::PVar(temp), decl.ty)
+                }
+                (LocalKind::Arg, false) => (),
+                (_, true) => {
+                    self.push_alloc_into_local(loc, decl.ty);
+                }
+                (_, false) => {
+                    let uninitialized = self.type_in_store_encoding(decl.ty).uninitialized();
+                    self.push_cmd(Cmd::Assignment {
+                        variable: self.name_from_local(&loc),
+                        assigned_expr: Expr::Lit(uninitialized),
+                    })
+                }
             }
         });
     }

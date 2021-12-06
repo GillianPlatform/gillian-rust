@@ -2,7 +2,6 @@ use crate::{codegen::memory::MemoryAction, prelude::*};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
-        log::debug!("{:#?}", &stmt);
         match &stmt.kind {
             StatementKind::Assign(box (place, rvalue)) => {
                 let compiled_rvalue = self.push_encode_rvalue(rvalue);

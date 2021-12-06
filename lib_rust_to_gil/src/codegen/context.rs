@@ -109,7 +109,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn push_cmd(&mut self, cmd: Cmd) {
         let label = self.next_label();
-        log::debug!("{}", cmd);
         self.gil_body.push_cmd(cmd, label);
         self.next_label = None;
     }
@@ -145,17 +144,19 @@ impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
         self.super_rvalue(rvalue, loc);
     }
 
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, loc: Location) {
-        // Function arguments should be in memory, in case the callee references it.
-        if let TerminatorKind::Call { args, .. } = &terminator.kind {
-            for op in args {
-                if let Operand::Copy(place) | Operand::Move(place) = op {
-                    self.0.insert(place.local);
-                }
-            }
-        }
-        self.super_terminator(terminator, loc);
-    }
+    // Actually, this doesn't make sense. We just need to write the values in memory if
+    // they should be there at the begining of the function
+    // fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, loc: Location) {
+    //     // Function arguments should be in memory, in case the callee references it.
+    //     if let TerminatorKind::Call { args, .. } = &terminator.kind {
+    //         for op in args {
+    //             if let Operand::Copy(place) | Operand::Move(place) = op {
+    //                 self.0.insert(place.local);
+    //             }
+    //         }
+    //     }
+    //     self.super_terminator(terminator, loc);
+    // }
 
     fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
         // I don't know how to perform downcasting on values in store

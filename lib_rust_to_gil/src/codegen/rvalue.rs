@@ -10,7 +10,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Rvalue::Use(operand) => self.push_encode_operand(operand),
             Rvalue::BinaryOp(binop, box (left, right))
             | Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
-                self.encode_binop(binop, left, right)
+                self.push_encode_binop(binop, left, right)
             }
             Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                 // I need to know how to handle the BorrowKind
@@ -44,7 +44,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn encode_binop(
+    pub fn push_encode_binop(
         &mut self,
         binop: &mir::BinOp,
         left: &Operand<'tcx>,
@@ -69,11 +69,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Expr::PVar(temp)
             }
             mir::BinOp::Gt if left_ty.is_numeric() => {
-                if left_ty.is_integral() {
+                let ret = self.temp_var();
+                let comp_expr = if left_ty.is_integral() {
                     Expr::i_gt(e1, e2)
                 } else {
                     Expr::f_gt(e1, e2)
-                }
+                };
+                self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
+                Expr::PVar(ret)
             }
             mir::BinOp::Gt | mir::BinOp::Add => fatal!(
                 self,
