@@ -1,5 +1,6 @@
 use crate::prelude::*;
-use rustc_middle::ty::{AdtDef, IntTy, UintTy};
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::ty::{AdtDef, Const, ConstKind, IntTy, UintTy};
 
 pub trait TypeEncoderable<'tcx> {
     fn add_type_to_genv(&mut self, ty: Ty<'tcx>);
@@ -56,6 +57,17 @@ where
                 // Adts are encoded by the environment
                 self.add_type_to_genv(ty);
                 Literal::LList(vec!["named".into(), name.into()])
+            }
+            Slice(ty) => Literal::LList(vec!["slice".into(), self.encode_type(ty)]),
+            Array(ty, sz) => {
+                let sz_i = match sz {
+                    Const {
+                        val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(x))),
+                        ..
+                    } => x.to_bits(x.size()).unwrap() as i64,
+                    _ => panic!("Invalid array size"),
+                };
+                vec!["array".into(), self.encode_type(ty), Literal::Int(sz_i)].into()
             }
             _ => panic!("Cannot encode this type yet: {:#?}", ty),
         }

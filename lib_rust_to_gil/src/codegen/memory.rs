@@ -48,7 +48,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let target = names::unused_var();
         let local = self.name_from_local(&local);
         let location = Expr::lnth(Expr::PVar(local.clone()), 0);
-        let projection = Expr::lnth(Expr::PVar(local.clone()), 1);
+        let projection = Expr::lnth(Expr::PVar(local), 1);
 
         let action = MemoryAction::Free {
             location,

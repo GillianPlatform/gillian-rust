@@ -33,11 +33,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     .map(|x| self.type_in_store_encoding(self.field_def_type(x, subst)))
                     .collect(),
             ),
-            // If an enum is encoded for the store, it means that only a discriminant access will be executed,
-            // Therefore, there are no fields.
-            Adt(def, _subst) if def.is_enum() => {
-                TypeInStoreEncoding::List(vec![TypeInStoreEncoding::Value])
-            }
+            Adt(def, _subst) if def.is_enum() => TypeInStoreEncoding::List(vec![
+                TypeInStoreEncoding::Value,
+                TypeInStoreEncoding::Value,
+            ]),
             _ => panic!("Cannot handle type yet: {:#?}", ty),
         }
     }
@@ -47,7 +46,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let init = Expr::PVar(place.base.clone());
         place.proj.iter().fold(init, |curr, next| match next {
             GilProj::Field(u) => Expr::lnth(curr, *u as usize),
-            GilProj::Downcast(..) => panic!("READ: Downcast should never be used in the store!"),
+            GilProj::Downcast(..) | GilProj::Index(..) => {
+                panic!("READ: Downcast should never be used in the store!")
+            }
         })
     }
 
@@ -76,11 +77,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             let curr_proj = rev_rest.pop().unwrap();
             let curr_proj: usize = match curr_proj {
                 GilProj::Field(i) => i as usize,
-                GilProj::Downcast(..) =>
+                GilProj::Index(..) | GilProj::Downcast(..) =>
                 // The reason that holds is because you can only put scalars,
                 // tuples and structs in memory.
                 {
-                    panic!("WRITE: Downcast should never happen to values in the store")
+                    panic!("WRITE: Downcast or Index should never happen to values in the store")
                 }
             };
             let new_base = Expr::lnth(base.clone(), curr_proj);

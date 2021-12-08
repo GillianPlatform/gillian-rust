@@ -40,6 +40,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     Expr::lnth(expr, 0)
                 }
             },
+            Rvalue::Len(place) => {
+                let expr = self.push_place_read(place, true);
+                Expr::lst_len(expr)
+            }
+            Rvalue::Aggregate(box kind, ops) => {
+                let ops: Vec<Expr> = ops.iter().map(|op| self.push_encode_operand(op)).collect();
+                match kind {
+                    AggregateKind::Array(..) => ops.into(),
+                    _ => panic!("Unhandled agregate kind: {:#?}", kind),
+                }
+            }
+            Rvalue::Cast(_, op, _) => {
+                log::warn!("Ignoring cast: {:#?}", rvalue);
+                self.push_encode_operand(op)
+            }
             _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
         }
     }
@@ -74,6 +89,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     Expr::i_gt(e1, e2)
                 } else {
                     Expr::f_gt(e1, e2)
+                };
+                self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
+                Expr::PVar(ret)
+            }
+            mir::BinOp::Lt if left_ty.is_numeric() => {
+                let ret = self.temp_var();
+                let comp_expr = if left_ty.is_integral() {
+                    Expr::i_lt(e1, e2)
+                } else {
+                    Expr::f_lt(e1, e2)
                 };
                 self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
                 Expr::PVar(ret)
@@ -135,11 +160,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn encode_value(&self, val: &ConstValue<'tcx>, ty: Ty<'tcx>) -> Literal {
         match val {
             ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_scalar() => {
-                let x: i64 = scalar_int
-                    .to_bits(scalar_int.size())
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
+                let x = scalar_int.to_bits(scalar_int.size()).unwrap() as i64;
                 Literal::Int(x)
             }
             ConstValue::Scalar(Scalar::Int(scalar_int))

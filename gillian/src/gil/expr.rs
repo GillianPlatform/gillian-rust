@@ -107,6 +107,28 @@ impl Expr {
         }
     }
 
+    pub fn i_lt(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i < j),
+            _ => !Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::ILessThan,
+            },
+        }
+    }
+
+    pub fn f_lt(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i < j),
+            _ => !Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::FLessThan,
+            },
+        }
+    }
+
     pub fn lnth(e: Expr, i: usize) -> Self {
         let f: f32 = i as f32;
         match e {
@@ -118,6 +140,29 @@ impl Expr {
                 operator: BinOp::LstNth,
                 left_operand: Box::new(e),
                 right_operand: Box::new(Self::float(f)),
+            },
+        }
+    }
+
+    pub fn lnth_e(e: Expr, i: Expr) -> Self {
+        match i {
+            Expr::Lit(Literal::Int(i)) => Self::lnth(e, i as usize),
+            Expr::Lit(Literal::Num(f)) => Self::lnth(e, f as usize),
+            _ => Self::BinOp {
+                operator: BinOp::LstNth,
+                left_operand: Box::new(e),
+                right_operand: Box::new(i),
+            },
+        }
+    }
+
+    pub fn lst_len(e: Expr) -> Self {
+        match e {
+            Expr::EList(vec) => Expr::int(vec.len() as i64),
+            Expr::Lit(Literal::LList(vec)) => Expr::int(vec.len() as i64),
+            _ => Expr::UnOp {
+                operator: UnOp::LstLen,
+                operand: Box::new(e),
             },
         }
     }

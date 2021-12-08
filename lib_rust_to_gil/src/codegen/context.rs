@@ -161,9 +161,12 @@ impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
     fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
         // I don't know how to perform downcasting on values in store
         for proj in place.projection {
-            if let ProjectionElem::Downcast(..) = proj {
-                self.0.insert(place.local);
-                break;
+            match &proj {
+                ProjectionElem::Downcast(..) | ProjectionElem::Index(..) => {
+                    self.0.insert(place.local);
+                    break;
+                }
+                _ => (),
             }
         }
         self.super_place(place, ctx, location)
