@@ -1004,6 +1004,72 @@ I.e. is `move` deinitializing memory or not?
 ### Semantics of enum manipulation?
 
 In particular, what does a downcast mean? How to serialize them?
+So far, I'm keeping two information: the last downcast performed and the actual discriminant.
+If they're different, the value is ill-formed.
+
+### Arrays and slices
+
+The difference between an array and a slice is the size basically. But then, there is not much difference between
+
+In the following code:
+
+```rust
+fn sum(x: &[u32]) -> u32 {
+    let mut s = 0;
+    let mut i = 0;
+    while i < x.len() {
+        s += x[i];
+        i += 1;
+    }
+    s
+}
+
+fn sum_4(x: &[u32; 4]) -> u32 {
+    x[0] + x[1] + x[2] + x[3]
+}
+
+pub fn main() {
+    let x: [u32; 4] = [1, 2, 3, 4];
+    let _s = sum(&x);
+    let _s2 = sum_4(&x);
+}
+```
+
+# What MIRI doesn't do well
+
+```rust
+use std::mem;
+
+#[repr(C)]
+struct A {
+    x: u16,
+    y: u32,
+    z: u16
+}
+
+struct B {
+    x: u16,
+    y: u32,
+    z: u16
+}
+  
+  fn test_c(a: &A) -> u32 {
+    let p_a : *const u32 = a as *const A as *const u32;
+    unsafe {*p_a.add(1)}
+  }
+  
+  fn test_rust(a: &B) -> u32 {
+    let p_a : *const u32 = a as *const B as *const u32;
+    unsafe {*p_a}
+  }
+  
+  fn main() {
+      let a = A { x: 1, y: 42, z: 3 };
+      assert!(test_c(&a) == 42);
+      let b = B { x: 1, y: 42, z: 3 };
+      assert!(test_rust(&b) == 42); // That shouldn't pass but it does
+  }
+```
 
 
 

@@ -1,5 +1,9 @@
 type 'a vec
 
+val make : int -> 'a -> 'a vec
+
+val init : int -> (int -> 'a) -> 'a vec
+
 val ( .%[] ) : 'a vec -> int -> ('a, unit) Result.t
 
 val ( .%[]<- ) : 'a vec -> int -> 'a -> ('a vec, unit) Result.t

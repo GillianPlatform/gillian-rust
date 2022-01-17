@@ -9,11 +9,13 @@ let get_type genv ty = Hashtbl.find genv ty
 let declare_struct genv name decl =
   Hashtbl.replace genv name (Rust_types.of_lit decl)
 
-let rec type_equal ~genv ty ty' =
+let rec subtypes ~genv ty ty' =
   match (ty, ty') with
-  | Rust_types.Named x, Rust_types.Named y -> x = y
-  | Named x, t | t, Named x -> type_equal ~genv (get_type genv x) t
-  | ty, ty' -> ty = ty'
+  | Rust_types.Named x, Rust_types.Named y ->
+      x = y || subtypes ~genv (get_type genv x) (get_type genv y)
+  | Named x, t | t, Named x -> subtypes ~genv (get_type genv x) t
+  | Array { ty = t1; _ }, Slice t2 -> subtypes ~genv t1 t2
+  | _ -> ty = ty'
 
 let rec resolve_named ~genv ty =
   match ty with

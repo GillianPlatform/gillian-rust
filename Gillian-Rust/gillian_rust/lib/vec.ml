@@ -1,5 +1,9 @@
 type 'a vec = 'a array
 
+let make = Array.make
+
+let init = Array.init
+
 let ( .%[] ) vec idx =
   try Ok (Array.get vec idx) with Invalid_argument _ -> Error ()
 

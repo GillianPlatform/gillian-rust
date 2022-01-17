@@ -8,7 +8,7 @@ val copy : t -> t
 
 val get_type : t -> string -> Rust_types.t
 
-val type_equal : genv:t -> Rust_types.t -> Rust_types.t -> bool
+val subtypes : genv:t -> Rust_types.t -> Rust_types.t -> bool
 
 val resolve_named : genv:t -> Rust_types.t -> Rust_types.t
 

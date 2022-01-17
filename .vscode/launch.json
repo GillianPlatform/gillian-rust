@@ -1,0 +1,36 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "enum_fields",
+      "program": "/Users/sacha/.rustup/toolchains/nightly-2021-10-18-x86_64-apple-darwin/bin/rustc",
+      "args": [
+        "-C",
+        "panic=abort",
+        "--sysroot",
+        "/Users/sacha/.rustup/toolchains/nightly-2021-10-18-x86_64-apple-darwin",
+        "--crate-type",
+        "lib",
+        "-Z",
+        "codegen-backend=lib/librtg.dylib",
+        "examples/enum_fields.rs"
+      ],
+      "sourceLanguages": [
+        "rust"
+      ],
+      "sourceMap": {
+        "/rustc/*": "/Users/sacha/.rustup/toolchains/nightly-2021-10-18-x86_64-apple_darwin/lib/rustlib/src/rust"
+      },
+      "filter": {
+        "name": "gillian",
+        "kind": "lib"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

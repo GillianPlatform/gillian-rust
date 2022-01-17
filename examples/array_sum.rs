@@ -10,12 +10,7 @@ fn sum(x: &[u32]) -> u32 {
     s
 }
 
-fn sum_4(x: &[u32; 4]) -> u32 {
-    x[0] + x[1] + x[2] + x[3]
-}
-
 pub fn main() {
     let x: [u32; 4] = [1, 2, 3, 4];
     let _s = sum(&x);
-    let _s2 = sum_4(&x);
 }

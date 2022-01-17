@@ -7,6 +7,7 @@ module TreeBlock = struct
   and tree_content =
     | Scalar of Literal.t
     | Fields of t vec
+    | Array  of t vec
     | Enum   of { discr : int option; downcast_and_fields : (int * t vec) option }
     | Ptr    of string * Projections.t
     | Uninit
@@ -26,13 +27,14 @@ module TreeBlock = struct
           (option ~none:(any "U")
           @@ pair ~sep:nop int (parens @@ Vec.pp ~sep:comma pp))
           downcast_and_fields
-    | Ptr (loc, proj) -> Fmt.pf ft "Ptr(%s, %a)" loc Projections.pp proj
+    | Ptr (loc, proj) -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
+    | Array v -> (brackets (Vec.pp ~sep:comma pp)) ft v
     | Uninit -> Fmt.string ft "UNINIT"
 
   let rec to_rust_value ~genv { content; ty } =
     match content with
     | Scalar s -> s
-    | Fields v ->
+    | Fields v | Array v ->
         let tuple = Vec.map (to_rust_value ~genv) v |> Vec.to_list in
         LList tuple
     | Enum { discr = Some discr; downcast_and_fields = Some (dcast, fields) }
@@ -89,24 +91,35 @@ module TreeBlock = struct
     | Ref _, LList [ Loc loc; LList proj ] ->
         let content = Ptr (loc, Projections.of_lit_list proj) in
         { ty; content }
+    | Array { length; ty = ty' }, LList l
+      when List.compare_length_with l length == 0 ->
+        let mem_array =
+          List.map (of_rust_value ~genv ~ty:ty') l |> Vec.of_list
+        in
+        { ty; content = Array mem_array }
     | _ ->
         Fmt.failwith "Type error: %a is not of type %a" Literal.pp v
           Rust_types.pp ty
 
   let rec uninitialized ~genv ty =
     match ty with
-    | Rust_types.Tuple v        ->
+    | Rust_types.Tuple v         ->
         let tuple = List.map (uninitialized ~genv) v |> Vec.of_list in
         { ty; content = Fields tuple }
-    | Named a                   ->
+    | Named a                    ->
         let uninit_a = uninitialized ~genv (C_global_env.get_type genv a) in
         { uninit_a with ty }
-    | Struct fields             ->
+    | Struct fields              ->
         let tuple =
           List.map (fun (_, t) -> uninitialized ~genv t) fields |> Vec.of_list
         in
         { ty; content = Fields tuple }
-    | Enum _ | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Array { length; ty = ty' } ->
+        let uninit_field _ = uninitialized ~genv ty' in
+        let content = Vec.init length uninit_field in
+        { ty; content = Array content }
+    | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
+    | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
 
   let rec find_proj ~genv ~update ~return t proj =
     let rec_call = find_proj ~genv ~update ~return in
@@ -122,6 +135,7 @@ module TreeBlock = struct
         | Ptr _ ->
             Fmt.failwith "Invalid projection on pointer: %d on %a" p pp_content
               content
+        | Array _ -> Fmt.failwith "Invalid projection on array: field"
         | Fields vec -> (
             match vec.%[p] with
             | Ok e    ->
@@ -169,23 +183,24 @@ module TreeBlock = struct
 
   let get_proj ~genv t proj ty copy =
     let update block =
-      if C_global_env.type_equal ~genv ty block.ty then
+      if C_global_env.subtypes ~genv block.ty ty then
         if copy then block else uninitialized ~genv ty
       else
-        Fmt.failwith "Invalid type: %a and %a" Rust_types.pp ty Rust_types.pp
-          block.ty
+        Fmt.failwith "[get_proj] Invalid type: expected %a got %a" Rust_types.pp
+          block.ty Rust_types.pp ty
     in
+
     let return = to_rust_value ~genv in
     find_proj ~genv ~update ~return t proj
 
   let set_proj ~genv t proj ty value =
     let return _ = () in
     let update block =
-      if C_global_env.type_equal ~genv ty block.ty then
+      if C_global_env.subtypes ~genv ty block.ty then
         of_rust_value ~genv ~ty value
       else
-        Fmt.failwith "Invalid type: %a and %a " Rust_types.pp ty Rust_types.pp
-          block.ty
+        Fmt.failwith "[set_proj] Invalid type: expected %a got %a "
+          Rust_types.pp block.ty Rust_types.pp ty
     in
     let _, new_block = find_proj ~genv ~return ~update t proj in
     new_block
@@ -241,7 +256,7 @@ let store ~genv (mem : t) loc proj ty value =
 let free ~genv (mem : t) loc ty =
   let block = Hashtbl.find mem loc in
   let () =
-    if C_global_env.type_equal ~genv block.ty ty then Hashtbl.remove mem loc
+    if C_global_env.subtypes ~genv block.ty ty then Hashtbl.remove mem loc
     else
       Fmt.failwith "Incompatible types for free: %a and %a" Rust_types.pp
         block.ty Rust_types.pp ty

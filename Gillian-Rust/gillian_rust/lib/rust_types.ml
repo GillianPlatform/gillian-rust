@@ -16,6 +16,8 @@ type t =
   | Named  of string
       (** This will have to be looked up in the global environment *)
   | Ref    of { mut : bool; ty : t }
+  | Array  of { length : int; ty : t }
+  | Slice  of t
 
 let rec of_lit = function
   | Literal.String str_ty ->
@@ -34,7 +36,7 @@ let rec of_lit = function
         | "u128"  -> Uint U128
         | "()"    -> Unit
         | "bool"  -> Bool
-        | _       -> Fmt.failwith "Incorrect type \"%s\"" str_ty)
+        | _       -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
   | LList [ String "named"; String name ] -> Named name
   | LList [ String "struct"; LList l ] ->
@@ -51,11 +53,9 @@ let rec of_lit = function
       in
       Enum (List.map parse_variant l)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
+  | LList [ String "array"; ty; Int i ] -> Array { length = i; ty = of_lit ty }
+  | LList [ String "slice"; ty ] -> Slice (of_lit ty)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
-
-let of_expr = function
-  | Expr.Lit lit -> of_lit lit
-  | other        -> Fmt.failwith "Incorrect type %a" Expr.pp other
 
 let no_fields_for_downcast ty d =
   match ty with
@@ -84,19 +84,21 @@ let pp_scalar fmt t =
 let rec pp ft t =
   let open Fmt in
   match t with
-  | Scalar s        -> pp_scalar ft s
-  | Tuple t         ->
+  | Scalar s             -> pp_scalar ft s
+  | Tuple t              ->
       let pp_tuple = parens (list ~sep:comma pp) in
       pp_tuple ft t
-  | Struct f        ->
+  | Struct f             ->
       let pp_struct =
         braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
       in
       pp_struct ft f
-  | Enum v          ->
+  | Enum v               ->
       let pp_variant ftt (name, tys) =
         pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys
       in
       (list ~sep:sp pp_variant) ft v
-  | Named s         -> string ft s
-  | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
+  | Named s              -> string ft s
+  | Ref { mut; ty }      -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
+  | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
+  | Slice ty             -> Fmt.pf ft "[%a]" pp ty
