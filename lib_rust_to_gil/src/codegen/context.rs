@@ -1,64 +1,54 @@
-use std::collections::HashSet;
-
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_span::def_id::DefId;
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
-    pub(crate) instance: Instance<'tcx>,
+    did: DefId,
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
     switch_label_counter: usize,
     next_label: Option<String>,
-    mir: &'tcx Body<'tcx>,
-    locals_in_memory: HashSet<Local>,
+    mir: &'body Body<'tcx>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
 impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
     fn fatal(&self, str: &str) -> ! {
-        self.ty_ctxt.sess.fatal(str);
+        self.ty_ctxt.sess.fatal(str)
     }
-}
-
-fn locals_in_memory_for_mir(body: &Body) -> HashSet<Local> {
-    let mut visitor = ReferencedLocalsVisitor::default();
-    visitor.visit_body(body);
-    visitor.into_hashset()
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
-        instance: Instance<'tcx>,
+        did: DefId,
+        mir: &'body Body<'tcx>,
         ty_ctxt: TyCtxt<'tcx>,
         global_env: &'body mut GlobalEnv<'tcx>,
     ) -> Self {
-        let mir = ty_ctxt.instance_mir(instance.def);
-        let locals_in_memory = locals_in_memory_for_mir(mir);
         GilCtxt {
-            instance,
+            did,
             ty_ctxt,
             gil_temp_counter: 0,
             switch_label_counter: 0,
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
-            locals_in_memory,
             global_env,
         }
     }
-    pub fn mir(&self) -> &'tcx Body<'tcx> {
+
+    pub fn body_did(&self) -> DefId {
+        self.did
+    }
+
+    pub fn mir(&self) -> &'body Body<'tcx> {
         self.mir
     }
 
     pub fn _location(&self, scope: &SourceScope) {
         let _source = self.mir().source_scopes.get(*scope);
-    }
-
-    pub fn local_is_in_memory(&self, local: &Local) -> bool {
-        self.locals_in_memory.contains(local)
     }
 
     fn original_name_from_local(&self, local: &Local) -> Option<String> {
@@ -118,57 +108,5 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut items: Vec<ProcBodyItem> = self.gil_body.into();
         items.shrink_to_fit();
         Proc::new(name, args, items)
-    }
-}
-
-#[derive(Default)]
-struct ReferencedLocalsVisitor(HashSet<Local>);
-
-impl ReferencedLocalsVisitor {
-    pub fn into_hashset(self) -> HashSet<Local> {
-        self.0
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue, loc: Location) {
-        if let Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) = rvalue {
-            if place.projection.contains(&ProjectionElem::Deref) {
-                // If we're referencing a dereferenced local,
-                // We don't need to put that local in memory, the referenced value is already
-                // There
-                return;
-            }
-            self.0.insert(place.local);
-        }
-        self.super_rvalue(rvalue, loc);
-    }
-
-    // Actually, this doesn't make sense. We just need to write the values in memory if
-    // they should be there at the begining of the function
-    // fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, loc: Location) {
-    //     // Function arguments should be in memory, in case the callee references it.
-    //     if let TerminatorKind::Call { args, .. } = &terminator.kind {
-    //         for op in args {
-    //             if let Operand::Copy(place) | Operand::Move(place) = op {
-    //                 self.0.insert(place.local);
-    //             }
-    //         }
-    //     }
-    //     self.super_terminator(terminator, loc);
-    // }
-
-    fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
-        // I don't know how to perform downcasting on values in store
-        for proj in place.projection {
-            match &proj {
-                ProjectionElem::Downcast(..) | ProjectionElem::Index(..) => {
-                    self.0.insert(place.local);
-                    break;
-                }
-                _ => (),
-            }
-        }
-        self.super_place(place, ctx, location)
     }
 }

@@ -2,13 +2,11 @@ EXAMPLE_FILES = $(shell ls examples/*.rs)
 EXAMPLE_TASKS = $(basename $(notdir ${EXAMPLE_FILES}))
 RUSTC = $(shell rustup which rustc)
 SYSROOT = $(shell ${RUSTC} --print sysroot)
-LIBDIR = lib
-BACKEND = ${LIBDIR}/librtg.dylib
-ARGS =  -C panic=abort --sysroot ${SYSROOT} --out-dir output --crate-type lib
-RUST_TO_GIL = ${RUSTC} ${ARGS} -Z codegen-backend=${BACKEND}
-EMIT_MIR = ${RUSTC} ${ARGS} --emit=mir
+RUSTC_ARGS =  -C panic=abort --sysroot ${SYSROOT} --out-dir output --crate-type lib
+EMIT_MIR = ${RUSTC} ${RUSTC_ARGS} --emit=mir
 OCAML_DIR = "Gillian-Rust"
 GILLIAN_RUST = cd ${OCAML_DIR}; esy x gillian-rust exec -R ../runtime -a
+RUST_TO_GIL = cargo run -- --out-dir output 
 
 .PHONY: $(EXAMPLE_TASKS) build
 
@@ -21,19 +19,11 @@ $(EXAMPLE_TASKS): build
 	echo "FILE: $${FILE}";\
 	${GILLIAN_RUST} ../$${FILE};\
 	echo "\n\nOUTPUT IN: Gillian-Rust/file.log"
-	
 
-build: build-rust build-ocaml
-	
-	
-build-rust:
-	cargo build --out-dir ${LIBDIR} -Z unstable-options
+build: build-ocaml
 
 build-ocaml:
 	cd ${OCAML_DIR}; esy
 	
 watch:
 	cd ${OCAML_DIR}; esy watch
-	
-help:
-	${RUSTC} --help

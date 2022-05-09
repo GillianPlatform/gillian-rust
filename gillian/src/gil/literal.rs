@@ -42,6 +42,30 @@ impl From<String> for Literal {
     }
 }
 
+impl From<f32> for Literal {
+    fn from(f: f32) -> Self {
+        Self::Num(f)
+    }
+}
+
+impl From<u32> for Literal {
+    fn from(n: u32) -> Self {
+        Self::Int(n as i64)
+    }
+}
+
+impl From<i64> for Literal {
+    fn from(n: i64) -> Self {
+        Self::Int(n)
+    }
+}
+
+impl From<usize> for Literal {
+    fn from(n: usize) -> Self {
+        Self::Int(n as i64)
+    }
+}
+
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Literal::*;

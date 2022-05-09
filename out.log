@@ -1,0 +1,1286 @@
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/array_sum.rs`
+2022-05-06 16:58:32,255 DEBUG [lib_rtg::codegen::body] Compiling sum
+fn sum(_1: &[u32]) -> u32 {
+    debug x => _1;                       // in scope 0 at examples/array_sum.rs:3:8: 3:9
+    let mut _0: u32;                     // return place in scope 0 at examples/array_sum.rs:3:22: 3:25
+    let mut _2: u32;                     // in scope 0 at examples/array_sum.rs:4:9: 4:14
+    let _4: ();                          // in scope 0 at examples/array_sum.rs:6:5: 9:6
+    let mut _5: ();                      // in scope 0 at examples/array_sum.rs:3:1: 11:2
+    let mut _6: bool;                    // in scope 0 at examples/array_sum.rs:6:11: 6:22
+    let mut _7: usize;                   // in scope 0 at examples/array_sum.rs:6:11: 6:12
+    let mut _8: usize;                   // in scope 0 at examples/array_sum.rs:6:15: 6:22
+    let mut _9: &[u32];                  // in scope 0 at examples/array_sum.rs:6:15: 6:22
+    let mut _10: u32;                    // in scope 0 at examples/array_sum.rs:7:14: 7:18
+    let _11: usize;                      // in scope 0 at examples/array_sum.rs:7:16: 7:17
+    let mut _12: usize;                  // in scope 0 at examples/array_sum.rs:7:14: 7:18
+    let mut _13: bool;                   // in scope 0 at examples/array_sum.rs:7:14: 7:18
+    let mut _14: (u32, bool);            // in scope 0 at examples/array_sum.rs:7:9: 7:18
+    let mut _15: (usize, bool);          // in scope 0 at examples/array_sum.rs:8:9: 8:15
+    let mut _16: !;                      // in scope 0 at examples/array_sum.rs:6:5: 9:6
+    let _17: ();                         // in scope 0 at examples/array_sum.rs:6:5: 9:6
+    let mut _18: !;                      // in scope 0 at examples/array_sum.rs:6:5: 9:6
+    scope 1 {
+        debug s => _2;                   // in scope 1 at examples/array_sum.rs:4:9: 4:14
+        let mut _3: usize;               // in scope 1 at examples/array_sum.rs:5:9: 5:14
+        scope 2 {
+            debug i => _3;               // in scope 2 at examples/array_sum.rs:5:9: 5:14
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at examples/array_sum.rs:4:9: 4:14
+        _2 = const 0_u32;                // scope 0 at examples/array_sum.rs:4:17: 4:18
+        FakeRead(ForLet(None), _2);      // scope 0 at examples/array_sum.rs:4:9: 4:14
+        StorageLive(_3);                 // scope 1 at examples/array_sum.rs:5:9: 5:14
+        _3 = const 0_usize;              // scope 1 at examples/array_sum.rs:5:17: 5:18
+        FakeRead(ForLet(None), _3);      // scope 1 at examples/array_sum.rs:5:9: 5:14
+        StorageLive(_4);                 // scope 2 at examples/array_sum.rs:6:5: 9:6
+        goto -> bb1;                     // scope 2 at examples/array_sum.rs:6:5: 9:6
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, cleanup: bb9]; // scope 2 at examples/array_sum.rs:6:5: 9:6
+    }
+
+    bb2: {
+        StorageLive(_6);                 // scope 2 at examples/array_sum.rs:6:11: 6:22
+        StorageLive(_7);                 // scope 2 at examples/array_sum.rs:6:11: 6:12
+        _7 = _3;                         // scope 2 at examples/array_sum.rs:6:11: 6:12
+        StorageLive(_8);                 // scope 2 at examples/array_sum.rs:6:15: 6:22
+        StorageLive(_9);                 // scope 2 at examples/array_sum.rs:6:15: 6:22
+        _9 = &(*_1);                     // scope 2 at examples/array_sum.rs:6:15: 6:22
+        _8 = core::slice::<impl [u32]>::len(move _9) -> [return: bb3, unwind: bb9]; // scope 2 at examples/array_sum.rs:6:15: 6:22
+                                         // mir::Constant
+                                         // + span: examples/array_sum.rs:6:17: 6:20
+                                         // + literal: Const { ty: for<'r> fn(&'r [u32]) -> usize {core::slice::<impl [u32]>::len}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_9);                 // scope 2 at examples/array_sum.rs:6:21: 6:22
+        _6 = Lt(move _7, move _8);       // scope 2 at examples/array_sum.rs:6:11: 6:22
+        StorageDead(_8);                 // scope 2 at examples/array_sum.rs:6:21: 6:22
+        StorageDead(_7);                 // scope 2 at examples/array_sum.rs:6:21: 6:22
+        switchInt(move _6) -> [false: bb8, otherwise: bb4]; // scope 2 at examples/array_sum.rs:6:11: 6:22
+    }
+
+    bb4: {
+        StorageLive(_10);                // scope 2 at examples/array_sum.rs:7:14: 7:18
+        StorageLive(_11);                // scope 2 at examples/array_sum.rs:7:16: 7:17
+        _11 = _3;                        // scope 2 at examples/array_sum.rs:7:16: 7:17
+        _12 = Len((*_1));                // scope 2 at examples/array_sum.rs:7:14: 7:18
+        _13 = Lt(_11, _12);              // scope 2 at examples/array_sum.rs:7:14: 7:18
+        assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, _11) -> [success: bb5, unwind: bb9]; // scope 2 at examples/array_sum.rs:7:14: 7:18
+    }
+
+    bb5: {
+        _10 = (*_1)[_11];                // scope 2 at examples/array_sum.rs:7:14: 7:18
+        _14 = CheckedAdd(_2, _10);       // scope 2 at examples/array_sum.rs:7:9: 7:18
+        assert(!move (_14.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, move _10) -> [success: bb6, unwind: bb9]; // scope 2 at examples/array_sum.rs:7:9: 7:18
+    }
+
+    bb6: {
+        _2 = move (_14.0: u32);          // scope 2 at examples/array_sum.rs:7:9: 7:18
+        StorageDead(_10);                // scope 2 at examples/array_sum.rs:7:17: 7:18
+        StorageDead(_11);                // scope 2 at examples/array_sum.rs:7:18: 7:19
+        _15 = CheckedAdd(_3, const 1_usize); // scope 2 at examples/array_sum.rs:8:9: 8:15
+        assert(!move (_15.1: bool), "attempt to compute `{} + {}`, which would overflow", _3, const 1_usize) -> [success: bb7, unwind: bb9]; // scope 2 at examples/array_sum.rs:8:9: 8:15
+    }
+
+    bb7: {
+        _3 = move (_15.0: usize);        // scope 2 at examples/array_sum.rs:8:9: 8:15
+        _5 = const ();                   // scope 2 at examples/array_sum.rs:6:23: 9:6
+        StorageDead(_6);                 // scope 2 at examples/array_sum.rs:9:5: 9:6
+        goto -> bb1;                     // scope 2 at examples/array_sum.rs:6:5: 9:6
+    }
+
+    bb8: {
+        StorageLive(_17);                // scope 2 at examples/array_sum.rs:6:5: 9:6
+        _4 = const ();                   // scope 2 at examples/array_sum.rs:6:5: 9:6
+        StorageDead(_17);                // scope 2 at examples/array_sum.rs:9:5: 9:6
+        StorageDead(_6);                 // scope 2 at examples/array_sum.rs:9:5: 9:6
+        StorageDead(_4);                 // scope 2 at examples/array_sum.rs:9:5: 9:6
+        _0 = _2;                         // scope 2 at examples/array_sum.rs:10:5: 10:6
+        StorageDead(_3);                 // scope 1 at examples/array_sum.rs:11:1: 11:2
+        StorageDead(_2);                 // scope 0 at examples/array_sum.rs:11:1: 11:2
+        return;                          // scope 0 at examples/array_sum.rs:11:2: 11:2
+    }
+
+    bb9 (cleanup): {
+        resume;                          // scope 0 at examples/array_sum.rs:3:1: 11:2
+    }
+}
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb4----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb5----
+2022-05-06 16:58:32,262 DEBUG [lib_rtg::codegen::block] ----bb6----
+2022-05-06 16:58:32,263 DEBUG [lib_rtg::codegen::block] ----bb7----
+2022-05-06 16:58:32,263 DEBUG [lib_rtg::codegen::block] ----bb8----
+2022-05-06 16:58:32,263 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/array_sum.rs:13:15: 13:15
+    let _1: [u32; 4] as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at examples/array_sum.rs:14:9: 14:10
+    let mut _3: &[u32];                  // in scope 0 at examples/array_sum.rs:15:18: 15:20
+    let mut _4: &[u32; 4];               // in scope 0 at examples/array_sum.rs:15:18: 15:20
+    let _5: &[u32; 4];                   // in scope 0 at examples/array_sum.rs:15:18: 15:20
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/array_sum.rs:14:9: 14:10
+        let _2: u32;                     // in scope 1 at examples/array_sum.rs:15:9: 15:11
+        scope 2 {
+            debug _s => _2;              // in scope 2 at examples/array_sum.rs:15:9: 15:11
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/array_sum.rs:14:9: 14:10
+        _1 = [const 1_u32, const 2_u32, const 3_u32, const 4_u32]; // scope 0 at examples/array_sum.rs:14:23: 14:35
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/array_sum.rs:14:9: 14:10
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at examples/array_sum.rs:14:12: 14:20
+        StorageLive(_2);                 // scope 1 at examples/array_sum.rs:15:9: 15:11
+        StorageLive(_3);                 // scope 1 at examples/array_sum.rs:15:18: 15:20
+        StorageLive(_4);                 // scope 1 at examples/array_sum.rs:15:18: 15:20
+        StorageLive(_5);                 // scope 1 at examples/array_sum.rs:15:18: 15:20
+        _5 = &_1;                        // scope 1 at examples/array_sum.rs:15:18: 15:20
+        _4 = &(*_5);                     // scope 1 at examples/array_sum.rs:15:18: 15:20
+        _3 = move _4 as &[u32] (Pointer(Unsize)); // scope 1 at examples/array_sum.rs:15:18: 15:20
+        StorageDead(_4);                 // scope 1 at examples/array_sum.rs:15:19: 15:20
+        _2 = sum(move _3) -> [return: bb1, unwind: bb2]; // scope 1 at examples/array_sum.rs:15:14: 15:21
+                                         // mir::Constant
+                                         // + span: examples/array_sum.rs:15:14: 15:17
+                                         // + literal: Const { ty: for<'r> fn(&'r [u32]) -> u32 {sum}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/array_sum.rs:15:20: 15:21
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/array_sum.rs:15:9: 15:11
+        StorageDead(_5);                 // scope 1 at examples/array_sum.rs:15:21: 15:22
+        _0 = const ();                   // scope 0 at examples/array_sum.rs:13:15: 16:2
+        StorageDead(_2);                 // scope 1 at examples/array_sum.rs:16:1: 16:2
+        StorageDead(_1);                 // scope 0 at examples/array_sum.rs:16:1: 16:2
+        return;                          // scope 0 at examples/array_sum.rs:16:2: 16:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/array_sum.rs:13:1: 16:2
+    }
+}
+2022-05-06 16:58:32,263 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,263 WARN  [lib_rtg::codegen::rvalue] Ignoring cast: move _4 as &[u32] (Pointer(Unsize))
+2022-05-06 16:58:32,264 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,264 DEBUG [lib_rtg::codegen::body] Compiling main::{constant#0}
+main::{constant#0}: usize = {
+    let mut _0: usize;                   // return place in scope 0 at examples/array_sum.rs:14:18: 14:19
+
+    bb0: {
+        _0 = const 4_usize;              // scope 0 at examples/array_sum.rs:14:18: 14:19
+        return;                          // scope 0 at examples/array_sum.rs:14:18: 14:19
+    }
+}
+2022-05-06 16:58:32,264 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,264 DEBUG [lib_rtg::callbacks] Writing to "output/array_sum.gil"
+2022-05-06 16:58:32,266 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/enum_fields.rs`
+2022-05-06 16:58:32,427 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/enum_fields.rs:24:15: 24:15
+    let _1: Result;                      // in scope 0 at examples/enum_fields.rs:25:9: 25:10
+    let mut _4: Result;                  // in scope 0 at examples/enum_fields.rs:27:21: 27:22
+    let mut _5: Result;                  // in scope 0 at examples/enum_fields.rs:27:24: 27:25
+    let mut _7: Result;                  // in scope 0 at examples/enum_fields.rs:28:29: 28:34
+    let mut _9: Result;                  // in scope 0 at examples/enum_fields.rs:29:29: 29:30
+    let mut _11: Result;                 // in scope 0 at examples/enum_fields.rs:30:24: 30:25
+    let mut _12: Result;                 // in scope 0 at examples/enum_fields.rs:30:27: 30:28
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/enum_fields.rs:25:9: 25:10
+        let _2: Result;                  // in scope 1 at examples/enum_fields.rs:26:9: 26:10
+        scope 2 {
+            debug y => _2;               // in scope 2 at examples/enum_fields.rs:26:9: 26:10
+            let _3: Result;              // in scope 2 at examples/enum_fields.rs:27:9: 27:10
+            scope 3 {
+                debug z => _3;           // in scope 3 at examples/enum_fields.rs:27:9: 27:10
+                let _6: Result;          // in scope 3 at examples/enum_fields.rs:28:9: 28:10
+                scope 4 {
+                    debug t => _6;       // in scope 4 at examples/enum_fields.rs:28:9: 28:10
+                    let _8: Result;      // in scope 4 at examples/enum_fields.rs:29:9: 29:10
+                    scope 5 {
+                        debug k => _8;   // in scope 5 at examples/enum_fields.rs:29:9: 29:10
+                        let _10: Result; // in scope 5 at examples/enum_fields.rs:30:9: 30:13
+                        scope 6 {
+                            debug _res => _10; // in scope 6 at examples/enum_fields.rs:30:9: 30:13
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/enum_fields.rs:25:9: 25:10
+        _1 = Result::Ok(const 4_u32);    // scope 0 at examples/enum_fields.rs:25:13: 25:18
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/enum_fields.rs:25:9: 25:10
+        StorageLive(_2);                 // scope 1 at examples/enum_fields.rs:26:9: 26:10
+        _2 = Result::Ok(const 7_u32);    // scope 1 at examples/enum_fields.rs:26:13: 26:18
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/enum_fields.rs:26:9: 26:10
+        StorageLive(_3);                 // scope 2 at examples/enum_fields.rs:27:9: 27:10
+        StorageLive(_4);                 // scope 2 at examples/enum_fields.rs:27:21: 27:22
+        _4 = move _1;                    // scope 2 at examples/enum_fields.rs:27:21: 27:22
+        StorageLive(_5);                 // scope 2 at examples/enum_fields.rs:27:24: 27:25
+        _5 = move _2;                    // scope 2 at examples/enum_fields.rs:27:24: 27:25
+        _3 = add_res(move _4, move _5) -> [return: bb1, unwind: bb5]; // scope 2 at examples/enum_fields.rs:27:13: 27:26
+                                         // mir::Constant
+                                         // + span: examples/enum_fields.rs:27:13: 27:20
+                                         // + literal: Const { ty: fn(Result, Result) -> Result {add_res}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_5);                 // scope 2 at examples/enum_fields.rs:27:25: 27:26
+        StorageDead(_4);                 // scope 2 at examples/enum_fields.rs:27:25: 27:26
+        FakeRead(ForLet(None), _3);      // scope 2 at examples/enum_fields.rs:27:9: 27:10
+        StorageLive(_6);                 // scope 3 at examples/enum_fields.rs:28:9: 28:10
+        StorageLive(_7);                 // scope 3 at examples/enum_fields.rs:28:29: 28:34
+        _7 = Result::Ok(const 0_u32);    // scope 3 at examples/enum_fields.rs:28:29: 28:34
+        _6 = greater_than_10(move _7) -> [return: bb2, unwind: bb5]; // scope 3 at examples/enum_fields.rs:28:13: 28:35
+                                         // mir::Constant
+                                         // + span: examples/enum_fields.rs:28:13: 28:28
+                                         // + literal: Const { ty: fn(Result) -> Result {greater_than_10}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2: {
+        StorageDead(_7);                 // scope 3 at examples/enum_fields.rs:28:34: 28:35
+        FakeRead(ForLet(None), _6);      // scope 3 at examples/enum_fields.rs:28:9: 28:10
+        StorageLive(_8);                 // scope 4 at examples/enum_fields.rs:29:9: 29:10
+        StorageLive(_9);                 // scope 4 at examples/enum_fields.rs:29:29: 29:30
+        _9 = move _3;                    // scope 4 at examples/enum_fields.rs:29:29: 29:30
+        _8 = greater_than_10(move _9) -> [return: bb3, unwind: bb5]; // scope 4 at examples/enum_fields.rs:29:13: 29:31
+                                         // mir::Constant
+                                         // + span: examples/enum_fields.rs:29:13: 29:28
+                                         // + literal: Const { ty: fn(Result) -> Result {greater_than_10}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_9);                 // scope 4 at examples/enum_fields.rs:29:30: 29:31
+        FakeRead(ForLet(None), _8);      // scope 4 at examples/enum_fields.rs:29:9: 29:10
+        StorageLive(_10);                // scope 5 at examples/enum_fields.rs:30:9: 30:13
+        StorageLive(_11);                // scope 5 at examples/enum_fields.rs:30:24: 30:25
+        _11 = move _8;                   // scope 5 at examples/enum_fields.rs:30:24: 30:25
+        StorageLive(_12);                // scope 5 at examples/enum_fields.rs:30:27: 30:28
+        _12 = move _6;                   // scope 5 at examples/enum_fields.rs:30:27: 30:28
+        _10 = add_res(move _11, move _12) -> [return: bb4, unwind: bb5]; // scope 5 at examples/enum_fields.rs:30:16: 30:29
+                                         // mir::Constant
+                                         // + span: examples/enum_fields.rs:30:16: 30:23
+                                         // + literal: Const { ty: fn(Result, Result) -> Result {add_res}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb4: {
+        StorageDead(_12);                // scope 5 at examples/enum_fields.rs:30:28: 30:29
+        StorageDead(_11);                // scope 5 at examples/enum_fields.rs:30:28: 30:29
+        FakeRead(ForLet(None), _10);     // scope 5 at examples/enum_fields.rs:30:9: 30:13
+        _0 = const ();                   // scope 0 at examples/enum_fields.rs:24:15: 31:2
+        StorageDead(_10);                // scope 5 at examples/enum_fields.rs:31:1: 31:2
+        StorageDead(_8);                 // scope 4 at examples/enum_fields.rs:31:1: 31:2
+        StorageDead(_6);                 // scope 3 at examples/enum_fields.rs:31:1: 31:2
+        StorageDead(_3);                 // scope 2 at examples/enum_fields.rs:31:1: 31:2
+        StorageDead(_2);                 // scope 1 at examples/enum_fields.rs:31:1: 31:2
+        StorageDead(_1);                 // scope 0 at examples/enum_fields.rs:31:1: 31:2
+        return;                          // scope 0 at examples/enum_fields.rs:31:2: 31:2
+    }
+
+    bb5 (cleanup): {
+        resume;                          // scope 0 at examples/enum_fields.rs:24:1: 31:2
+    }
+}
+2022-05-06 16:58:32,429 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,429 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,429 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:32,429 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:32,429 DEBUG [lib_rtg::codegen::block] ----bb4----
+2022-05-06 16:58:32,430 DEBUG [lib_rtg::codegen::body] Compiling add_res
+fn add_res(_1: Result, _2: Result) -> Result {
+    debug x => _1;                       // in scope 0 at examples/enum_fields.rs:17:12: 17:13
+    debug y => _2;                       // in scope 0 at examples/enum_fields.rs:17:23: 17:24
+    let mut _0: Result;                  // return place in scope 0 at examples/enum_fields.rs:17:37: 17:43
+    let mut _3: (Result, Result);        // in scope 0 at examples/enum_fields.rs:18:11: 18:17
+    let mut _4: Result;                  // in scope 0 at examples/enum_fields.rs:18:12: 18:13
+    let mut _5: Result;                  // in scope 0 at examples/enum_fields.rs:18:15: 18:16
+    let mut _6: isize;                   // in scope 0 at examples/enum_fields.rs:19:17: 19:22
+    let mut _7: isize;                   // in scope 0 at examples/enum_fields.rs:19:10: 19:15
+    let _8: u32;                         // in scope 0 at examples/enum_fields.rs:19:13: 19:14
+    let _9: u32;                         // in scope 0 at examples/enum_fields.rs:19:20: 19:21
+    let mut _10: u32;                    // in scope 0 at examples/enum_fields.rs:19:30: 19:35
+    let mut _11: u32;                    // in scope 0 at examples/enum_fields.rs:19:30: 19:31
+    let mut _12: u32;                    // in scope 0 at examples/enum_fields.rs:19:34: 19:35
+    let mut _13: (u32, bool);            // in scope 0 at examples/enum_fields.rs:19:30: 19:35
+    scope 1 {
+        debug u => _8;                   // in scope 1 at examples/enum_fields.rs:19:13: 19:14
+        debug v => _9;                   // in scope 1 at examples/enum_fields.rs:19:20: 19:21
+    }
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at examples/enum_fields.rs:18:11: 18:17
+        StorageLive(_4);                 // scope 0 at examples/enum_fields.rs:18:12: 18:13
+        _4 = move _1;                    // scope 0 at examples/enum_fields.rs:18:12: 18:13
+        StorageLive(_5);                 // scope 0 at examples/enum_fields.rs:18:15: 18:16
+        _5 = move _2;                    // scope 0 at examples/enum_fields.rs:18:15: 18:16
+        _3 = (move _4, move _5);         // scope 0 at examples/enum_fields.rs:18:11: 18:17
+        StorageDead(_5);                 // scope 0 at examples/enum_fields.rs:18:16: 18:17
+        StorageDead(_4);                 // scope 0 at examples/enum_fields.rs:18:16: 18:17
+        FakeRead(ForMatchedPlace(None), _3); // scope 0 at examples/enum_fields.rs:18:11: 18:17
+        _7 = discriminant((_3.0: Result)); // scope 0 at examples/enum_fields.rs:18:11: 18:17
+        switchInt(move _7) -> [0_isize: bb1, otherwise: bb3]; // scope 0 at examples/enum_fields.rs:18:5: 18:17
+    }
+
+    bb1: {
+        _6 = discriminant((_3.1: Result)); // scope 0 at examples/enum_fields.rs:18:11: 18:17
+        switchInt(move _6) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at examples/enum_fields.rs:18:5: 18:17
+    }
+
+    bb2: {
+        falseEdge -> [real: bb4, imaginary: bb3]; // scope 0 at examples/enum_fields.rs:19:9: 19:23
+    }
+
+    bb3: {
+        _0 = Result::Error;              // scope 0 at examples/enum_fields.rs:20:14: 20:19
+        goto -> bb6;                     // scope 0 at examples/enum_fields.rs:20:14: 20:19
+    }
+
+    bb4: {
+        StorageLive(_8);                 // scope 0 at examples/enum_fields.rs:19:13: 19:14
+        _8 = (((_3.0: Result) as Ok).0: u32); // scope 0 at examples/enum_fields.rs:19:13: 19:14
+        StorageLive(_9);                 // scope 0 at examples/enum_fields.rs:19:20: 19:21
+        _9 = (((_3.1: Result) as Ok).0: u32); // scope 0 at examples/enum_fields.rs:19:20: 19:21
+        StorageLive(_10);                // scope 1 at examples/enum_fields.rs:19:30: 19:35
+        StorageLive(_11);                // scope 1 at examples/enum_fields.rs:19:30: 19:31
+        _11 = _8;                        // scope 1 at examples/enum_fields.rs:19:30: 19:31
+        StorageLive(_12);                // scope 1 at examples/enum_fields.rs:19:34: 19:35
+        _12 = _9;                        // scope 1 at examples/enum_fields.rs:19:34: 19:35
+        _13 = CheckedAdd(_11, _12);      // scope 1 at examples/enum_fields.rs:19:30: 19:35
+        assert(!move (_13.1: bool), "attempt to compute `{} + {}`, which would overflow", move _11, move _12) -> [success: bb5, unwind: bb7]; // scope 1 at examples/enum_fields.rs:19:30: 19:35
+    }
+
+    bb5: {
+        _10 = move (_13.0: u32);         // scope 1 at examples/enum_fields.rs:19:30: 19:35
+        StorageDead(_12);                // scope 1 at examples/enum_fields.rs:19:34: 19:35
+        StorageDead(_11);                // scope 1 at examples/enum_fields.rs:19:34: 19:35
+        _0 = Result::Ok(move _10);       // scope 1 at examples/enum_fields.rs:19:27: 19:36
+        StorageDead(_10);                // scope 1 at examples/enum_fields.rs:19:35: 19:36
+        StorageDead(_9);                 // scope 0 at examples/enum_fields.rs:19:35: 19:36
+        StorageDead(_8);                 // scope 0 at examples/enum_fields.rs:19:35: 19:36
+        goto -> bb6;                     // scope 0 at examples/enum_fields.rs:19:35: 19:36
+    }
+
+    bb6: {
+        StorageDead(_3);                 // scope 0 at examples/enum_fields.rs:22:1: 22:2
+        return;                          // scope 0 at examples/enum_fields.rs:22:2: 22:2
+    }
+
+    bb7 (cleanup): {
+        resume;                          // scope 0 at examples/enum_fields.rs:17:1: 22:2
+    }
+}
+2022-05-06 16:58:32,431 DEBUG [lib_rtg::codegen::block] ----bb0----
+thread 'rustc' panicked at 'Unhandled agregate kind: Tuple', lib_rust_to_gil/src/codegen/rvalue.rs:52:26
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (1f12ac872 2021-10-17) running on x86_64-apple-darwin
+
+query stack during panic:
+end of query stack
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/enum_mut.rs`
+2022-05-06 16:58:32,600 DEBUG [lib_rtg::codegen::body] Compiling test
+fn test(_1: MyEnum) -> i32 {
+    debug x => _1;                       // in scope 0 at examples/enum_mut.rs:8:9: 8:10
+    let mut _0: i32;                     // return place in scope 0 at examples/enum_mut.rs:8:23: 8:26
+    let mut _2: isize;                   // in scope 0 at examples/enum_mut.rs:10:9: 10:18
+
+    bb0: {
+        FakeRead(ForMatchedPlace(None), _1); // scope 0 at examples/enum_mut.rs:9:11: 9:12
+        _2 = discriminant(_1);           // scope 0 at examples/enum_mut.rs:9:11: 9:12
+        switchInt(move _2) -> [0_isize: bb1, 1_isize: bb2, otherwise: bb3]; // scope 0 at examples/enum_mut.rs:9:5: 9:12
+    }
+
+    bb1: {
+        falseEdge -> [real: bb4, imaginary: bb2]; // scope 0 at examples/enum_mut.rs:10:9: 10:18
+    }
+
+    bb2: {
+        _0 = const 1000_i32;             // scope 0 at examples/enum_mut.rs:11:22: 11:26
+        goto -> bb5;                     // scope 0 at examples/enum_mut.rs:11:22: 11:26
+    }
+
+    bb3: {
+        unreachable;                     // scope 0 at examples/enum_mut.rs:9:11: 9:12
+    }
+
+    bb4: {
+        _0 = const 1_i32;                // scope 0 at examples/enum_mut.rs:10:22: 10:23
+        goto -> bb5;                     // scope 0 at examples/enum_mut.rs:10:22: 10:23
+    }
+
+    bb5: {
+        return;                          // scope 0 at examples/enum_mut.rs:13:2: 13:2
+    }
+}
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb4----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::block] ----bb5----
+2022-05-06 16:58:32,601 DEBUG [lib_rtg::codegen::body] Compiling modify
+fn modify(_1: &mut MyEnum) -> () {
+    debug x => _1;                       // in scope 0 at examples/enum_mut.rs:15:11: 15:12
+    let mut _0: ();                      // return place in scope 0 at examples/enum_mut.rs:15:27: 15:27
+    let mut _2: MyEnum;                  // in scope 0 at examples/enum_mut.rs:16:10: 16:19
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at examples/enum_mut.rs:16:10: 16:19
+        _2 = MyEnum::Y;                  // scope 0 at examples/enum_mut.rs:16:10: 16:19
+        (*_1) = move _2;                 // scope 0 at examples/enum_mut.rs:16:5: 16:19
+        StorageDead(_2);                 // scope 0 at examples/enum_mut.rs:16:18: 16:19
+        _0 = const ();                   // scope 0 at examples/enum_mut.rs:15:27: 17:2
+        return;                          // scope 0 at examples/enum_mut.rs:17:2: 17:2
+    }
+}
+2022-05-06 16:58:32,602 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,602 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/enum_mut.rs:19:15: 19:15
+    let mut _1: MyEnum;                  // in scope 0 at examples/enum_mut.rs:20:9: 20:14
+    let _2: ();                          // in scope 0 at examples/enum_mut.rs:21:5: 21:19
+    let mut _3: &mut MyEnum;             // in scope 0 at examples/enum_mut.rs:21:12: 21:18
+    let mut _4: &mut MyEnum;             // in scope 0 at examples/enum_mut.rs:21:12: 21:18
+    let mut _7: i32;                     // in scope 0 at examples/enum_mut.rs:23:14: 23:21
+    let mut _8: MyEnum;                  // in scope 0 at examples/enum_mut.rs:23:19: 23:20
+    let mut _9: i32;                     // in scope 0 at examples/enum_mut.rs:23:24: 23:31
+    let mut _10: MyEnum;                 // in scope 0 at examples/enum_mut.rs:23:29: 23:30
+    let mut _11: (i32, bool);            // in scope 0 at examples/enum_mut.rs:23:14: 23:31
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/enum_mut.rs:20:9: 20:14
+        let _5: MyEnum;                  // in scope 1 at examples/enum_mut.rs:22:9: 22:10
+        scope 2 {
+            debug y => _5;               // in scope 2 at examples/enum_mut.rs:22:9: 22:10
+            let _6: i32;                 // in scope 2 at examples/enum_mut.rs:23:9: 23:11
+            scope 3 {
+                debug _e => _6;          // in scope 3 at examples/enum_mut.rs:23:9: 23:11
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/enum_mut.rs:20:9: 20:14
+        _1 = MyEnum::X;                  // scope 0 at examples/enum_mut.rs:20:17: 20:26
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/enum_mut.rs:20:9: 20:14
+        StorageLive(_2);                 // scope 1 at examples/enum_mut.rs:21:5: 21:19
+        StorageLive(_3);                 // scope 1 at examples/enum_mut.rs:21:12: 21:18
+        StorageLive(_4);                 // scope 1 at examples/enum_mut.rs:21:12: 21:18
+        _4 = &mut _1;                    // scope 1 at examples/enum_mut.rs:21:12: 21:18
+        _3 = &mut (*_4);                 // scope 1 at examples/enum_mut.rs:21:12: 21:18
+        _2 = modify(move _3) -> [return: bb1, unwind: bb5]; // scope 1 at examples/enum_mut.rs:21:5: 21:19
+                                         // mir::Constant
+                                         // + span: examples/enum_mut.rs:21:5: 21:11
+                                         // + literal: Const { ty: for<'r> fn(&'r mut MyEnum) {modify}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/enum_mut.rs:21:18: 21:19
+        StorageDead(_4);                 // scope 1 at examples/enum_mut.rs:21:19: 21:20
+        StorageDead(_2);                 // scope 1 at examples/enum_mut.rs:21:19: 21:20
+        StorageLive(_5);                 // scope 1 at examples/enum_mut.rs:22:9: 22:10
+        _5 = MyEnum::Y;                  // scope 1 at examples/enum_mut.rs:22:13: 22:22
+        FakeRead(ForLet(None), _5);      // scope 1 at examples/enum_mut.rs:22:9: 22:10
+        StorageLive(_6);                 // scope 2 at examples/enum_mut.rs:23:9: 23:11
+        StorageLive(_7);                 // scope 2 at examples/enum_mut.rs:23:14: 23:21
+        StorageLive(_8);                 // scope 2 at examples/enum_mut.rs:23:19: 23:20
+        _8 = move _1;                    // scope 2 at examples/enum_mut.rs:23:19: 23:20
+        _7 = test(move _8) -> [return: bb2, unwind: bb5]; // scope 2 at examples/enum_mut.rs:23:14: 23:21
+                                         // mir::Constant
+                                         // + span: examples/enum_mut.rs:23:14: 23:18
+                                         // + literal: Const { ty: fn(MyEnum) -> i32 {test}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2: {
+        StorageDead(_8);                 // scope 2 at examples/enum_mut.rs:23:20: 23:21
+        StorageLive(_9);                 // scope 2 at examples/enum_mut.rs:23:24: 23:31
+        StorageLive(_10);                // scope 2 at examples/enum_mut.rs:23:29: 23:30
+        _10 = move _5;                   // scope 2 at examples/enum_mut.rs:23:29: 23:30
+        _9 = test(move _10) -> [return: bb3, unwind: bb5]; // scope 2 at examples/enum_mut.rs:23:24: 23:31
+                                         // mir::Constant
+                                         // + span: examples/enum_mut.rs:23:24: 23:28
+                                         // + literal: Const { ty: fn(MyEnum) -> i32 {test}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_10);                // scope 2 at examples/enum_mut.rs:23:30: 23:31
+        _11 = CheckedAdd(_7, _9);        // scope 2 at examples/enum_mut.rs:23:14: 23:31
+        assert(!move (_11.1: bool), "attempt to compute `{} + {}`, which would overflow", move _7, move _9) -> [success: bb4, unwind: bb5]; // scope 2 at examples/enum_mut.rs:23:14: 23:31
+    }
+
+    bb4: {
+        _6 = move (_11.0: i32);          // scope 2 at examples/enum_mut.rs:23:14: 23:31
+        StorageDead(_9);                 // scope 2 at examples/enum_mut.rs:23:30: 23:31
+        StorageDead(_7);                 // scope 2 at examples/enum_mut.rs:23:30: 23:31
+        FakeRead(ForLet(None), _6);      // scope 2 at examples/enum_mut.rs:23:9: 23:11
+        _0 = const ();                   // scope 0 at examples/enum_mut.rs:19:15: 24:2
+        StorageDead(_6);                 // scope 2 at examples/enum_mut.rs:24:1: 24:2
+        StorageDead(_5);                 // scope 1 at examples/enum_mut.rs:24:1: 24:2
+        StorageDead(_1);                 // scope 0 at examples/enum_mut.rs:24:1: 24:2
+        return;                          // scope 0 at examples/enum_mut.rs:24:2: 24:2
+    }
+
+    bb5 (cleanup): {
+        resume;                          // scope 0 at examples/enum_mut.rs:19:1: 24:2
+    }
+}
+2022-05-06 16:58:32,603 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,603 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,603 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:32,603 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:32,603 DEBUG [lib_rtg::codegen::block] ----bb4----
+2022-05-06 16:58:32,604 DEBUG [lib_rtg::callbacks] Writing to "output/enum_mut.gil"
+2022-05-06 16:58:32,605 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/fcallmovearg.rs`
+2022-05-06 16:58:32,763 DEBUG [lib_rtg::codegen::body] Compiling add_four
+fn add_four(_1: i32) -> i32 {
+    debug x => _1;                       // in scope 0 at examples/fcallmovearg.rs:3:13: 3:14
+    let mut _0: i32;                     // return place in scope 0 at examples/fcallmovearg.rs:3:24: 3:27
+    let mut _2: i32;                     // in scope 0 at examples/fcallmovearg.rs:4:5: 4:6
+    let mut _3: (i32, bool);             // in scope 0 at examples/fcallmovearg.rs:4:5: 4:10
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at examples/fcallmovearg.rs:4:5: 4:6
+        _2 = _1;                         // scope 0 at examples/fcallmovearg.rs:4:5: 4:6
+        _3 = CheckedAdd(_2, const 4_i32); // scope 0 at examples/fcallmovearg.rs:4:5: 4:10
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 4_i32) -> [success: bb1, unwind: bb2]; // scope 0 at examples/fcallmovearg.rs:4:5: 4:10
+    }
+
+    bb1: {
+        _0 = move (_3.0: i32);           // scope 0 at examples/fcallmovearg.rs:4:5: 4:10
+        StorageDead(_2);                 // scope 0 at examples/fcallmovearg.rs:4:9: 4:10
+        return;                          // scope 0 at examples/fcallmovearg.rs:5:2: 5:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/fcallmovearg.rs:3:1: 5:2
+    }
+}
+2022-05-06 16:58:32,764 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,764 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,765 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/fcallmovearg.rs:7:15: 7:15
+    let _1: i32;                         // in scope 0 at examples/fcallmovearg.rs:8:9: 8:10
+    let mut _3: i32;                     // in scope 0 at examples/fcallmovearg.rs:9:22: 9:23
+    let mut _5: i32;                     // in scope 0 at examples/fcallmovearg.rs:10:14: 10:15
+    let mut _6: i32;                     // in scope 0 at examples/fcallmovearg.rs:10:18: 10:19
+    let mut _7: (i32, bool);             // in scope 0 at examples/fcallmovearg.rs:10:14: 10:19
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/fcallmovearg.rs:8:9: 8:10
+        let _2: i32;                     // in scope 1 at examples/fcallmovearg.rs:9:9: 9:10
+        scope 2 {
+            debug z => _2;               // in scope 2 at examples/fcallmovearg.rs:9:9: 9:10
+            let _4: i32;                 // in scope 2 at examples/fcallmovearg.rs:10:9: 10:11
+            scope 3 {
+                debug _y => _4;          // in scope 3 at examples/fcallmovearg.rs:10:9: 10:11
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/fcallmovearg.rs:8:9: 8:10
+        _1 = const 3_i32;                // scope 0 at examples/fcallmovearg.rs:8:13: 8:14
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/fcallmovearg.rs:8:9: 8:10
+        StorageLive(_2);                 // scope 1 at examples/fcallmovearg.rs:9:9: 9:10
+        StorageLive(_3);                 // scope 1 at examples/fcallmovearg.rs:9:22: 9:23
+        _3 = _1;                         // scope 1 at examples/fcallmovearg.rs:9:22: 9:23
+        _2 = add_four(move _3) -> [return: bb1, unwind: bb3]; // scope 1 at examples/fcallmovearg.rs:9:13: 9:24
+                                         // mir::Constant
+                                         // + span: examples/fcallmovearg.rs:9:13: 9:21
+                                         // + literal: Const { ty: fn(i32) -> i32 {add_four}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/fcallmovearg.rs:9:23: 9:24
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/fcallmovearg.rs:9:9: 9:10
+        StorageLive(_4);                 // scope 2 at examples/fcallmovearg.rs:10:9: 10:11
+        StorageLive(_5);                 // scope 2 at examples/fcallmovearg.rs:10:14: 10:15
+        _5 = _1;                         // scope 2 at examples/fcallmovearg.rs:10:14: 10:15
+        StorageLive(_6);                 // scope 2 at examples/fcallmovearg.rs:10:18: 10:19
+        _6 = _2;                         // scope 2 at examples/fcallmovearg.rs:10:18: 10:19
+        _7 = CheckedAdd(_5, _6);         // scope 2 at examples/fcallmovearg.rs:10:14: 10:19
+        assert(!move (_7.1: bool), "attempt to compute `{} + {}`, which would overflow", move _5, move _6) -> [success: bb2, unwind: bb3]; // scope 2 at examples/fcallmovearg.rs:10:14: 10:19
+    }
+
+    bb2: {
+        _4 = move (_7.0: i32);           // scope 2 at examples/fcallmovearg.rs:10:14: 10:19
+        StorageDead(_6);                 // scope 2 at examples/fcallmovearg.rs:10:18: 10:19
+        StorageDead(_5);                 // scope 2 at examples/fcallmovearg.rs:10:18: 10:19
+        FakeRead(ForLet(None), _4);      // scope 2 at examples/fcallmovearg.rs:10:9: 10:11
+        _0 = const ();                   // scope 0 at examples/fcallmovearg.rs:7:15: 14:2
+        StorageDead(_4);                 // scope 2 at examples/fcallmovearg.rs:14:1: 14:2
+        StorageDead(_2);                 // scope 1 at examples/fcallmovearg.rs:14:1: 14:2
+        StorageDead(_1);                 // scope 0 at examples/fcallmovearg.rs:14:1: 14:2
+        return;                          // scope 0 at examples/fcallmovearg.rs:14:2: 14:2
+    }
+
+    bb3 (cleanup): {
+        resume;                          // scope 0 at examples/fcallmovearg.rs:7:1: 14:2
+    }
+}
+2022-05-06 16:58:32,765 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,765 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,765 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:32,766 DEBUG [lib_rtg::callbacks] Writing to "output/fcallmovearg.gil"
+2022-05-06 16:58:32,767 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/simpleborrow.rs`
+2022-05-06 16:58:32,934 DEBUG [lib_rtg::codegen::body] Compiling add_four
+fn add_four(_1: &i32) -> i32 {
+    debug x => _1;                       // in scope 0 at examples/simpleborrow.rs:3:17: 3:18
+    let mut _0: i32;                     // return place in scope 0 at examples/simpleborrow.rs:3:29: 3:32
+    let mut _2: i32;                     // in scope 0 at examples/simpleborrow.rs:4:5: 4:9
+    let mut _3: (i32, bool);             // in scope 0 at examples/simpleborrow.rs:4:5: 4:13
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at examples/simpleborrow.rs:4:5: 4:9
+        _2 = (*_1);                      // scope 0 at examples/simpleborrow.rs:4:5: 4:9
+        _3 = CheckedAdd(_2, const 4_i32); // scope 0 at examples/simpleborrow.rs:4:5: 4:13
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 4_i32) -> [success: bb1, unwind: bb2]; // scope 0 at examples/simpleborrow.rs:4:5: 4:13
+    }
+
+    bb1: {
+        _0 = move (_3.0: i32);           // scope 0 at examples/simpleborrow.rs:4:5: 4:13
+        StorageDead(_2);                 // scope 0 at examples/simpleborrow.rs:4:12: 4:13
+        return;                          // scope 0 at examples/simpleborrow.rs:5:2: 5:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simpleborrow.rs:3:1: 5:2
+    }
+}
+2022-05-06 16:58:32,935 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,936 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,936 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/simpleborrow.rs:7:15: 7:15
+    let _1: i32;                         // in scope 0 at examples/simpleborrow.rs:8:9: 8:10
+    let mut _3: &i32;                    // in scope 0 at examples/simpleborrow.rs:9:23: 9:25
+    let _4: &i32;                        // in scope 0 at examples/simpleborrow.rs:9:23: 9:25
+    scope 1 {
+        debug z => _1;                   // in scope 1 at examples/simpleborrow.rs:8:9: 8:10
+        let _2: i32;                     // in scope 1 at examples/simpleborrow.rs:9:9: 9:11
+        scope 2 {
+            debug _y => _2;              // in scope 2 at examples/simpleborrow.rs:9:9: 9:11
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/simpleborrow.rs:8:9: 8:10
+        _1 = const 4_i32;                // scope 0 at examples/simpleborrow.rs:8:13: 8:14
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/simpleborrow.rs:8:9: 8:10
+        StorageLive(_2);                 // scope 1 at examples/simpleborrow.rs:9:9: 9:11
+        StorageLive(_3);                 // scope 1 at examples/simpleborrow.rs:9:23: 9:25
+        StorageLive(_4);                 // scope 1 at examples/simpleborrow.rs:9:23: 9:25
+        _4 = &_1;                        // scope 1 at examples/simpleborrow.rs:9:23: 9:25
+        _3 = &(*_4);                     // scope 1 at examples/simpleborrow.rs:9:23: 9:25
+        _2 = add_four(move _3) -> [return: bb1, unwind: bb2]; // scope 1 at examples/simpleborrow.rs:9:14: 9:26
+                                         // mir::Constant
+                                         // + span: examples/simpleborrow.rs:9:14: 9:22
+                                         // + literal: Const { ty: for<'r> fn(&'r i32) -> i32 {add_four}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/simpleborrow.rs:9:25: 9:26
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/simpleborrow.rs:9:9: 9:11
+        StorageDead(_4);                 // scope 1 at examples/simpleborrow.rs:9:26: 9:27
+        _0 = const ();                   // scope 0 at examples/simpleborrow.rs:7:15: 10:2
+        StorageDead(_2);                 // scope 1 at examples/simpleborrow.rs:10:1: 10:2
+        StorageDead(_1);                 // scope 0 at examples/simpleborrow.rs:10:1: 10:2
+        return;                          // scope 0 at examples/simpleborrow.rs:10:2: 10:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simpleborrow.rs:7:1: 10:2
+    }
+}
+2022-05-06 16:58:32,937 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:32,937 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:32,937 DEBUG [lib_rtg::callbacks] Writing to "output/simpleborrow.gil"
+2022-05-06 16:58:32,938 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/simplefcall.rs`
+2022-05-06 16:58:33,112 DEBUG [lib_rtg::codegen::body] Compiling seven
+fn seven() -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at examples/simplefcall.rs:3:15: 3:18
+    let _1: i32;                         // in scope 0 at examples/simplefcall.rs:4:9: 4:10
+    let mut _3: i32;                     // in scope 0 at examples/simplefcall.rs:6:5: 6:6
+    let mut _4: i32;                     // in scope 0 at examples/simplefcall.rs:6:9: 6:10
+    let mut _5: (i32, bool);             // in scope 0 at examples/simplefcall.rs:6:5: 6:10
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/simplefcall.rs:4:9: 4:10
+        let _2: i32;                     // in scope 1 at examples/simplefcall.rs:5:9: 5:10
+        scope 2 {
+            debug y => _2;               // in scope 2 at examples/simplefcall.rs:5:9: 5:10
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/simplefcall.rs:4:9: 4:10
+        _1 = const 4_i32;                // scope 0 at examples/simplefcall.rs:4:13: 4:14
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/simplefcall.rs:4:9: 4:10
+        StorageLive(_2);                 // scope 1 at examples/simplefcall.rs:5:9: 5:10
+        _2 = const 3_i32;                // scope 1 at examples/simplefcall.rs:5:13: 5:14
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/simplefcall.rs:5:9: 5:10
+        StorageLive(_3);                 // scope 2 at examples/simplefcall.rs:6:5: 6:6
+        _3 = _1;                         // scope 2 at examples/simplefcall.rs:6:5: 6:6
+        StorageLive(_4);                 // scope 2 at examples/simplefcall.rs:6:9: 6:10
+        _4 = _2;                         // scope 2 at examples/simplefcall.rs:6:9: 6:10
+        _5 = CheckedAdd(_3, _4);         // scope 2 at examples/simplefcall.rs:6:5: 6:10
+        assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", move _3, move _4) -> [success: bb1, unwind: bb2]; // scope 2 at examples/simplefcall.rs:6:5: 6:10
+    }
+
+    bb1: {
+        _0 = move (_5.0: i32);           // scope 2 at examples/simplefcall.rs:6:5: 6:10
+        StorageDead(_4);                 // scope 2 at examples/simplefcall.rs:6:9: 6:10
+        StorageDead(_3);                 // scope 2 at examples/simplefcall.rs:6:9: 6:10
+        StorageDead(_2);                 // scope 1 at examples/simplefcall.rs:7:1: 7:2
+        StorageDead(_1);                 // scope 0 at examples/simplefcall.rs:7:1: 7:2
+        return;                          // scope 0 at examples/simplefcall.rs:7:2: 7:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simplefcall.rs:3:1: 7:2
+    }
+}
+2022-05-06 16:58:33,113 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,113 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,114 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/simplefcall.rs:9:15: 9:15
+    let _1: i32;                         // in scope 0 at examples/simplefcall.rs:10:9: 10:11
+    scope 1 {
+        debug _x => _1;                  // in scope 1 at examples/simplefcall.rs:10:9: 10:11
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/simplefcall.rs:10:9: 10:11
+        _1 = seven() -> [return: bb1, unwind: bb2]; // scope 0 at examples/simplefcall.rs:10:14: 10:21
+                                         // mir::Constant
+                                         // + span: examples/simplefcall.rs:10:14: 10:19
+                                         // + literal: Const { ty: fn() -> i32 {seven}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/simplefcall.rs:10:9: 10:11
+        _0 = const ();                   // scope 0 at examples/simplefcall.rs:9:15: 11:2
+        StorageDead(_1);                 // scope 0 at examples/simplefcall.rs:11:1: 11:2
+        return;                          // scope 0 at examples/simplefcall.rs:11:2: 11:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simplefcall.rs:9:1: 11:2
+    }
+}
+2022-05-06 16:58:33,114 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,114 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,114 DEBUG [lib_rtg::callbacks] Writing to "output/simplefcall.gil"
+2022-05-06 16:58:33,115 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/simplemutborrow.rs`
+2022-05-06 16:58:33,283 DEBUG [lib_rtg::codegen::body] Compiling mutate
+fn mutate(_1: &mut i32) -> () {
+    debug x => _1;                       // in scope 0 at examples/simplemutborrow.rs:3:15: 3:16
+    let mut _0: ();                      // return place in scope 0 at examples/simplemutborrow.rs:3:28: 3:28
+    let mut _2: (i32, bool);             // in scope 0 at examples/simplemutborrow.rs:4:5: 4:12
+
+    bb0: {
+        _2 = CheckedAdd((*_1), const 7_i32); // scope 0 at examples/simplemutborrow.rs:4:5: 4:12
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", (*_1), const 7_i32) -> [success: bb1, unwind: bb2]; // scope 0 at examples/simplemutborrow.rs:4:5: 4:12
+    }
+
+    bb1: {
+        (*_1) = move (_2.0: i32);        // scope 0 at examples/simplemutborrow.rs:4:5: 4:12
+        _0 = const ();                   // scope 0 at examples/simplemutborrow.rs:4:5: 4:12
+        return;                          // scope 0 at examples/simplemutborrow.rs:5:2: 5:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simplemutborrow.rs:3:1: 5:2
+    }
+}
+2022-05-06 16:58:33,284 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,284 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,284 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/simplemutborrow.rs:7:15: 7:15
+    let mut _1: i32;                     // in scope 0 at examples/simplemutborrow.rs:8:9: 8:14
+    let _2: ();                          // in scope 0 at examples/simplemutborrow.rs:9:5: 9:19
+    let mut _3: &mut i32;                // in scope 0 at examples/simplemutborrow.rs:9:12: 9:18
+    let mut _4: &mut i32;                // in scope 0 at examples/simplemutborrow.rs:9:12: 9:18
+    scope 1 {
+        debug z => _1;                   // in scope 1 at examples/simplemutborrow.rs:8:9: 8:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/simplemutborrow.rs:8:9: 8:14
+        _1 = const 4_i32;                // scope 0 at examples/simplemutborrow.rs:8:17: 8:18
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/simplemutborrow.rs:8:9: 8:14
+        StorageLive(_2);                 // scope 1 at examples/simplemutborrow.rs:9:5: 9:19
+        StorageLive(_3);                 // scope 1 at examples/simplemutborrow.rs:9:12: 9:18
+        StorageLive(_4);                 // scope 1 at examples/simplemutborrow.rs:9:12: 9:18
+        _4 = &mut _1;                    // scope 1 at examples/simplemutborrow.rs:9:12: 9:18
+        _3 = &mut (*_4);                 // scope 1 at examples/simplemutborrow.rs:9:12: 9:18
+        _2 = mutate(move _3) -> [return: bb1, unwind: bb2]; // scope 1 at examples/simplemutborrow.rs:9:5: 9:19
+                                         // mir::Constant
+                                         // + span: examples/simplemutborrow.rs:9:5: 9:11
+                                         // + literal: Const { ty: for<'r> fn(&'r mut i32) {mutate}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/simplemutborrow.rs:9:18: 9:19
+        StorageDead(_4);                 // scope 1 at examples/simplemutborrow.rs:9:19: 9:20
+        StorageDead(_2);                 // scope 1 at examples/simplemutborrow.rs:9:19: 9:20
+        _0 = const ();                   // scope 0 at examples/simplemutborrow.rs:7:15: 10:2
+        StorageDead(_1);                 // scope 0 at examples/simplemutborrow.rs:10:1: 10:2
+        return;                          // scope 0 at examples/simplemutborrow.rs:10:2: 10:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/simplemutborrow.rs:7:1: 10:2
+    }
+}
+2022-05-06 16:58:33,285 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,285 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,285 DEBUG [lib_rtg::callbacks] Writing to "output/simplemutborrow.gil"
+2022-05-06 16:58:33,286 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/slice_split_at.rs`
+error: expected one of `.`, `?`, `]`, or an operator, found `;`
+  --> examples/slice_split_at.rs:14:31
+   |
+14 |     let arr : [u32; 4] = [1; 2; 3; 4];
+   |                               ^ expected one of `.`, `?`, `]`, or an operator
+
+error[E0433]: failed to resolve: use of undeclared crate or module `slice`
+ --> examples/slice_split_at.rs:7:13
+  |
+7 |             slice::from_raw_parts(ptr, mid),
+  |             ^^^^^ use of undeclared crate or module `slice`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `slice`
+ --> examples/slice_split_at.rs:8:13
+  |
+8 |             slice::from_raw_parts(ptr.add(mid), len - mid)
+  |             ^^^^^ use of undeclared crate or module `slice`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/smallest.rs`
+2022-05-06 16:58:33,633 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/smallest.rs:3:15: 3:15
+    let _1: i32;                         // in scope 0 at examples/smallest.rs:4:9: 4:10
+    let mut _3: i32;                     // in scope 0 at examples/smallest.rs:5:14: 5:15
+    let mut _4: (i32, bool);             // in scope 0 at examples/smallest.rs:5:14: 5:19
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/smallest.rs:4:9: 4:10
+        let _2: i32;                     // in scope 1 at examples/smallest.rs:5:9: 5:11
+        scope 2 {
+            debug _z => _2;              // in scope 2 at examples/smallest.rs:5:9: 5:11
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/smallest.rs:4:9: 4:10
+        _1 = const 4_i32;                // scope 0 at examples/smallest.rs:4:13: 4:14
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/smallest.rs:4:9: 4:10
+        StorageLive(_2);                 // scope 1 at examples/smallest.rs:5:9: 5:11
+        StorageLive(_3);                 // scope 1 at examples/smallest.rs:5:14: 5:15
+        _3 = _1;                         // scope 1 at examples/smallest.rs:5:14: 5:15
+        _4 = CheckedAdd(_3, const 3_i32); // scope 1 at examples/smallest.rs:5:14: 5:19
+        assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", move _3, const 3_i32) -> [success: bb1, unwind: bb2]; // scope 1 at examples/smallest.rs:5:14: 5:19
+    }
+
+    bb1: {
+        _2 = move (_4.0: i32);           // scope 1 at examples/smallest.rs:5:14: 5:19
+        StorageDead(_3);                 // scope 1 at examples/smallest.rs:5:18: 5:19
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/smallest.rs:5:9: 5:11
+        _0 = const ();                   // scope 0 at examples/smallest.rs:3:15: 7:2
+        StorageDead(_2);                 // scope 1 at examples/smallest.rs:7:1: 7:2
+        StorageDead(_1);                 // scope 0 at examples/smallest.rs:7:1: 7:2
+        return;                          // scope 0 at examples/smallest.rs:7:2: 7:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/smallest.rs:3:1: 7:2
+    }
+}
+2022-05-06 16:58:33,633 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,634 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,634 DEBUG [lib_rtg::callbacks] Writing to "output/smallest.gil"
+2022-05-06 16:58:33,635 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/store_enum.rs`
+2022-05-06 16:58:33,803 DEBUG [lib_rtg::codegen::body] Compiling test
+fn test(_1: MyEnum) -> i32 {
+    debug x => _1;                       // in scope 0 at examples/store_enum.rs:8:9: 8:10
+    let mut _0: i32;                     // return place in scope 0 at examples/store_enum.rs:8:23: 8:26
+    let mut _2: isize;                   // in scope 0 at examples/store_enum.rs:10:9: 10:18
+
+    bb0: {
+        FakeRead(ForMatchedPlace(None), _1); // scope 0 at examples/store_enum.rs:9:11: 9:12
+        _2 = discriminant(_1);           // scope 0 at examples/store_enum.rs:9:11: 9:12
+        switchInt(move _2) -> [0_isize: bb1, 1_isize: bb2, otherwise: bb3]; // scope 0 at examples/store_enum.rs:9:5: 9:12
+    }
+
+    bb1: {
+        falseEdge -> [real: bb4, imaginary: bb2]; // scope 0 at examples/store_enum.rs:10:9: 10:18
+    }
+
+    bb2: {
+        _0 = const 1000_i32;             // scope 0 at examples/store_enum.rs:11:22: 11:26
+        goto -> bb5;                     // scope 0 at examples/store_enum.rs:11:22: 11:26
+    }
+
+    bb3: {
+        unreachable;                     // scope 0 at examples/store_enum.rs:9:11: 9:12
+    }
+
+    bb4: {
+        _0 = const 1_i32;                // scope 0 at examples/store_enum.rs:10:22: 10:23
+        goto -> bb5;                     // scope 0 at examples/store_enum.rs:10:22: 10:23
+    }
+
+    bb5: {
+        return;                          // scope 0 at examples/store_enum.rs:13:2: 13:2
+    }
+}
+2022-05-06 16:58:33,804 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,804 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,804 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:33,804 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:33,804 DEBUG [lib_rtg::codegen::block] ----bb4----
+2022-05-06 16:58:33,805 DEBUG [lib_rtg::codegen::block] ----bb5----
+2022-05-06 16:58:33,805 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/store_enum.rs:15:15: 15:15
+    let _1: MyEnum;                      // in scope 0 at examples/store_enum.rs:16:9: 16:10
+    let mut _4: i32;                     // in scope 0 at examples/store_enum.rs:18:14: 18:21
+    let mut _5: MyEnum;                  // in scope 0 at examples/store_enum.rs:18:19: 18:20
+    let mut _6: i32;                     // in scope 0 at examples/store_enum.rs:18:24: 18:31
+    let mut _7: MyEnum;                  // in scope 0 at examples/store_enum.rs:18:29: 18:30
+    let mut _8: (i32, bool);             // in scope 0 at examples/store_enum.rs:18:14: 18:31
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/store_enum.rs:16:9: 16:10
+        let _2: MyEnum;                  // in scope 1 at examples/store_enum.rs:17:9: 17:10
+        scope 2 {
+            debug y => _2;               // in scope 2 at examples/store_enum.rs:17:9: 17:10
+            let _3: i32;                 // in scope 2 at examples/store_enum.rs:18:9: 18:11
+            scope 3 {
+                debug _e => _3;          // in scope 3 at examples/store_enum.rs:18:9: 18:11
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/store_enum.rs:16:9: 16:10
+        _1 = MyEnum::X;                  // scope 0 at examples/store_enum.rs:16:13: 16:22
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/store_enum.rs:16:9: 16:10
+        StorageLive(_2);                 // scope 1 at examples/store_enum.rs:17:9: 17:10
+        _2 = MyEnum::Y;                  // scope 1 at examples/store_enum.rs:17:13: 17:22
+        FakeRead(ForLet(None), _2);      // scope 1 at examples/store_enum.rs:17:9: 17:10
+        StorageLive(_3);                 // scope 2 at examples/store_enum.rs:18:9: 18:11
+        StorageLive(_4);                 // scope 2 at examples/store_enum.rs:18:14: 18:21
+        StorageLive(_5);                 // scope 2 at examples/store_enum.rs:18:19: 18:20
+        _5 = move _1;                    // scope 2 at examples/store_enum.rs:18:19: 18:20
+        _4 = test(move _5) -> [return: bb1, unwind: bb4]; // scope 2 at examples/store_enum.rs:18:14: 18:21
+                                         // mir::Constant
+                                         // + span: examples/store_enum.rs:18:14: 18:18
+                                         // + literal: Const { ty: fn(MyEnum) -> i32 {test}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_5);                 // scope 2 at examples/store_enum.rs:18:20: 18:21
+        StorageLive(_6);                 // scope 2 at examples/store_enum.rs:18:24: 18:31
+        StorageLive(_7);                 // scope 2 at examples/store_enum.rs:18:29: 18:30
+        _7 = move _2;                    // scope 2 at examples/store_enum.rs:18:29: 18:30
+        _6 = test(move _7) -> [return: bb2, unwind: bb4]; // scope 2 at examples/store_enum.rs:18:24: 18:31
+                                         // mir::Constant
+                                         // + span: examples/store_enum.rs:18:24: 18:28
+                                         // + literal: Const { ty: fn(MyEnum) -> i32 {test}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2: {
+        StorageDead(_7);                 // scope 2 at examples/store_enum.rs:18:30: 18:31
+        _8 = CheckedAdd(_4, _6);         // scope 2 at examples/store_enum.rs:18:14: 18:31
+        assert(!move (_8.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _6) -> [success: bb3, unwind: bb4]; // scope 2 at examples/store_enum.rs:18:14: 18:31
+    }
+
+    bb3: {
+        _3 = move (_8.0: i32);           // scope 2 at examples/store_enum.rs:18:14: 18:31
+        StorageDead(_6);                 // scope 2 at examples/store_enum.rs:18:30: 18:31
+        StorageDead(_4);                 // scope 2 at examples/store_enum.rs:18:30: 18:31
+        FakeRead(ForLet(None), _3);      // scope 2 at examples/store_enum.rs:18:9: 18:11
+        _0 = const ();                   // scope 0 at examples/store_enum.rs:15:15: 19:2
+        StorageDead(_3);                 // scope 2 at examples/store_enum.rs:19:1: 19:2
+        StorageDead(_2);                 // scope 1 at examples/store_enum.rs:19:1: 19:2
+        StorageDead(_1);                 // scope 0 at examples/store_enum.rs:19:1: 19:2
+        return;                          // scope 0 at examples/store_enum.rs:19:2: 19:2
+    }
+
+    bb4 (cleanup): {
+        resume;                          // scope 0 at examples/store_enum.rs:15:1: 19:2
+    }
+}
+2022-05-06 16:58:33,806 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:33,806 DEBUG [lib_rtg::codegen::block] ----bb1----
+2022-05-06 16:58:33,806 DEBUG [lib_rtg::codegen::block] ----bb2----
+2022-05-06 16:58:33,806 DEBUG [lib_rtg::codegen::block] ----bb3----
+2022-05-06 16:58:33,806 DEBUG [lib_rtg::callbacks] Writing to "output/store_enum.gil"
+2022-05-06 16:58:33,807 DEBUG [rust_to_gil] Correct!
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/store_struct.rs`
+2022-05-06 16:58:33,979 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/store_struct.rs:8:15: 8:15
+    let mut _1: A;                       // in scope 0 at examples/store_struct.rs:9:9: 9:14
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/store_struct.rs:9:9: 9:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/store_struct.rs:9:9: 9:14
+        _1 = A { u: const 1_i32, v: const 2_i32 }; // scope 0 at examples/store_struct.rs:9:17: 9:33
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/store_struct.rs:9:9: 9:14
+        (_1.1: i32) = const 1000_i32;    // scope 1 at examples/store_struct.rs:10:5: 10:15
+        _0 = const ();                   // scope 0 at examples/store_struct.rs:8:15: 11:2
+        StorageDead(_1);                 // scope 0 at examples/store_struct.rs:11:1: 11:2
+        return;                          // scope 0 at examples/store_struct.rs:11:2: 11:2
+    }
+}
+2022-05-06 16:58:33,980 DEBUG [lib_rtg::codegen::block] ----bb0----
+error: Struct expressions not handled yet
+
+error: aborting due to previous error
+
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/store_tuples.rs`
+2022-05-06 16:58:34,154 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/store_tuples.rs:3:15: 3:15
+    let mut _1: ((i32, i32), (i32, i32, (i32, i32))); // in scope 0 at examples/store_tuples.rs:4:9: 4:14
+    let mut _2: (i32, i32);              // in scope 0 at examples/store_tuples.rs:4:18: 4:24
+    let mut _3: (i32, i32, (i32, i32));  // in scope 0 at examples/store_tuples.rs:4:26: 4:40
+    let mut _4: (i32, i32);              // in scope 0 at examples/store_tuples.rs:4:33: 4:39
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/store_tuples.rs:4:9: 4:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/store_tuples.rs:4:9: 4:14
+        StorageLive(_2);                 // scope 0 at examples/store_tuples.rs:4:18: 4:24
+        _2 = (const 1_i32, const 2_i32); // scope 0 at examples/store_tuples.rs:4:18: 4:24
+        StorageLive(_3);                 // scope 0 at examples/store_tuples.rs:4:26: 4:40
+        StorageLive(_4);                 // scope 0 at examples/store_tuples.rs:4:33: 4:39
+        _4 = (const 5_i32, const 6_i32); // scope 0 at examples/store_tuples.rs:4:33: 4:39
+        _3 = (const 3_i32, const 4_i32, move _4); // scope 0 at examples/store_tuples.rs:4:26: 4:40
+        StorageDead(_4);                 // scope 0 at examples/store_tuples.rs:4:39: 4:40
+        _1 = (move _2, move _3);         // scope 0 at examples/store_tuples.rs:4:17: 4:41
+        StorageDead(_3);                 // scope 0 at examples/store_tuples.rs:4:40: 4:41
+        StorageDead(_2);                 // scope 0 at examples/store_tuples.rs:4:40: 4:41
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/store_tuples.rs:4:9: 4:14
+        (((_1.1: (i32, i32, (i32, i32))).2: (i32, i32)).0: i32) = const 12_i32; // scope 1 at examples/store_tuples.rs:5:5: 5:19
+        _0 = const ();                   // scope 0 at examples/store_tuples.rs:3:15: 6:2
+        StorageDead(_1);                 // scope 0 at examples/store_tuples.rs:6:1: 6:2
+        return;                          // scope 0 at examples/store_tuples.rs:6:2: 6:2
+    }
+}
+2022-05-06 16:58:34,155 DEBUG [lib_rtg::codegen::block] ----bb0----
+thread 'rustc' panicked at 'Unhandled agregate kind: Tuple', lib_rust_to_gil/src/codegen/rvalue.rs:52:26
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (1f12ac872 2021-10-17) running on x86_64-apple-darwin
+
+query stack during panic:
+end of query stack
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/struct_mut.rs`
+2022-05-06 16:58:34,332 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/struct_mut.rs:12:15: 12:15
+    let mut _1: A as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at examples/struct_mut.rs:13:9: 13:14
+    let _2: ();                          // in scope 0 at examples/struct_mut.rs:14:5: 14:19
+    let mut _3: &mut A;                  // in scope 0 at examples/struct_mut.rs:14:12: 14:18
+    let mut _4: &mut A;                  // in scope 0 at examples/struct_mut.rs:14:12: 14:18
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/struct_mut.rs:13:9: 13:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/struct_mut.rs:13:9: 13:14
+        _1 = A { u: const 1_i32, v: const 2_i32 }; // scope 0 at examples/struct_mut.rs:13:20: 13:36
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/struct_mut.rs:13:9: 13:14
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at examples/struct_mut.rs:13:16: 13:17
+        StorageLive(_2);                 // scope 1 at examples/struct_mut.rs:14:5: 14:19
+        StorageLive(_3);                 // scope 1 at examples/struct_mut.rs:14:12: 14:18
+        StorageLive(_4);                 // scope 1 at examples/struct_mut.rs:14:12: 14:18
+        _4 = &mut _1;                    // scope 1 at examples/struct_mut.rs:14:12: 14:18
+        _3 = &mut (*_4);                 // scope 1 at examples/struct_mut.rs:14:12: 14:18
+        _2 = modify(move _3) -> [return: bb1, unwind: bb2]; // scope 1 at examples/struct_mut.rs:14:5: 14:19
+                                         // mir::Constant
+                                         // + span: examples/struct_mut.rs:14:5: 14:11
+                                         // + literal: Const { ty: for<'r> fn(&'r mut A) {modify}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 1 at examples/struct_mut.rs:14:18: 14:19
+        StorageDead(_4);                 // scope 1 at examples/struct_mut.rs:14:19: 14:20
+        StorageDead(_2);                 // scope 1 at examples/struct_mut.rs:14:19: 14:20
+        _0 = const ();                   // scope 0 at examples/struct_mut.rs:12:15: 15:2
+        StorageDead(_1);                 // scope 0 at examples/struct_mut.rs:15:1: 15:2
+        return;                          // scope 0 at examples/struct_mut.rs:15:2: 15:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/struct_mut.rs:12:1: 15:2
+    }
+}
+2022-05-06 16:58:34,333 DEBUG [lib_rtg::codegen::block] ----bb0----
+error: Struct expressions not handled yet
+
+error: aborting due to previous error
+
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/tuples_mut.rs`
+2022-05-06 16:58:34,495 DEBUG [lib_rtg::codegen::body] Compiling modify
+fn modify(_1: &mut (i32, i32, (i32, i32))) -> () {
+    debug x => _1;                       // in scope 0 at examples/tuples_mut.rs:5:15: 5:16
+    let mut _0: ();                      // return place in scope 0 at examples/tuples_mut.rs:5:34: 5:34
+
+    bb0: {
+        (((*_1).2: (i32, i32)).0: i32) = const 12_i32; // scope 0 at examples/tuples_mut.rs:6:5: 6:16
+        _0 = const ();                   // scope 0 at examples/tuples_mut.rs:5:34: 7:2
+        return;                          // scope 0 at examples/tuples_mut.rs:7:2: 7:2
+    }
+}
+2022-05-06 16:58:34,495 DEBUG [lib_rtg::codegen::block] ----bb0----
+2022-05-06 16:58:34,496 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/tuples_mut.rs:9:15: 9:15
+    let mut _1: ((i32, i32), (i32, i32, (i32, i32))) as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at examples/tuples_mut.rs:10:9: 10:14
+    let mut _2: (i32, i32);              // in scope 0 at examples/tuples_mut.rs:10:43: 10:49
+    let mut _3: (i32, i32, (i32, i32));  // in scope 0 at examples/tuples_mut.rs:10:51: 10:65
+    let mut _4: (i32, i32);              // in scope 0 at examples/tuples_mut.rs:10:58: 10:64
+    let _5: ();                          // in scope 0 at examples/tuples_mut.rs:11:5: 11:21
+    let mut _6: &mut (i32, i32, (i32, i32)); // in scope 0 at examples/tuples_mut.rs:11:12: 11:20
+    let mut _7: &mut (i32, i32, (i32, i32)); // in scope 0 at examples/tuples_mut.rs:11:12: 11:20
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/tuples_mut.rs:10:9: 10:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/tuples_mut.rs:10:9: 10:14
+        StorageLive(_2);                 // scope 0 at examples/tuples_mut.rs:10:43: 10:49
+        _2 = (const 1_i32, const 2_i32); // scope 0 at examples/tuples_mut.rs:10:43: 10:49
+        StorageLive(_3);                 // scope 0 at examples/tuples_mut.rs:10:51: 10:65
+        StorageLive(_4);                 // scope 0 at examples/tuples_mut.rs:10:58: 10:64
+        _4 = (const 5_i32, const 6_i32); // scope 0 at examples/tuples_mut.rs:10:58: 10:64
+        _3 = (const 3_i32, const 4_i32, move _4); // scope 0 at examples/tuples_mut.rs:10:51: 10:65
+        StorageDead(_4);                 // scope 0 at examples/tuples_mut.rs:10:64: 10:65
+        _1 = (move _2, move _3);         // scope 0 at examples/tuples_mut.rs:10:42: 10:66
+        StorageDead(_3);                 // scope 0 at examples/tuples_mut.rs:10:65: 10:66
+        StorageDead(_2);                 // scope 0 at examples/tuples_mut.rs:10:65: 10:66
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/tuples_mut.rs:10:9: 10:14
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at examples/tuples_mut.rs:10:16: 10:39
+        StorageLive(_5);                 // scope 1 at examples/tuples_mut.rs:11:5: 11:21
+        StorageLive(_6);                 // scope 1 at examples/tuples_mut.rs:11:12: 11:20
+        StorageLive(_7);                 // scope 1 at examples/tuples_mut.rs:11:12: 11:20
+        _7 = &mut (_1.1: (i32, i32, (i32, i32))); // scope 1 at examples/tuples_mut.rs:11:12: 11:20
+        _6 = &mut (*_7);                 // scope 1 at examples/tuples_mut.rs:11:12: 11:20
+        _5 = modify(move _6) -> [return: bb1, unwind: bb2]; // scope 1 at examples/tuples_mut.rs:11:5: 11:21
+                                         // mir::Constant
+                                         // + span: examples/tuples_mut.rs:11:5: 11:11
+                                         // + literal: Const { ty: for<'r> fn(&'r mut (i32, i32, (i32, i32))) {modify}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_6);                 // scope 1 at examples/tuples_mut.rs:11:20: 11:21
+        StorageDead(_7);                 // scope 1 at examples/tuples_mut.rs:11:21: 11:22
+        StorageDead(_5);                 // scope 1 at examples/tuples_mut.rs:11:21: 11:22
+        ((_1.0: (i32, i32)).0: i32) = const 1000_i32; // scope 1 at examples/tuples_mut.rs:12:5: 12:18
+        _0 = const ();                   // scope 0 at examples/tuples_mut.rs:9:15: 13:2
+        StorageDead(_1);                 // scope 0 at examples/tuples_mut.rs:13:1: 13:2
+        return;                          // scope 0 at examples/tuples_mut.rs:13:2: 13:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at examples/tuples_mut.rs:9:1: 13:2
+    }
+}
+2022-05-06 16:58:34,496 DEBUG [lib_rtg::codegen::block] ----bb0----
+thread 'rustc' panicked at 'Unhandled agregate kind: Tuple', lib_rust_to_gil/src/codegen/rvalue.rs:52:26
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (1f12ac872 2021-10-17) running on x86_64-apple-darwin
+
+query stack during panic:
+end of query stack
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/rust_to_gil --out-dir output examples/zst.rs`
+2022-05-06 16:58:34,667 DEBUG [lib_rtg::codegen::body] Compiling main
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at examples/zst.rs:3:18: 3:20
+    let _1: () as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at examples/zst.rs:4:9: 4:10
+    scope 1 {
+        debug x => _1;                   // in scope 1 at examples/zst.rs:4:9: 4:10
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at examples/zst.rs:4:9: 4:10
+        _1 = ();                         // scope 0 at examples/zst.rs:4:17: 4:19
+        FakeRead(ForLet(None), _1);      // scope 0 at examples/zst.rs:4:9: 4:10
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at examples/zst.rs:4:12: 4:14
+        _0 = _1;                         // scope 1 at examples/zst.rs:5:5: 5:6
+        StorageDead(_1);                 // scope 0 at examples/zst.rs:6:1: 6:2
+        return;                          // scope 0 at examples/zst.rs:6:2: 6:2
+    }
+}
+2022-05-06 16:58:34,668 DEBUG [lib_rtg::codegen::block] ----bb0----
+thread 'rustc' panicked at 'Unhandled agregate kind: Tuple', lib_rust_to_gil/src/codegen/rvalue.rs:52:26
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (1f12ac872 2021-10-17) running on x86_64-apple-darwin
+
+query stack during panic:
+end of query stack

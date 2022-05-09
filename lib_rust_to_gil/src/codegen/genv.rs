@@ -13,7 +13,7 @@ pub struct GlobalEnv<'tcx> {
 
 impl<'tcx> CanFatal for GlobalEnv<'tcx> {
     fn fatal(&self, str: &str) -> ! {
-        self.tcx.sess.fatal(str);
+        self.tcx.sess.fatal(str)
     }
 }
 

@@ -44,23 +44,24 @@ impl std::ops::Not for Expr {
     }
 }
 
-impl From<&str> for Expr {
-    fn from(str: &str) -> Self {
-        Self::Lit(str.into())
-    }
+macro_rules! from_lit {
+    ($t: ty) => {
+        impl From<$t> for Expr {
+            fn from(x: $t) -> Self {
+                let y: Literal = x.into();
+                Expr::Lit(y)
+            }
+        }
+    };
+
+    ($ta: ty, $($tb: ty),+) => {
+        from_lit!($ta);
+
+        from_lit!($($tb),+);
+    };
 }
 
-impl From<String> for Expr {
-    fn from(str: String) -> Self {
-        Self::Lit(str.into())
-    }
-}
-
-impl From<Literal> for Expr {
-    fn from(lit: Literal) -> Self {
-        Self::Lit(lit)
-    }
-}
+from_lit!(Literal, &str, String, bool, f32, i64, u32);
 
 impl From<Vec<Expr>> for Expr {
     fn from(lst: Vec<Expr>) -> Self {
@@ -70,19 +71,19 @@ impl From<Vec<Expr>> for Expr {
 
 impl Expr {
     pub fn string(str: String) -> Self {
-        Self::Lit(Literal::String(str))
+        str.into()
     }
 
     pub fn bool(b: bool) -> Self {
-        Self::Lit(Literal::Bool(b))
+        b.into()
     }
 
     pub fn float(f: f32) -> Self {
-        Self::Lit(Literal::Num(f))
+        f.into()
     }
 
     pub fn int(i: i64) -> Self {
-        Self::Lit(Literal::Int(i))
+        i.into()
     }
 
     pub fn i_gt(e1: Expr, e2: Expr) -> Self {
@@ -130,7 +131,6 @@ impl Expr {
     }
 
     pub fn lnth(e: Expr, i: usize) -> Self {
-        let f: f32 = i as f32;
         match e {
             Expr::EList(vec) => vec.get(i).expect("lnth of a small vector!").to_owned(),
             Expr::Lit(Literal::LList(vec)) => {
@@ -139,7 +139,7 @@ impl Expr {
             _ => Self::BinOp {
                 operator: BinOp::LstNth,
                 left_operand: Box::new(e),
-                right_operand: Box::new(Self::float(f)),
+                right_operand: Box::new(Self::int(i as i64)),
             },
         }
     }

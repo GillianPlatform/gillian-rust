@@ -1,3 +1,3 @@
 pub fn init() {
-  simple_logger::SimpleLogger::new().init().unwrap();
+    env_logger::init_from_env(env_logger::Env::default().filter_or("RUST_LOG", "debug"))
 }

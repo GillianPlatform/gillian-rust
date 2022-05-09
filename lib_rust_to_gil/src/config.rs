@@ -1,0 +1,54 @@
+use std::{fmt, str::FromStr};
+
+pub enum ExecMode {
+    Concrete,
+    Symbolic,
+    Verification,
+    Act,
+}
+
+impl FromStr for ExecMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "verif" | "verification" | "v" => Ok(Self::Verification),
+            "concrete" | "c" | "conc" => Ok(Self::Concrete),
+            "act" | "bi" => Ok(Self::Act),
+            "wpst" | "symb" | "s" => Ok(Self::Symbolic),
+            _ => Err(format!("Invalid execution mode: {}!", s)),
+        }
+    }
+}
+
+impl Default for ExecMode {
+    fn default() -> Self {
+        Self::Verification
+    }
+}
+
+impl fmt::Debug for ExecMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ExecMode::Concrete => write!(f, "concrete"),
+            ExecMode::Symbolic => write!(f, "symbolic"),
+            ExecMode::Verification => write!(f, "verification"),
+            ExecMode::Act => write!(f, "act"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Config {
+    pub mode: ExecMode,
+}
+
+impl Config {
+    pub fn of_args(args: &[String]) -> Self {
+        let mode = args
+            .iter()
+            .find_map(|x| x.strip_prefix("--gillian-exec-mode="))
+            .map(|x| ExecMode::from_str(x).unwrap())
+            .unwrap_or_default();
+        Config { mode }
+    }
+}

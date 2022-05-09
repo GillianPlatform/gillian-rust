@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{subst::SubstsRef, ConstKind, FieldDef, ParamEnv, TypeFoldable};
+use rustc_middle::ty::{ConstKind, TypeFoldable};
 use rustc_target::abi::Size;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -10,14 +10,22 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         T: TypeFoldable<'tcx>,
     {
         // Instance is Some(..) only when current codegen unit is a function.
-        self.instance.subst_mir_and_normalize_erasing_regions(
-            self.ty_ctxt,
-            ParamEnv::reveal_all(),
-            value,
-        )
+        // self.mir.subst_mir_and_normalize_erasing_regions(
+        //     self.ty_ctxt,
+        //     ParamEnv::reveal_all(),
+        //     value,
+        // )
+        value
     }
 
-    pub fn is_zst(val: &ConstKind) -> bool {
+    pub fn const_value_is_zst(val: &ConstValue) -> bool {
+        match val {
+            ConstValue::Scalar(Scalar::Int(sci)) => sci.size() == Size::ZERO,
+            _ => false,
+        }
+    }
+
+    pub fn const_is_zst(val: &ConstKind) -> bool {
         match val {
             ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
             _ => false,
@@ -52,9 +60,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.monomorphize(place_ty).ty
     }
 
-    pub fn field_def_type(&self, field_def: &FieldDef, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(field_def.ty(self.ty_ctxt, subst))
-    }
+    // pub fn field_def_type(&self, field_def: &FieldDef, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
+    //     self.monomorphize(field_def.ty(self.ty_ctxt, subst))
+    // }
 
     // Gets the length of the tuple.
     // Panics if the type is not a Tuple

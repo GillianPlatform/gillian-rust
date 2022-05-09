@@ -4,7 +4,15 @@ use crate::prelude::*;
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_terminator(&mut self, terminator: &Terminator<'tcx>) {
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::FalseUnwind {
+                real_target: target,
+                ..
+            }
+            | TerminatorKind::FalseEdge {
+                real_target: target,
+                ..
+            }
+            | TerminatorKind::Goto { target } => {
                 self.push_cmd(Cmd::Goto(bb_label(target)));
             }
             TerminatorKind::Return => {
@@ -15,13 +23,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 func,
                 args,
                 destination,
-                cleanup,
                 ..
             } => {
-                assert!(
-                    cleanup.is_none(),
-                    "Don't know how to handle cleanups in calls yet"
-                );
+                // TODO: Handle cleanups at some point
                 let mut gil_args = Vec::with_capacity(args.len());
                 for arg in args {
                     gil_args.push(self.push_encode_operand(arg));
@@ -29,13 +33,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let fname = self.fname_from_operand(func).into();
                 match destination {
                     Some((place, bb)) => {
-                        let write_directly_in_var =
-                            place.projection.is_empty() && !self.place_is_in_memory(place);
-                        let target = if write_directly_in_var {
-                            self.name_from_local(&place.local)
-                        } else {
-                            self.temp_var()
-                        };
+                        let target = self.temp_var();
                         self.push_cmd(Cmd::Call {
                             variable: target.clone(),
                             parameters: gil_args,
@@ -43,10 +41,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                             error_lab: None,
                             bindings: None,
                         });
-                        if !write_directly_in_var {
-                            let call_ret_ty = self.place_ty(place);
-                            self.push_place_write(place, Expr::PVar(target), call_ret_ty);
-                        }
+                        let call_ret_ty = self.place_ty(place);
+                        self.push_place_write(place, Expr::PVar(target), call_ret_ty);
                         self.push_cmd(Cmd::Goto(bb_label(bb)));
                     }
                     None => {
@@ -110,6 +106,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn push_basic_block(&mut self, bb: &BasicBlock, bb_data: &BasicBlockData<'tcx>) {
+        if bb_data.is_cleanup {
+            return;
+        }
         self.push_label(bb_label(bb));
         log::debug!("----{:#?}----", bb);
         for stmt in &bb_data.statements {

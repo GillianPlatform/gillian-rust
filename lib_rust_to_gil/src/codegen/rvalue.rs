@@ -2,7 +2,7 @@ use super::memory::MemoryAction;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{self, Const, ConstKind, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, Const, ConstKind, TypeFoldable};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -15,39 +15,46 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
-                let access = self.push_get_place_access(place);
-                let gil_place = match access {
-                    PlaceAccess::InStore(..) => {
-                        fatal!(self, "Reference to something in the store!")
-                    }
-                    PlaceAccess::InMemory(gp) => gp,
-                };
+                let gil_place = self.push_get_gil_place(place);
                 gil_place.into_expr_ptr()
             }
-            Rvalue::Discriminant(place) => match self.push_get_place_access(place) {
-                PlaceAccess::InMemory(gp) => {
-                    let target = self.temp_var();
-                    let (location, projection) = gp.into_loc_proj();
-                    let action = MemoryAction::LoadDiscriminant {
-                        location,
-                        projection,
-                    };
-                    self.push_action(target.clone(), action);
-                    Expr::PVar(target)
-                }
-                PlaceAccess::InStore(gp) => {
-                    let expr = self.reader_expr_for_place_in_store(&gp);
-                    Expr::lnth(expr, 0)
-                }
-            },
+            Rvalue::Discriminant(place) => {
+                let gp = self.push_get_gil_place(place);
+                let target = self.temp_var();
+                let (location, projection) = gp.into_loc_proj();
+                let action = MemoryAction::LoadDiscriminant {
+                    location,
+                    projection,
+                };
+                self.push_action(target.clone(), action);
+                Expr::PVar(target)
+            }
             Rvalue::Len(place) => {
                 let expr = self.push_place_read(place, true);
                 Expr::lst_len(expr)
             }
             Rvalue::Aggregate(box kind, ops) => {
                 let ops: Vec<Expr> = ops.iter().map(|op| self.push_encode_operand(op)).collect();
+                let ops: Expr = ops.into();
                 match kind {
-                    AggregateKind::Array(..) => ops.into(),
+                    AggregateKind::Array(..) => ops,
+                    AggregateKind::Adt(def, variant_idx, _subst, _type_annot, _active_field) => {
+                        match def.adt_kind() {
+                            AdtKind::Enum => {
+                                let name: Expr = self.atd_def_name(def).into();
+                                let n: Expr = variant_idx.as_u32().into();
+                                vec![name, n, ops].into()
+                            }
+                            AdtKind::Struct => {
+                                let name: Expr = self.atd_def_name(def).into();
+                                vec![name, ops].into()
+                            }
+                            AdtKind::Union => {
+                                fatal!(self, "Union aggregate expressions not handeld yet")
+                            }
+                        }
+                    }
+                    AggregateKind::Tuple => ops,
                     _ => panic!("Unhandled agregate kind: {:#?}", kind),
                 }
             }
@@ -157,7 +164,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
+    // fn is_zst(si: &ScalarInt<'tcx>) -> bool {
+    //     si.size() = Size::ZERO;
+    // }
+
+    pub fn zst_value_of_type(&self, ty: Ty<'tcx>) -> Literal {
+        match ty.kind() {
+            TyKind::Tuple(_) if ty.tuple_fields().next().is_none() => vec![].into(),
+            _ => fatal!(self, "Cannot encode zst of type {:#?} yet", ty),
+        }
+    }
+
     pub fn encode_value(&self, val: &ConstValue<'tcx>, ty: Ty<'tcx>) -> Literal {
+        if Self::const_value_is_zst(val) {
+            return self.zst_value_of_type(ty);
+        };
         match val {
             ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_scalar() => {
                 let x = scalar_int.to_bits(scalar_int.size()).unwrap() as i64;
@@ -224,7 +245,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Operand::Constant(box mir::Constant {
                 literal: ConstantKind::Ty(Const { ty, val }),
                 ..
-            }) if Self::is_zst(val) && ty.is_fn() => match ty.kind() {
+            }) if Self::const_is_zst(val) && ty.is_fn() => match ty.kind() {
                 TyKind::FnDef(did, _) => self.ty_ctxt.item_name(*did).to_string(),
                 tyk => fatal!(self, "unhandled TyKind for function name: {:#?}", tyk),
             },

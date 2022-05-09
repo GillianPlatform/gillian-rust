@@ -3,7 +3,6 @@ mod body;
 mod memory;
 mod rvalue;
 mod statement;
-mod store_encoding;
 mod typ;
 
 pub mod context;
