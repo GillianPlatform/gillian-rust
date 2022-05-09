@@ -40,12 +40,13 @@ module TreeBlock = struct
     | Enum { discr = Some discr; downcast_and_fields = Some (dcast, fields) }
       when discr == dcast ->
         let fields = Vec.map (to_rust_value ~genv) fields |> Vec.to_list in
-        LList [ Int discr; LList [ Int dcast; LList fields ] ]
+        LList
+          [ Int (Z.of_int discr); LList [ Int (Z.of_int dcast); LList fields ] ]
     | Enum { discr = Some discr; downcast_and_fields = None }
       when Rust_types.no_fields_for_downcast
              (C_global_env.resolve_named ~genv ty)
              discr ->
-        LList [ Int discr ]
+        LList [ Int (Z.of_int discr) ]
     | Enum _ -> Fmt.failwith "Cannot serialize inconsistent enum"
     | Ptr (loc, proj) -> LList [ Loc loc; LList (Projections.to_lit_list proj) ]
     | Uninit ->
@@ -72,7 +73,7 @@ module TreeBlock = struct
         let ty = C_global_env.get_type genv a in
         of_rust_value ~genv ~ty v
     | Enum v_tys, LList [ Int discr; LList [ Int downcast; LList fields ] ] ->
-        let _, tys = List.nth v_tys discr in
+        let _, tys = List.nth v_tys (Z.to_int discr) in
         let fields =
           List.map2 (fun t v -> of_rust_value ~genv ~ty:t v) tys fields
           |> Vec.of_list
@@ -80,13 +81,15 @@ module TreeBlock = struct
         let content =
           Enum
             {
-              discr = Some discr;
-              downcast_and_fields = Some (downcast, fields);
+              discr = Some (Z.to_int discr);
+              downcast_and_fields = Some (Z.to_int downcast, fields);
             }
         in
         { ty; content }
     | Enum _, LList [ Int discr ] ->
-        let content = Enum { discr = Some discr; downcast_and_fields = None } in
+        let content =
+          Enum { discr = Some (Z.to_int discr); downcast_and_fields = None }
+        in
         { ty; content }
     | Ref _, LList [ Loc loc; LList proj ] ->
         let content = Ptr (loc, Projections.of_lit_list proj) in
@@ -275,7 +278,5 @@ let store_discr ~genv (mem : t) loc proj discr =
   mem
 
 let empty () : t = Hashtbl.create 1
-
 let copy x = Hashtbl.copy x
-
 let pp : t Fmt.t = Fmt.Dump.hashtbl Fmt.string TreeBlock.pp

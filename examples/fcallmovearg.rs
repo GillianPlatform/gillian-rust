@@ -4,11 +4,9 @@ fn add_four(x: i32) -> i32 {
     x + 4
 }
 
-pub fn main() {
+pub fn main() -> (i32, i32, i32) {
     let x = 3;
     let z = add_four(x);
-    let _y = x + z;
-    // x = 3
-    // z = 7
-    // _y = 10
+    let y = x + z;
+    (x, y, z) // (3, 10, 7)
 }

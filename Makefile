@@ -1,8 +1,9 @@
 EXAMPLE_FILES = $(shell ls examples/*.rs)
 EXAMPLE_TASKS = $(basename $(notdir ${EXAMPLE_FILES}))
 RUSTC = $(shell rustup which rustc)
+OUT_DIR = output
 SYSROOT = $(shell ${RUSTC} --print sysroot)
-RUSTC_ARGS =  -C panic=abort --sysroot ${SYSROOT} --out-dir output --crate-type lib
+RUSTC_ARGS =  -C panic=abort --sysroot ${SYSROOT} --out-dir ${OUT_DIR} --crate-type lib
 EMIT_MIR = ${RUSTC} ${RUSTC_ARGS} --emit=mir
 OCAML_DIR = "Gillian-Rust"
 GILLIAN_RUST = cd ${OCAML_DIR}; esy x gillian-rust exec -R ../runtime -a
@@ -13,12 +14,9 @@ RUST_TO_GIL = cargo run -- --out-dir output
 all: $(EXAMPLE_TASKS)
 
 $(EXAMPLE_TASKS): build
-	@${EMIT_MIR} examples/$@.rs
-	set -e;\
-	FILE=$$(${RUST_TO_GIL} examples/$@.rs | grep "Writing to" | cut -d '"' -f 2);\
-	echo "FILE: $${FILE}";\
-	${GILLIAN_RUST} ../$${FILE};\
-	echo "\n\nOUTPUT IN: Gillian-Rust/file.log"
+	@RUST_LOG=off cargo run -- --out-dir ${OUT_DIR} examples/$@.rs
+	${GILLIAN_RUST} ../${OUT_DIR}/$@.gil
+	@echo "\n\nOUTPUT IN: Gillian-Rust/file.log"
 
 build: build-ocaml
 

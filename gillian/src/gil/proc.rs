@@ -56,7 +56,7 @@ impl fmt::Display for Proc {
         let longest_label = self.longest_label();
         let indent = "  ";
         let empty_string = String::new();
-        write!(f, "proc {}(", self.name)?;
+        write!(f, "proc \"{}\"(", self.name)?;
         comma_separated_display(&self.params, f)?;
         writeln!(f, ") {{")?;
         let mut is_first = true;

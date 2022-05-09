@@ -2,15 +2,10 @@ open Gillian.Concrete
 open Gillian.Gil_syntax
 
 type vt = Values.t
-
 type st = Subst.t
-
 type err_t = unit
-
 type fix_t = unit
-
 type t = { genv : C_global_env.t; heap : C_heap.t }
-
 type action_ret = ASucc of (t * vt list) | AFail of err_t list
 
 (* Utils *)
@@ -80,7 +75,7 @@ let execute_load_discr mem args =
   | [ Literal.Loc loc; Literal.LList proj ] ->
       let proj = Projections.of_lit_list proj in
       let discr = C_heap.load_discr ~genv:mem.genv mem.heap loc proj in
-      ASucc (mem, [ Int discr ])
+      ASucc (mem, [ Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
 let execute_store_discr mem args =
@@ -88,7 +83,7 @@ let execute_store_discr mem args =
   | [ Literal.Loc loc; Literal.LList proj; Int discr ] ->
       let proj = Projections.of_lit_list proj in
       let new_heap =
-        C_heap.store_discr ~genv:mem.genv mem.heap loc proj discr
+        C_heap.store_discr ~genv:mem.genv mem.heap loc proj (Z.to_int discr)
       in
       ASucc ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "execute_store_discr" args
@@ -118,21 +113,11 @@ let pp_err _ _ = failwith "Not implemented yet!"
 
 (* SYMBOLIC STUFF -- never instantiated *)
 let ga_to_setter _ga = failwith "Not implemented yet!"
-
 let ga_to_deleter _ga = failwith "Not implemented yet!"
-
 let ga_to_getter _ga = failwith "Not implemented yet!"
-
-let ga_loc_indexes _ = failwith "Not implemented yet!"
-
 let is_overlapping_asrt _ = failwith "Not implemented yet!"
-
 let substitution_in_place _ _ = ()
-
 let fresh_val _ = failwith "Not implemented yet!"
-
-let clean_up _ = failwith "Not implemented yet!"
-
+let clean_up ?keep:_ _ = failwith "Not implemented yet!"
 let lvars _ = failwith "Not implemented yet!"
-
 let assertions ?to_keep:_ _ = failwith "Not implemented yet!"

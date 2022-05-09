@@ -34,14 +34,15 @@
     "@opam/ppxlib": ">=0.18.0",
     "@opam/printbox": "0.5",
     "@opam/yojson": "^1.7.0",
-    "gillian": "GillianPlatform/Gillian:gillian.json#5c050734bb496e1c2f6489324a30e2c553d5ba0a",
+    "gillian": "GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1",
     "ocaml": "^4.14.x"
   },
   "devDependencies": {
     "ocaml": "4.14.x",
     "@opam/ocaml-lsp-server": "*",
     "@opam/odoc": "*",
-    "@opam/ocamlformat": "0.20.1"
+    "@opam/ocamlformat": "0.20.1",
+    "@opam/utop": "*"
   },
   "resolutions": {
     "@opam/conf-sqlite3": "ManasJayanth/esy-sqlite:esy.json#28dfc73a8eda790213a8359ad708231069ed7079"

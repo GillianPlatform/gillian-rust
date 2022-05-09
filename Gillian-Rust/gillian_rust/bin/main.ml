@@ -7,5 +7,8 @@ module CLI =
     (struct
       let runners = []
     end)
+    (Gillian.Debugger.Gil_to_tl_lifter.Default
+       (S_memory)
+       (Gillian.CommandLine.ParserAndCompiler.Dummy))
 
 let () = CLI.main ()

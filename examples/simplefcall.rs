@@ -6,6 +6,7 @@ fn seven() -> i32 {
     x + y
 }
 
-pub fn main() {
-    let _x = seven();
+pub fn main() -> i32 {
+    let x = seven();
+    x // 7
 }

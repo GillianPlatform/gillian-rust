@@ -1,7 +1,7 @@
 #![no_std]
 
-pub fn main() {
+pub fn main() -> i32 {
     let x = 4;
-    let _z = x + 3;
-    // _z is 7
+    let z = x + 3;
+    z // returns 7
 }

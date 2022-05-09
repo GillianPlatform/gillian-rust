@@ -17,9 +17,6 @@ where
 {
     fn encode_type(&mut self, ty: Ty<'tcx>) -> Literal {
         use TyKind::*;
-        if ty.is_unit() {
-            return Literal::String("()".to_string());
-        };
         match &ty.kind() {
             Never => panic!("Should not encode never for memory"),
             Bool => "bool".into(),

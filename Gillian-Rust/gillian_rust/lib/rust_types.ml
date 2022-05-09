@@ -1,9 +1,7 @@
 open Gillian.Gil_syntax
 
 type int_t = Isize | I8 | I16 | I32 | I64 | I128
-
 type uint_t = Usize | U8 | U16 | U32 | U64 | U128
-
 type scalar_t = Unit | Bool | Char | Int of int_t | Uint of uint_t
 
 type t =
@@ -29,12 +27,12 @@ let rec of_lit = function
         | "i32"   -> Int I32
         | "i64"   -> Int I64
         | "i128"  -> Int I128
+        | "usize" -> Uint Usize
         | "u8"    -> Uint U8
         | "u16"   -> Uint U16
         | "u32"   -> Uint U32
         | "u64"   -> Uint U64
         | "u128"  -> Uint U128
-        | "()"    -> Unit
         | "bool"  -> Bool
         | _       -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
@@ -53,7 +51,8 @@ let rec of_lit = function
       in
       Enum (List.map parse_variant l)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
-  | LList [ String "array"; ty; Int i ] -> Array { length = i; ty = of_lit ty }
+  | LList [ String "array"; ty; Int i ] ->
+      Array { length = Z.to_int i; ty = of_lit ty }
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
 
