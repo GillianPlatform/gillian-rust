@@ -1,8 +1,8 @@
 open Gillian.Gil_syntax
 
-type int_t = Isize | I8 | I16 | I32 | I64 | I128
-type uint_t = Usize | U8 | U16 | U32 | U64 | U128
-type scalar_t = Unit | Bool | Char | Int of int_t | Uint of uint_t
+type int_t = Isize | I8 | I16 | I32 | I64 | I128 [@@deriving eq]
+type uint_t = Usize | U8 | U16 | U32 | U64 | U128 [@@deriving eq]
+type scalar_t = Bool | Char | Int of int_t | Uint of uint_t [@@deriving eq]
 
 type t =
   | Scalar of scalar_t
@@ -16,6 +16,11 @@ type t =
   | Ref    of { mut : bool; ty : t }
   | Array  of { length : int; ty : t }
   | Slice  of t
+[@@deriving eq]
+
+let name_exn = function
+  | Named s -> s
+  | _       -> raise (Invalid_argument "Noe a valid name!")
 
 let rec of_lit = function
   | Literal.String str_ty ->
@@ -34,6 +39,7 @@ let rec of_lit = function
         | "u64"   -> Uint U64
         | "u128"  -> Uint U128
         | "bool"  -> Bool
+        | "char"  -> Char
         | _       -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
   | LList [ String "named"; String name ] -> Named name
@@ -56,6 +62,41 @@ let rec of_lit = function
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
 
+let rec to_lit = function
+  | Scalar s             ->
+      Literal.String
+        (match s with
+        | Int Isize  -> "isize"
+        | Int I8     -> "i8"
+        | Int I16    -> "i16"
+        | Int I32    -> "i32"
+        | Int I64    -> "i64"
+        | Int I128   -> "i128"
+        | Uint Usize -> "usize"
+        | Uint U8    -> "u8"
+        | Uint U16   -> "u16"
+        | Uint U32   -> "u32"
+        | Uint U64   -> "u64"
+        | Uint U128  -> "u128"
+        | Bool       -> "bool"
+        | Char       -> "char")
+  | Tuple fls            -> LList [ String "tuple"; LList (List.map to_lit fls) ]
+  | Named x              -> LList [ String "named"; String x ]
+  | Struct fields        ->
+      let make_field (field_name, ty) =
+        Literal.LList [ String field_name; to_lit ty ]
+      in
+      LList [ String "struct"; LList (List.map make_field fields) ]
+  | Enum variants        ->
+      let make_variant (vname, tys) =
+        Literal.LList [ String vname; LList (List.map to_lit tys) ]
+      in
+      LList [ String "variant"; LList (List.map make_variant variants) ]
+  | Ref { mut; ty }      -> LList [ String "ref"; Bool mut; to_lit ty ]
+  | Array { length; ty } ->
+      LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
+  | Slice t              -> LList [ String "slice"; to_lit t ]
+
 let no_fields_for_downcast ty d =
   match ty with
   | Enum l -> ( match snd (List.nth l d) with [] -> true | _ -> false)
@@ -64,7 +105,6 @@ let no_fields_for_downcast ty d =
 let pp_scalar fmt t =
   let str = Fmt.string fmt in
   match t with
-  | Unit       -> str "()"
   | Bool       -> str "bool"
   | Char       -> str "char"
   | Int Isize  -> str "isize"

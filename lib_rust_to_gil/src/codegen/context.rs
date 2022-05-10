@@ -65,16 +65,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             })
     }
 
-    pub fn sanitized_original_name_from_local(&self, local: &Local) -> Option<String> {
-        self.original_name_from_local(local)
-            .map(names::sanitize_name)
-    }
-
     pub fn name_from_local(&self, local: &Local) -> String {
-        match self.sanitized_original_name_from_local(local) {
-            Some(name) => name,
-            None => temp_name_from_local(local),
-        }
+        temp_name_from_local(local) + &self.original_name_from_local(local).unwrap_or_default()
     }
 
     pub fn temp_var(&mut self) -> String {

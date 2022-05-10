@@ -21,11 +21,12 @@ fn add_res(x: Result, y: Result) -> Result {
     }
 }
 
-pub fn main() {
+pub fn main() -> Result {
     let x = Ok(4);
     let y = Ok(7);
     let z = add_res(x, y); // Ok(11)
     let t = greater_than_10(Ok(0));
     let k = greater_than_10(z); // Ok(11)
-    let _res = add_res(k, t); // Error
+    add_res(k, t) // Error
+                  // ENDSWITH: {{ "Result", {{ 1i, {{  }} }} }}
 }

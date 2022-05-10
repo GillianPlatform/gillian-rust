@@ -2,5 +2,5 @@
 
 pub fn main() -> () {
     let x: () = ();
-    x
+    x // ENDSWITH: {{  }}
 }

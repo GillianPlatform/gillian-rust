@@ -7,5 +7,5 @@ pub fn mutate(x: &mut i32) {
 pub fn main() -> i32 {
     let mut z = 4;
     mutate(&mut z);
-    z // 11
+    z // ENDSWITH: 11i
 }

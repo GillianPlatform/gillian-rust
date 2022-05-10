@@ -78,16 +78,6 @@ let execute_load_discr mem args =
       ASucc (mem, [ Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
-let execute_store_discr mem args =
-  match args with
-  | [ Literal.Loc loc; Literal.LList proj; Int discr ] ->
-      let proj = Projections.of_lit_list proj in
-      let new_heap =
-        C_heap.store_discr ~genv:mem.genv mem.heap loc proj (Z.to_int discr)
-      in
-      ASucc ({ mem with heap = new_heap }, [])
-  | _ -> wrong_args "execute_store_discr" args
-
 let execute_action act_name mem args =
   match Actions.of_name act_name with
   | Alloc          -> execute_alloc mem args
@@ -96,7 +86,6 @@ let execute_action act_name mem args =
   | Free           -> execute_free mem args
   | Genv_decl_type -> execute_genv_decl_type mem args
   | LoadDiscr      -> execute_load_discr mem args
-  | StoreDiscr     -> execute_store_discr mem args
 
 let copy { heap; genv } =
   { heap = C_heap.copy heap; genv = C_global_env.copy genv }

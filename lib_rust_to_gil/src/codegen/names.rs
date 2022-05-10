@@ -5,10 +5,9 @@ pub const SWITCH_LABEL: &str = "sw";
 const BB_LABEL: &str = "bb";
 const RET_VAR: &str = "ret";
 const RET_LABEL: &str = "rlab";
-const MIR_TEMP_PREFIX: &str = "mirtemp___";
-const GIL_TEMP_PREFIX: &str = "giltemp___";
-const GIL_UNUSED_VAR: &str = "gil____THROAWAY";
-const UNDERSCORED_PREFIX: &str = "underscored___";
+const MIR_TEMP_PREFIX: &str = "m_";
+const GIL_TEMP_PREFIX: &str = "g_";
+const GIL_UNUSED_VAR: &str = "u";
 const GLOBAL_ENV_DECL: &str = "i__init_global_env";
 
 pub fn bb_label(bb: &BasicBlock) -> String {
@@ -33,14 +32,6 @@ pub fn gil_temp_from_id(id: usize) -> String {
 
 pub fn unused_var() -> String {
     String::from(GIL_UNUSED_VAR)
-}
-
-pub fn sanitize_name(name: String) -> String {
-    if name.starts_with('_') {
-        UNDERSCORED_PREFIX.to_string() + &name
-    } else {
-        name
-    }
 }
 
 pub fn global_env_proc() -> String {

@@ -16,7 +16,7 @@ all: $(EXAMPLE_TASKS)
 $(EXAMPLE_TASKS): build
 	@RUST_LOG=off cargo run -- --out-dir ${OUT_DIR} examples/$@.rs
 	${GILLIAN_RUST} ../${OUT_DIR}/$@.gil
-	@echo "\n\nOUTPUT IN: Gillian-Rust/file.log"
+	echo "\n\nOUTPUT IN: Gillian-Rust/file.log"
 
 build: build-ocaml
 

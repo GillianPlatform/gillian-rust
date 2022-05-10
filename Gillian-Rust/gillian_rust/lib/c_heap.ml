@@ -8,7 +8,7 @@ module TreeBlock = struct
     | Scalar of Literal.t
     | Fields of t vec
     | Array  of t vec
-    | Enum   of { discr : int option; downcast_and_fields : (int * t vec) option }
+    | Enum   of { discr : int; fields : t vec }
     | Ptr    of string * Projections.t
     | Uninit
 
@@ -18,44 +18,65 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Scalar s -> Literal.pp ft s
-    | Fields v -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
-    | Enum { discr; downcast_and_fields } ->
-        pf ft "%a[%a]"
-          (option ~none:(any "U") int)
-          discr
-          (option ~none:(any "U")
-          @@ pair ~sep:nop int (parens @@ Vec.pp ~sep:comma pp))
-          downcast_and_fields
-    | Ptr (loc, proj) -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
-    | Array v -> (brackets (Vec.pp ~sep:comma pp)) ft v
-    | Uninit -> Fmt.string ft "UNINIT"
+    | Scalar s               -> Literal.pp ft s
+    | Fields v               -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
+    | Enum { discr; fields } ->
+        pf ft "%a[%a]" int discr (Vec.pp ~sep:comma pp) fields
+    | Ptr (loc, proj)        -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
+    | Array v                -> (brackets (Vec.pp ~sep:comma pp)) ft v
+    | Uninit                 -> Fmt.string ft "UNINIT"
 
-  let rec to_rust_value ~genv { content; ty } =
+  let rec to_rust_value ~genv ({ content; ty } as t) =
     match content with
-    | Scalar s -> s
-    | Fields v | Array v ->
+    | Scalar s               -> (
+        match (ty, s) with
+        | Scalar (Uint _ | Int _ | Char), _ -> s
+        | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
+        | _ -> Fmt.failwith "Malformed tree: %a" pp t)
+    | Fields v | Array v     -> (
         let tuple = Vec.map (to_rust_value ~genv) v |> Vec.to_list in
-        LList tuple
-    | Enum { discr = Some discr; downcast_and_fields = Some (dcast, fields) }
-      when discr == dcast ->
+        match C_global_env.resolve_named ~genv ty with
+        | Struct _ -> LList [ String (Rust_types.name_exn ty); LList tuple ]
+        | _        -> LList tuple)
+    | Enum { discr; fields } ->
         let fields = Vec.map (to_rust_value ~genv) fields |> Vec.to_list in
-        LList
-          [ Int (Z.of_int discr); LList [ Int (Z.of_int dcast); LList fields ] ]
-    | Enum { discr = Some discr; downcast_and_fields = None }
-      when Rust_types.no_fields_for_downcast
-             (C_global_env.resolve_named ~genv ty)
-             discr ->
-        LList [ Int (Z.of_int discr) ]
-    | Enum _ -> Fmt.failwith "Cannot serialize inconsistent enum"
-    | Ptr (loc, proj) -> LList [ Loc loc; LList (Projections.to_lit_list proj) ]
-    | Uninit ->
+        let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
+        LList [ String (Rust_types.name_exn ty); data ]
+    | Ptr (loc, proj)        -> LList
+                                  [
+                                    Loc loc; LList (Projections.to_lit_list proj);
+                                  ]
+    | Uninit                 ->
         Fmt.failwith "Cannot serialize Uninit or partially uninit values"
 
-  let rec of_rust_value ~genv ~ty v =
+  let rec of_rust_struct_value ~genv ~ty ~fields_tys fields =
+    let content =
+      List.map2 (fun (_, t) v -> of_rust_value ~genv ~ty:t v) fields_tys fields
+    in
+    let content = Fields (Vec.of_list content) in
+    { ty; content }
+
+  and of_rust_enum_value ~genv ~ty ~variants_tys data =
+    match data with
+    | [ Literal.Int variant_idx; LList fields ] ->
+        let vidx = Z.to_int variant_idx in
+        let _, tys = List.nth variants_tys vidx in
+        let fields =
+          List.map2 (fun t v -> of_rust_value ~genv ~ty:t v) tys fields
+          |> Vec.of_list
+        in
+        let content = Enum { discr = vidx; fields } in
+        { ty; content }
+    | _ -> failwith "Invalid enum value!"
+
+  and of_rust_value ~genv ~ty v =
     match (ty, v) with
     | Rust_types.Scalar (Uint _ | Int _), Literal.Int _ ->
         { ty; content = Scalar v }
+    | Rust_types.Scalar Bool, Literal.Int i ->
+        if Z.equal i Z.one then { ty; content = Scalar (Bool true) }
+        else if Z.equal i Z.zero then { ty; content = Scalar (Bool false) }
+        else Fmt.failwith "Invalid boolean: %a" Z.pp_print i
     | Scalar Bool, Bool _ -> { ty; content = Scalar v }
     | Tuple ts, LList tup ->
         let content =
@@ -63,34 +84,11 @@ module TreeBlock = struct
         in
         let content = Fields (Vec.of_list content) in
         { ty; content }
-    | Struct fs, LList tup ->
-        let content =
-          List.map2 (fun (_, t) v -> of_rust_value ~genv ~ty:t v) fs tup
-        in
-        let content = Fields (Vec.of_list content) in
-        { ty; content }
-    | Named a, v ->
-        let ty = C_global_env.get_type genv a in
-        of_rust_value ~genv ~ty v
-    | Enum v_tys, LList [ Int discr; LList [ Int downcast; LList fields ] ] ->
-        let _, tys = List.nth v_tys (Z.to_int discr) in
-        let fields =
-          List.map2 (fun t v -> of_rust_value ~genv ~ty:t v) tys fields
-          |> Vec.of_list
-        in
-        let content =
-          Enum
-            {
-              discr = Some (Z.to_int discr);
-              downcast_and_fields = Some (Z.to_int downcast, fields);
-            }
-        in
-        { ty; content }
-    | Enum _, LList [ Int discr ] ->
-        let content =
-          Enum { discr = Some (Z.to_int discr); downcast_and_fields = None }
-        in
-        { ty; content }
+    | Named a, LList [ String x; LList data ] when String.equal a x -> (
+        match C_global_env.resolve_named ~genv ty with
+        | Struct fields_tys -> of_rust_struct_value ~genv ~ty ~fields_tys data
+        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
+        | _                 -> failwith "bite")
     | Ref _, LList [ Loc loc; LList proj ] ->
         let content = Ptr (loc, Projections.of_lit_list proj) in
         { ty; content }
@@ -133,56 +131,37 @@ module TreeBlock = struct
         (ret_value, new_block)
     | Projections.Field p :: r, { content; ty = ty' } -> (
         match content with
-        | Scalar s ->
+        | Scalar s               ->
             Fmt.failwith "Invalid projection on scalar: %d on %a" p Literal.pp s
-        | Ptr _ ->
+        | Ptr _                  ->
             Fmt.failwith "Invalid projection on pointer: %d on %a" p pp_content
               content
-        | Array _ -> Fmt.failwith "Invalid projection on array: field"
-        | Fields vec -> (
+        | Array _                -> Fmt.failwith
+                                      "Invalid projection on array: field"
+        | Fields vec             -> (
             match vec.%[p] with
             | Ok e    ->
                 let v, sub_block = rec_call e r in
                 let new_block = Result.get_ok (vec.%[p] <- sub_block) in
                 (v, { ty = ty'; content = Fields new_block })
             | Error _ -> Fmt.failwith "Projection out of bound")
-        | Enum { discr; downcast_and_fields = Some (d, fields) } -> (
+        | Enum { discr; fields } -> (
             match fields.%[p] with
             | Ok e    ->
                 let v, sub_block = rec_call e r in
                 let new_fields = Result.get_ok (fields.%[p] <- sub_block) in
-                ( v,
-                  {
-                    ty = ty';
-                    content =
-                      Enum { discr; downcast_and_fields = Some (d, new_fields) };
-                  } )
+                (v, { ty = ty'; content = Enum { discr; fields = new_fields } })
             | Error _ -> Fmt.failwith "Projection out of enum bound")
-        | Enum { downcast_and_fields = None; _ } ->
-            Fmt.failwith "Cannot get field of uninit Enum"
-        | Uninit -> Fmt.failwith "Uninit use")
+        | Uninit                 -> Fmt.failwith "Uninit use")
     | Downcast p :: r, { ty; content } -> (
         match C_global_env.resolve_named ~genv ty with
-        | Rust_types.Enum pats -> (
+        | Rust_types.Enum _ -> (
             match content with
-            | Uninit ->
-                let downcast_fields =
-                  snd (List.nth pats p)
-                  |> List.map (uninitialized ~genv)
-                  |> Vec.of_list
-                in
-                let new_content =
-                  Enum
-                    {
-                      discr = None;
-                      downcast_and_fields = Some (p, downcast_fields);
-                    }
-                in
-                rec_call { ty; content = new_content } r
-            | Enum _ -> rec_call { ty; content } r
-            | _      -> Fmt.failwith "Incorrect variant")
-        | _                    -> Fmt.failwith "Cannot downcast on %a"
-                                    Rust_types.pp ty)
+            | Enum { discr; _ } ->
+                if discr != p then failwith "invalid downcast" else rec_call t r
+            | _                 -> failwith "incorrect enum")
+        | _                 -> Fmt.failwith "Cannot downcast on %a"
+                                 Rust_types.pp ty)
 
   let get_proj ~genv t proj ty copy =
     let update block =
@@ -211,29 +190,13 @@ module TreeBlock = struct
   let get_discr ~genv t proj =
     let return { content; _ } =
       match content with
-      | Enum { discr = Some discr; _ } -> discr
-      | _ -> Fmt.failwith "Cannot get the discriminant of %a" pp_content content
+      | Enum t -> t.discr
+      | _      -> Fmt.failwith "Cannot get the discriminant of %a" pp_content
+                    content
     in
     let update block = block in
     let discr, _ = find_proj ~genv ~return ~update t proj in
     discr
-
-  let set_discr ~genv t proj discr =
-    let update { content; ty } =
-      match content with
-      | Uninit ->
-          {
-            ty;
-            content = Enum { discr = Some discr; downcast_and_fields = None };
-          }
-      | Enum { downcast_and_fields; _ } ->
-          let content = Enum { discr = Some discr; downcast_and_fields } in
-          { ty; content }
-      | _ -> Fmt.failwith "Invalid content for set_discr: %a" pp_content content
-    in
-    let return _ = () in
-    let (), new_block = find_proj ~genv ~update ~return t proj in
-    new_block
 end
 
 type t = (string, TreeBlock.t) Hashtbl.t
@@ -271,12 +234,9 @@ let load_discr (mem : t) loc proj =
   let discr = TreeBlock.get_discr block proj in
   discr
 
-let store_discr ~genv (mem : t) loc proj discr =
-  let block = Hashtbl.find mem loc in
-  let new_block = TreeBlock.set_discr ~genv block proj discr in
-  Hashtbl.replace mem loc new_block;
-  mem
-
 let empty () : t = Hashtbl.create 1
 let copy x = Hashtbl.copy x
-let pp : t Fmt.t = Fmt.Dump.hashtbl Fmt.string TreeBlock.pp
+
+let pp : t Fmt.t =
+  let open Fmt in
+  hashtbl ~sep:(any "@\n") (parens (pair ~sep:(any "-> ") string TreeBlock.pp))

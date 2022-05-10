@@ -8,5 +8,5 @@ fn seven() -> i32 {
 
 pub fn main() -> i32 {
     let x = seven();
-    x // 7
+    x // ENDSWITH: 7i
 }

@@ -7,10 +7,20 @@ proc i__lang_assert(b, msg) {
   err:  fail[ASSERT](msg)
 };
 
-proc i__lang_int_of_bool(b) {
-      goto [b] zer one;
-  zer: ret := 0i;
+proc i__bool_of_lang_int(i) {
+       goto [i = 1i] tr ctn;
+  tr:  ret := true;
        return;
+  ctn: goto [i = 0i] fl err;
+  fl:  ret := false;
+       return;
+  err: fail[BOOL_VALUE]("invalid boolean", i)   
+};
+
+proc i__lang_int_of_bool(b) {
+       goto [b] one zer;
   one: ret := 1i;
+       return;
+  zer: ret := 0i;
        return
 };

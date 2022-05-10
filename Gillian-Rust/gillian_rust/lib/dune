@@ -2,4 +2,4 @@
  (name gillian_rust)
  (libraries gillian)
  (preprocess
-  (pps ppx_deriving_yojson)))
+  (pps ppx_deriving.std ppx_deriving_yojson)))

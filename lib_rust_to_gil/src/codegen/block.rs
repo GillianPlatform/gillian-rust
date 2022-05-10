@@ -65,8 +65,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 cleanup: _,
             } => {
                 let msg = "Ugly assert message for now".to_string();
-                let cond = self.push_encode_operand(op);
-                let to_assert = if *expected { cond } else { !cond };
+                let cond_int = self.push_encode_operand(op);
+                let cond_bool = self.temp_var();
+                self.push_cmd(runtime::bool_of_int(cond_bool.clone(), cond_int));
+                let cond_bool = Expr::PVar(cond_bool);
+                let to_assert = if *expected { cond_bool } else { !cond_bool };
                 let assert_call = runtime::lang_assert(to_assert, msg);
                 self.push_cmd(assert_call);
                 self.push_cmd(Cmd::Goto(bb_label(target)));

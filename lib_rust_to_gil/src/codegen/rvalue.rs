@@ -43,7 +43,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                             AdtKind::Enum => {
                                 let name: Expr = self.atd_def_name(def).into();
                                 let n: Expr = variant_idx.as_u32().into();
-                                vec![name, n, ops].into()
+                                let value: Expr = vec![n, ops].into();
+                                vec![name, value].into()
                             }
                             AdtKind::Struct => {
                                 let name: Expr = self.atd_def_name(def).into();

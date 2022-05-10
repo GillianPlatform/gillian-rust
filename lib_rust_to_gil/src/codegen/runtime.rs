@@ -16,6 +16,7 @@ pub fn imports() -> Vec<Import> {
 const CHECKED_ADD: &str = "i__binop_checked_add";
 const LANG_ASSERT: &str = "i__lang_assert";
 const INT_OF_BOOL: &str = "i__lang_int_of_bool";
+const BOOL_OF_INT: &str = "i__bool_of_lang_int";
 
 pub fn checked_add(variable: String, e1: Expr, e2: Expr, max_val: Expr) -> Cmd {
     Cmd::Call {
@@ -32,6 +33,16 @@ pub fn lang_assert(cond: Expr, msg: String) -> Cmd {
         variable: names::unused_var(),
         proc_ident: Expr::string(LANG_ASSERT.to_string()),
         parameters: vec![cond, Expr::string(msg)],
+        error_lab: None,
+        bindings: None,
+    }
+}
+
+pub fn bool_of_int(variable: String, int_expr: Expr) -> Cmd {
+    Cmd::Call {
+        variable,
+        proc_ident: BOOL_OF_INT.into(),
+        parameters: vec![int_expr],
         error_lab: None,
         bindings: None,
     }
