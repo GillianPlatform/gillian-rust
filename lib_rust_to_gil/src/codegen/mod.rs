@@ -1,5 +1,6 @@
 mod block;
 mod body;
+mod fun_shims;
 mod memory;
 mod rvalue;
 mod statement;

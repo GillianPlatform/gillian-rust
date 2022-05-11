@@ -2,7 +2,7 @@ use super::memory::MemoryAction;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{self, AdtKind, Const, ConstKind, TypeFoldable};
+use rustc_middle::ty::{self, adjustment::PointerCast, AdtKind, Const, ConstKind, TypeFoldable};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -59,11 +59,49 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     _ => panic!("Unhandled agregate kind: {:#?}", kind),
                 }
             }
-            Rvalue::Cast(_, op, _) => {
-                log::warn!("Ignoring cast: {:#?}", rvalue);
-                self.push_encode_operand(op)
-            }
+            Rvalue::Cast(ckind, op, ty_to) => self.push_encode_cast(ckind, op, ty_to),
             _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
+        }
+    }
+
+    pub fn push_encode_cast(
+        &mut self,
+        kind: &CastKind,
+        op: &Operand<'tcx>,
+        ty_to: Ty<'tcx>,
+    ) -> Expr {
+        let enc_op = self.push_encode_operand(op);
+        match kind {
+            CastKind::Pointer(PointerCast::Unsize) => {
+                match (self.operand_ty(op).kind(), ty_to.kind()) {
+                    (TyKind::Ref(_, left, _), TyKind::Ref(_, right, _)) => {
+                        match (left.kind(), right.kind()) {
+                           (TyKind::Array(_, Const {
+                                val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(i))), ..
+                            }), TyKind::Slice(..)) => Expr::lst_concat(
+                                enc_op,
+                                vec![i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into(),
+                            ),
+                            (a, b) => fatal!(
+                                self,
+                                "Unsizing something that is not two refs! an array to slice! Casting {:#?} to {:#?}",
+                                a,
+                                b
+                            ),
+                        }
+                    }
+                    (a, b) => fatal!(
+                        self,
+                        "Unsizing something that is not two refs! Casting {:#?} to {:#?}",
+                        a,
+                        b
+                    ),
+                }
+            }
+            _ => {
+                log::warn!("Ignoring misc cast! {:#?} to {:#?}", op, ty_to);
+                enc_op
+            }
         }
     }
 
@@ -247,12 +285,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 literal: ConstantKind::Ty(Const { ty, val }),
                 ..
             }) if Self::const_is_zst(val) && ty.is_fn() => match ty.kind() {
-                TyKind::FnDef(did, _) => self.ty_ctxt.item_name(*did).to_string(),
+                TyKind::FnDef(did, _) => match self.shim_with(*did) {
+                    Some(s) => s,
+                    None => self.ty_ctxt.def_path_str(*did),
+                },
                 tyk => fatal!(self, "unhandled TyKind for function name: {:#?}", tyk),
             },
             _ => fatal!(
                 self,
-                "Can't handle dynami calls yet! Got fun operand: {:#?}",
+                "Can't handle dynamic calls yet! Got fun operand: {:#?}",
                 operand
             ),
         }

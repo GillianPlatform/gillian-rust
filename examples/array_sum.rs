@@ -10,7 +10,7 @@ fn sum(x: &[u32]) -> u32 {
     s
 }
 
-pub fn main() {
+pub fn main() -> u32 {
     let x: [u32; 4] = [1, 2, 3, 4];
-    let _s = sum(&x);
+    sum(&x) // ENDSWITH: 10i
 }

@@ -10,7 +10,11 @@ macro_rules! import {
 }
 
 pub fn imports() -> Vec<Import> {
-    vec![import!("i__binop.gil"), import!("i__lang.gil")]
+    vec![
+        import!("i__binop.gil"),
+        import!("i__lang.gil"),
+        import!("i__slice_shims.gil"),
+    ]
 }
 
 const CHECKED_ADD: &str = "i__binop_checked_add";
@@ -56,4 +60,8 @@ pub fn int_of_bool(variable: String, bool_expr: Expr) -> Cmd {
         error_lab: None,
         bindings: None,
     }
+}
+
+pub(crate) mod slice {
+    pub const SLICE_LEN: &str = "i__slice_length";
 }

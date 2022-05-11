@@ -18,6 +18,23 @@ pub enum Literal {
     Nono,
 }
 
+macro_rules! from_int {
+    ($t: ty) => {
+        impl From<$t> for Literal {
+            fn from(i: $t) -> Self {
+                Self::Int(i as i64)
+            }
+        }
+    };
+
+    ($ta: ty, $($tb: ty),+) => {
+        from_int!($ta);
+        from_int!($($tb),+);
+    }
+}
+
+from_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
 impl From<&str> for Literal {
     fn from(str: &str) -> Self {
         Self::String(str.to_string())
@@ -45,24 +62,6 @@ impl From<String> for Literal {
 impl From<f32> for Literal {
     fn from(f: f32) -> Self {
         Self::Num(f)
-    }
-}
-
-impl From<u32> for Literal {
-    fn from(n: u32) -> Self {
-        Self::Int(n as i64)
-    }
-}
-
-impl From<i64> for Literal {
-    fn from(n: i64) -> Self {
-        Self::Int(n)
-    }
-}
-
-impl From<usize> for Literal {
-    fn from(n: usize) -> Self {
-        Self::Int(n as i64)
     }
 }
 

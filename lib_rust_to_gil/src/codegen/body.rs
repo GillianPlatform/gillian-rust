@@ -81,7 +81,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
         }
-        if proc_name == "main" {
+        if proc_name.ends_with("main") {
             self.push_global_env_call();
         }
         let args: Vec<String> = mir_body
