@@ -89,6 +89,10 @@ impl Expr {
         i.into()
     }
 
+    pub fn null() -> Self {
+        Literal::Null.into()
+    }
+
     pub fn i_gt(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i > j),
@@ -197,6 +201,17 @@ impl Expr {
             (e1, e2) => Self::NOp {
                 operator: NOp::LstCat,
                 operands: vec![e1, e2],
+            },
+        }
+    }
+
+    pub fn plus(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i + j),
+            _ => Expr::BinOp {
+                operator: BinOp::IPlus,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
             },
         }
     }

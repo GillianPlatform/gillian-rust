@@ -1,6 +1,6 @@
 proc i__slice_length(p) {
-       goto [l-len(p) i< 3i] err ctn;
-  err: fail[PTRREPR]("should be a fat pointer", p);
-  ctn: ret := l-nth(p, 3i);
-       return
+       goto [(typeOf l-nth(p, 0i)) = List] ctn err;
+  ctn: ret := l-nth(p, 1i);
+       return;
+  err: fail[PTRREPR]("should be a fat pointer", p)
 };

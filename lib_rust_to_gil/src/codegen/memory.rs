@@ -1,23 +1,41 @@
 use crate::prelude::*;
 
-const ALLOC_ACTION_NAME: &str = "mem_alloc";
-const LOAD_ACTION_NAME: &str = "mem_load";
-const STORE_ACTION_NAME: &str = "mem_store";
-const FREE_ACTION_NAME: &str = "mem_free";
-const LOAD_DISCR_ACTION_NAME: &str = "mem_load_discr";
-const STORE_DISCR_ACTION_NAME: &str = "mem_store_discr";
+mod action_names {
+
+    pub(crate) const ALLOC: &str = "mem_alloc";
+    pub(crate) const LOAD_VALUE: &str = "mem_load_value";
+    pub(crate) const STORE_VALUE: &str = "mem_store_value";
+    pub(crate) const LOAD_SLICE: &str = "mem_load_slice";
+    pub(crate) const STORE_SLICE: &str = "mem_store_slice";
+    pub(crate) const FREE: &str = "mem_free";
+    pub(crate) const LOAD_DISCR: &str = "mem_load_discr";
+}
 
 pub enum MemoryAction<'tcx> {
     Alloc(Ty<'tcx>),
-    Load {
+    LoadValue {
         location: Expr,
         projection: Expr,
         typ: Ty<'tcx>,
         copy: bool,
     },
-    Store {
+    StoreValue {
         location: Expr,
         projection: Expr,
+        typ: Ty<'tcx>,
+        value: Expr,
+    },
+    LoadSlice {
+        location: Expr,
+        projection: Expr,
+        size: Expr,
+        typ: Ty<'tcx>,
+        copy: bool,
+    },
+    StoreSlice {
+        location: Expr,
+        projection: Expr,
+        size: Expr,
         typ: Ty<'tcx>,
         value: Expr,
     },
@@ -29,11 +47,6 @@ pub enum MemoryAction<'tcx> {
     LoadDiscriminant {
         location: Expr,
         projection: Expr,
-    },
-    StoreDiscriminant {
-        location: Expr,
-        projection: Expr,
-        discr: u32,
     },
 }
 
@@ -64,11 +77,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let ty = Expr::Lit(self.encode_type(ty));
                 self.push_cmd(Cmd::Action {
                     variable: target,
-                    action_name: ALLOC_ACTION_NAME.to_string(),
+                    action_name: action_names::ALLOC.to_string(),
                     parameters: vec![ty],
                 });
             }
-            MemoryAction::Load {
+            MemoryAction::LoadValue {
                 location,
                 projection,
                 typ,
@@ -78,7 +91,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let encoded_typ = self.encode_type(typ);
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
-                    action_name: LOAD_ACTION_NAME.to_string(),
+                    action_name: action_names::LOAD_VALUE.to_string(),
                     parameters: vec![
                         location,
                         projection,
@@ -91,7 +104,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
                 })
             }
-            MemoryAction::Store {
+            MemoryAction::StoreValue {
                 location,
                 projection,
                 typ,
@@ -100,8 +113,47 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let encoded_typ = self.encode_type(typ);
                 self.push_cmd(Cmd::Action {
                     variable: target,
-                    action_name: STORE_ACTION_NAME.to_string(),
+                    action_name: action_names::STORE_VALUE.to_string(),
                     parameters: vec![location, projection, Expr::Lit(encoded_typ), value],
+                })
+            }
+            MemoryAction::LoadSlice {
+                location,
+                projection,
+                size,
+                typ,
+                copy,
+            } => {
+                let temp = self.temp_var();
+                let encoded_typ = self.encode_type(typ);
+                self.push_cmd(Cmd::Action {
+                    variable: temp.clone(),
+                    action_name: action_names::LOAD_SLICE.to_string(),
+                    parameters: vec![
+                        location,
+                        projection,
+                        size,
+                        Expr::Lit(encoded_typ),
+                        Expr::bool(copy),
+                    ],
+                });
+                self.push_cmd(Cmd::Assignment {
+                    variable: target,
+                    assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
+                })
+            }
+            MemoryAction::StoreSlice {
+                location,
+                projection,
+                size,
+                typ,
+                value,
+            } => {
+                let encoded_typ = self.encode_type(typ);
+                self.push_cmd(Cmd::Action {
+                    variable: target,
+                    action_name: action_names::STORE_SLICE.to_string(),
+                    parameters: vec![location, projection, size, Expr::Lit(encoded_typ), value],
                 })
             }
             MemoryAction::Free {
@@ -112,7 +164,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let encoded_typ = self.encode_type(typ);
                 self.push_cmd(Cmd::Action {
                     variable: target,
-                    action_name: FREE_ACTION_NAME.to_string(),
+                    action_name: action_names::FREE.to_string(),
                     parameters: vec![location, projection, Expr::Lit(encoded_typ)],
                 })
             }
@@ -123,7 +175,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let temp = self.temp_var();
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
-                    action_name: LOAD_DISCR_ACTION_NAME.to_string(),
+                    action_name: action_names::LOAD_DISCR.to_string(),
                     parameters: vec![location, projection],
                 });
                 self.push_cmd(Cmd::Assignment {
@@ -131,15 +183,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
                 })
             }
-            MemoryAction::StoreDiscriminant {
-                location,
-                projection,
-                discr,
-            } => self.push_cmd(Cmd::Action {
-                variable: target,
-                action_name: STORE_DISCR_ACTION_NAME.to_string(),
-                parameters: vec![location, projection, Expr::int(discr as i64)],
-            }),
         };
     }
 }

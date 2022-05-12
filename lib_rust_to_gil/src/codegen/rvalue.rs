@@ -21,7 +21,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Rvalue::Discriminant(place) => {
                 let gp = self.push_get_gil_place(place);
                 let target = self.temp_var();
-                let (location, projection) = gp.into_loc_proj();
+                let (location, projection, meta) = gp.into_loc_proj_meta();
+                if meta.is_some() {
+                    fatal!(self, "Reading discriminant of a fat pointer!");
+                }
                 let action = MemoryAction::LoadDiscriminant {
                     location,
                     projection,
@@ -78,10 +81,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         match (left.kind(), right.kind()) {
                            (TyKind::Array(_, Const {
                                 val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(i))), ..
-                            }), TyKind::Slice(..)) => Expr::lst_concat(
-                                enc_op,
-                                vec![i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into(),
-                            ),
+                            }), TyKind::Slice(..)) => vec![enc_op, i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into(),
                             (a, b) => fatal!(
                                 self,
                                 "Unsizing something that is not two refs! an array to slice! Casting {:#?} to {:#?}",

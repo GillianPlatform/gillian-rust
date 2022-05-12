@@ -28,7 +28,7 @@ let execute_alloc mem args =
       ASucc ({ mem with heap = new_heap }, ret)
   | _      -> wrong_args "alloc" args
 
-let execute_load mem args =
+let execute_load_value mem args =
   match args with
   | [ Literal.Loc loc; Literal.LList proj; ty; Literal.Bool copy ] ->
       let rust_ty = Rust_types.of_lit ty in
@@ -37,9 +37,21 @@ let execute_load mem args =
         C_heap.load ~genv:mem.genv mem.heap loc proj rust_ty copy
       in
       ASucc ({ mem with heap = new_heap }, [ ret ])
-  | _ -> wrong_args "load" args
+  | _ -> wrong_args "load_value" args
 
-let execute_store mem args =
+let execute_load_slice mem args =
+  match args with
+  | [ Literal.Loc loc; Literal.LList proj; Int size; ty; Literal.Bool copy ] ->
+      let rust_ty = Rust_types.of_lit ty in
+      let proj = Projections.of_lit_list proj in
+      let size = Z.to_int size in
+      let ret, new_heap =
+        C_heap.load_slice ~genv:mem.genv mem.heap loc proj size rust_ty copy
+      in
+      ASucc ({ mem with heap = new_heap }, [ ret ])
+  | _ -> wrong_args "load_slice" args
+
+let execute_store_value mem args =
   match args with
   | [ Literal.Loc loc; LList proj; ty; value ] ->
       let rust_ty = Rust_types.of_lit ty in
@@ -48,7 +60,19 @@ let execute_store mem args =
         C_heap.store ~genv:mem.genv mem.heap loc proj rust_ty value
       in
       ASucc ({ mem with heap = new_heap }, [])
-  | _ -> wrong_args "store" args
+  | _ -> wrong_args "store_value" args
+
+let execute_store_slice mem args =
+  match args with
+  | [ Literal.Loc loc; LList proj; Int size; ty; value ] ->
+      let rust_ty = Rust_types.of_lit ty in
+      let proj = Projections.of_lit_list proj in
+      let size = Z.to_int size in
+      let new_heap =
+        C_heap.store_slice ~genv:mem.genv mem.heap loc proj size rust_ty value
+      in
+      ASucc ({ mem with heap = new_heap }, [])
+  | _ -> wrong_args "store_slice" args
 
 let execute_free mem args =
   match args with
@@ -81,8 +105,10 @@ let execute_load_discr mem args =
 let execute_action act_name mem args =
   match Actions.of_name act_name with
   | Alloc          -> execute_alloc mem args
-  | Load           -> execute_load mem args
-  | Store          -> execute_store mem args
+  | Load_value     -> execute_load_value mem args
+  | Store_value    -> execute_store_value mem args
+  | Load_slice     -> execute_load_slice mem args
+  | Store_slice    -> execute_store_slice mem args
   | Free           -> execute_free mem args
   | Genv_decl_type -> execute_genv_decl_type mem args
   | LoadDiscr      -> execute_load_discr mem args

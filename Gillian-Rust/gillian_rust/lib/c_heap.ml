@@ -5,11 +5,12 @@ module TreeBlock = struct
   type t = { ty : Rust_types.t; content : tree_content }
 
   and tree_content =
-    | Scalar of Literal.t
-    | Fields of t vec
-    | Array  of t vec
-    | Enum   of { discr : int; fields : t vec }
-    | Ptr    of string * Projections.t
+    | Scalar  of Literal.t
+    | Fields  of t vec
+    | Array   of t vec
+    | Enum    of { discr : int; fields : t vec }
+    | ThinPtr of string * Projections.t
+    | FatPtr  of string * Projections.t * int
     | Uninit
 
   let rec pp fmt { ty; content } =
@@ -18,35 +19,41 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Scalar s               -> Literal.pp ft s
-    | Fields v               -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
-    | Enum { discr; fields } ->
+    | Scalar s                 -> Literal.pp ft s
+    | Fields v                 -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
+    | Enum { discr; fields }   ->
         pf ft "%a[%a]" int discr (Vec.pp ~sep:comma pp) fields
-    | Ptr (loc, proj)        -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
-    | Array v                -> (brackets (Vec.pp ~sep:comma pp)) ft v
-    | Uninit                 -> Fmt.string ft "UNINIT"
+    | ThinPtr (loc, proj)      -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
+    | FatPtr (loc, proj, meta) ->
+        pf ft "FatPtr(%s, %a | %d)" loc Projections.pp proj meta
+    | Array v                  -> (brackets (Vec.pp ~sep:comma pp)) ft v
+    | Uninit                   -> Fmt.string ft "UNINIT"
 
   let rec to_rust_value ~genv ({ content; ty } as t) =
     match content with
-    | Scalar s               -> (
+    | Scalar s                 -> (
         match (ty, s) with
         | Scalar (Uint _ | Int _ | Char), _ -> s
         | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
-    | Fields v | Array v     -> (
+    | Fields v | Array v       -> (
         let tuple = Vec.map (to_rust_value ~genv) v |> Vec.to_list in
         match C_global_env.resolve_named ~genv ty with
         | Struct _ -> LList [ String (Rust_types.name_exn ty); LList tuple ]
         | _        -> LList tuple)
-    | Enum { discr; fields } ->
+    | Enum { discr; fields }   ->
         let fields = Vec.map (to_rust_value ~genv) fields |> Vec.to_list in
         let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
         LList [ String (Rust_types.name_exn ty); data ]
-    | Ptr (loc, proj)        -> LList
-                                  [
-                                    Loc loc; LList (Projections.to_lit_list proj);
-                                  ]
-    | Uninit                 ->
+    | ThinPtr (loc, proj)      ->
+        LList [ Loc loc; LList (Projections.to_lit_list proj) ]
+    | FatPtr (loc, proj, meta) ->
+        LList
+          [
+            LList [ Loc loc; LList (Projections.to_lit_list proj) ];
+            Int (Z.of_int meta);
+          ]
+    | Uninit                   ->
         Fmt.failwith "Cannot serialize Uninit or partially uninit values"
 
   let rec of_rust_struct_value ~genv ~ty ~fields_tys fields =
@@ -89,8 +96,11 @@ module TreeBlock = struct
         | Struct fields_tys -> of_rust_struct_value ~genv ~ty ~fields_tys data
         | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
         | _                 -> failwith "bite")
+    | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
+        let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
+        { ty; content }
     | Ref _, LList [ Loc loc; LList proj ] ->
-        let content = Ptr (loc, Projections.of_lit_list proj) in
+        let content = ThinPtr (loc, Projections.of_lit_list proj) in
         { ty; content }
     | Array { length; ty = ty' }, LList l
       when List.compare_length_with l length == 0 ->
@@ -133,7 +143,7 @@ module TreeBlock = struct
         match content with
         | Scalar s               ->
             Fmt.failwith "Invalid projection on scalar: %d on %a" p Literal.pp s
-        | Ptr _                  ->
+        | ThinPtr _ | FatPtr _   ->
             Fmt.failwith "Invalid projection on pointer: %d on %a" p pp_content
               content
         | Array _                -> Fmt.failwith
@@ -212,6 +222,11 @@ let load ~genv (mem : t) loc proj ty copy =
   let v, new_block = TreeBlock.get_proj ~genv block proj ty copy in
   Hashtbl.replace mem loc new_block;
   (v, mem)
+
+let load_slice ~genv:_ (_m : t) _loc _proj _size _ty _copy = failwith "bite"
+
+let store_slice ~genv:_ (_m : t) _loc _proj _size _ty _values =
+  failwith "chatte"
 
 let store ~genv (mem : t) loc proj ty value =
   let block = Hashtbl.find mem loc in

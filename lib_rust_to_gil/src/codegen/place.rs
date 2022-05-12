@@ -24,29 +24,61 @@ pub struct GilPlace<'tcx> {
     pub proj: Vec<GilProj>,
 }
 
-fn add_proj(base: String, proj: Vec<Expr>) -> (Expr, Expr) {
-    let base = Expr::PVar(base);
+fn add_proj_thin(base: Expr, proj: Vec<Expr>) -> (Expr, Expr) {
     let loc = Expr::lnth(base.clone(), 0);
     let current_proj = Expr::lnth(base, 1);
-    let proj = Expr::EList(proj);
-    let total_proj = Expr::lst_concat(current_proj, proj);
+    let total_proj = Expr::lst_concat(current_proj, proj.into());
     (loc, total_proj)
 }
 
 impl<'tcx> GilPlace<'tcx> {
-    pub fn into_loc_proj(self) -> (Expr, Expr) {
-        let proj = self.proj.into_iter().map(|x| x.into_expr()).collect();
-        add_proj(self.base, proj)
+    pub fn base_is_slice(&self) -> bool {
+        matches!(self.base_ty.kind(), TyKind::Slice(..) | TyKind::Str)
+    }
+
+    pub fn into_loc_proj_meta(self) -> (Expr, Expr, Option<Expr>) {
+        let base_is_slice = self.base_is_slice();
+        let base = Expr::PVar(self.base);
+        if base_is_slice {
+            let addr = Expr::lnth(base.clone(), 0);
+            let loc = Expr::lnth(addr.clone(), 0);
+            let proj = Expr::lnth(addr, 1);
+            let meta = Expr::lnth(base, 1);
+            match &self.proj[..] {
+                [] => (loc, proj, Some(meta)),
+                [GilProj::Index(e), rest @ ..] => {
+                    let actual_index = Expr::plus(e.clone(), meta);
+                    let mut total_proj = Vec::with_capacity(self.proj.len());
+                    total_proj.push(actual_index);
+                    let mut rest_proj = rest.iter().map(|x| x.clone().into_expr()).collect();
+                    total_proj.append(&mut rest_proj);
+                    let (loc, total_proj) = add_proj_thin(loc, total_proj);
+                    (loc, total_proj, None)
+                }
+                _ => panic!("Using something else than index on slice"),
+            }
+        } else {
+            let proj: Vec<_> = self.proj.into_iter().map(|x| x.into_expr()).collect();
+            let (loc, ofs) = add_proj_thin(base, proj);
+            (loc, ofs, None)
+        }
     }
 
     pub fn into_expr_ptr(self) -> Expr {
         if self.proj.is_empty() {
             return Expr::PVar(self.base);
         }
-        let proj = self.proj.into_iter().map(|x| x.into_expr()).collect();
-        let (loc, total_proj) = add_proj(self.base, proj);
-        Expr::EList(vec![loc, total_proj])
+        let (loc, total_proj, meta) = self.into_loc_proj_meta();
+        match meta {
+            None => vec![loc, total_proj].into(),
+            Some(meta) => vec![vec![loc, total_proj].into(), meta].into(),
+        }
     }
+}
+
+pub enum MemoryAccess<'tcx> {
+    InMemory(GilPlace<'tcx>),
+    InStore(String),
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -57,28 +89,41 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         typ: Ty<'tcx>,
         copy: bool,
     ) {
-        let GilPlace { base, proj, .. } = gil_place;
-        let proj = proj.into_iter().map(|x| x.into_expr()).collect();
-        let (location, projection) = add_proj(base, proj);
-        let action = MemoryAction::Load {
-            location,
-            projection,
-            copy,
-            typ,
+        let (location, projection, meta) = gil_place.into_loc_proj_meta();
+        let action = match meta {
+            Some(size) => MemoryAction::LoadSlice {
+                location,
+                projection,
+                size,
+                copy,
+                typ,
+            },
+            None => MemoryAction::LoadValue {
+                location,
+                projection,
+                copy,
+                typ,
+            },
         };
         self.push_action(res, action);
     }
 
     fn push_write_gil_place_in_memory(&mut self, gil_place: GilPlace, value: Expr, typ: Ty<'tcx>) {
-        let GilPlace { base, proj, .. } = gil_place;
-        let proj = proj.into_iter().map(|x| x.into_expr()).collect();
-
-        let (location, projection) = add_proj(base, proj);
-        let action = MemoryAction::Store {
-            location,
-            projection,
-            typ,
-            value,
+        let (location, projection, meta) = gil_place.into_loc_proj_meta();
+        let action = match meta {
+            Some(size) => MemoryAction::StoreSlice {
+                location,
+                projection,
+                size,
+                typ,
+                value,
+            },
+            None => MemoryAction::StoreValue {
+                location,
+                projection,
+                typ,
+                value,
+            },
         };
         let ret = names::unused_var();
         self.push_action(ret, action);

@@ -1,4 +1,4 @@
-use crate::{codegen::memory::MemoryAction, prelude::*};
+use crate::prelude::*;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_statement(&mut self, stmt: &Statement<'tcx>) {
@@ -7,21 +7,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let compiled_rvalue = self.push_encode_rvalue(rvalue);
                 self.push_place_write(place, compiled_rvalue, self.rvalue_ty(rvalue));
             }
-            StatementKind::SetDiscriminant {
-                place,
-                variant_index,
-            } => {
-                let gp = self.push_get_gil_place(place);
-
-                let target = names::unused_var();
-                let (location, projection) = gp.into_loc_proj();
-                let discr = variant_index.as_u32();
-                let action = MemoryAction::StoreDiscriminant {
-                    location,
-                    projection,
-                    discr,
+            StatementKind::SetDiscriminant { .. } => {
+                let cmd = Cmd::Fail {
+                    name: "SET_DISCR".to_owned(),
+                    parameters: vec!["This statement only exists so we can compile constructors because they exist in MIR, but shouldn't be used".into()],
                 };
-                self.push_action(target, action)
+                self.push_cmd(cmd);
             }
             StatementKind::FakeRead(..)
             | StatementKind::Nop
