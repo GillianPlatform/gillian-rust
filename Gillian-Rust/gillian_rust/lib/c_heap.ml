@@ -95,7 +95,8 @@ module TreeBlock = struct
         match C_global_env.resolve_named ~genv ty with
         | Struct fields_tys -> of_rust_struct_value ~genv ~ty ~fields_tys data
         | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
-        | _                 -> failwith "bite")
+        | _                 ->
+            failwith "Deserializing a Named type that is not a struct or enum")
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -173,6 +174,12 @@ module TreeBlock = struct
         | _                 -> Fmt.failwith "Cannot downcast on %a"
                                  Rust_types.pp ty)
 
+  let get_forest ~genv:_ _t _proj _size _ty _copy =
+    failwith "get_forest not implemented yet"
+
+  let set_forest ~genv:_ _t _proj _size _ty _copy =
+    failwith "get_forest not implemented yet"
+
   let get_proj ~genv t proj ty copy =
     let update block =
       if C_global_env.subtypes ~genv block.ty ty then
@@ -223,10 +230,17 @@ let load ~genv (mem : t) loc proj ty copy =
   Hashtbl.replace mem loc new_block;
   (v, mem)
 
-let load_slice ~genv:_ (_m : t) _loc _proj _size _ty _copy = failwith "bite"
+let load_slice ~genv (mem : t) loc proj size ty copy =
+  let block = Hashtbl.find mem loc in
+  let vs, new_block = TreeBlock.get_forest ~genv block proj size ty copy in
+  Hashtbl.replace mem loc new_block;
+  (vs, mem)
 
-let store_slice ~genv:_ (_m : t) _loc _proj _size _ty _values =
-  failwith "chatte"
+let store_slice ~genv (mem : t) loc proj size ty values =
+  let block = Hashtbl.find mem loc in
+  let new_block = TreeBlock.set_forest ~genv block proj size ty values in
+  Hashtbl.replace mem loc new_block;
+  mem
 
 let store ~genv (mem : t) loc proj ty value =
   let block = Hashtbl.find mem loc in

@@ -18,6 +18,7 @@ impl GilProj {
     }
 }
 
+#[derive(Debug)]
 pub struct GilPlace<'tcx> {
     pub base: String,
     pub base_ty: Ty<'tcx>,
@@ -42,17 +43,17 @@ impl<'tcx> GilPlace<'tcx> {
         if base_is_slice {
             let addr = Expr::lnth(base.clone(), 0);
             let loc = Expr::lnth(addr.clone(), 0);
-            let proj = Expr::lnth(addr, 1);
+            let proj = Expr::lnth(addr.clone(), 1);
             let meta = Expr::lnth(base, 1);
             match &self.proj[..] {
                 [] => (loc, proj, Some(meta)),
                 [GilProj::Index(e), rest @ ..] => {
-                    let actual_index = Expr::plus(e.clone(), meta);
+                    let actual_index = GilProj::Index(Expr::plus(e.clone(), meta));
                     let mut total_proj = Vec::with_capacity(self.proj.len());
-                    total_proj.push(actual_index);
+                    total_proj.push(actual_index.into_expr());
                     let mut rest_proj = rest.iter().map(|x| x.clone().into_expr()).collect();
                     total_proj.append(&mut rest_proj);
-                    let (loc, total_proj) = add_proj_thin(loc, total_proj);
+                    let (loc, total_proj) = add_proj_thin(addr, total_proj);
                     (loc, total_proj, None)
                 }
                 _ => panic!("Using something else than index on slice"),
@@ -147,10 +148,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     let new_base = self.temp_var();
                     let typ = self.place_ty_until(place, idx);
                     self.push_read_gil_place_in_memory(new_base.clone(), cur_gil_place, typ, true);
+                    let next_typ = self.place_ty_until(place, idx + 1);
                     cur_gil_place = GilPlace {
                         base: new_base,
                         proj: vec![],
-                        base_ty: typ,
+                        base_ty: next_typ,
                     };
                 }
                 ProjectionElem::Field(u, _) => cur_gil_place.proj.push(GilProj::Field(u.as_u32())),
@@ -178,7 +180,23 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let gil_place = self.push_get_gil_place(place);
                 self.push_read_gil_place(gil_place, read_ty, copy)
             }
-            Some(variable) => Expr::PVar(variable),
+            Some(variable) => {
+                if copy {
+                    Expr::PVar(variable)
+                } else {
+                    let from = Expr::PVar(variable.clone());
+                    let v = self.temp_var();
+                    self.push_cmd(Cmd::Assignment {
+                        variable: v.clone(),
+                        assigned_expr: from,
+                    });
+                    self.push_cmd(Cmd::Assignment {
+                        variable,
+                        assigned_expr: Expr::Lit(Literal::Nono),
+                    });
+                    Expr::PVar(v)
+                }
+            }
         }
     }
 

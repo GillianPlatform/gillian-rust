@@ -64,12 +64,12 @@ let execute_store_value mem args =
 
 let execute_store_slice mem args =
   match args with
-  | [ Literal.Loc loc; LList proj; Int size; ty; value ] ->
+  | [ Literal.Loc loc; LList proj; Int size; ty; LList values ] ->
       let rust_ty = Rust_types.of_lit ty in
       let proj = Projections.of_lit_list proj in
       let size = Z.to_int size in
       let new_heap =
-        C_heap.store_slice ~genv:mem.genv mem.heap loc proj size rust_ty value
+        C_heap.store_slice ~genv:mem.genv mem.heap loc proj size rust_ty values
       in
       ASucc ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_slice" args

@@ -118,7 +118,7 @@ impl Expr {
     pub fn i_lt(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i < j),
-            _ => !Expr::BinOp {
+            _ => Expr::BinOp {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
                 operator: BinOp::ILessThan,
@@ -129,7 +129,7 @@ impl Expr {
     pub fn f_lt(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i < j),
-            _ => !Expr::BinOp {
+            _ => Expr::BinOp {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
                 operator: BinOp::FLessThan,

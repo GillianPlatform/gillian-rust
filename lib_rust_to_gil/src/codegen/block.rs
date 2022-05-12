@@ -113,7 +113,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             return;
         }
         self.push_label(bb_label(bb));
-        log::debug!("----{:#?}----", bb);
         for stmt in &bb_data.statements {
             self.push_statement(stmt);
         }
