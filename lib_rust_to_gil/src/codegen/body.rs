@@ -4,6 +4,9 @@ use rustc_middle::mir::pretty::write_mir_fn;
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
+            if self.local_is_in_store(&loc) {
+                return;
+            }
             if let TyKind::Never = decl.ty.kind() {
                 return;
             }
@@ -25,10 +28,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_free_local_decls_and_return(&mut self, mir: &Body<'tcx>) {
         self.push_label(names::ret_label());
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
-            if let LocalKind::Arg = mir.local_kind(loc) {
-                // Don't bind arguments, they're already bound
+            if self.local_is_in_store(&loc) {
                 return;
-            };
+            }
             if let TyKind::Never = decl.ty.kind() {
                 return;
             }
@@ -36,15 +38,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         });
         self.push_cmd(Cmd::ReturnNormal);
     }
-
-    // pub fn push_free_local_decls(&mut self, mir: &Body<'tcx>) {
-    //     mir.local_decls().iter_enumerated().for_each(|(loc, decl)) {
-    //         if let LocalKind::Arg = mir.local_kind(loc) {
-    //             // Don't free the arguments
-    //             return;
-    //         };
-    //     }
-    // }
 
     fn push_global_env_call(&mut self) {
         let call = Cmd::Call {

@@ -1,9 +1,13 @@
+use rustc_middle::mir::visit::PlaceContext;
+use rustc_middle::mir::visit::Visitor;
 use rustc_span::def_id::DefId;
+use std::collections::HashSet;
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
+    locals_in_memory: HashSet<Local>,
     did: DefId,
     pub(crate) ty_ctxt: TyCtxt<'tcx>,
     gil_body: ProcBody,
@@ -30,12 +34,25 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         GilCtxt {
             did,
             ty_ctxt,
+            locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
             global_env,
+        }
+    }
+
+    pub fn local_is_in_store(&self, local: &Local) -> bool {
+        !self.locals_in_memory.contains(local)
+    }
+
+    pub fn place_in_store(&self, place: &Place<'tcx>) -> Option<String> {
+        if self.local_is_in_store(&place.local) {
+            Some(self.name_from_local(&place.local))
+        } else {
+            None
         }
     }
 
@@ -100,5 +117,37 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut items: Vec<ProcBodyItem> = self.gil_body.into();
         items.shrink_to_fit();
         Proc::new(name, args, items)
+    }
+}
+
+fn locals_in_memory_for_mir(body: &Body) -> HashSet<Local> {
+    let mut visitor = ReferencedLocalsVisitor::default();
+    visitor.visit_body(body);
+    visitor.into_hashset()
+}
+
+#[derive(Default)]
+struct ReferencedLocalsVisitor(HashSet<Local>);
+
+impl ReferencedLocalsVisitor {
+    pub fn into_hashset(self) -> HashSet<Local> {
+        self.0
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue, loc: Location) {
+        if let Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) = rvalue {
+            self.0.insert(place.local);
+        }
+        self.super_rvalue(rvalue, loc);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
+        // I don't know how to perform downcasting on values in store
+        if !place.projection.is_empty() {
+            self.0.insert(place.local);
+        }
+        self.super_place(place, ctx, location);
     }
 }

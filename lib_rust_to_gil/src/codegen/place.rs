@@ -76,11 +76,6 @@ impl<'tcx> GilPlace<'tcx> {
     }
 }
 
-pub enum MemoryAccess<'tcx> {
-    InMemory(GilPlace<'tcx>),
-    InStore(String),
-}
-
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_read_gil_place_in_memory(
         &mut self,
@@ -177,9 +172,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn push_place_read(&mut self, place: &Place<'tcx>, copy: bool) -> Expr {
-        let read_ty = self.place_ty(place);
-        let gil_place = self.push_get_gil_place(place);
-        self.push_read_gil_place(gil_place, read_ty, copy)
+        match self.place_in_store(place) {
+            None => {
+                let read_ty = self.place_ty(place);
+                let gil_place = self.push_get_gil_place(place);
+                self.push_read_gil_place(gil_place, read_ty, copy)
+            }
+            Some(variable) => Expr::PVar(variable),
+        }
     }
 
     pub fn push_place_read_into(&mut self, ret: String, place: &Place<'tcx>, copy: bool) {
@@ -192,7 +192,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn push_place_write(&mut self, place: &Place<'tcx>, value: Expr, value_ty: Ty<'tcx>) {
-        let gil_place = self.push_get_gil_place(place);
-        self.push_write_gil_place_in_memory(gil_place, value, value_ty);
+        match self.place_in_store(place) {
+            None => {
+                let gil_place = self.push_get_gil_place(place);
+                self.push_write_gil_place_in_memory(gil_place, value, value_ty);
+            }
+            Some(variable) => self.push_cmd(Cmd::Assignment {
+                variable,
+                assigned_expr: value,
+            }),
+        }
     }
 }
