@@ -16,9 +16,9 @@ fn modify(x: &mut MyEnum) {
     *x = MyEnum::Y;
 }
 
-pub fn main() {
+pub fn main() -> i32 {
     let mut x = MyEnum::X;
     modify(&mut x);
     let y = MyEnum::Y;
-    let _e = test(x) + test(y);
+    test(x) + test(y) // ENDSWITH: 2000i
 }

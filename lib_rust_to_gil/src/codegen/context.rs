@@ -137,7 +137,10 @@ impl ReferencedLocalsVisitor {
 
 impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
     fn visit_rvalue(&mut self, rvalue: &Rvalue, loc: Location) {
-        if let Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) = rvalue {
+        if let Rvalue::Ref(_, _, place)
+        | Rvalue::AddressOf(_, place)
+        | Rvalue::Discriminant(place) = rvalue
+        {
             self.0.insert(place.local);
         }
         self.super_rvalue(rvalue, loc);

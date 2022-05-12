@@ -4,7 +4,7 @@ pub fn add_four(x: &i32) -> i32 {
     (*x) + 4
 }
 
-pub fn main() {
+pub fn main() -> i32 {
     let z = 4;
-    let _y = add_four(&z);
+    add_four(&z) // ENDSWITH: 8i
 }

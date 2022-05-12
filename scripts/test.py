@@ -10,11 +10,17 @@ log_file = "Gillian-Rust/file.log"
 def compile(example_file):
     if len(sys.argv) >= 3 and sys.argv[2] == "--mir":
         env = os.environ
+        stdout = None
+        stderr = None
     else:
         env = log_off_env
+        stdout = subprocess.DEVNULL
+        stderr = subprocess.DEVNULL
     run(
         ["cargo", "run", "--", "--out-dir", "output", example_file],
         env=env,
+        stdout=stdout,
+        stderr=stderr,
     )
 
 
