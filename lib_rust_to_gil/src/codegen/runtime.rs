@@ -21,7 +21,6 @@ const CHECKED_ADD: &str = "i__binop_checked_add";
 const LANG_ASSERT: &str = "i__lang_assert";
 const INT_OF_BOOL: &str = "i__lang_int_of_bool";
 const BOOL_OF_INT: &str = "i__bool_of_lang_int";
-const SLICE_INDEX: &str = "i__slice_index";
 
 pub fn checked_add(variable: String, e1: Expr, e2: Expr, max_val: Expr) -> Cmd {
     Cmd::Call {
@@ -58,16 +57,6 @@ pub fn int_of_bool(variable: String, bool_expr: Expr) -> Cmd {
         variable,
         proc_ident: Expr::string(INT_OF_BOOL.to_string()),
         parameters: vec![bool_expr],
-        error_lab: None,
-        bindings: None,
-    }
-}
-
-pub fn slice_index(variable: String, slice_ptr: Expr, index: Expr) -> Cmd {
-    Cmd::Call {
-        variable,
-        proc_ident: SLICE_INDEX.to_string().into(),
-        parameters: vec![slice_ptr, index],
         error_lab: None,
         bindings: None,
     }
