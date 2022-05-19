@@ -43,6 +43,16 @@ let lit_of_elem : elem -> Literal.t = function
 let to_lit_list t : Literal.t list = List.map lit_of_elem t
 let pp = Fmt.Dump.list pp_elem
 
+module Tree_path_or_whatever_you_want_to_call_it = struct
+  type t
+end
+
+let resolve ~(genv : C_global_env.t) (p : t) :
+    Tree_path_or_whatever_you_want_to_call_it.t =
+  failwith "to implement"
+
+let reduce ~(genv : C_global_env.t) (p : t) : t = failwith "to implement"
+
 (** Takes a projection, and returns the index at the start of the slice,
     as well as the modified projection without the indexing done  *)
 let rec slice_start = function
