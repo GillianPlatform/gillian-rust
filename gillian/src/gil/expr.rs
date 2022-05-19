@@ -85,7 +85,7 @@ impl Expr {
         f.into()
     }
 
-    pub fn int(i: i64) -> Self {
+    pub fn int(i: i128) -> Self {
         i.into()
     }
 
@@ -146,7 +146,7 @@ impl Expr {
             _ => Self::BinOp {
                 operator: BinOp::LstNth,
                 left_operand: Box::new(e),
-                right_operand: Box::new(Self::int(i as i64)),
+                right_operand: Box::new(Self::int(i as i128)),
             },
         }
     }
@@ -165,8 +165,8 @@ impl Expr {
 
     pub fn lst_len(e: Expr) -> Self {
         match e {
-            Expr::EList(vec) => Expr::int(vec.len() as i64),
-            Expr::Lit(Literal::LList(vec)) => Expr::int(vec.len() as i64),
+            Expr::EList(vec) => Expr::int(vec.len() as i128),
+            Expr::Lit(Literal::LList(vec)) => Expr::int(vec.len() as i128),
             _ => Expr::UnOp {
                 operator: UnOp::LstLen,
                 operand: Box::new(e),

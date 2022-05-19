@@ -7,7 +7,7 @@
     "name": "Verified Trustworthy Software Specification Group at Imperial College",
     "url": "https://vtss.doc.ic.ac.uk"
   },
-  "homepage": "GillianDev.github.io",
+  "homepage": "GillianPlatform.github.io",
   "license": "BSD-3-Clause",
   "esy": {
     "build": "dune build @install",

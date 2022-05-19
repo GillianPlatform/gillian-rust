@@ -6,21 +6,23 @@ pub enum GilProj {
     Field(u32),
     Downcast(u32),
     Index(Expr),
+    // Cast(Literal),
 }
 
 impl GilProj {
     pub fn into_expr(self) -> Expr {
         match self {
-            Self::Field(u) => vec!["f".into(), Expr::int(u as i64)].into(),
-            Self::Downcast(u) => vec!["d".into(), Expr::int(u as i64)].into(),
+            Self::Field(u) => vec!["f".into(), Expr::int(u as i128)].into(),
+            Self::Downcast(u) => vec!["d".into(), Expr::int(u as i128)].into(),
             Self::Index(e) => vec!["i".into(), e].into(),
+            // Self::Cast(ty) => vec!["c".into(), ty.into()].into(),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct GilPlace<'tcx> {
-    pub base: String,
+    pub base: Expr,
     pub base_ty: Ty<'tcx>,
     pub proj: Vec<GilProj>,
 }
@@ -33,59 +35,90 @@ fn add_proj_thin(base: Expr, proj: Vec<Expr>) -> (Expr, Expr) {
 }
 
 impl<'tcx> GilPlace<'tcx> {
-    pub fn base_is_slice(&self) -> bool {
-        matches!(self.base_ty.kind(), TyKind::Slice(..) | TyKind::Str)
-    }
-
-    pub fn into_loc_proj_meta(self) -> (Expr, Expr, Option<Expr>) {
-        let base_is_slice = self.base_is_slice();
-        let base = Expr::PVar(self.base);
-        if base_is_slice {
-            let addr = Expr::lnth(base.clone(), 0);
-            let loc = Expr::lnth(addr.clone(), 0);
-            let proj = Expr::lnth(addr.clone(), 1);
-            let meta = Expr::lnth(base, 1);
-            match &self.proj[..] {
-                [] => (loc, proj, Some(meta)),
-                [GilProj::Index(e), rest @ ..] => {
-                    let actual_index = GilProj::Index(Expr::plus(e.clone(), meta));
-                    let mut total_proj = Vec::with_capacity(self.proj.len());
-                    total_proj.push(actual_index.into_expr());
-                    let mut rest_proj = rest.iter().map(|x| x.clone().into_expr()).collect();
-                    total_proj.append(&mut rest_proj);
-                    let (loc, total_proj) = add_proj_thin(addr, total_proj);
-                    (loc, total_proj, None)
-                }
-                _ => panic!("Using something else than index on slice"),
-            }
-        } else {
-            let proj: Vec<_> = self.proj.into_iter().map(|x| x.into_expr()).collect();
-            let (loc, ofs) = add_proj_thin(base, proj);
-            (loc, ofs, None)
+    pub fn base(base: Expr, base_ty: Ty<'tcx>) -> GilPlace<'tcx> {
+        GilPlace {
+            base,
+            base_ty,
+            proj: vec![],
         }
     }
 
-    pub fn into_expr_ptr(self) -> Expr {
-        if self.proj.is_empty() {
-            return Expr::PVar(self.base);
-        }
-        let (loc, total_proj, meta) = self.into_loc_proj_meta();
-        match meta {
-            None => vec![loc, total_proj].into(),
-            Some(meta) => vec![vec![loc, total_proj].into(), meta].into(),
+    pub fn slice_type(&self) -> Option<Ty<'tcx>> {
+        match self.base_ty.kind() {
+            TyKind::Slice(ty) => Some(ty),
+            _ => None,
         }
     }
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    pub fn push_place_into_loc_proj_meta(
+        &mut self,
+        place: GilPlace<'tcx>,
+    ) -> (Expr, Expr, Option<Expr>) {
+        let slice_type_of_place = place.slice_type();
+        let base = place.base;
+        match slice_type_of_place {
+            Some(slice_elem) => match &place.proj[..] {
+                [] => {
+                    let addr = Expr::lnth(base.clone(), 0);
+                    let loc = Expr::lnth(addr.clone(), 0);
+                    let proj = Expr::lnth(addr, 1);
+                    let meta = Expr::lnth(base, 1);
+                    (loc, proj, Some(meta))
+                }
+                [GilProj::Index(index), rest @ ..] => {
+                    let new_base = self.temp_var();
+                    self.push_cmd(runtime::slice_index(
+                        new_base.clone(),
+                        Expr::lnth(base, 0),
+                        index.clone(),
+                    ));
+                    let rest_proj: Vec<GilProj> = rest.into();
+                    let new_place = GilPlace {
+                        base: Expr::PVar(new_base),
+                        base_ty: slice_elem,
+                        proj: rest_proj,
+                    };
+                    self.push_place_into_loc_proj_meta(new_place)
+                }
+                _ => panic!("Using something else than index on slice"),
+            },
+            None => {
+                let proj: Vec<_> = place.proj.into_iter().map(|x| x.into_expr()).collect();
+                let (loc, ofs) = add_proj_thin(base, proj);
+                (loc, ofs, None)
+            }
+        }
+    }
+
+    pub fn push_place_into_expr_ptr(&mut self, place: GilPlace<'tcx>) -> Expr {
+        if place.proj.is_empty() {
+            return place.base;
+        }
+        let (loc, total_proj, meta) = self.push_place_into_loc_proj_meta(place);
+        match meta {
+            None => vec![loc, total_proj].into(),
+            Some(meta) => vec![vec![loc, total_proj].into(), meta].into(),
+        }
+    }
+
+    // Careful: array_ty.kind() should always be [element_ty; _]
+    pub fn push_cast_array_to_element_pointer(&mut self, e: Expr, array_ty: Ty<'tcx>) -> Expr {
+        // Casting an array to the first element pointer is the same operation as getting the 0th element.
+        let mut place = GilPlace::base(e, array_ty);
+        place.proj.push(GilProj::Index(0.into()));
+        self.push_place_into_expr_ptr(place)
+    }
+
     fn push_read_gil_place_in_memory(
         &mut self,
         res: String,
-        gil_place: GilPlace,
+        gil_place: GilPlace<'tcx>,
         typ: Ty<'tcx>,
         copy: bool,
     ) {
-        let (location, projection, meta) = gil_place.into_loc_proj_meta();
+        let (location, projection, meta) = self.push_place_into_loc_proj_meta(gil_place);
         let action = match meta {
             Some(size) => MemoryAction::LoadSlice {
                 location,
@@ -104,8 +137,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_action(res, action);
     }
 
-    fn push_write_gil_place_in_memory(&mut self, gil_place: GilPlace, value: Expr, typ: Ty<'tcx>) {
-        let (location, projection, meta) = gil_place.into_loc_proj_meta();
+    fn push_write_gil_place_in_memory(
+        &mut self,
+        gil_place: GilPlace<'tcx>,
+        value: Expr,
+        typ: Ty<'tcx>,
+    ) {
+        let (location, projection, meta) = self.push_place_into_loc_proj_meta(gil_place);
         let action = match meta {
             Some(size) => MemoryAction::StoreSlice {
                 location,
@@ -138,7 +176,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn push_get_gil_place(&mut self, place: &Place<'tcx>) -> GilPlace<'tcx> {
         let mut cur_gil_place = GilPlace {
-            base: self.name_from_local(&place.local),
+            base: Expr::PVar(self.name_from_local(&place.local)),
             proj: vec![],
             base_ty: self.place_ty(&place.local.into()),
         };
@@ -150,16 +188,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     self.push_read_gil_place_in_memory(new_base.clone(), cur_gil_place, typ, true);
                     let next_typ = self.place_ty_until(place, idx + 1);
                     cur_gil_place = GilPlace {
-                        base: new_base,
+                        base: Expr::PVar(new_base),
                         proj: vec![],
                         base_ty: next_typ,
                     };
                 }
                 ProjectionElem::Field(u, _) => cur_gil_place.proj.push(GilProj::Field(u.as_u32())),
                 ProjectionElem::Index(local) => {
-                    // so depending if the local is in memory or in the store, this is going to change a lot!
-                    // In the store? Fine! The index is just the variable corresponding to the local.
-                    // In the memory? Gotta read first...
                     let expr = self.push_place_read(&local.into(), true);
                     cur_gil_place.proj.push(GilProj::Index(expr))
                 }

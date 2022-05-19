@@ -24,3 +24,19 @@ proc i__lang_int_of_bool(b) {
   zer: ret := 0i;
        return
 };
+
+proc i__slice_index(p, idx) {
+       addr := l-nth(p, 0i);
+       proj := l-nth(p, 1i);
+       goto [l-len proj = 0] spl cpl;
+  spl: ret := {{ addr, {{ {{ "i", idx }} }} }};
+       return;
+  cpl: plen := l-len proj;
+       lidx := l-nth(proj, plen i- 1i);
+       rest := l-sub(proj, 0i, plen i- 1i);
+       goto [l-nth(lidx, 0i) = "i"] ctn err;
+  ctn: nlidx := {{ "i", l-nth(lidx, 1i) i+ idx }};
+       ret := {{ addr, l+(rest, {{ nlidx }}) }};
+       return;
+  err: fail[ADDIDX](p, idx)
+};

@@ -61,7 +61,7 @@ where
                     Const {
                         val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(x))),
                         ..
-                    } => x.to_bits(x.size()).unwrap() as i64,
+                    } => x.to_bits(x.size()).unwrap() as i128,
                     _ => panic!("Invalid array size"),
                 };
                 vec!["array".into(), self.encode_type(ty), Literal::Int(sz_i)].into()

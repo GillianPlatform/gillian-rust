@@ -133,6 +133,14 @@ module TreeBlock = struct
     | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
     | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
 
+  module Proj_result = struct
+    type t = Whole_node of t | Index_on of t vec * int
+
+    let resolve = function
+      | Whole_node t    -> t
+      | Index_on (t, i) -> Result.get_ok t.%[i]
+  end
+
   let rec find_proj ~genv ~update ~return t proj =
     let rec_call = find_proj ~genv ~update ~return in
     match (proj, t) with
@@ -140,48 +148,80 @@ module TreeBlock = struct
         let new_block = update block in
         let ret_value = return block in
         (ret_value, new_block)
-    | Projections.Field p :: r, { content; ty = ty' } -> (
-        match content with
-        | Scalar s               ->
-            Fmt.failwith "Invalid projection on scalar: %d on %a" p Literal.pp s
-        | ThinPtr _ | FatPtr _   ->
-            Fmt.failwith "Invalid projection on pointer: %d on %a" p pp_content
-              content
-        | Array _                -> Fmt.failwith
-                                      "Invalid projection on array: field"
-        | Fields vec             -> (
-            match vec.%[p] with
-            | Ok e    ->
-                let v, sub_block = rec_call e r in
-                let new_block = Result.get_ok (vec.%[p] <- sub_block) in
-                (v, { ty = ty'; content = Fields new_block })
-            | Error _ -> Fmt.failwith "Projection out of bound")
-        | Enum { discr; fields } -> (
-            match fields.%[p] with
-            | Ok e    ->
-                let v, sub_block = rec_call e r in
-                let new_fields = Result.get_ok (fields.%[p] <- sub_block) in
-                (v, { ty = ty'; content = Enum { discr; fields = new_fields } })
-            | Error _ -> Fmt.failwith "Projection out of enum bound")
-        | Uninit                 -> Fmt.failwith "Uninit use")
-    | Downcast p :: r, { ty; content } -> (
-        match C_global_env.resolve_named ~genv ty with
-        | Rust_types.Enum _ -> (
-            match content with
-            | Enum { discr; _ } ->
-                if discr != p then failwith "invalid downcast" else rec_call t r
-            | _                 -> failwith "incorrect enum")
-        | _                 -> Fmt.failwith "Cannot downcast on %a"
-                                 Rust_types.pp ty)
+    | Projections.Index i :: r, { content = Array vec; ty = ty' } ->
+        let e = Result.ok_or vec.%[i] "Index out of bound" in
+        let v, sub_block = rec_call e r in
+        let new_block = Result.get_ok (vec.%[i] <- sub_block) in
+        (v, { ty = ty'; content = Array new_block })
+    | Projections.Field p :: r, { content = Fields vec; ty = ty' } ->
+        let e = Result.ok_or vec.%[p] "Projection out of bound" in
+        let v, sub_block = rec_call e r in
+        let new_block = Result.get_ok (vec.%[p] <- sub_block) in
+        (v, { ty = ty'; content = Fields new_block })
+    | Projections.Field p :: r, { content = Enum { discr; fields }; ty = ty' }
+      ->
+        let e = Result.ok_or fields.%[p] "Projection out of enum bound" in
+        let v, sub_block = rec_call e r in
+        let new_fields = Result.get_ok (fields.%[p] <- sub_block) in
+        (v, { ty = ty'; content = Enum { discr; fields = new_fields } })
+    | Downcast p :: r, { content = Enum { discr; _ }; _ } when discr = p ->
+        rec_call t r
+    | Cast _ :: r, t -> rec_call t r
+    | _ -> Fmt.failwith "Invalid projection %a on %a" Projections.pp proj pp t
 
-  let get_forest ~genv:_ _t _proj _size _ty _copy =
-    failwith "get_forest not implemented yet"
+  let get_forest ~genv t proj size ty copy =
+    let start, proj = Projections.slice_start proj in
+    let update block =
+      if Rust_types.is_slice_of ty block.ty then
+        if copy then block
+        else
+          match block.content with
+          | Array vec ->
+              {
+                content =
+                  Array
+                    (Result.ok_or
+                       (Vec.override_range vec ~start ~size (fun _ ->
+                            uninitialized ~genv ty))
+                       "Invalid slice range");
+                ty;
+              }
+          | _         -> failwith "Not an array"
+      else failwith "Not a subslice"
+    in
+    let return block =
+      match block.content with
+      | Array vec -> sublist_map ~start ~size ~f:(to_rust_value ~genv) vec
+      | _         -> failwith "Not an array"
+    in
+    find_proj ~genv ~update ~return t proj
 
-  let set_forest ~genv:_ _t _proj _size _ty _copy =
-    failwith "get_forest not implemented yet"
+  let set_forest ~genv t proj size ty values =
+    assert (List.length values = size);
+    let start, proj = Projections.slice_start proj in
+    let return _ = () in
+    let update block =
+      if Rust_types.is_slice_of ty block.ty then
+        match (block.content, block.ty) with
+        | Array vec, Rust_types.Array { ty; _ } ->
+            {
+              content =
+                Array
+                  (Result.ok_or
+                     (Vec.override_range_with_list vec ~start
+                        ~f:(of_rust_value ~genv ~ty) values)
+                     "Invalid slice range");
+              ty;
+            }
+        | _ -> failwith "Not an array"
+      else failwith "Not a subslice"
+    in
+    let _, new_block = find_proj ~genv ~return ~update t proj in
+    new_block
 
   let get_proj ~genv t proj ty copy =
     let update block =
+      (* Subtype seems unnecessary *)
       if C_global_env.subtypes ~genv block.ty ty then
         if copy then block else uninitialized ~genv ty
       else

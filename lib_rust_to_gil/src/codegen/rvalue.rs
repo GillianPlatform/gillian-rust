@@ -16,12 +16,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 let gil_place = self.push_get_gil_place(place);
-                gil_place.into_expr_ptr()
+                self.push_place_into_expr_ptr(gil_place)
             }
             Rvalue::Discriminant(place) => {
                 let gp = self.push_get_gil_place(place);
                 let target = self.temp_var();
-                let (location, projection, meta) = gp.into_loc_proj_meta();
+                let (location, projection, meta) = self.push_place_into_loc_proj_meta(gp);
                 if meta.is_some() {
                     fatal!(self, "Reading discriminant of a fat pointer!");
                 }
@@ -79,9 +79,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 match (self.operand_ty(op).kind(), ty_to.kind()) {
                     (TyKind::Ref(_, left, _), TyKind::Ref(_, right, _)) => {
                         match (left.kind(), right.kind()) {
-                           (TyKind::Array(_, Const {
+                           (TyKind::Array(_ , Const {
                                 val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(i))), ..
-                            }), TyKind::Slice(..)) => vec![enc_op, i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into(),
+                            }), TyKind::Slice(..)) => {
+                                let element_pointer = self.push_cast_array_to_element_pointer(enc_op, left);
+                                vec![element_pointer, i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into()
+                            },
                             (a, b) => fatal!(
                                 self,
                                 "Unsizing something that is not two refs! an array to slice! Casting {:#?} to {:#?}",
@@ -220,7 +223,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         };
         match val {
             ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_scalar() => {
-                let x = scalar_int.to_bits(scalar_int.size()).unwrap() as i64;
+                let x = scalar_int.to_bits(scalar_int.size()).unwrap() as i128;
                 Literal::Int(x)
             }
             ConstValue::Scalar(Scalar::Int(scalar_int))
@@ -230,7 +233,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 ) =>
             {
                 // It's a struct with only one field
-                let x: i64 = scalar_int
+                let x: i128 = scalar_int
                     .to_bits(scalar_int.size())
                     .unwrap()
                     .try_into()
@@ -239,7 +242,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
             ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_enum() => {
                 // It's an enum value with no fields
-                let x: i64 = scalar_int
+                let x: i128 = scalar_int
                     .to_bits(scalar_int.size())
                     .unwrap()
                     .try_into()

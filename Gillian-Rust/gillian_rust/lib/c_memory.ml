@@ -48,7 +48,7 @@ let execute_load_slice mem args =
       let ret, new_heap =
         C_heap.load_slice ~genv:mem.genv mem.heap loc proj size rust_ty copy
       in
-      ASucc ({ mem with heap = new_heap }, [ ret ])
+      ASucc ({ mem with heap = new_heap }, [ LList ret ])
   | _ -> wrong_args "load_slice" args
 
 let execute_store_value mem args =

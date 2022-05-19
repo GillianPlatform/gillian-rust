@@ -9,7 +9,7 @@ pub enum Literal {
     Empty,
     Constant(Constant),
     Bool(bool),
-    Int(i64),
+    Int(i128),
     Num(f32),
     String(String),
     Loc(String),
@@ -22,7 +22,7 @@ macro_rules! from_int {
     ($t: ty) => {
         impl From<$t> for Literal {
             fn from(i: $t) -> Self {
-                Self::Int(i as i64)
+                Self::Int(i as i128)
             }
         }
     };

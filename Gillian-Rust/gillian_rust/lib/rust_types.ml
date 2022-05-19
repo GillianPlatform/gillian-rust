@@ -20,7 +20,10 @@ type t =
 
 let name_exn = function
   | Named s -> s
-  | _       -> raise (Invalid_argument "Noe a valid name!")
+  | _       -> raise (Invalid_argument "Not a valid name!")
+
+let is_slice_of a b =
+  match (a, b) with Slice t1, Array { ty = t2; _ } -> equal t1 t2 | _ -> false
 
 let rec of_lit = function
   | Literal.String str_ty ->

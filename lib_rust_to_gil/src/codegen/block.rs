@@ -83,7 +83,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let discr_expr = self.push_encode_operand(discr);
                 let mut else_lab = self.switch_label();
                 for (value, target) in targets.iter() {
-                    let v_expr = Expr::int(value as i64);
+                    let v_expr = Expr::int(value as i128);
                     let target = bb_label(&target);
                     let goto = Cmd::GuardedGoto {
                         guard: Expr::eq_expr(discr_expr.clone(), v_expr),
