@@ -1,9 +1,7 @@
 type t = (string, Rust_types.t) Hashtbl.t
 
 let empty () = Hashtbl.create 10
-
 let copy x = Hashtbl.copy x
-
 let get_type genv ty = Hashtbl.find genv ty
 
 let declare_struct genv name decl =
