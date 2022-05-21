@@ -133,8 +133,6 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
 exception
   AccessError of access list * op list * Rust_types.t * int option * string
 
-let resolve_address (_context : context) (_address : address) : access list = []
-
 module UpTreeDirection = struct
   type t = Curr | Fwd
 
@@ -292,3 +290,32 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
       accesses' ix (context.members ty).(ix)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
   | [], _ -> accesses
+
+let rec zero_offset_types (context : context) (ty : Rust_types.t) : Rust_types.t list =
+  let sub_tree_types () = ty :: zero_offset_types context (context.members ty).(0) in
+  match (context.partial_layouts ty).fields with
+    | Arbitrary offsets when offsets.(0) = Bytes { size = 0 } -> sub_tree_types ()
+    | Array (_, _) -> sub_tree_types ()
+    | _ -> [ty]
+
+let resolve_address (context : context) (address : address) : access list =
+  let accesses = resolve context [] address.block_type address.route None in
+  let result_type = function
+    | a :: _ -> a.index_type
+    | _ -> address.block_type in
+  let r_t_accesses = result_type accesses
+  in if r_t_accesses = address.address_type then
+    accesses
+  else
+    let z_o_types = zero_offset_types context r_t_accesses in
+    let rec make_pairs_until_fst pred = function
+      | x :: ((x' :: _) as xs) when not @@ pred x -> (x, x') :: make_pairs_until_fst pred xs
+      | _ -> [] in
+    let z_o_conversions = make_pairs_until_fst (fun ty -> ty = address.address_type) z_o_types in 
+    let as_z_o = List.map (function (index_type, against) -> { index = 0; index_type; against }) z_o_conversions in
+    let as' = cons_all as_z_o accesses in
+    if result_type as' = address.address_type then 
+      as' else raise (AccessError (as', [], result_type as', Some 0, "Could not resolve to correct address type"))
+
+let partial_layouts_from_env (genv : C_global_env.t) : Rust_types.t -> partial_layout =
+  Hashtbl.
