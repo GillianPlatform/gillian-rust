@@ -85,8 +85,8 @@ let reorder : op list -> op list =
 
 let rec simplify : op list -> op list = function
   (* We have to handle 0s/Identity casts removed from the next element, since they could lead to two elements being next to each other and simplifying *)
-  | r :: Plus (w, 0, t) :: rs -> simplify (r :: rs)
-  | r :: UPlus (w, 0) :: rs -> simplify (r :: rs)
+  | r :: Plus (_, 0, _) :: rs -> simplify (r :: rs)
+  | r :: UPlus (_, 0) :: rs -> simplify (r :: rs)
   | r :: Cast (t, t') :: rs when t = t' -> simplify (r :: rs)
   | Plus (Wrap, i, t) :: Plus (Wrap, i', t') :: rs when t = t' ->
       simplify (Plus (Wrap, i + i', t) :: rs)
@@ -100,13 +100,13 @@ let rec simplify : op list -> op list = function
   | Cast (t, t'') :: Cast (t''', t') :: rs when t'' = t''' ->
       simplify (Cast (t, t') :: rs)
   (* We also have to handle 0s if they're at the front, from other rules or as the last element *)
-  | Plus (w, 0, t) :: rs -> simplify rs
-  | UPlus (w, 0) :: rs -> simplify rs
+  | Plus (_, 0, _) :: rs -> simplify rs
+  | UPlus (_, 0) :: rs -> simplify rs
   | Cast (t, t') :: rs when t = t' -> simplify rs
   | r :: rs -> r :: simplify rs
   | [] -> []
 
-let reduce = simplify @@ reorder @@ contextualise context rs
+let reduce context rs = simplify @@ reorder @@ contextualise context rs
 
 type address = {
   block : int;
@@ -133,7 +133,7 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
 exception
   AccessError of access list * op list * Rust_types.t * int option * string
 
-let resolve_address (context : context) (address : address) : access list = []
+let resolve_address (_context : context) (_address : address) : access list = []
 
 module UpTreeDirection = struct
   type t = Curr | Fwd
@@ -186,7 +186,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
   let rec up_tree_cast dir accesses' rs' =
     match accesses' with
     (* We're not checking whether the type cast to is meant to have indices, but this should be fine as it won't be able to progress once there *)
-    | { index; index_type; against } :: as' ->
+    | { index; index_type = _; against } :: as' ->
         let max_ix = Array.length (context.members against)
         and ix' = index + UpTreeDirection.magnitude dir in
         if ix' <= max_ix then resolve context as' against rs' (Some ix')
@@ -214,7 +214,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
   | Plus (w, i, t) :: rs', Some ix -> (
       let i' = i + ix
       and modify_plus_eliminating_zero new_i =
-        if new_i = 0 then rs else Plus (w, new_i, t) :: rs
+        if new_i = 0 then rs' else Plus (w, new_i, t) :: rs'
       and partial_layout = context.partial_layouts ty in
       match ty with
       | Rust_types.Array { ty = tElem; length = n } when tElem = t ->
@@ -234,19 +234,19 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
             up_tree_cast UpTreeDirection.Curr accesses rs
           else
             match distance_to_next_field partial_layout moving_over_field with
-            | Some (FromCount (t', n, { size = 0 })) when t' = t ->
+            | Some (FromCount (t', _, { size = 0 })) when t' = t ->
                 (if next_ix = Array.length members then
                  up_tree_cast UpTreeDirection.Fwd accesses
                 else fun rs'' ->
                   resolve context accesses ty rs'' @@ Some next_ix)
                   (modify_plus_eliminating_zero next_i)
-            | _ -> down_tree_cast (DownTreeDirection.from_int i)
-            | _ -> down_tree_cast (DownTreeDirection.from_int i)))
+            | _ -> down_tree_cast (DownTreeDirection.from_int i))
+      | _ -> down_tree_cast (DownTreeDirection.from_int i))
   | UPlus (_, 0) :: _, _ ->
       access_error "Invalid +^U 0 should not exist at resolution stage"
   | UPlus (w, i) :: rs', Some ix -> (
       let modify_uplus_eliminating_zero new_i =
-        if new_i = 0 then rs else UPlus (w, new_i) :: rs
+        if new_i = 0 then rs' else UPlus (w, new_i) :: rs'
       and partial_layout = context.partial_layouts ty in
       match ty with
       | Rust_types.Array { ty = tElem; length = n } -> (
@@ -284,10 +284,10 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
                 else fun rs'' ->
                   resolve context accesses ty rs'' @@ Some next_ix)
                   (modify_uplus_eliminating_zero (i - (signum i * size)))
-            | _ -> down_tree_cast (DownTreeDirection.from_int i)
-            | _ -> down_tree_cast (DownTreeDirection.from_int i)))
-  | r :: _, Some ix -> down_tree_cast DownTreeDirection.Curr
-  | r :: _, _ -> access_error "Stuck handling next op"
+            | _ -> down_tree_cast (DownTreeDirection.from_int i))
+      | _ -> down_tree_cast (DownTreeDirection.from_int i))
+  | _ :: _, Some _ -> down_tree_cast DownTreeDirection.Curr
+  | _ :: _, _ -> access_error "Stuck handling next op"
   | [], Some ix when ix > 0 ->
       accesses' ix (context.members ty).(ix)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
