@@ -4,36 +4,38 @@ use crate::prelude::*;
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum ArithKind {
-    Wrapping,
-    Classic,
+    Wrap,
+    Overflow,
 }
 
 impl ArithKind {
     fn is_wrapping(&self) -> bool {
         match self {
-            ArithKind::Wrapping => true,
-            ArithKind::Classic => false,
+            ArithKind::Wrap => true,
+            ArithKind::Overflow => false,
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum GilProj {
-    Field(u32),
-    Downcast(u32),
-    Index(Expr),
-    Plus(ArithKind, Expr),
-    Cast(Literal),
+    Field(u32, EncodedType),
+    Downcast(u32, EncodedType),
+    ArrayIndex(Expr, EncodedType, i128),
+    SliceIndex(Expr, EncodedType), // The EncodedType is the type of elements in the slice
+    Plus(ArithKind, Expr, EncodedType),
+    Cast(EncodedType, EncodedType),
 }
 
 impl GilProj {
     pub fn into_expr(self) -> Expr {
         match self {
-            Self::Field(u) => vec!["f".into(), Expr::int(u as i128)].into(),
-            Self::Downcast(u) => vec!["d".into(), Expr::int(u as i128)].into(),
-            Self::Index(e) => vec!["i".into(), e].into(),
-            Self::Cast(ty) => vec!["c".into(), ty.into()].into(),
-            Self::Plus(ak, e) => vec!["+".into(), ak.is_wrapping().into(), e].into(),
+            Self::Field(u, ty) => vec!["f".into(), Expr::int(u as i128), ty.into()].into(),
+            Self::Downcast(u, ty) => vec!["d".into(), Expr::int(u as i128), ty.into()].into(),
+            Self::ArrayIndex(e, ty, sz) => vec!["i".into(), e, ty.into(), sz.into()].into(),
+            Self::Cast(from_ty, into_ty) => vec!["c".into(), from_ty.into(), into_ty.into()].into(),
+            Self::Plus(ak, e, ty) => vec!["+".into(), ak.is_wrapping().into(), e, ty.into()].into(),
+            Self::SliceIndex(e, ty) => Self::Plus(ArithKind::Overflow, e, ty).into_expr(),
         }
     }
 }
@@ -43,13 +45,6 @@ pub struct GilPlace<'tcx> {
     pub base: Expr,
     pub base_ty: Ty<'tcx>,
     pub proj: Vec<GilProj>,
-}
-
-fn add_proj_thin(base: Expr, proj: Vec<Expr>) -> (Expr, Expr) {
-    let loc = Expr::lnth(base.clone(), 0);
-    let current_proj = Expr::lnth(base, 1);
-    let total_proj = Expr::lst_concat(current_proj, proj.into());
-    (loc, total_proj)
 }
 
 impl<'tcx> GilPlace<'tcx> {
@@ -66,30 +61,23 @@ impl<'tcx> GilPlace<'tcx> {
     }
 
     pub fn into_loc_proj_meta(self) -> (Expr, Expr, Option<Expr>) {
-        let base_is_slice = self.base_is_slice();
-        let base = self.base.clone();
-        let addr = Expr::lnth(base.clone(), 0);
-        let loc = Expr::lnth(addr.clone(), 0);
-        let proj = Expr::lnth(addr.clone(), 1);
-        let meta = Expr::lnth(base.clone(), 1);
-        if base_is_slice {
-            match &self.proj[..] {
-                [] => (loc, proj, Some(meta)),
-                [GilProj::Index(index), rest @ ..] => {
-                    let new_element = GilProj::Plus(ArithKind::Classic, index.clone());
-                    let mut total_proj = Vec::with_capacity(self.proj.len());
-                    total_proj.push(new_element.into_expr());
-                    let mut rest_proj = rest.iter().map(|x| x.clone().into_expr()).collect();
-                    total_proj.append(&mut rest_proj);
-                    let (loc, total_proj) = add_proj_thin(addr, total_proj);
-                    (loc, total_proj, None)
-                }
-                _ => panic!("Using something else than index on slice"),
-            }
+        let (bloc, bproj, bmeta) = if self.base_is_slice() {
+            let addr = Expr::lnth(self.base.clone(), 0);
+            let meta = Expr::lnth(self.base, 1);
+            let loc = Expr::lnth(addr.clone(), 0);
+            let proj = Expr::lnth(addr, 1);
+            (loc, proj, Some(meta))
         } else {
-            let proj: Vec<_> = self.proj.into_iter().map(|x| x.into_expr()).collect();
-            let (loc, ofs) = add_proj_thin(base, proj);
-            (loc, ofs, None)
+            let loc = Expr::lnth(self.base.clone(), 0);
+            let proj = Expr::lnth(self.base, 1);
+            (loc, proj, None)
+        };
+        if self.proj.is_empty() {
+            (bloc, bproj, bmeta)
+        } else {
+            let new_proj: Vec<_> = self.proj.into_iter().map(GilProj::into_expr).collect();
+            let full_proj = Expr::lst_concat(bproj, new_proj.into());
+            (bloc, full_proj, None)
         }
     }
 
@@ -115,7 +103,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) -> Expr {
         // Casting an array to the first element pointer is the same operation as getting the 0th element.
         let mut place = GilPlace::base(e, array_ty);
-        place.proj.push(GilProj::Cast(self.encode_type(element_ty)));
+        place.proj.push(GilProj::Cast(
+            self.encode_type(array_ty),
+            self.encode_type(element_ty),
+        ));
         place.into_expr_ptr()
     }
 
@@ -189,11 +180,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             base_ty: self.place_ty(&place.local.into()),
         };
         for (idx, proj) in place.projection.into_iter().enumerate() {
+            let curr_typ = self.place_ty_until(place, idx);
             match proj {
                 ProjectionElem::Deref => {
                     let new_base = self.temp_var();
-                    let typ = self.place_ty_until(place, idx);
-                    self.push_read_gil_place_in_memory(new_base.clone(), cur_gil_place, typ, true);
+                    self.push_read_gil_place_in_memory(
+                        new_base.clone(),
+                        cur_gil_place,
+                        curr_typ,
+                        true,
+                    );
                     let next_typ = self.place_ty_until(place, idx + 1);
                     cur_gil_place = GilPlace {
                         base: Expr::PVar(new_base),
@@ -201,15 +197,27 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         base_ty: next_typ,
                     };
                 }
-                ProjectionElem::Field(u, _) => cur_gil_place.proj.push(GilProj::Field(u.as_u32())),
+                ProjectionElem::Field(u, _) => cur_gil_place
+                    .proj
+                    .push(GilProj::Field(u.as_u32(), self.encode_type(curr_typ))),
                 ProjectionElem::Index(local) => {
                     let expr = self.push_place_read(&local.into(), true);
-                    cur_gil_place.proj.push(GilProj::Index(expr))
+                    match curr_typ.kind() {
+                        TyKind::Slice(ty) => cur_gil_place
+                            .proj
+                            .push(GilProj::SliceIndex(expr, self.encode_type(ty))),
+                        TyKind::Array(ty, cst) => cur_gil_place.proj.push(GilProj::ArrayIndex(
+                            expr,
+                            self.encode_type(ty),
+                            self.array_size_value(cst),
+                        )),
+                        _ => panic!("Indexing something that is neither an array nor a slice"),
+                    }
                 }
                 // Place pointer should contain their types? But so far, I think this has no effect.
-                ProjectionElem::Downcast(_, u) => {
-                    cur_gil_place.proj.push(GilProj::Downcast(u.as_u32()))
-                }
+                ProjectionElem::Downcast(_, u) => cur_gil_place
+                    .proj
+                    .push(GilProj::Downcast(u.as_u32(), self.encode_type(curr_typ))),
                 _ => fatal!(self, "Invalid projection element: {:#?}", proj),
             }
         }

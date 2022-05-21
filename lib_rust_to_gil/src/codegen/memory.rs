@@ -74,7 +74,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_action(&mut self, target: String, action: MemoryAction<'tcx>) {
         match action {
             MemoryAction::Alloc(ty) => {
-                let ty = Expr::Lit(self.encode_type(ty));
+                let ty = Expr::Lit(self.encode_type(ty).into());
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::ALLOC.to_string(),
@@ -88,7 +88,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 copy,
             } => {
                 let temp = self.temp_var();
-                let encoded_typ = self.encode_type(typ);
+                let encoded_typ: Literal = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_VALUE.to_string(),
@@ -110,7 +110,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 typ,
                 value,
             } => {
-                let encoded_typ = self.encode_type(typ);
+                let encoded_typ = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::STORE_VALUE.to_string(),
@@ -125,7 +125,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 copy,
             } => {
                 let temp = self.temp_var();
-                let encoded_typ = self.encode_type(typ);
+                let encoded_typ = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_SLICE.to_string(),
@@ -149,7 +149,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 typ,
                 value,
             } => {
-                let encoded_typ = self.encode_type(typ);
+                let encoded_typ = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::STORE_SLICE.to_string(),
@@ -161,7 +161,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 projection,
                 typ,
             } => {
-                let encoded_typ = self.encode_type(typ);
+                let encoded_typ = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::FREE.to_string(),

@@ -133,14 +133,6 @@ module TreeBlock = struct
     | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
     | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
 
-  module Proj_result = struct
-    type t = Whole_node of t | Index_on of t vec * int
-
-    let resolve = function
-      | Whole_node t    -> t
-      | Index_on (t, i) -> Result.get_ok t.%[i]
-  end
-
   let rec find_proj ~genv ~update ~return t proj =
     let rec_call = find_proj ~genv ~update ~return in
     match (proj, t) with
@@ -148,23 +140,23 @@ module TreeBlock = struct
         let new_block = update block in
         let ret_value = return block in
         (ret_value, new_block)
-    | Projections.Index i :: r, { content = Array vec; ty = ty' } ->
+    | Projections.Index (i, _, _) :: r, { content = Array vec; ty = ty' } ->
         let e = Result.ok_or vec.%[i] "Index out of bound" in
         let v, sub_block = rec_call e r in
         let new_block = Result.get_ok (vec.%[i] <- sub_block) in
         (v, { ty = ty'; content = Array new_block })
-    | Projections.Field p :: r, { content = Fields vec; ty = ty' } ->
+    | Projections.Field (p, _) :: r, { content = Fields vec; ty = ty' } ->
         let e = Result.ok_or vec.%[p] "Projection out of bound" in
         let v, sub_block = rec_call e r in
         let new_block = Result.get_ok (vec.%[p] <- sub_block) in
         (v, { ty = ty'; content = Fields new_block })
-    | Projections.Field p :: r, { content = Enum { discr; fields }; ty = ty' }
-      ->
+    | ( Projections.Field (p, _) :: r,
+        { content = Enum { discr; fields }; ty = ty' } ) ->
         let e = Result.ok_or fields.%[p] "Projection out of enum bound" in
         let v, sub_block = rec_call e r in
         let new_fields = Result.get_ok (fields.%[p] <- sub_block) in
         (v, { ty = ty'; content = Enum { discr; fields = new_fields } })
-    | Downcast p :: r, { content = Enum { discr; _ }; _ } when discr = p ->
+    | Downcast (p, _) :: r, { content = Enum { discr; _ }; _ } when discr = p ->
         rec_call t r
     | Cast _ :: r, t -> rec_call t r
     | _ -> Fmt.failwith "Invalid projection %a on %a" Projections.pp proj pp t
