@@ -1,20 +1,24 @@
 open Projections
 
-type variant_idx = int
-type size = int
+type variant_idx = int [@@deriving eq, show]
+type size = int [@@deriving eq, show]
 
 module Partial_align = struct
-  type t = ExactlyPow2 of int | AtLeastPow2 of int
+  type t = ExactlyPow2 of int | AtLeastPow2 of int [@@deriving eq, show]
 
-  let max a a' = match a, a' with
+  let max a a' =
+    match (a, a') with
     | ExactlyPow2 a, ExactlyPow2 a' -> ExactlyPow2 (max a a')
-    | AtLeastPow2 a, AtLeastPow2 a' | ExactlyPow2 a, AtLeastPow2 a' | AtLeastPow2 a, ExactlyPow2 a' -> AtLeastPow2 (max a a')
+    | AtLeastPow2 a, AtLeastPow2 a'
+    | ExactlyPow2 a, AtLeastPow2 a'
+    | AtLeastPow2 a, ExactlyPow2 a' ->
+        AtLeastPow2 (max a a')
 
   let maximum = Seq.fold_left max (ExactlyPow2 0)
 end
 
 module Partial_size = struct
-  type t = Exactly of size | AtLeast of size
+  type t = Exactly of size | AtLeast of size [@@deriving eq, show]
 
   let map f = function
     | Exactly size -> Exactly (f size)
@@ -23,24 +27,33 @@ module Partial_size = struct
   let from_alignment : Partial_align.t -> t = function
     | ExactlyPow2 n -> Exactly (Int.shift_left 1 n)
     | AtLeastPow2 n -> AtLeast (Int.shift_left 1 n)
-  
-  let add sz sz' = match sz, sz' with
+
+  let add sz sz' =
+    match (sz, sz') with
     | Exactly sz, Exactly sz' -> Exactly (sz + sz')
-    | AtLeast sz, AtLeast sz' | Exactly sz, AtLeast sz' | AtLeast sz, Exactly sz' -> AtLeast (sz + sz')
+    | AtLeast sz, AtLeast sz'
+    | Exactly sz, AtLeast sz'
+    | AtLeast sz, Exactly sz' ->
+        AtLeast (sz + sz')
 
   let sum = Seq.fold_left add (Exactly 0)
 end
 
-type align = { pow2 : int }
-type wrapping_range = { start : int; finish : int }
-type base_integer = I8 | I16 | I32 | I64 | I128
+type align = { pow2 : int } [@@deriving eq, show]
+type wrapping_range = { start : int; finish : int } [@@deriving eq, show]
+type base_integer = I8 | I16 | I32 | I64 | I128 [@@deriving eq, show]
+
 type primative = Int of base_integer * bool | F32 | F64 | Pointer
+[@@deriving eq, show]
+
 type scalar = { primative : primative; valid_range : wrapping_range }
+[@@deriving eq, show]
 
 type offset =
   | Bytes     of size
   | FromIndex of int * size
   | FromCount of Rust_types.t * int * size
+[@@deriving eq, show]
 
 type fields_shape =
   | Primative
@@ -48,10 +61,12 @@ type fields_shape =
   | Array     of Partial_size.t * int
   (* offset array includes the offset of the end *)
   | Arbitrary of offset array
+[@@deriving eq, show]
 
 type variants =
   | Single   of variant_idx
   | Multiple of { tag : scalar option; variants : partial_layout array }
+[@@deriving eq, show]
 
 and partial_layout = {
   fields : fields_shape;
@@ -59,6 +74,7 @@ and partial_layout = {
   align : Partial_align.t;
   size : Partial_size.t;
 }
+[@@deriving eq, show]
 
 type context = {
   partial_layouts : Rust_types.t -> partial_layout;
@@ -79,9 +95,7 @@ let rec contextualise (context : context) (route : op list) : op list =
       match (context.partial_layouts t).fields with
       | Arbitrary os -> (
           match os.(i) with
-          | Bytes n                -> Cast (t, t')
-                                      :: UPlus (Overflow, n)
-                                      :: rs'
+          | Bytes n                -> Cast (t, t') :: UPlus (Overflow, n) :: rs'
           | FromIndex (i', n)      ->
               Field (i', t)
               :: Cast ((context.members t).(i'), t')
@@ -97,16 +111,13 @@ let rec contextualise (context : context) (route : op list) : op list =
   | r :: rs -> r :: contextualise context rs
   | [] -> []
 
-let rec cons_all ys xs =
-  match ys with y :: ys' -> cons_all ys' (y :: xs) | [] -> xs
-
 let reorder : op list -> op list =
   let rec reorder' upluss rs =
     match rs with
     | (UPlus (_, _) as r) :: rs -> reorder' (r :: upluss) rs
     | (Cast (_, _) as r) :: rs  -> r :: reorder' upluss rs
-    | r :: rs                   -> cons_all upluss (r :: reorder' upluss rs)
-    | []                        -> []
+    | r :: rs                   -> List.rev_append upluss (r :: reorder' upluss rs)
+    | []                        -> List.rev upluss
   in
   reorder' []
 
@@ -148,7 +159,7 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
   match partial_layout.fields with
   | Arbitrary offsets when a >= 0 && a + 1 < Array.length offsets -> (
       match (offsets.(a), offsets.(a + 1)) with
-      | Bytes n, Bytes n' -> Some (Bytes (n' - n ))
+      | Bytes n, Bytes n' -> Some (Bytes (n' - n))
       | FromIndex (n, b), FromIndex (n', b') when n = n' ->
           Some (Bytes (b' - b))
       | FromCount (t, n, b), FromCount (t', n', b') when t = t' ->
@@ -293,7 +304,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
                 up_tree_cast UpTreeDirection.Fwd accesses
                 @@ modify_uplus_eliminating_zero
                 @@ (i - ((n - ix) * size))
-          | _                -> down_tree_cast (DownTreeDirection.from_int i))
+          | _            -> down_tree_cast (DownTreeDirection.from_int i))
       | Rust_types.Named _ -> (
           let moving_over_field, next_ix =
             if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
@@ -318,33 +329,51 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
   | [], _ -> accesses
 
-let rec zero_offset_types (context : context) (ty : Rust_types.t) : Rust_types.t list =
-  let sub_tree_types () = ty :: zero_offset_types context (context.members ty).(0) in
+let rec zero_offset_types (context : context) (ty : Rust_types.t) :
+    Rust_types.t list =
+  let sub_tree_types () =
+    ty :: zero_offset_types context (context.members ty).(0)
+  in
   match (context.partial_layouts ty).fields with
-    | Arbitrary offsets when offsets.(0) = Bytes 0 -> sub_tree_types ()
-    | Array (_, _) -> sub_tree_types ()
-    | _ -> [ty]
+  | Arbitrary offsets when offsets.(0) = Bytes 0 -> sub_tree_types ()
+  | Array (_, _) -> sub_tree_types ()
+  | _ -> [ ty ]
 
 let resolve_address (context : context) (address : address) : access list =
   let accesses = resolve context [] address.block_type address.route None in
   let result_type = function
     | a :: _ -> a.index_type
-    | _ -> address.block_type in
-  let r_t_accesses = result_type accesses
-  in if r_t_accesses = address.address_type then
-    accesses
+    | _      -> address.block_type
+  in
+  let r_t_accesses = result_type accesses in
+  if r_t_accesses = address.address_type then accesses
   else
     let z_o_types = zero_offset_types context r_t_accesses in
     let rec make_pairs_until_fst pred = function
-      | x :: ((x' :: _) as xs) when not @@ pred x -> (x, x') :: make_pairs_until_fst pred xs
-      | _ -> [] in
-    let z_o_conversions = make_pairs_until_fst (fun ty -> ty = address.address_type) z_o_types in 
-    let as_z_o = List.map (function (index_type, against) -> { index = 0; index_type; against }) z_o_conversions in
-    let as' = cons_all as_z_o accesses in
-    if result_type as' = address.address_type then 
-      as' else raise (AccessError (as', [], result_type as', Some 0, "Could not resolve to correct address type"))
+      | x :: (x' :: _ as xs) when not @@ pred x ->
+          (x, x') :: make_pairs_until_fst pred xs
+      | _ -> []
+    in
+    let z_o_conversions =
+      make_pairs_until_fst (fun ty -> ty = address.address_type) z_o_types
+    in
+    let as_z_o =
+      List.map
+        (function index_type, against -> { index = 0; index_type; against })
+        z_o_conversions
+    in
+    let as' = List.rev_append as_z_o accesses in
+    if result_type as' = address.address_type then as'
+    else
+      raise
+        (AccessError
+           ( as',
+             [],
+             result_type as',
+             Some 0,
+             "Could not resolve to correct address type" ))
 
-    (* We return align not size as it's easier to convert this to a size than the reverse *)
+(* We return align not size as it's easier to convert this to a size than the reverse *)
 let align_scalar_t : Rust_types.scalar_t -> Partial_align.t = function
   | Rust_types.Bool -> ExactlyPow2 0
   | Rust_types.Char -> ExactlyPow2 2
@@ -364,128 +393,153 @@ let align_scalar_t : Rust_types.scalar_t -> Partial_align.t = function
 let align pow offset =
   let modulus = Int.shift_left 1 pow in
   let r = Int.rem offset modulus in
-  match r with
-    | 0 -> offset
-    | _ -> offset - r + modulus
+  match r with 0 -> offset | _ -> offset - r + modulus
 
-let next_offset (ix, curr_offset) ((ty, pl), (ty_next, pl_next)) = 
-  let ix' = ix + 1 in (ix',
-  match curr_offset, pl.size, pl_next.align with
-  | Bytes b, Exactly sz, ExactlyPow2 pow -> Bytes (align pow @@ b + sz)
-  | Bytes 0, _, ExactlyPow2 0 -> FromCount (ty, 1, 0)
-  | Bytes 0, _, _ when ty = ty_next -> FromCount (ty, 1, 0)
-  | FromCount (ty', n, b), Exactly sz, ExactlyPow2 pow -> FromCount (ty', n, align pow @@ b + sz)
-  | FromCount (ty', n, 0), _, ExactlyPow2 0 when ty = ty' -> FromCount(ty', n + 1, 0)
-  | FromCount (ty', n, 0), _, _ when ty = ty' && ty' = ty_next -> FromCount(ty', n + 1, 0)
-  | FromIndex (ix_from, b), Exactly sz, ExactlyPow2 pow -> FromIndex (ix_from, align pow @@ b + sz)
-  | _ -> FromIndex (ix', 0)
-  )
+(* Easy way of forcing a correct alignment when a type is required *)
+let aligned_zst (align : Partial_align.t) =
+  ( Rust_types.Tuple [],
+    { fields = Arbitrary [||]; variant = Single 0; align; size = Exactly 0 } )
 
-let u8 = Rust_types.Scalar (Rust_types.Uint Rust_types.U8)
-let u8_pl = {
-  fields = Primative;
-  variant = Single 0;
-  align = align_scalar_t (Rust_types.Uint Rust_types.U8);
-  size = Partial_size.from_alignment @@ align_scalar_t @@ Rust_types.Uint Rust_types.U8
-}
+let next_offset (ix, curr_offset) ((ty, pl), (ty_next, pl_next)) =
+  let ix' = ix + 1 in
+  ( ix',
+    match (curr_offset, pl.size, pl_next.align) with
+    | Bytes b, Exactly sz, ExactlyPow2 pow -> Bytes (align pow @@ (b + sz))
+    | Bytes 0, _, ExactlyPow2 0 -> FromCount (ty, 1, 0)
+    | Bytes 0, _, _ when ty = ty_next -> FromCount (ty, 1, 0)
+    | FromCount (ty', n, b), Exactly sz, ExactlyPow2 pow ->
+        FromCount (ty', n, align pow @@ (b + sz))
+    | FromCount (ty', n, 0), _, ExactlyPow2 0 when ty = ty' ->
+        FromCount (ty', n + 1, 0)
+    | FromCount (ty', n, 0), _, _ when ty = ty' && ty' = ty_next ->
+        FromCount (ty', n + 1, 0)
+    | FromIndex (ix_from, b), Exactly sz, ExactlyPow2 pow ->
+        FromIndex (ix_from, align pow @@ (b + sz))
+    | _ -> FromIndex (ix', 0) )
 
-let offsets_from_tys_and_pls (tys : Rust_types.t Seq.t) (pls : partial_layout Seq.t) : offset array =
-  let end_offset = (u8, u8_pl) in
+let offsets_from_tys_and_pls (tys : Rust_types.t Seq.t)
+    (pls : partial_layout Seq.t) : offset array =
+  let end_offset =
+    aligned_zst @@ Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls
+  in
   let tys_pls = Seq.zip tys pls in
-  Array.of_seq @@ 
-    Seq.cons (Bytes 0) @@ 
-    Seq.map (fun (_, o) -> o) @@ 
-    Seq.scan next_offset (0, Bytes 0) @@
-    Seq.zip (tys_pls) (Seq.append (Seq.drop 1 tys_pls) @@ List.to_seq [end_offset])
+  Array.of_seq
+  @@ Seq.map (fun (_, o) -> o)
+  @@ Seq.scan next_offset (0, Bytes 0)
+  @@ Seq.zip tys_pls
+       (Seq.append (Seq.drop 1 tys_pls) @@ List.to_seq [ end_offset ])
 
-
-let rec partial_layout_of (genv : C_global_env.t) (known : (string, partial_layout) Hashtbl.t) : Rust_types.t -> partial_layout = function
-  | Rust_types.Named n -> (match Hashtbl.find_opt known n with
-    | Some layout -> layout
-    | None ->
-      let partial_layout = partial_layout_of genv known (C_global_env.get_type genv n) in
-      Hashtbl.add known n partial_layout;
-      partial_layout
-  )
-  | Rust_types.Array {length; ty} -> 
-    let pl_ty = partial_layout_of genv known ty in
-    {
-      fields = Array(pl_ty.size, length);
-      variant = Single 0;
-      align = pl_ty.align;
-      size = Partial_size.map (fun x -> x * length) pl_ty.size
-    }
+let rec partial_layout_of (genv : C_global_env.t)
+    (known : (string, partial_layout) Hashtbl.t) :
+    Rust_types.t -> partial_layout = function
+  | Rust_types.Named n -> (
+      match Hashtbl.find_opt known n with
+      | Some layout -> layout
+      | None        ->
+          let partial_layout =
+            partial_layout_of genv known (C_global_env.get_type genv n)
+          in
+          Hashtbl.add known n partial_layout;
+          partial_layout)
+  | Rust_types.Array { length; ty } ->
+      let pl_ty = partial_layout_of genv known ty in
+      {
+        fields = Array (pl_ty.size, length);
+        variant = Single 0;
+        align = pl_ty.align;
+        size = Partial_size.map (fun x -> x * length) pl_ty.size;
+      }
   | Rust_types.Scalar scalar_t ->
-    let align = align_scalar_t scalar_t in
-    {
-      fields = Primative;
-      variant = Single 0;
-      align = align;
-      size = Partial_size.from_alignment align
-    }
-  | Rust_types.Tuple ts ->
-    let ts_seq = List.to_seq ts in
-    let pls = Seq.map (fun t -> partial_layout_of genv known t) ts_seq in
-    let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
-    let offsets = offsets_from_tys_and_pls ts_seq pls in
-    let size = match offsets.(Array.length offsets - 1) with
-      | Bytes n -> Partial_size.Exactly n
-      | _ -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls in
-    {
-      fields = Arbitrary offsets;
-      variant = Single 0;
-      align = align;
-      size = size
-    }
-  | Rust_types.Struct (Rust_types.ReprC, fs) ->
-    let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
-    let pls = Seq.map (partial_layout_of genv known) ts in
-    let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
-    let offsets = offsets_from_tys_and_pls ts pls in
-    let size = match offsets.(Array.length offsets - 1) with
-      | Bytes n -> Partial_size.Exactly n
-      | _ -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls in
-    {
-      fields = Arbitrary offsets;
-      variant = Single 0;
-      align = align;
-      size = size
-    }
-  | Rust_types.Struct (Rust_types.ReprRust, fs) ->
-    let offsets = Array.init (List.length fs) (fun i -> FromIndex (i, 0)) in
-    {
-      fields = Arbitrary offsets;
-      variant = Single 0;
-      align = AtLeastPow2 0;
-      size = AtLeast 0
-    }
-  | Rust_types.Enum (variants) ->
-    (* Check how RustC actually uses Enum offsets (not variant offsets). We're not using this so it's fine *)
-    let offsets = [||] in
-    {
-      fields = Arbitrary offsets;
-      variant = Multiple {
-        tag = None; (* No tag type since we're not handling ReprC enums yet *)
-        variants = Array.of_seq @@ Seq.map (fun (_, fs) -> partial_layout_of genv known @@ Rust_types.Tuple fs) @@ List.to_seq variants
-      };
-      align = AtLeastPow2 0;
-      size = AtLeast 0;
-    }
-  | Rust_types.Ref { mut = _; ty = _ } -> (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
+      let align = align_scalar_t scalar_t in
       {
         fields = Primative;
         variant = Single 0;
-        align = AtLeastPow2 0;
-        size = AtLeast 1
+        align;
+        size = Partial_size.from_alignment align;
       }
-  | Rust_types.Slice _ -> (* Is this a slice or slice reference; assumed slice reference *)
+  | Rust_types.Tuple ts ->
+      let ts_seq = List.to_seq ts in
+      let pls = Seq.map (fun t -> partial_layout_of genv known t) ts_seq in
+      let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
+      let offsets = offsets_from_tys_and_pls ts_seq pls in
+      let size =
+        match offsets.(Array.length offsets - 1) with
+        | Bytes n -> Partial_size.Exactly n
+        | _       -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls
+      in
+      { fields = Arbitrary offsets; variant = Single 0; align; size }
+  | Rust_types.Struct (Rust_types.ReprC, fs) ->
+      let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
+      let pls = Seq.map (partial_layout_of genv known) ts in
+      let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
+      let offsets = offsets_from_tys_and_pls ts pls in
+      let size =
+        match offsets.(Array.length offsets - 1) with
+        | Bytes n -> Partial_size.Exactly n
+        | _       -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls
+      in
+      { fields = Arbitrary offsets; variant = Single 0; align; size }
+  | Rust_types.Struct (Rust_types.ReprRust, fs) ->
+      let offsets = Array.init (List.length fs) (fun i -> FromIndex (i, 0)) in
+      {
+        fields = Arbitrary offsets;
+        variant = Single 0;
+        align = AtLeastPow2 0;
+        size = AtLeast 0;
+      }
+  | Rust_types.Enum variants ->
+      (* Check how RustC actually uses Enum offsets (not variant offsets). We're not using this so it's fine *)
+      let offsets = [||] in
+      {
+        fields = Arbitrary offsets;
+        variant =
+          Multiple
+            {
+              tag = None;
+              (* No tag type since we're not handling ReprC enums yet *)
+              variants =
+                Array.of_seq
+                @@ Seq.map (fun (_, fs) ->
+                       partial_layout_of genv known @@ Rust_types.Tuple fs)
+                @@ List.to_seq variants;
+            };
+        align = AtLeastPow2 0;
+        size = AtLeast 0;
+      }
+  | Rust_types.Ref { mut = _; ty = _ } ->
+      (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
       {
         fields = Primative;
         variant = Single 0;
         align = AtLeastPow2 0;
-        size = AtLeast 2
+        size = AtLeast 1;
+      }
+  | Rust_types.Slice _ ->
+      (* Is this a slice or slice reference; assumed slice reference *)
+      {
+        fields = Primative;
+        variant = Single 0;
+        align = AtLeastPow2 0;
+        size = AtLeast 2;
       }
 
-let partial_layouts_from_env (genv : C_global_env.t) : Rust_types.t -> partial_layout =
-  let partial_layouts = Hashtbl.create (Hashtbl.length (C_global_env.declared genv)) in
+let partial_layouts_from_env (genv : C_global_env.t) :
+    Rust_types.t -> partial_layout =
+  let partial_layouts =
+    Hashtbl.create (Hashtbl.length (C_global_env.declared genv))
+  in
   partial_layout_of genv partial_layouts
+
+let rec members_from_env (genv : C_global_env.t) :
+    Rust_types.t -> Rust_types.t array = function
+  | Rust_types.Named n -> members_from_env genv @@ C_global_env.get_type genv n
+  | Rust_types.Struct (_, fs) ->
+      fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
+  | Rust_types.Array { ty; length } -> Array.make length ty
+  | t -> Array.make 0 t
+
+let context_from_env (genv : C_global_env.t) : context =
+  {
+    partial_layouts = partial_layouts_from_env genv;
+    members = members_from_env genv;
+  }

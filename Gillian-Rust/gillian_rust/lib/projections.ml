@@ -1,7 +1,7 @@
 open Gillian.Gil_syntax
 (* module Matthew = Matthew *)
 
-type arith_kind = Wrap | Overflow
+type arith_kind = Wrap | Overflow [@@deriving show, eq]
 
 type op =
   | Field    of int * Rust_types.t
@@ -10,6 +10,7 @@ type op =
   | Cast     of Rust_types.t * Rust_types.t
   | Plus     of arith_kind * int * Rust_types.t
   | UPlus    of arith_kind * int
+[@@deriving show, eq]
 
 let pp_elem fmt =
   let str_ak = function Wrap -> "w" | Overflow -> "" in
