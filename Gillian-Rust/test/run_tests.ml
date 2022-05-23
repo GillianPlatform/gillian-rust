@@ -4,7 +4,11 @@ let check_ops =
   Alcotest.(check (list (testable Projections.pp_op Projections.equal_op)))
 
 let check_partial_layout =
-  Alcotest.(check (testable Matthew.pp_partial_layout ( = )))
+  Alcotest.(
+    check (testable Matthew.pp_partial_layout Matthew.equal_partial_layout))
+
+let check_accesses =
+  Alcotest.(check (list (testable Matthew.pp_access Matthew.equal_access)))
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
@@ -123,16 +127,29 @@ module Reduce_tests = struct
     @@ Matthew.reduce context [ Projections.Field (1, tA) ]
 
   let pointer_arithmetic_from_initial_field_matches_field_traversal () =
-    check_ops
-      "(struct A { u8, u16, u32 }.0 + 2) as u16 is A.1"
+    check_ops "(struct A { u8, u16, u32 }.0 + 2) as u16 is A.1"
       (Matthew.reduce context [ Projections.Field (1, tA) ])
-        @@ Matthew.reduce context [ Projections.Field (0, tA);  Projections.Plus (Overflow, 2, u8); Projections.Cast (u8, u16)]
-    
+    @@ Matthew.reduce context
+         [
+           Projections.Field (0, tA);
+           Projections.Plus (Overflow, 2, u8);
+           Projections.Cast (u8, u16);
+         ]
+
   let complicated_traversal () =
     check_ops
-      "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } }.1.1[3].0 is C as u8 +^untyped 40 = 8 + 5 * 1 + (3 padd) + 3 * 8 + 0"
-      [Projections.Cast (tB, u8); Projections.UPlus (Projections.Overflow, 40)]
-      @@ Matthew.reduce context [Projections.Field (1, tB); Projections.Field (1, tC); Projections.Index (3, tA, 5); Projections.Field (0, tA)]
+      "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } \
+       }.1.1[3].0 is C as u8 +^untyped 40 = 8 + 5 * 1 + (3 padd) + 3 * 8 + 0"
+      [
+        Projections.Cast (tB, u8); Projections.UPlus (Projections.Overflow, 40);
+      ]
+    @@ Matthew.reduce context
+         [
+           Projections.Field (1, tB);
+           Projections.Field (1, tC);
+           Projections.Index (3, tA, 5);
+           Projections.Field (0, tA);
+         ]
 
   let tests =
     [
@@ -142,16 +159,83 @@ module Reduce_tests = struct
       ( "pointer arithmetic from initial field matches field traversal",
         `Quick,
         pointer_arithmetic_from_initial_field_matches_field_traversal );
-      ( "complicated traversal",
-        `Quick,
-        complicated_traversal );
+      ("complicated traversal", `Quick, complicated_traversal);
+    ]
+end
+
+module Resolution_Repr_C = struct
+  open Repr_C_context
+  open Type_names
+
+  let second_field_via_add () =
+    check_accesses
+      "struct A { u8, u16, u32 }.0 +^U 2 resolves to the u16 at index 1"
+      [ { index = 1; index_type = u16; against = tA } ]
+    @@ Matthew.resolve_address context
+         {
+           block = 0;
+           block_type = tA;
+           route =
+             [ Projections.Field (0, tA); Projections.Plus (Overflow, 2, u8) ];
+           address_type = u16;
+         }
+
+  let second_field_directly () =
+    check_accesses "struct A { u8, u16, u32 }.1 resolves to the u16 at index 1"
+      [ { index = 1; index_type = u16; against = tA } ]
+    @@ Matthew.resolve_address context
+         {
+           block = 0;
+           block_type = tA;
+           route = [ Projections.Field (1, tA) ];
+           address_type = u16;
+         }
+
+  let complicated_resolution () =
+    check_accesses
+      "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } \
+       }.0.0[3].0 should resolve to a particular u8"
+      [
+        { index = 0; index_type = u8; against = tA };
+        {
+          index = 3;
+          index_type = tA;
+          against = Rust_types.Array { ty = tA; length = 5 };
+        };
+        {
+          index = 1;
+          index_type = Rust_types.Array { ty = tA; length = 5 };
+          against = tC;
+        };
+        { index = 1; index_type = tC; against = tB };
+      ]
+    @@ Matthew.resolve_address context
+         {
+           block = 0;
+           block_type = tB;
+           route =
+             [
+               Projections.Field (1, tB);
+               Projections.Field (1, tC);
+               Projections.Index (3, tA, 5);
+               Projections.Field (0, tA);
+             ];
+           address_type = u8;
+         }
+
+  let tests =
+    [
+      ("second field via add", `Quick, second_field_via_add);
+      ("second field directly", `Quick, second_field_directly);
+      ("complicated resolution", `Quick, complicated_resolution);
     ]
 end
 
 let test_suites : unit Alcotest.test list =
   [
-    ("Partial layout tests", Partial_layouts_tests.tests);
-    ("ReduceTests", Reduce_tests.tests);
+    ("Partial layout", Partial_layouts_tests.tests);
+    ("Reduce", Reduce_tests.tests);
+    ("Resolution Repr C", Resolution_Repr_C.tests);
   ]
 
 let () = Alcotest.run "Gillian Rust" test_suites

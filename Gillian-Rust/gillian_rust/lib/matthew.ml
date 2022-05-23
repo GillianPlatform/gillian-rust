@@ -116,7 +116,8 @@ let reorder : op list -> op list =
     match rs with
     | (UPlus (_, _) as r) :: rs -> reorder' (r :: upluss) rs
     | (Cast (_, _) as r) :: rs  -> r :: reorder' upluss rs
-    | r :: rs                   -> List.rev_append upluss (r :: reorder' upluss rs)
+    | r :: rs                   -> List.rev_append upluss
+                                     (r :: reorder' upluss rs)
     | []                        -> List.rev upluss
   in
   reorder' []
@@ -154,10 +155,12 @@ type address = {
 }
 
 type access = { index : int; index_type : Rust_types.t; against : Rust_types.t }
+[@@deriving eq, show]
 
 let distance_to_next_field (partial_layout : partial_layout) (a : int) =
   match partial_layout.fields with
   | Arbitrary offsets when a >= 0 && a + 1 < Array.length offsets -> (
+      print_string "offsets.(a), offsets.(a+1) 166;\n";
       match (offsets.(a), offsets.(a + 1)) with
       | Bytes n, Bytes n' -> Some (Bytes (n' - n))
       | FromIndex (n, b), FromIndex (n', b') when n = n' ->
@@ -195,21 +198,38 @@ let signum (n : int) = if n < 0 then -1 else if n = 0 then 0 else 1
 
 let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
     (rs : op list) (index : int option) : access list =
+  let dump_state () =
+    (* FOR DEBUG PURPOSES, TODO REMOVE *)
+    Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Rust_types.pp ty
+    @@ Option.fold ~none:"" ~some:Int.to_string index;
+    List.iter (Format.printf "%a;\n" Projections.pp_op) rs;
+    Format.print_string "]\n\taccesses=[";
+    List.iter (Format.printf "%a;\n" pp_access) accesses;
+    Format.print_string "]\nEND\n"
+  in
+  Format.printf "RESOLVE <--new";
+  dump_state ();
   let access_error message =
     raise (AccessError (accesses, rs, ty, index, message))
   and ix =
     if Option.is_some index then index
     else
       match (context.partial_layouts ty).fields with
-      | Arbitrary offsets when offsets.(0) = Bytes 0 -> Some 0
+      | Arbitrary offsets
+        when print_string "offsets.(0) 210;\n";
+             offsets.(0) = Bytes 0 ->
+          Some 0
       | _ -> None
   and accesses' index index_type =
     { index; index_type; against = ty } :: accesses
   in
+  (* Both `tree_cast`s are currently invalid, not checking if moving forwards/backwards is allowed with respect to padding*)
   let down_tree_cast (dir : DownTreeDirection.t) =
     match ix with
     | Some ix ->
         let ix' = ix + DownTreeDirection.magnitude dir in
+        Format.printf "(context.members ty).(ix') 219 : %d" ix';
+        dump_state ();
         let ix'_type = (context.members ty).(ix') in
         let casted_ix =
           match dir with
@@ -233,6 +253,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
 
   match (rs, ix) with
   | Field (i, t) :: rs', None when t = ty ->
+      print_string "(context.members t).(i) 243;\n";
       let t' = (context.members t).(i) in
       resolve context (accesses' i t') t rs' None
   (* TODO handle invalid indices etc. *)
@@ -242,6 +263,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
     when i < n && Rust_types.Array { length = n; ty = t } = ty ->
       resolve context accesses ty rs' (Some (i + ix))
   | Downcast (i, t) :: rs', None when t = ty ->
+      print_string "(context.members t).(i) 253;\n";
       let t' = (context.members t).(i) in
       resolve context (accesses' i t') t rs' None
   | Cast (_, _) :: rs', ix -> resolve context accesses ty rs' ix
@@ -308,14 +330,16 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
       | Rust_types.Named _ -> (
           let moving_over_field, next_ix =
             if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
-          and members = context.members ty in
-          if i < 0 && ix = 0 then
+          in
+          if next_ix < 0 then
             (* We can up-tree cast directly since we're at field ix 0 *)
             up_tree_cast UpTreeDirection.Curr accesses rs
           else
             match distance_to_next_field partial_layout moving_over_field with
-            | Some (Bytes size) when size >= abs i ->
-                (if next_ix = Array.length members then
+            | Some (Bytes size)
+              when Format.printf "Bytes %d `cmp` %d 336;\n" size i;
+                   size <= abs i ->
+                (if next_ix = Array.length (context.members ty) then
                  up_tree_cast UpTreeDirection.Fwd accesses
                 else fun rs'' ->
                   resolve context accesses ty rs'' @@ Some next_ix)
@@ -325,6 +349,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
   | _ :: _, Some _ -> down_tree_cast DownTreeDirection.Curr
   | _ :: _, _ -> access_error "Stuck handling next op"
   | [], Some ix when ix > 0 ->
+      print_string "(context.members ty).(ix) 347;\n";
       accesses' ix (context.members ty).(ix)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
   | [], _ -> accesses
@@ -332,21 +357,26 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
 let rec zero_offset_types (context : context) (ty : Rust_types.t) :
     Rust_types.t list =
   let sub_tree_types () =
+    print_string "(context.members ty).(0) 355;\n";
     ty :: zero_offset_types context (context.members ty).(0)
   in
   match (context.partial_layouts ty).fields with
-  | Arbitrary offsets when offsets.(0) = Bytes 0 -> sub_tree_types ()
+  | Arbitrary offsets
+    when print_string "offsets.(0) 360;\n";
+         offsets.(0) = Bytes 0 ->
+      sub_tree_types ()
   | Array (_, _) -> sub_tree_types ()
   | _ -> [ ty ]
 
 let resolve_address (context : context) (address : address) : access list =
-  let accesses = resolve context [] address.block_type address.route None in
+  let reduced = reduce context address.route in
+  let accesses = resolve context [] address.block_type reduced None in
   let result_type = function
     | a :: _ -> a.index_type
     | _      -> address.block_type
   in
   let r_t_accesses = result_type accesses in
-  if r_t_accesses = address.address_type then accesses
+  if Rust_types.equal r_t_accesses address.address_type then accesses
   else
     let z_o_types = zero_offset_types context r_t_accesses in
     let rec make_pairs_until_fst pred = function
@@ -355,15 +385,15 @@ let resolve_address (context : context) (address : address) : access list =
       | _ -> []
     in
     let z_o_conversions =
-      make_pairs_until_fst (fun ty -> ty = address.address_type) z_o_types
+      make_pairs_until_fst (Rust_types.equal address.address_type) z_o_types
     in
     let as_z_o =
       List.map
-        (function index_type, against -> { index = 0; index_type; against })
+        (function against, index_type -> { index = 0; index_type; against })
         z_o_conversions
     in
     let as' = List.rev_append as_z_o accesses in
-    if result_type as' = address.address_type then as'
+    if Rust_types.equal (result_type as') address.address_type then as'
     else
       raise
         (AccessError
@@ -371,7 +401,19 @@ let resolve_address (context : context) (address : address) : access list =
              [],
              result_type as',
              Some 0,
-             "Could not resolve to correct address type" ))
+             Format.sprintf "Could not resolve to correct address type" ))
+
+let resolve_address_debug_access_error (context : context) (address : address) : access list =
+  try resolve_address context address
+  with AccessError (accesses, rs, ty, ix, message) ->
+    Format.eprintf "%s: \n" message;
+    Format.eprintf "\tty=%a\n\tindex=%s\n\trs=[" Rust_types.pp ty
+    @@ Option.fold ~none:"" ~some:Int.to_string ix;
+    List.iter (Format.eprintf "%a;\n" Projections.pp_op) rs;
+    Format.eprintf "]\n\taccesses=[";
+    List.iter (Format.eprintf "%a;\n" pp_access) accesses;
+    Format.eprintf "]\n";
+    []
 
 (* We return align not size as it's easier to convert this to a size than the reverse *)
 let align_scalar_t : Rust_types.scalar_t -> Partial_align.t = function
@@ -463,6 +505,7 @@ let rec partial_layout_of (genv : C_global_env.t)
       let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
       let offsets = offsets_from_tys_and_pls ts_seq pls in
       let size =
+        print_string "offsets.(Array.length offsets - 1) 476;\n";
         match offsets.(Array.length offsets - 1) with
         | Bytes n -> Partial_size.Exactly n
         | _       -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls
@@ -474,6 +517,7 @@ let rec partial_layout_of (genv : C_global_env.t)
       let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
       let offsets = offsets_from_tys_and_pls ts pls in
       let size =
+        print_string "offsets.(Array.length offsets - 1) 487;\n";
         match offsets.(Array.length offsets - 1) with
         | Bytes n -> Partial_size.Exactly n
         | _       -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls
@@ -537,6 +581,7 @@ let rec members_from_env (genv : C_global_env.t) :
       fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
   | Rust_types.Array { ty; length } -> Array.make length ty
   | t -> Array.make 0 t
+(* Consider making 1 t for internal navigation, especially primatives *)
 
 let context_from_env (genv : C_global_env.t) : context =
   {
