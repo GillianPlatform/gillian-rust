@@ -4,6 +4,8 @@ let empty () = Hashtbl.create 10
 let copy x = Hashtbl.copy x
 let get_type genv ty = Hashtbl.find genv ty
 
+let declared genv = genv
+
 let declare_struct genv name decl =
   Hashtbl.replace genv name (Rust_types.of_lit decl)
 

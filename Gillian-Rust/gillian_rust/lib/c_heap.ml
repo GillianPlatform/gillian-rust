@@ -93,7 +93,7 @@ module TreeBlock = struct
         { ty; content }
     | Named a, LList [ String x; LList data ] when String.equal a x -> (
         match C_global_env.resolve_named ~genv ty with
-        | Struct fields_tys -> of_rust_struct_value ~genv ~ty ~fields_tys data
+        | Struct (_repr, fields_tys) -> of_rust_struct_value ~genv ~ty ~fields_tys data
         | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
         | _                 ->
             failwith "Deserializing a Named type that is not a struct or enum")
@@ -121,7 +121,7 @@ module TreeBlock = struct
     | Named a                    ->
         let uninit_a = uninitialized ~genv (C_global_env.get_type genv a) in
         { uninit_a with ty }
-    | Struct fields              ->
+    | Struct (_repr, fields)              ->
         let tuple =
           List.map (fun (_, t) -> uninitialized ~genv t) fields |> Vec.of_list
         in
