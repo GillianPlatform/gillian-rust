@@ -120,13 +120,31 @@ module Reduce_tests = struct
       [
         Projections.Cast (tA, u16); Projections.UPlus (Projections.Overflow, 2);
       ]
-    @@ Matthew.reorder @@ Matthew.contextualise context [ Projections.Field (1, tA) ]
+    @@ Matthew.reduce context [ Projections.Field (1, tA) ]
+
+  let pointer_arithmetic_from_initial_field_matches_field_traversal () =
+    check_ops
+      "(struct A { u8, u16, u32 }.0 + 2) as u16 is A.1"
+      (Matthew.reduce context [ Projections.Field (1, tA) ])
+        @@ Matthew.reduce context [ Projections.Field (0, tA);  Projections.Plus (Overflow, 2, u8); Projections.Cast (u8, u16)]
+    
+  let complicated_traversal () =
+    check_ops
+      "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } }.1.1[3].0 is C as u8 +^untyped 40 = 8 + 5 * 1 + (3 padd) + 3 * 8 + 0"
+      [Projections.Cast (tB, u8); Projections.UPlus (Projections.Overflow, 40)]
+      @@ Matthew.reduce context [Projections.Field (1, tB); Projections.Field (1, tC); Projections.Index (3, tA, 5); Projections.Field (0, tA)]
 
   let tests =
     [
       ( "get second field following padding",
         `Quick,
         get_second_field_following_padding );
+      ( "pointer arithmetic from initial field matches field traversal",
+        `Quick,
+        pointer_arithmetic_from_initial_field_matches_field_traversal );
+      ( "complicated traversal",
+        `Quick,
+        complicated_traversal );
     ]
 end
 

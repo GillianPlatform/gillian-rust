@@ -89,7 +89,7 @@ let rec contextualise (context : context) (route : op list) : op list =
       | _          -> Plus (w, i, t) :: contextualise context rs)
   | Index (i, t, n) :: rs when i < n ->
       Cast (Rust_types.Array { length = n; ty = t }, t)
-      :: contextualise context rs
+      :: contextualise context (Plus (Overflow, i, t) :: rs)
   | Field (i, t) :: rs -> (
       let t' = (context.members t).(i) and rs' = contextualise context rs in
       match (context.partial_layouts t).fields with
@@ -132,9 +132,9 @@ let rec simplify : op list -> op list = function
       simplify (UPlus (Wrap, i + i') :: rs)
   | Plus (Overflow, i, t) :: Plus (Overflow, i', t') :: rs
     when i * i' > 0 && t = t' ->
-      simplify (Plus (Overflow, i + i, t) :: rs)
+      simplify (Plus (Overflow, i + i', t) :: rs)
   | UPlus (Overflow, i) :: UPlus (Overflow, i') :: rs when i * i' > 0 ->
-      simplify (UPlus (Overflow, i + i) :: rs)
+      simplify (UPlus (Overflow, i + i') :: rs)
   | Cast (t, t'') :: Cast (t''', t') :: rs when t'' = t''' ->
       simplify (Cast (t, t') :: rs)
   (* We also have to handle 0s if they're at the front, from other rules or as the last element *)
