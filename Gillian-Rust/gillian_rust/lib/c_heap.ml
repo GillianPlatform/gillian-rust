@@ -135,6 +135,32 @@ module TreeBlock = struct
     | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
     | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
 
+  let rec find_path ~genv ~update ~return t (path : Partial_layout.access list)
+      =
+    let rec_call = find_path ~genv ~update ~return in
+    let replace_vec c v =
+      match c with
+      | Fields _          -> Fields v
+      | Array _           -> Array v
+      | Enum { discr; _ } -> Enum { discr; fields = v }
+      | _                 -> failwith "impossible"
+    in
+    match (path, t) with
+    | [], block ->
+        let new_block = update block in
+        let ret_value = return block in
+        (ret_value, new_block)
+    | { index; index_type = _; against } :: r, { ty; content }
+      when Rust_types.equal against ty -> (
+        match content with
+        | Fields vec | Array vec | Enum { fields = vec; _ } ->
+            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let v, sub_block = rec_call e r in
+            let new_block = Result.get_ok (vec.%[index] <- sub_block) in
+            (v, { ty; content = replace_vec content new_block })
+        | _ -> failwith "Invalid node")
+    | _ -> failwith "Type mismatch"
+
   let rec find_proj ~genv ~update ~return t proj =
     let rec_call = find_proj ~genv ~update ~return in
     match (proj, t) with
@@ -213,29 +239,22 @@ module TreeBlock = struct
     let _, new_block = find_proj ~genv ~return ~update t proj in
     new_block
 
-  let get_proj ~genv t proj ty copy =
-    let update block =
-      (* Subtype seems unnecessary *)
-      if C_global_env.subtypes ~genv block.ty ty then
-        if copy then block else uninitialized ~genv ty
-      else
-        Fmt.failwith "[get_proj] Invalid type: expected %a got %a" Rust_types.pp
-          block.ty Rust_types.pp ty
-    in
+  let find_proj ~genv ~update ~return ~ty t proj =
+    let open Partial_layout in
+    let address = { block_type = t.ty; route = proj; address_type = ty } in
+    let context = context_from_env genv in
+    let accesses = resolve_address context address |> List.rev in
+    find_path ~genv ~update ~return t accesses
 
+  let get_proj ~genv t proj ty copy =
+    let update block = if copy then block else uninitialized ~genv ty in
     let return = to_rust_value ~genv in
-    find_proj ~genv ~update ~return t proj
+    find_proj ~genv ~update ~return ~ty t proj
 
   let set_proj ~genv t proj ty value =
     let return _ = () in
-    let update block =
-      if C_global_env.subtypes ~genv ty block.ty then
-        of_rust_value ~genv ~ty value
-      else
-        Fmt.failwith "[set_proj] Invalid type: expected %a got %a "
-          Rust_types.pp block.ty Rust_types.pp ty
-    in
-    let _, new_block = find_proj ~genv ~return ~update t proj in
+    let update _block = of_rust_value ~genv ~ty value in
+    let _, new_block = find_proj ~genv ~ty ~return ~update t proj in
     new_block
 
   let get_discr ~genv t proj =
@@ -246,7 +265,9 @@ module TreeBlock = struct
                     content
     in
     let update block = block in
-    let discr, _ = find_proj ~genv ~return ~update t proj in
+    let discr, _ =
+      find_proj ~genv ~return ~update ~ty:(failwith "bite") t proj
+    in
     discr
 end
 

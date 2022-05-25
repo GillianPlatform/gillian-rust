@@ -177,7 +177,6 @@ let rec simplify : op list -> op list = function
 let reduce context rs = simplify @@ reorder @@ contextualise context rs
 
 type address = {
-  block : int;
   block_type : Rust_types.t;
   route : op list;
   address_type : Rust_types.t;
@@ -206,6 +205,15 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
 
 exception
   AccessError of access list * op list * Rust_types.t * int option * string
+
+let () =
+  Printexc.register_printer (function
+    | AccessError (accesses, ops, ty, idx, msg) ->
+        let open Fmt in
+        Some
+          (str "AccessError(%a, %a, %a, %a, %s)" (Dump.list pp_access) accesses
+             Projections.pp ops Rust_types.pp ty (Dump.option int) idx msg)
+    | _ -> None)
 
 module UpTreeDirection = struct
   type t = Curr | Fwd
@@ -291,7 +299,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
   | Field (i, t) :: rs', None when t = ty ->
       print_string "(context.members t).(i) 243;\n";
       let t' = (context.members t).(i) in
-      resolve context (accesses' i t') t rs' None
+      resolve context (accesses' i t') t' rs' None
   (* TODO handle invalid indices etc. *)
   | Field (i, t) :: rs', Some 0 when t = ty ->
       resolve context accesses ty rs' (Some i)
@@ -669,7 +677,8 @@ let rec members_from_env (genv : C_global_env.t) :
   | Rust_types.Struct (_, fs) ->
       fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
   | Rust_types.Array { ty; length } -> Array.make length ty
-  | t -> Array.make 0 t
+  | Rust_types.Tuple tys -> Array.of_list tys
+  | _ -> [||]
 (* Consider making 1 t for internal navigation, especially primatives *)
 
 let context_from_env (genv : C_global_env.t) : context =

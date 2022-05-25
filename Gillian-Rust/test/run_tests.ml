@@ -5,10 +5,13 @@ let check_ops =
 
 let check_partial_layout =
   Alcotest.(
-    check (testable Partial_layout.pp_partial_layout Partial_layout.equal_partial_layout))
+    check
+      (testable Partial_layout.pp_partial_layout
+         Partial_layout.equal_partial_layout))
 
 let check_accesses =
-  Alcotest.(check (list (testable Partial_layout.pp_access Partial_layout.equal_access)))
+  Alcotest.(
+    check (list (testable Partial_layout.pp_access Partial_layout.equal_access)))
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
@@ -104,6 +107,51 @@ module Mixed_repr_context = struct
   let context : Partial_layout.context = Partial_layout.context_from_env genv
 end
 
+module No_context_tests = struct
+  let context =
+    let genv = C_global_env.empty () in
+    Partial_layout.context_from_env genv
+
+  let snd_of_tuple () =
+    let tpl = Rust_types.(Tuple [ Scalar (Int I32); Scalar Bool ]) in
+    check_accesses "(i32, bool).1 resolves to bool at index 1"
+      [ { index = 1; index_type = Scalar Bool; against = tpl } ]
+    @@ Partial_layout.resolve_address context
+         {
+           block_type = tpl;
+           route = Projections.[ Field (1, tpl) ];
+           address_type = Scalar Bool;
+         }
+
+  let complex_tuple () =
+    let open Rust_types in
+    let i32 = Scalar (Int I32) in
+
+    let tpl_1_2 = Tuple [ i32; i32 ] in
+    let tpl_1 = Tuple [ i32; i32; tpl_1_2 ] in
+    let tpl = Tuple [ Tuple [ i32; i32 ]; tpl_1 ] in
+    check_accesses "((i32, i32), (i32, i32, (i32, i32))).1.2.0 resolves to i32"
+      [
+        { index = 0; against = tpl_1_2; index_type = i32 };
+        { index = 2; against = tpl_1; index_type = tpl_1_2 };
+        { index = 1; against = tpl; index_type = tpl_1 };
+      ]
+    @@ Partial_layout.resolve_address context
+         {
+           block_type = tpl;
+           route =
+             Projections.
+               [ Field (1, tpl); Field (2, tpl_1); Field (0, tpl_1_2) ];
+           address_type = i32;
+         }
+
+  let tests =
+    [
+      ("tuple second field via proj .1", `Quick, snd_of_tuple);
+      ("Some complex tuple via proj .1.2.0", `Quick, complex_tuple);
+    ]
+end
+
 module Partial_layouts_repr_C_tests = struct
   open Repr_C_context
   open Type_names
@@ -114,7 +162,10 @@ module Partial_layouts_repr_C_tests = struct
         fields =
           Partial_layout.Arbitrary
             [|
-              Partial_layout.Bytes 0; Partial_layout.Bytes 2; Partial_layout.Bytes 4; Partial_layout.Bytes 8;
+              Partial_layout.Bytes 0;
+              Partial_layout.Bytes 2;
+              Partial_layout.Bytes 4;
+              Partial_layout.Bytes 8;
             |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ExactlyPow2 2;
@@ -127,7 +178,11 @@ module Partial_layouts_repr_C_tests = struct
       {
         fields =
           Partial_layout.Arbitrary
-            [| Partial_layout.Bytes 0; Partial_layout.Bytes 8; Partial_layout.Bytes 56 |];
+            [|
+              Partial_layout.Bytes 0;
+              Partial_layout.Bytes 8;
+              Partial_layout.Bytes 56;
+            |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ExactlyPow2 2;
         size = Partial_layout.Partial_size.Exactly 56;
@@ -139,7 +194,11 @@ module Partial_layouts_repr_C_tests = struct
       {
         fields =
           Partial_layout.Arbitrary
-            [| Partial_layout.Bytes 0; Partial_layout.Bytes 8; Partial_layout.Bytes 48 |];
+            [|
+              Partial_layout.Bytes 0;
+              Partial_layout.Bytes 8;
+              Partial_layout.Bytes 48;
+            |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ExactlyPow2 2;
         size = Partial_layout.Partial_size.Exactly 48;
@@ -151,7 +210,11 @@ module Partial_layouts_repr_C_tests = struct
       {
         fields =
           Partial_layout.Arbitrary
-            [| Partial_layout.Bytes 0; Partial_layout.Bytes 2; Partial_layout.Bytes 4 |];
+            [|
+              Partial_layout.Bytes 0;
+              Partial_layout.Bytes 2;
+              Partial_layout.Bytes 4;
+            |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ExactlyPow2 1;
         size = Partial_layout.Partial_size.Exactly 4;
@@ -176,7 +239,9 @@ module Partial_layouts_mixed_repr_tests = struct
       {
         fields =
           Partial_layout.Arbitrary
-            [| Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0) |];
+            [|
+              Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0);
+            |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ToType tR8;
         size = Partial_layout.Partial_size.AtLeast 0;
@@ -188,7 +253,9 @@ module Partial_layouts_mixed_repr_tests = struct
       {
         fields =
           Partial_layout.Arbitrary
-            [| Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0) |];
+            [|
+              Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0);
+            |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.ToType tR64;
         size = Partial_layout.Partial_size.AtLeast 0;
@@ -201,7 +268,9 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Partial_layout.Arbitrary
             [|
-              Partial_layout.Bytes 0; Partial_layout.FromIndex (1, 0); Partial_layout.FromIndex (2, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromIndex (1, 0);
+              Partial_layout.FromIndex (2, 0);
             |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.AtLeastPow2 0;
@@ -215,7 +284,9 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Partial_layout.Arbitrary
             [|
-              Partial_layout.Bytes 0; Partial_layout.FromIndex (1, 0); Partial_layout.FromIndex (2, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromIndex (1, 0);
+              Partial_layout.FromIndex (2, 0);
             |];
         variant = Partial_layout.Single 0;
         align = Partial_layout.Partial_align.AtLeastPow2 0;
@@ -376,7 +447,6 @@ module Resolution_repr_C = struct
       [ { index = 1; index_type = u16; against = tA } ]
     @@ Partial_layout.resolve_address context
          {
-           block = 0;
            block_type = tA;
            route =
              [ Projections.Field (0, tA); Projections.Plus (Overflow, 2, u8) ];
@@ -388,7 +458,6 @@ module Resolution_repr_C = struct
       [ { index = 1; index_type = u16; against = tA } ]
     @@ Partial_layout.resolve_address context
          {
-           block = 0;
            block_type = tA;
            route = [ Projections.Field (1, tA) ];
            address_type = u16;
@@ -414,7 +483,6 @@ module Resolution_repr_C = struct
       ]
     @@ Partial_layout.resolve_address context
          {
-           block = 0;
            block_type = tB;
            route =
              [
@@ -451,7 +519,6 @@ module Resolution_mixed_repr = struct
       ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = Rust_types.Array { ty = tA; length = 2 };
            route =
              [
@@ -479,7 +546,6 @@ module Resolution_mixed_repr = struct
     let _ =
       Partial_layout.resolve_address context
         {
-          block = 0;
           block_type = tA;
           route =
             [
@@ -508,7 +574,6 @@ module Resolution_mixed_repr = struct
       ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tC;
            route =
              [
@@ -526,7 +591,6 @@ module Resolution_mixed_repr = struct
       [ { index = 1; index_type = tR8; against = tD } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tD;
            route =
              [
@@ -545,7 +609,6 @@ module Resolution_mixed_repr = struct
       [ { index = 1; index_type = tR64; against = tF } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tF;
            route =
              [
@@ -561,7 +624,6 @@ module Resolution_mixed_repr = struct
       [ { index = 2; index_type = u8; against = tG } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tG;
            route =
              [
@@ -577,7 +639,6 @@ module Resolution_mixed_repr = struct
       [ { index = 1; index_type = u16; against = tG } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tG;
            route =
              [
@@ -602,7 +663,6 @@ module Resolution_mixed_repr = struct
     let _ =
       Partial_layout.resolve_address context
         {
-          block = 0;
           block_type = tGFail;
           route =
             [
@@ -626,7 +686,6 @@ module Resolution_mixed_repr = struct
     let _ =
       Partial_layout.resolve_address_debug_access_error context
         {
-          block = 0;
           block_type = tGFail;
           route =
             [
@@ -644,7 +703,6 @@ module Resolution_mixed_repr = struct
       [ { index = 2; index_type = tC8; against = tH } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tH;
            route =
              [
@@ -660,7 +718,6 @@ module Resolution_mixed_repr = struct
       [ { index = 1; index_type = tC16; against = tH } ]
     @@ Partial_layout.resolve_address_debug_access_error context
          {
-           block = 0;
            block_type = tH;
            route =
              [
@@ -710,6 +767,7 @@ let test_suites : unit Alcotest.test list =
     ("Partial layout repr C", Partial_layouts_repr_C_tests.tests);
     ("Partial layout mixed repr", Partial_layouts_mixed_repr_tests.tests);
     ("Reduce", Reduce_tests.tests);
+    ("Resolution no-context", No_context_tests.tests);
     ("Resolution repr C", Resolution_repr_C.tests);
     ("Resolution mixed repr", Resolution_mixed_repr.tests);
   ]
