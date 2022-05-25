@@ -3,6 +3,11 @@ open Projections
 type variant_idx = int [@@deriving eq, show]
 type size = int [@@deriving eq, show]
 
+let align pow offset =
+  let modulus = Int.shift_left 1 pow in
+  let r = offset mod modulus in
+  match r with 0 -> offset | _ -> offset - r + modulus
+
 module Partial_align = struct
   type t = ExactlyPow2 of int | AtLeastPow2 of int | ToType of Rust_types.t
   [@@deriving eq, show]
@@ -53,6 +58,13 @@ module Partial_size = struct
         AtLeast (sz + sz')
 
   let sum = Seq.fold_left add (Exactly 0)
+
+  let align_to (alignment : Partial_align.t) (size : t) =
+    match alignment with
+    (* Add as much information as is known to the size, so we can work out the known minimum possible size *)
+    | ToType _ -> size
+    | ExactlyPow2 s -> map (align s) size
+    | AtLeastPow2 s -> map (align s) size
 end
 
 type align = { pow2 : int } [@@deriving eq, show]
@@ -176,7 +188,9 @@ type access = { index : int; index_type : Rust_types.t; against : Rust_types.t }
 let distance_to_next_field (partial_layout : partial_layout) (a : int) =
   match partial_layout.fields with
   | Arbitrary offsets when a >= 0 && a + 1 < Array.length offsets -> (
-      Format.printf "offsets.(a)=%a, offsets.(a+1)=%a 179;\n" pp_offset offsets.(a) pp_offset offsets.(a + 1);
+      Format.printf "offsets.(a)=%a, offsets.(a+1)=%a 179;\n" pp_offset
+        offsets.(a) pp_offset
+        offsets.(a + 1);
       match (offsets.(a), offsets.(a + 1)) with
       | Bytes n, Bytes n' -> Some (Bytes (n' - n))
       | FromIndex (n, b), FromIndex (n', b') when n = n' ->
@@ -184,12 +198,9 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
       | FromCount (t, n, b), FromCount (t', n', b') when t = t' ->
           let b'' = b' - b in
           Some (if n' == n then Bytes b'' else FromCount (t, n' - n, b''))
-      | Bytes b, FromCount (t, n, b') ->
-        Some (FromCount (t, n, b + b'))
-      | Bytes b, FromIndex (i, b') ->
-        Some(FromIndex (i, b + b'))
+      | Bytes b, FromCount (t, n, b') -> Some (FromCount (t, n, b + b'))
+      | Bytes b, FromIndex (i, b') -> Some (FromIndex (i, b + b'))
       | _, _ -> None)
-      
   | _ -> None
 
 exception
@@ -307,15 +318,17 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
           else
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
-      | Rust_types.Named _ -> (
+      | Rust_types.Named _ ->
           let moving_over_field, next_i, next_ix =
-            if i < 0 then (ix - 1, (+) i, ix - 1) else (ix, (-) i, ix + 1)
+            if i < 0 then (ix - 1, ( + ) i, ix - 1) else (ix, ( - ) i, ix + 1)
           and members = context.members ty in
           if i < 0 && ix = 0 then
             (* We can up-tree cast directly since we're at field ix 0 *)
             up_tree_cast UpTreeDirection.Curr accesses rs
           else (
-            (match distance_to_next_field partial_layout moving_over_field with Some offset -> Format.printf "%a 313;\n" pp_offset offset | None -> Format.print_string "NO OFFSET 313;\n");
+            (match distance_to_next_field partial_layout moving_over_field with
+            | Some offset -> Format.printf "%a 313;\n" pp_offset offset
+            | None        -> Format.print_string "NO OFFSET 313;\n");
             match distance_to_next_field partial_layout moving_over_field with
             | Some (FromCount (t', n, 0)) when t' = t ->
                 (if next_ix = Array.length members then
@@ -324,7 +337,6 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
                   resolve context accesses ty rs'' @@ Some next_ix)
                   (modify_plus_eliminating_zero (next_i n))
             | _ -> down_tree_cast (DownTreeDirection.from_int i))
-          )
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
   | UPlus (_, 0) :: _, _ ->
       access_error "Invalid +^U 0 should not exist at resolution stage"
@@ -459,11 +471,6 @@ let align_scalar_t : Rust_types.scalar_t -> Partial_align.t = function
   | Rust_types.Uint Rust_types.U64 -> ExactlyPow2 3
   | Rust_types.Uint Rust_types.U128 -> ExactlyPow2 4
 
-let align pow offset =
-  let modulus = Int.shift_left 1 pow in
-  let r = Int.rem offset modulus in
-  match r with 0 -> offset | _ -> offset - r + modulus
-
 (* Easy way of forcing a correct alignment when a type is required *)
 let aligned_zst (align : Partial_align.t) =
   ( Rust_types.Tuple [],
@@ -486,16 +493,19 @@ let rec end_offset (partial_layouts : Rust_types.t -> partial_layout)
 
 let next_offset (partial_layouts : Rust_types.t -> partial_layout)
     (ix, curr_offset) ((ty, pl), (ty_next, pl_next)) =
-  Format.printf "ty=%a ty_next=%a curr_offset=%a end_offset=%a pl_next.align=%a 482;\n" Rust_types.pp ty
-    Rust_types.pp ty_next pp_offset curr_offset pp_offset (end_offset partial_layouts ty pl) Partial_align.pp pl_next.align;
+  Format.printf
+    "ty=%a ty_next=%a curr_offset=%a end_offset=%a pl_next.align=%a 482;\n"
+    Rust_types.pp ty Rust_types.pp ty_next pp_offset curr_offset pp_offset
+    (end_offset partial_layouts ty pl)
+    Partial_align.pp pl_next.align;
   let ix' = ix + 1 in
   ( ix',
     match (curr_offset, end_offset partial_layouts ty pl, pl_next.align) with
     | Bytes b, Bytes b', ExactlyPow2 pow -> Bytes (align pow @@ (b + b'))
     | Bytes 0, FromCount (ty', n, b'), ExactlyPow2 0 -> FromCount (ty', n, b')
     | Bytes 0, _, ExactlyPow2 0 -> FromCount (ty, 1, 0)
-    | Bytes 0, FromCount (ty', n, 0), ToType ty''
-      when Rust_types.equal ty' ty'' ->
+    | Bytes 0, FromCount (ty', n, 0), ToType ty'' when Rust_types.equal ty' ty''
+      ->
         FromCount (ty', n, 0)
     | Bytes 0, _, _ when ty = ty_next -> FromCount (ty, 1, 0)
     | Bytes 0, Bytes 1, ToType ty' -> FromCount (ty', 1, 0)
@@ -509,9 +519,11 @@ let next_offset (partial_layouts : Rust_types.t -> partial_layout)
         FromCount (ty', n + n', 0)
     | FromCount (ty', n, 0), _, ExactlyPow2 0 when Rust_types.equal ty ty' ->
         FromCount (ty', n + 1, 0)
-    | FromCount (ty', n, 0), _, ToType ty'' when Rust_types.equal ty ty' && Rust_types.equal ty'' ty' ->
+    | FromCount (ty', n, 0), _, ToType ty''
+      when Rust_types.equal ty ty' && Rust_types.equal ty'' ty' ->
         FromCount (ty', n + 1, 0)
-    | FromCount (ty', n, 0), _, _ when Rust_types.equal ty ty' && Rust_types.equal ty_next ty' ->
+    | FromCount (ty', n, 0), _, _
+      when Rust_types.equal ty ty' && Rust_types.equal ty_next ty' ->
         FromCount (ty', n + 1, 0)
     | FromIndex (ix_from, b), Bytes sz, (ExactlyPow2 pow as a)
       when Partial_align.strictly_le a pl.align ->
@@ -589,7 +601,10 @@ let rec partial_layout_of ?(name : string option = None) (genv : C_global_env.t)
         print_string "offsets.(Array.length offsets - 1) 521;\n";
         match offsets.(Array.length offsets - 1) with
         | Bytes n -> Partial_size.Exactly n
-        | _       -> Partial_size.sum @@ Seq.map (fun pl -> pl.size) pls
+        | _       ->
+            Partial_size.align_to align
+            @@ Partial_size.sum
+            @@ Seq.map (fun pl -> pl.size) pls
       in
       { fields = Arbitrary offsets; variant = Single 0; align; size }
   | Rust_types.Struct (Rust_types.ReprRust, fs) as ty ->

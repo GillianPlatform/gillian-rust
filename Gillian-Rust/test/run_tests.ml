@@ -261,7 +261,9 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Matthew.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromCount (tR64, 1, 0); Matthew.FromCount (tR64, 2, 0);
+              Matthew.Bytes 0;
+              Matthew.FromCount (tR64, 1, 0);
+              Matthew.FromCount (tR64, 2, 0);
             |];
         variant = Matthew.Single 0;
         align = Matthew.Partial_align.ToType tR64;
@@ -275,13 +277,32 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Matthew.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromCount (tR64, 2, 0); Matthew.FromCount (tR64, 3, 0);
+              Matthew.Bytes 0;
+              Matthew.FromCount (tR64, 2, 0);
+              Matthew.FromCount (tR64, 3, 0);
             |];
         variant = Matthew.Single 0;
         align = Matthew.Partial_align.ToType tR64;
         size = Matthew.Partial_size.AtLeast 1;
       }
     @@ context.partial_layouts tF
+
+  let struct_of_R64_u16_u8 () =
+    check_partial_layout "struct G { R64, u16, u8 } correct layout"
+      {
+        fields =
+          Matthew.Arbitrary
+            [|
+              Matthew.Bytes 0;
+              Matthew.FromIndex (1, 0);
+              Matthew.FromIndex (1, 2);
+              Matthew.FromIndex (3, 0);
+            |];
+        variant = Matthew.Single 0;
+        align = Matthew.Partial_align.AtLeastPow2 1;
+        size = Matthew.Partial_size.AtLeast 4;
+      }
+    @@ context.partial_layouts tG
 
   let tests =
     [
@@ -293,6 +314,7 @@ module Partial_layouts_mixed_repr_tests = struct
       ("struct D { C, R8 }", `Quick, struct_of_C_R8);
       ("struct E { u8, R64 }", `Quick, struct_of_u8_R64);
       ("struct F { E, R64 }", `Quick, struct_of_E_R64);
+      ("struct G { R64, u16, u8 }", `Quick, struct_of_R64_u16_u8);
     ]
 end
 
