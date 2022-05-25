@@ -184,7 +184,12 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
       | FromCount (t, n, b), FromCount (t', n', b') when t = t' ->
           let b'' = b' - b in
           Some (if n' == n then Bytes b'' else FromCount (t, n' - n, b''))
+      | Bytes b, FromCount (t, n, b') ->
+        Some (FromCount (t, n, b + b'))
+      | Bytes b, FromIndex (i, b') ->
+        Some(FromIndex (i, b + b'))
       | _, _ -> None)
+      
   | _ -> None
 
 exception
@@ -304,20 +309,22 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
               (modify_plus_eliminating_zero @@ (i' - n))
       | Rust_types.Named _ -> (
           let moving_over_field, next_i, next_ix =
-            if i < 0 then (ix - 1, i + 1, ix - 1) else (ix, i - 1, ix + 1)
+            if i < 0 then (ix - 1, (fun n -> i + n), ix - 1) else (ix, (fun n -> i - n), ix + 1)
           and members = context.members ty in
           if i < 0 && ix = 0 then
             (* We can up-tree cast directly since we're at field ix 0 *)
             up_tree_cast UpTreeDirection.Curr accesses rs
-          else
+          else (
+            (match distance_to_next_field partial_layout moving_over_field with Some offset -> Format.printf "%a 313;\n" pp_offset offset | None -> Format.print_string "NO OFFSET 313;\n");
             match distance_to_next_field partial_layout moving_over_field with
-            | Some (FromCount (t', _, 0)) when t' = t ->
+            | Some (FromCount (t', n, 0)) when t' = t ->
                 (if next_ix = Array.length members then
                  up_tree_cast UpTreeDirection.Fwd accesses
                 else fun rs'' ->
                   resolve context accesses ty rs'' @@ Some next_ix)
-                  (modify_plus_eliminating_zero next_i)
+                  (modify_plus_eliminating_zero (next_i n))
             | _ -> down_tree_cast (DownTreeDirection.from_int i))
+          )
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
   | UPlus (_, 0) :: _, _ ->
       access_error "Invalid +^U 0 should not exist at resolution stage"
