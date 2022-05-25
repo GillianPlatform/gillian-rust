@@ -556,6 +556,121 @@ module Resolution_mixed_repr = struct
            address_type = tR64;
          }
 
+  let resolve_mixed_move_forward_from_bigger_to_smaller () =
+    check_accesses "struct G { R64, u16, u8 }).1 + 1 resolves to the u8"
+      [ { index = 2; index_type = u8; against = tG } ]
+    @@ Matthew.resolve_address_debug_access_error context
+         {
+           block = 0;
+           block_type = tG;
+           route =
+             [
+               Projections.Field (1, tG);
+               Projections.Plus (Overflow, 1, u16);
+               Projections.Cast (u16, u8);
+             ];
+           address_type = u8;
+         }
+
+  let resolve_mixed_move_backward_from_smaller_to_bigger () =
+    check_accesses "struct G { R64, u16, u8 }.2 - 2 resolves to the u16"
+      [ { index = 1; index_type = u16; against = tG } ]
+    @@ Matthew.resolve_address_debug_access_error context
+         {
+           block = 0;
+           block_type = tG;
+           route =
+             [
+               Projections.Field (2, tG);
+               Projections.Plus (Overflow, -2, u8);
+               Projections.Cast (u8, u16);
+             ];
+           address_type = u16;
+         }
+
+  let resolve_mixed_move_forward_fails_from_smaller_to_bigger () =
+    Alcotest.check_raises
+      "struct GFail { R64, u8, u16 }).1 + 1 mustn't resolve to the u16"
+      (Matthew.AccessError
+         ( [ { index = 1; index_type = u8; against = tGFail } ],
+           [ Projections.UPlus (Projections.Overflow, 1) ],
+           u8,
+           None,
+           "Stuck handling next op" ))
+    (* Use correct error from test, we just care that it fails *)
+    @@ fun () ->
+    let _ =
+      Matthew.resolve_address context
+        {
+          block = 0;
+          block_type = tGFail;
+          route =
+            [
+              Projections.Field (1, tGFail);
+              Projections.Plus (Projections.Overflow, 1, u8);
+              Projections.Cast (u8, u16);
+            ];
+          address_type = u16;
+        }
+    in
+    ()
+
+  let resolve_mixed_move_backward_fails_from_bigger_to_smaller () =
+    Alcotest.check_raises
+      "struct GFail { R64, u8, u16 }).2 > u8 - 1 mustn't resolve to the u8"
+      (Invalid_argument "index out of bounds")
+    (* The above seems like the wrong error, and should be looked at if backwards arithmetic doesn't work,
+       but since it fails, let's not concern ourselves with how yet *)
+    @@
+    fun () ->
+    let _ =
+      Matthew.resolve_address_debug_access_error context
+        {
+          block = 0;
+          block_type = tGFail;
+          route =
+            [
+              Projections.Field (2, tGFail);
+              Projections.Cast (u16, u8);
+              Projections.Plus (Projections.Overflow, -1, u8);
+            ];
+          address_type = u16;
+        }
+    in
+    ()
+
+  let resolve_mixed_move_forward_from_bigger_to_smaller_struct () =
+    check_accesses "struct H { R64, C16, C8 }).1 + 1 resolves to the C8"
+      [ { index = 2; index_type = tC8; against = tH } ]
+    @@ Matthew.resolve_address_debug_access_error context
+         {
+           block = 0;
+           block_type = tH;
+           route =
+             [
+               Projections.Field (1, tH);
+               Projections.Plus (Overflow, 1, tC16);
+               Projections.Cast (tC16, tC8);
+             ];
+           address_type = tC8;
+         }
+
+  let resolve_mixed_move_backward_from_smaller_to_bigger_struct () =
+    check_accesses "struct H { R64, C16, C8 }.2 - 2 resolves to the C16"
+      [ { index = 1; index_type = tC16; against = tH } ]
+    @@ Matthew.resolve_address_debug_access_error context
+         {
+           block = 0;
+           block_type = tH;
+           route =
+             [
+               Projections.Field (2, tH);
+               Projections.Plus (Overflow, -2, tC8);
+               Projections.Cast (tC8, tC16);
+             ];
+           address_type = tC16;
+         }
+
   let tests =
     [
       ("next element field", `Quick, next_element_field);
@@ -569,6 +684,24 @@ module Resolution_mixed_repr = struct
       ( "resolve mixed end of struct following byte and up",
         `Quick,
         resolve_mixed_end_of_struct_following_byte_and_up );
+      ( "resolve mixed move forwards from bigger to smaller",
+        `Quick,
+        resolve_mixed_move_forward_from_bigger_to_smaller );
+      ( "resolve mixed move backward from smaller to bigger",
+        `Quick,
+        resolve_mixed_move_backward_from_smaller_to_bigger );
+      ( "resolve mixed move forward fails from smaller to bigger",
+        `Quick,
+        resolve_mixed_move_forward_fails_from_smaller_to_bigger );
+      ( "resolve mixed move backward fails from bigger to smaller",
+        `Quick,
+        resolve_mixed_move_backward_fails_from_bigger_to_smaller );
+      ( "resolve mixed move forwards from bigger to smaller struct",
+        `Quick,
+        resolve_mixed_move_forward_from_bigger_to_smaller_struct );
+      ( "resolve mixed move backward from smaller to bigger struct",
+        `Quick,
+        resolve_mixed_move_backward_from_smaller_to_bigger_struct );
     ]
 end
 

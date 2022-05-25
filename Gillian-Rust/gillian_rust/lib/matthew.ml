@@ -32,6 +32,7 @@ module Partial_align = struct
     match (a, a') with
     | ExactlyPow2 a, ExactlyPow2 a' -> a <= a'
     | ToType t, ToType t' -> Rust_types.equal t t'
+    | ExactlyPow2 a, AtLeastPow2 a' -> a <= a'
     | _, _ -> false
 
   let maximum = Seq.fold_left max (ExactlyPow2 0)
