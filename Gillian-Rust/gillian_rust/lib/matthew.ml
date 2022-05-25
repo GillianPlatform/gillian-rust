@@ -176,7 +176,7 @@ type access = { index : int; index_type : Rust_types.t; against : Rust_types.t }
 let distance_to_next_field (partial_layout : partial_layout) (a : int) =
   match partial_layout.fields with
   | Arbitrary offsets when a >= 0 && a + 1 < Array.length offsets -> (
-      print_string "offsets.(a), offsets.(a+1) 166;\n";
+      Format.printf "offsets.(a)=%a, offsets.(a+1)=%a 179;\n" pp_offset offsets.(a) pp_offset offsets.(a + 1);
       match (offsets.(a), offsets.(a + 1)) with
       | Bytes n, Bytes n' -> Some (Bytes (n' - n))
       | FromIndex (n, b), FromIndex (n', b') when n = n' ->
@@ -309,7 +309,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
               (modify_plus_eliminating_zero @@ (i' - n))
       | Rust_types.Named _ -> (
           let moving_over_field, next_i, next_ix =
-            if i < 0 then (ix - 1, (fun n -> i + n), ix - 1) else (ix, (fun n -> i - n), ix + 1)
+            if i < 0 then (ix - 1, (+) i, ix - 1) else (ix, (-) i, ix + 1)
           and members = context.members ty in
           if i < 0 && ix = 0 then
             (* We can up-tree cast directly since we're at field ix 0 *)
@@ -498,6 +498,7 @@ let next_offset (partial_layouts : Rust_types.t -> partial_layout)
       when Rust_types.equal ty' ty'' ->
         FromCount (ty', n, 0)
     | Bytes 0, _, _ when ty = ty_next -> FromCount (ty, 1, 0)
+    | Bytes 0, Bytes 1, ToType ty' -> FromCount (ty', 1, 0)
     | FromCount (ty', n, b), Bytes sz, ExactlyPow2 0 ->
         FromCount (ty', n, b + sz)
     | FromCount (ty', n, 0), FromCount (ty'', n', b), ExactlyPow2 0

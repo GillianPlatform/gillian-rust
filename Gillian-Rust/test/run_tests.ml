@@ -261,7 +261,7 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Matthew.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromIndex (1, 0); Matthew.FromIndex (2, 0);
+              Matthew.Bytes 0; Matthew.FromCount (tR64, 1, 0); Matthew.FromCount (tR64, 2, 0);
             |];
         variant = Matthew.Single 0;
         align = Matthew.Partial_align.ToType tR64;
@@ -275,7 +275,7 @@ module Partial_layouts_mixed_repr_tests = struct
         fields =
           Matthew.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromIndex (1, 0); Matthew.FromIndex (2, 0);
+              Matthew.Bytes 0; Matthew.FromCount (tR64, 2, 0); Matthew.FromCount (tR64, 3, 0);
             |];
         variant = Matthew.Single 0;
         align = Matthew.Partial_align.ToType tR64;
