@@ -1,5 +1,5 @@
 open Gillian.Gil_syntax
-(* module Matthew = Matthew *)
+(* module Partial_layout = Partial_layout *)
 
 type arith_kind = Wrap | Overflow [@@deriving show, eq]
 

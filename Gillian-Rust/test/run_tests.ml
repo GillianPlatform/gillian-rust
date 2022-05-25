@@ -5,10 +5,10 @@ let check_ops =
 
 let check_partial_layout =
   Alcotest.(
-    check (testable Matthew.pp_partial_layout Matthew.equal_partial_layout))
+    check (testable Partial_layout.pp_partial_layout Partial_layout.equal_partial_layout))
 
 let check_accesses =
-  Alcotest.(check (list (testable Matthew.pp_access Matthew.equal_access)))
+  Alcotest.(check (list (testable Partial_layout.pp_access Partial_layout.equal_access)))
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
@@ -54,7 +54,7 @@ module Repr_C_context = struct
       (Rust_types.Struct (ReprC, [ ("x", u16); ("y", u8) ]));
     genv
 
-  let context : Matthew.context = Matthew.context_from_env genv
+  let context : Partial_layout.context = Partial_layout.context_from_env genv
 end
 
 module Mixed_repr_context = struct
@@ -101,7 +101,7 @@ module Mixed_repr_context = struct
       (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
     genv
 
-  let context : Matthew.context = Matthew.context_from_env genv
+  let context : Partial_layout.context = Partial_layout.context_from_env genv
 end
 
 module Partial_layouts_repr_C_tests = struct
@@ -112,13 +112,13 @@ module Partial_layouts_repr_C_tests = struct
     check_partial_layout "struct A { u8, u16, u32 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.Bytes 2; Matthew.Bytes 4; Matthew.Bytes 8;
+              Partial_layout.Bytes 0; Partial_layout.Bytes 2; Partial_layout.Bytes 4; Partial_layout.Bytes 8;
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ExactlyPow2 2;
-        size = Matthew.Partial_size.Exactly 8;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ExactlyPow2 2;
+        size = Partial_layout.Partial_size.Exactly 8;
       }
     @@ context.partial_layouts tA
 
@@ -126,11 +126,11 @@ module Partial_layouts_repr_C_tests = struct
     check_partial_layout "struct B { A, C } correct layout"
       {
         fields =
-          Matthew.Arbitrary
-            [| Matthew.Bytes 0; Matthew.Bytes 8; Matthew.Bytes 56 |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ExactlyPow2 2;
-        size = Matthew.Partial_size.Exactly 56;
+          Partial_layout.Arbitrary
+            [| Partial_layout.Bytes 0; Partial_layout.Bytes 8; Partial_layout.Bytes 56 |];
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ExactlyPow2 2;
+        size = Partial_layout.Partial_size.Exactly 56;
       }
     @@ context.partial_layouts tB
 
@@ -138,11 +138,11 @@ module Partial_layouts_repr_C_tests = struct
     check_partial_layout "struct C { [u8; 5], [A; 5] } correct layout"
       {
         fields =
-          Matthew.Arbitrary
-            [| Matthew.Bytes 0; Matthew.Bytes 8; Matthew.Bytes 48 |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ExactlyPow2 2;
-        size = Matthew.Partial_size.Exactly 48;
+          Partial_layout.Arbitrary
+            [| Partial_layout.Bytes 0; Partial_layout.Bytes 8; Partial_layout.Bytes 48 |];
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ExactlyPow2 2;
+        size = Partial_layout.Partial_size.Exactly 48;
       }
     @@ context.partial_layouts tC
 
@@ -150,11 +150,11 @@ module Partial_layouts_repr_C_tests = struct
     check_partial_layout "struct D { u16, u8 } correct layout with end padding"
       {
         fields =
-          Matthew.Arbitrary
-            [| Matthew.Bytes 0; Matthew.Bytes 2; Matthew.Bytes 4 |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ExactlyPow2 1;
-        size = Matthew.Partial_size.Exactly 4;
+          Partial_layout.Arbitrary
+            [| Partial_layout.Bytes 0; Partial_layout.Bytes 2; Partial_layout.Bytes 4 |];
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ExactlyPow2 1;
+        size = Partial_layout.Partial_size.Exactly 4;
       }
     @@ context.partial_layouts tD
 
@@ -175,11 +175,11 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct R8 { u8 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
-            [| Matthew.FromIndex (0, 0); Matthew.FromIndex (1, 0) |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR8;
-        size = Matthew.Partial_size.AtLeast 0;
+          Partial_layout.Arbitrary
+            [| Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0) |];
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR8;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tR8
 
@@ -187,11 +187,11 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct R64 { u64 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
-            [| Matthew.FromIndex (0, 0); Matthew.FromIndex (1, 0) |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR64;
-        size = Matthew.Partial_size.AtLeast 0;
+          Partial_layout.Arbitrary
+            [| Partial_layout.FromIndex (0, 0); Partial_layout.FromIndex (1, 0) |];
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR64;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tR64
 
@@ -199,13 +199,13 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct A { R8, R64 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromIndex (1, 0); Matthew.FromIndex (2, 0);
+              Partial_layout.Bytes 0; Partial_layout.FromIndex (1, 0); Partial_layout.FromIndex (2, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.AtLeastPow2 0;
-        size = Matthew.Partial_size.AtLeast 0;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.AtLeastPow2 0;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tA
 
@@ -213,13 +213,13 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct B { A, R64 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0; Matthew.FromIndex (1, 0); Matthew.FromIndex (2, 0);
+              Partial_layout.Bytes 0; Partial_layout.FromIndex (1, 0); Partial_layout.FromIndex (2, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.AtLeastPow2 0;
-        size = Matthew.Partial_size.AtLeast 0;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.AtLeastPow2 0;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tB
 
@@ -227,15 +227,15 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct C { [R8; 2], [R8; 2] } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0;
-              Matthew.FromCount (tR8, 2, 0);
-              Matthew.FromCount (tR8, 4, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromCount (tR8, 2, 0);
+              Partial_layout.FromCount (tR8, 4, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR8;
-        size = Matthew.Partial_size.AtLeast 0;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR8;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tC
 
@@ -243,15 +243,15 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct D { C, R8 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0;
-              Matthew.FromCount (tR8, 4, 0);
-              Matthew.FromCount (tR8, 5, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromCount (tR8, 4, 0);
+              Partial_layout.FromCount (tR8, 5, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR8;
-        size = Matthew.Partial_size.AtLeast 0;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR8;
+        size = Partial_layout.Partial_size.AtLeast 0;
       }
     @@ context.partial_layouts tD
 
@@ -259,15 +259,15 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct E { u8, R64 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0;
-              Matthew.FromCount (tR64, 1, 0);
-              Matthew.FromCount (tR64, 2, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromCount (tR64, 1, 0);
+              Partial_layout.FromCount (tR64, 2, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR64;
-        size = Matthew.Partial_size.AtLeast 1;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR64;
+        size = Partial_layout.Partial_size.AtLeast 1;
       }
     @@ context.partial_layouts tE
 
@@ -275,15 +275,15 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct F { E, R64 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0;
-              Matthew.FromCount (tR64, 2, 0);
-              Matthew.FromCount (tR64, 3, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromCount (tR64, 2, 0);
+              Partial_layout.FromCount (tR64, 3, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.ToType tR64;
-        size = Matthew.Partial_size.AtLeast 1;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.ToType tR64;
+        size = Partial_layout.Partial_size.AtLeast 1;
       }
     @@ context.partial_layouts tF
 
@@ -291,16 +291,16 @@ module Partial_layouts_mixed_repr_tests = struct
     check_partial_layout "struct G { R64, u16, u8 } correct layout"
       {
         fields =
-          Matthew.Arbitrary
+          Partial_layout.Arbitrary
             [|
-              Matthew.Bytes 0;
-              Matthew.FromIndex (1, 0);
-              Matthew.FromIndex (1, 2);
-              Matthew.FromIndex (3, 0);
+              Partial_layout.Bytes 0;
+              Partial_layout.FromIndex (1, 0);
+              Partial_layout.FromIndex (1, 2);
+              Partial_layout.FromIndex (3, 0);
             |];
-        variant = Matthew.Single 0;
-        align = Matthew.Partial_align.AtLeastPow2 1;
-        size = Matthew.Partial_size.AtLeast 4;
+        variant = Partial_layout.Single 0;
+        align = Partial_layout.Partial_align.AtLeastPow2 1;
+        size = Partial_layout.Partial_size.AtLeast 4;
       }
     @@ context.partial_layouts tG
 
@@ -327,12 +327,12 @@ module Reduce_tests = struct
       [
         Projections.Cast (tA, u16); Projections.UPlus (Projections.Overflow, 2);
       ]
-    @@ Matthew.reduce context [ Projections.Field (1, tA) ]
+    @@ Partial_layout.reduce context [ Projections.Field (1, tA) ]
 
   let pointer_arithmetic_from_initial_field_matches_field_traversal () =
     check_ops "(struct A { u8, u16, u32 }.0 + 2) as u16 is A.1"
-      (Matthew.reduce context [ Projections.Field (1, tA) ])
-    @@ Matthew.reduce context
+      (Partial_layout.reduce context [ Projections.Field (1, tA) ])
+    @@ Partial_layout.reduce context
          [
            Projections.Field (0, tA);
            Projections.Plus (Overflow, 2, u8);
@@ -346,7 +346,7 @@ module Reduce_tests = struct
       [
         Projections.Cast (tB, u8); Projections.UPlus (Projections.Overflow, 40);
       ]
-    @@ Matthew.reduce context
+    @@ Partial_layout.reduce context
          [
            Projections.Field (1, tB);
            Projections.Field (1, tC);
@@ -374,7 +374,7 @@ module Resolution_repr_C = struct
     check_accesses
       "struct A { u8, u16, u32 }.0 +^U 2 resolves to the u16 at index 1"
       [ { index = 1; index_type = u16; against = tA } ]
-    @@ Matthew.resolve_address context
+    @@ Partial_layout.resolve_address context
          {
            block = 0;
            block_type = tA;
@@ -386,7 +386,7 @@ module Resolution_repr_C = struct
   let second_field_directly () =
     check_accesses "struct A { u8, u16, u32 }.1 resolves to the u16 at index 1"
       [ { index = 1; index_type = u16; against = tA } ]
-    @@ Matthew.resolve_address context
+    @@ Partial_layout.resolve_address context
          {
            block = 0;
            block_type = tA;
@@ -412,7 +412,7 @@ module Resolution_repr_C = struct
         };
         { index = 1; index_type = tC; against = tB };
       ]
-    @@ Matthew.resolve_address context
+    @@ Partial_layout.resolve_address context
          {
            block = 0;
            block_type = tB;
@@ -449,7 +449,7 @@ module Resolution_mixed_repr = struct
           against = Rust_types.Array { ty = tA; length = 2 };
         };
       ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = Rust_types.Array { ty = tA; length = 2 };
@@ -468,7 +468,7 @@ module Resolution_mixed_repr = struct
     Alcotest.check_raises
       "struct B { struct A { R8, R64 }, R64 }.0.1 +^R64 1 mustn't resolve to \
        the second R64"
-      (Matthew.AccessError
+      (Partial_layout.AccessError
          ( [ { index = 1; index_type = tR64; against = tA } ],
            [ Projections.Plus (Projections.Overflow, 1, tR64) ],
            tR64,
@@ -477,7 +477,7 @@ module Resolution_mixed_repr = struct
     (* Use correct error from test, we just care that it fails *)
     @@ fun () ->
     let _ =
-      Matthew.resolve_address context
+      Partial_layout.resolve_address context
         {
           block = 0;
           block_type = tA;
@@ -506,7 +506,7 @@ module Resolution_mixed_repr = struct
           against = tC;
         };
       ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tC;
@@ -524,7 +524,7 @@ module Resolution_mixed_repr = struct
       "struct D { struct C { [R8; 2], [R8; 2] }, R8}.0[0] +^R8 4 resolves to \
        the fifth R8"
       [ { index = 1; index_type = tR8; against = tD } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tD;
@@ -543,7 +543,7 @@ module Resolution_mixed_repr = struct
       "struct F { struct E { u8, R64 }, R64}).0.1 + 1 resolves to the second \
        R64"
       [ { index = 1; index_type = tR64; against = tF } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tF;
@@ -559,7 +559,7 @@ module Resolution_mixed_repr = struct
   let resolve_mixed_move_forward_from_bigger_to_smaller () =
     check_accesses "struct G { R64, u16, u8 }).1 + 1 resolves to the u8"
       [ { index = 2; index_type = u8; against = tG } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tG;
@@ -575,7 +575,7 @@ module Resolution_mixed_repr = struct
   let resolve_mixed_move_backward_from_smaller_to_bigger () =
     check_accesses "struct G { R64, u16, u8 }.2 - 2 resolves to the u16"
       [ { index = 1; index_type = u16; against = tG } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tG;
@@ -591,7 +591,7 @@ module Resolution_mixed_repr = struct
   let resolve_mixed_move_forward_fails_from_smaller_to_bigger () =
     Alcotest.check_raises
       "struct GFail { R64, u8, u16 }).1 + 1 mustn't resolve to the u16"
-      (Matthew.AccessError
+      (Partial_layout.AccessError
          ( [ { index = 1; index_type = u8; against = tGFail } ],
            [ Projections.UPlus (Projections.Overflow, 1) ],
            u8,
@@ -600,7 +600,7 @@ module Resolution_mixed_repr = struct
     (* Use correct error from test, we just care that it fails *)
     @@ fun () ->
     let _ =
-      Matthew.resolve_address context
+      Partial_layout.resolve_address context
         {
           block = 0;
           block_type = tGFail;
@@ -624,7 +624,7 @@ module Resolution_mixed_repr = struct
     @@
     fun () ->
     let _ =
-      Matthew.resolve_address_debug_access_error context
+      Partial_layout.resolve_address_debug_access_error context
         {
           block = 0;
           block_type = tGFail;
@@ -642,7 +642,7 @@ module Resolution_mixed_repr = struct
   let resolve_mixed_move_forward_from_bigger_to_smaller_struct () =
     check_accesses "struct H { R64, C16, C8 }).1 + 1 resolves to the C8"
       [ { index = 2; index_type = tC8; against = tH } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tH;
@@ -658,7 +658,7 @@ module Resolution_mixed_repr = struct
   let resolve_mixed_move_backward_from_smaller_to_bigger_struct () =
     check_accesses "struct H { R64, C16, C8 }.2 - 2 resolves to the C16"
       [ { index = 1; index_type = tC16; against = tH } ]
-    @@ Matthew.resolve_address_debug_access_error context
+    @@ Partial_layout.resolve_address_debug_access_error context
          {
            block = 0;
            block_type = tH;
