@@ -47,6 +47,7 @@ pub enum MemoryAction<'tcx> {
     LoadDiscriminant {
         location: Expr,
         projection: Expr,
+        enum_typ: Ty<'tcx>,
     },
 }
 
@@ -171,12 +172,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             MemoryAction::LoadDiscriminant {
                 location,
                 projection,
+                enum_typ,
             } => {
                 let temp = self.temp_var();
+                let encoded_typ = self.encode_type(enum_typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_DISCR.to_string(),
-                    parameters: vec![location, projection],
+                    parameters: vec![location, projection, Expr::Lit(encoded_typ)],
                 });
                 self.push_cmd(Cmd::Assignment {
                     variable: target,

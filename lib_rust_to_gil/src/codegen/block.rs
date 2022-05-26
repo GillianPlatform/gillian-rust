@@ -41,7 +41,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                             error_lab: None,
                             bindings: None,
                         });
-                        let call_ret_ty = self.place_ty(place);
+                        let call_ret_ty = self.place_ty(place).ty;
                         self.push_place_write(place, Expr::PVar(target), call_ret_ty);
                         self.push_cmd(Cmd::Goto(bb_label(bb)));
                     }

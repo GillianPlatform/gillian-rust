@@ -20,6 +20,7 @@ impl ArithKind {
 #[derive(Clone, Debug)]
 pub enum GilProj {
     Field(u32, EncodedType),
+    VField(u32, EncodedType, u32),
     Downcast(u32, EncodedType),
     ArrayIndex(Expr, EncodedType, i128),
     SliceIndex(Expr, EncodedType), // The EncodedType is the type of elements in the slice
@@ -31,6 +32,13 @@ impl GilProj {
     pub fn into_expr(self) -> Expr {
         match self {
             Self::Field(u, ty) => vec!["f".into(), Expr::int(u as i128), ty.into()].into(),
+            Self::VField(u, ty, idx) => vec![
+                "vf".into(),
+                Expr::int(u as i128),
+                ty.into(),
+                Expr::int(idx as i128),
+            ]
+            .into(),
             Self::Downcast(u, ty) => vec!["d".into(), Expr::int(u as i128), ty.into()].into(),
             Self::ArrayIndex(e, ty, sz) => vec!["i".into(), e, ty.into(), sz.into()].into(),
             Self::Cast(from_ty, into_ty) => vec!["c".into(), from_ty.into(), into_ty.into()].into(),
@@ -177,7 +185,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut cur_gil_place = GilPlace {
             base: Expr::PVar(self.name_from_local(&place.local)),
             proj: vec![],
-            base_ty: self.place_ty(&place.local.into()),
+            base_ty: self.place_ty(&place.local.into()).ty,
         };
         for (idx, proj) in place.projection.into_iter().enumerate() {
             let curr_typ = self.place_ty_until(place, idx);
@@ -187,22 +195,30 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     self.push_read_gil_place_in_memory(
                         new_base.clone(),
                         cur_gil_place,
-                        curr_typ,
+                        curr_typ.ty,
                         true,
                     );
                     let next_typ = self.place_ty_until(place, idx + 1);
                     cur_gil_place = GilPlace {
                         base: Expr::PVar(new_base),
                         proj: vec![],
-                        base_ty: next_typ,
+                        base_ty: next_typ.ty,
                     };
                 }
-                ProjectionElem::Field(u, _) => cur_gil_place
-                    .proj
-                    .push(GilProj::Field(u.as_u32(), self.encode_type(curr_typ))),
+                ProjectionElem::Field(u, _) => match curr_typ.variant_index {
+                    Some(vidx) => cur_gil_place.proj.push(GilProj::VField(
+                        u.as_u32(),
+                        self.encode_type(curr_typ.ty),
+                        vidx.as_u32(),
+                    )),
+                    None => cur_gil_place
+                        .proj
+                        .push(GilProj::Field(u.as_u32(), self.encode_type(curr_typ.ty))),
+                },
+
                 ProjectionElem::Index(local) => {
                     let expr = self.push_place_read(&local.into(), true);
-                    match curr_typ.kind() {
+                    match curr_typ.ty.kind() {
                         TyKind::Slice(ty) => cur_gil_place
                             .proj
                             .push(GilProj::SliceIndex(expr, self.encode_type(ty))),
@@ -217,7 +233,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // Place pointer should contain their types? But so far, I think this has no effect.
                 ProjectionElem::Downcast(_, u) => cur_gil_place
                     .proj
-                    .push(GilProj::Downcast(u.as_u32(), self.encode_type(curr_typ))),
+                    .push(GilProj::Downcast(u.as_u32(), self.encode_type(curr_typ.ty))),
                 _ => fatal!(self, "Invalid projection element: {:#?}", proj),
             }
         }
@@ -227,7 +243,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_place_read(&mut self, place: &Place<'tcx>, copy: bool) -> Expr {
         match self.place_in_store(place) {
             None => {
-                let read_ty = self.place_ty(place);
+                let read_ty = self.place_ty(place).ty;
                 let gil_place = self.push_get_gil_place(place);
                 self.push_read_gil_place(gil_place, read_ty, copy)
             }

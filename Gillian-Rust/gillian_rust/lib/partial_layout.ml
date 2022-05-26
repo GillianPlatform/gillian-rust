@@ -108,6 +108,7 @@ and partial_layout = {
 type context = {
   partial_layouts : Rust_types.t -> partial_layout;
   members : Rust_types.t -> Rust_types.t array;
+  variant_members : Rust_types.t -> variant_idx -> Rust_types.t array;
 }
 
 let rec contextualise (context : context) (route : op list) : op list =
@@ -182,7 +183,12 @@ type address = {
   address_type : Rust_types.t;
 }
 
-type access = { index : int; index_type : Rust_types.t; against : Rust_types.t }
+type access = {
+  index : int;
+  index_type : Rust_types.t;
+  against : Rust_types.t;
+  variant : variant_idx option;
+}
 [@@deriving eq, show]
 
 let distance_to_next_field (partial_layout : partial_layout) (a : int) =
@@ -237,8 +243,9 @@ let mod' (n : int) (m : int) =
 
 let signum (n : int) = if n < 0 then -1 else if n = 0 then 0 else 1
 
-let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
-    (rs : op list) (index : int option) : access list =
+let rec resolve ~genv ~(context : context) (accesses : access list)
+    (ty : Rust_types.t) (rs : op list) (index : int option) : access list =
+  let resolve = resolve ~genv ~context in
   let dump_state () =
     (* FOR DEBUG PURPOSES, TODO REMOVE *)
     Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Rust_types.pp ty
@@ -254,14 +261,15 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
     if Option.is_some index then index
     else
       match (context.partial_layouts ty).fields with
+      | Arbitrary [||] -> None
       | Arbitrary offsets
         when print_string "offsets.(0) 210;\n";
              offsets.(0) = Bytes 0 ->
           Some 0
       | Array (_, _) -> Some 0
       | _ -> None
-  and accesses' index index_type =
-    { index; index_type; against = ty } :: accesses
+  and accesses' ?variant index index_type =
+    { index; index_type; against = ty; variant } :: accesses
   in
   let access_error message =
     raise (AccessError (accesses, rs, ty, ix, message))
@@ -280,16 +288,16 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
               (* We can't guarantee we should be using indices for the previous index *)
           | DownTreeDirection.Curr -> None
         in
-        resolve context (accesses' ix' ix'_type) ix'_type rs casted_ix
+        resolve (accesses' ix' ix'_type) ix'_type rs casted_ix
     | None    -> access_error "Can't down-tree cast from no known index"
   in
   let rec up_tree_cast dir accesses' rs' =
     match accesses' with
     (* We're not checking whether the type cast to is meant to have indices, but this should be fine as it won't be able to progress once there *)
-    | { index; index_type = _; against } :: as' ->
+    | { index; index_type = _; against; variant = _ } :: as' ->
         let max_ix = Array.length (context.members against) - 1
         and ix' = index + UpTreeDirection.magnitude dir in
-        if ix' <= max_ix then resolve context as' against rs' (Some ix')
+        if ix' <= max_ix then resolve as' against rs' (Some ix')
         else up_tree_cast dir as' rs'
     | [] ->
         access_error "Could not up tree cast from beyond top of access stack"
@@ -299,18 +307,19 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
   | Field (i, t) :: rs', None when t = ty ->
       print_string "(context.members t).(i) 243;\n";
       let t' = (context.members t).(i) in
-      resolve context (accesses' i t') t' rs' None
+      resolve (accesses' i t') t' rs' None
   (* TODO handle invalid indices etc. *)
-  | Field (i, t) :: rs', Some 0 when t = ty ->
-      resolve context accesses ty rs' (Some i)
+  | Field (i, t) :: rs', Some 0 when Rust_types.equal t ty ->
+      resolve accesses ty rs' (Some i)
   | Index (i, t, n) :: rs', Some ix
-    when i < n && Rust_types.Array { length = n; ty = t } = ty ->
-      resolve context accesses ty rs' (Some (i + ix))
-  | Downcast (i, t) :: rs', None when t = ty ->
+    when i < n && Rust_types.equal (Array { length = n; ty = t }) ty ->
+      resolve accesses ty rs' (Some (i + ix))
+  | Downcast (i, t) :: VField (j, t', idx) :: rs', None
+    when i = idx && Rust_types.(equal t ty && equal t' ty) ->
       print_string "(context.members t).(i) 253;\n";
-      let t' = (context.members t).(i) in
-      resolve context (accesses' i t') t rs' None
-  | Cast (_, _) :: rs', ix -> resolve context accesses ty rs' ix
+      let t' = (context.variant_members t i).(j) in
+      resolve (accesses' ~variant:idx j t') t rs' None
+  | Cast (_, _) :: rs', ix -> resolve accesses ty rs' ix
   | Plus (_, 0, _) :: _, _ ->
       access_error "Invalid +^t 0 should not exist at resolution stage"
   | Plus (w, i, t) :: rs', Some ix -> (
@@ -318,16 +327,16 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
       and modify_plus_eliminating_zero new_i =
         if new_i = 0 then rs' else Plus (w, new_i, t) :: rs'
       and partial_layout = context.partial_layouts ty in
-      match ty with
+      match C_global_env.resolve_named ~genv ty with
       | Rust_types.Array { ty = tElem; length = n } when tElem = t ->
           if i' < 0 then
             up_tree_cast UpTreeDirection.Curr accesses
               (modify_plus_eliminating_zero i')
-          else if i' < n then resolve context accesses ty rs' @@ Some i'
+          else if i' < n then resolve accesses ty rs' @@ Some i'
           else
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
-      | Rust_types.Named _ ->
+      | Struct _ ->
           let moving_over_field, next_i, next_ix =
             if i < 0 then (ix - 1, ( + ) i, ix - 1) else (ix, ( - ) i, ix + 1)
           and members = context.members ty in
@@ -342,8 +351,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
             | Some (FromCount (t', n, 0)) when t' = t ->
                 (if next_ix = Array.length members then
                  up_tree_cast UpTreeDirection.Fwd accesses
-                else fun rs'' ->
-                  resolve context accesses ty rs'' @@ Some next_ix)
+                else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
                   (modify_plus_eliminating_zero (next_i n))
             | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
@@ -353,7 +361,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
       let modify_uplus_eliminating_zero new_i =
         if new_i = 0 then rs' else UPlus (w, new_i) :: rs'
       and partial_layout = context.partial_layouts ty in
-      match ty with
+      match C_global_env.resolve_named ~genv ty with
       | Rust_types.Array { ty = tElem; length = n } -> (
           match (context.partial_layouts tElem).size with
           | Exactly size ->
@@ -366,7 +374,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
               else if ix' = ix then
                 down_tree_cast (DownTreeDirection.from_int i)
               else if ix' < n then
-                resolve context accesses ty
+                resolve accesses ty
                   (modify_uplus_eliminating_zero rem)
                   (Some ix')
               else
@@ -374,7 +382,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
                 @@ modify_uplus_eliminating_zero
                 @@ (i - ((n - ix) * size))
           | _            -> down_tree_cast (DownTreeDirection.from_int i))
-      | Rust_types.Named _ -> (
+      | Struct _ -> (
           let moving_over_field, next_ix =
             if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
           in
@@ -388,8 +396,7 @@ let rec resolve (context : context) (accesses : access list) (ty : Rust_types.t)
                    size <= abs i ->
                 (if next_ix = Array.length (context.members ty) then
                  up_tree_cast UpTreeDirection.Fwd accesses
-                else fun rs'' ->
-                  resolve context accesses ty rs'' @@ Some next_ix)
+                else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
                   (modify_uplus_eliminating_zero (i - (signum i * size)))
             | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
@@ -415,9 +422,10 @@ let rec zero_offset_types (context : context) (ty : Rust_types.t) :
   | Array (_, _) -> sub_tree_types ()
   | _ -> [ ty ]
 
-let resolve_address (context : context) (address : address) : access list =
+let resolve_address ~genv ~(context : context) (address : address) : access list
+    =
   let reduced = reduce context address.route in
-  let accesses = resolve context [] address.block_type reduced None in
+  let accesses = resolve ~genv ~context [] address.block_type reduced None in
   let result_type = function
     | a :: _ -> a.index_type
     | _      -> address.block_type
@@ -436,7 +444,9 @@ let resolve_address (context : context) (address : address) : access list =
     in
     let as_z_o =
       List.map
-        (function against, index_type -> { index = 0; index_type; against })
+        (function
+          | against, index_type ->
+              { index = 0; index_type; against; variant = None })
         z_o_conversions
     in
     let as' = List.rev_append as_z_o accesses in
@@ -450,9 +460,9 @@ let resolve_address (context : context) (address : address) : access list =
              Some 0,
              Format.sprintf "Could not resolve to correct address type" ))
 
-let resolve_address_debug_access_error (context : context) (address : address) :
-    access list =
-  try resolve_address context address
+let resolve_address_debug_access_error ~genv ~(context : context)
+    (address : address) : access list =
+  try resolve_address ~genv ~context address
   with AccessError (accesses, rs, ty, ix, message) ->
     Format.eprintf "%s: \n" message;
     Format.eprintf "\tty=%a\n\tix=%s\n\trs=[" Rust_types.pp ty
@@ -671,18 +681,27 @@ let partial_layouts_from_env (genv : C_global_env.t) :
   in
   partial_layout_of genv partial_layouts
 
-let rec members_from_env (genv : C_global_env.t) :
-    Rust_types.t -> Rust_types.t array = function
-  | Rust_types.Named n -> members_from_env genv @@ C_global_env.get_type genv n
-  | Rust_types.Struct (_, fs) ->
+let enum_variant_members_from_env (genv : C_global_env.t) (ty : Rust_types.t)
+    (vidx : int) =
+  let ty = C_global_env.resolve_named ~genv ty in
+  match ty with
+  | Enum variants -> List.nth variants vidx |> snd |> Array.of_list
+  | _             -> failwith "enum_variant_members for non-enum"
+
+let members_from_env (genv : C_global_env.t) (ty : Rust_types.t) :
+    Rust_types.t array =
+  let ty = C_global_env.resolve_named ~genv ty in
+  match ty with
+  | Struct (_, fs)       ->
       fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
-  | Rust_types.Array { ty; length } -> Array.make length ty
-  | Rust_types.Tuple tys -> Array.of_list tys
-  | _ -> [||]
+  | Array { ty; length } -> Array.make length ty
+  | Tuple tys            -> Array.of_list tys
+  | _                    -> [||]
 (* Consider making 1 t for internal navigation, especially primatives *)
 
 let context_from_env (genv : C_global_env.t) : context =
   {
     partial_layouts = partial_layouts_from_env genv;
     members = members_from_env genv;
+    variant_members = enum_variant_members_from_env genv;
   }

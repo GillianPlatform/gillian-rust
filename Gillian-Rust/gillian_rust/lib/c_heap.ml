@@ -150,10 +150,15 @@ module TreeBlock = struct
         let new_block = update block in
         let ret_value = return block in
         (ret_value, new_block)
-    | { index; index_type = _; against } :: r, { ty; content }
+    | { index; index_type = _; against; variant } :: r, { ty; content }
       when Rust_types.equal against ty -> (
-        match content with
-        | Fields vec | Array vec | Enum { fields = vec; _ } ->
+        match (content, variant) with
+        | (Fields vec | Array vec), None ->
+            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let v, sub_block = rec_call e r in
+            let new_block = Result.get_ok (vec.%[index] <- sub_block) in
+            (v, { ty; content = replace_vec content new_block })
+        | Enum { fields = vec; discr }, Some discr' when discr = discr' ->
             let e = Result.ok_or vec.%[index] "Index out of bounds" in
             let v, sub_block = rec_call e r in
             let new_block = Result.get_ok (vec.%[index] <- sub_block) in
@@ -243,7 +248,12 @@ module TreeBlock = struct
     let open Partial_layout in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
     let context = context_from_env genv in
-    let accesses = resolve_address context address |> List.rev in
+    Logging.normal (fun m ->
+        m "PL for %a: %a" Rust_types.pp t.ty pp_partial_layout
+          (context.partial_layouts t.ty));
+    let accesses = resolve_address ~genv ~context address |> List.rev in
+    Logging.normal (fun m ->
+        m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
     find_path ~genv ~update ~return t accesses
 
   let get_proj ~genv t proj ty copy =
@@ -257,7 +267,7 @@ module TreeBlock = struct
     let _, new_block = find_proj ~genv ~ty ~return ~update t proj in
     new_block
 
-  let get_discr ~genv t proj =
+  let get_discr ~genv t proj enum_typ =
     let return { content; _ } =
       match content with
       | Enum t -> t.discr
@@ -265,9 +275,7 @@ module TreeBlock = struct
                     content
     in
     let update block = block in
-    let discr, _ =
-      find_proj ~genv ~return ~update ~ty:(failwith "bite") t proj
-    in
+    let discr, _ = find_proj ~genv ~return ~update ~ty:enum_typ t proj in
     discr
 end
 
@@ -313,9 +321,9 @@ let free ~genv (mem : t) loc ty =
   in
   mem
 
-let load_discr (mem : t) loc proj =
+let load_discr (mem : t) loc proj enum_typ =
   let block = Hashtbl.find mem loc in
-  let discr = TreeBlock.get_discr block proj in
+  let discr = TreeBlock.get_discr block proj enum_typ in
   discr
 
 let empty () : t = Hashtbl.create 1

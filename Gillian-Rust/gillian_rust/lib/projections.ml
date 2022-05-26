@@ -4,6 +4,7 @@ open Gillian.Gil_syntax
 type arith_kind = Wrap | Overflow [@@deriving show, eq]
 
 type op =
+  | VField   of int * Rust_types.t * int
   | Field    of int * Rust_types.t
   | Downcast of int * Rust_types.t
   | Index    of int * Rust_types.t * int
@@ -15,17 +16,19 @@ type op =
 let pp_elem fmt =
   let str_ak = function Wrap -> "w" | Overflow -> "" in
   function
-  | Field (i, _ty)           -> Fmt.int fmt i
-  | Downcast (i, _ty)        -> Fmt.pf fmt "as_v(%d)" i
-  | Index (i, _ty, _sz)      -> Fmt.pf fmt "[%d]" i
-  | Cast (_from_ty, into_ty) -> Fmt.pf fmt ">:%a" Rust_types.pp into_ty
-  | Plus (k, i, _ty)         -> Fmt.pf fmt "+%s(%d)" (str_ak k) i
-  | UPlus (k, i)             -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
+  | Field (i, _) | VField (i, _, _) -> Fmt.pf fmt ".%d" i
+  | Downcast (i, _) -> Fmt.pf fmt "as_v(%d)" i
+  | Index (i, _, _) -> Fmt.pf fmt "[%d]" i
+  | Cast (_, into_ty) -> Fmt.pf fmt ">:%a" Rust_types.pp into_ty
+  | Plus (k, i, _) -> Fmt.pf fmt "+%s(%d)" (str_ak k) i
+  | UPlus (k, i) -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
 
 type t = op list
 
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Rust_types.of_lit ty)
+  | LList [ String "vf"; Int i; ty; Int idx ] ->
+      VField (Z.to_int i, Rust_types.of_lit ty, Z.to_int idx)
   | LList [ String "d"; Int i; ty ] ->
       Downcast (Z.to_int i, Rust_types.of_lit ty)
   | LList [ String "i"; Int i; ty; Int sz ] ->
@@ -43,6 +46,14 @@ let lit_of_elem : op -> Literal.t =
   function
   | Field (i, ty)           ->
       LList [ String "f"; Int (Z.of_int i); Rust_types.to_lit ty ]
+  | VField (i, ty, idx)     ->
+      LList
+        [
+          String "vf";
+          Int (Z.of_int i);
+          Rust_types.to_lit ty;
+          Int (Z.of_int idx);
+        ]
   | Downcast (i, ty)        ->
       LList [ String "d"; Int (Z.of_int i); Rust_types.to_lit ty ]
   | Cast (from_ty, into_ty) ->

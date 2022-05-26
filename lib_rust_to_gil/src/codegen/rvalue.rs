@@ -28,6 +28,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let action = MemoryAction::LoadDiscriminant {
                     location,
                     projection,
+                    enum_typ: self.place_ty(place).ty,
                 };
                 self.push_action(target.clone(), action);
                 Expr::PVar(target)
