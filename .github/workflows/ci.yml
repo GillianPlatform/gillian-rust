@@ -19,6 +19,7 @@ jobs:
       - uses: actions/setup-node@v2
       - uses: actions-rs/toolchain@v1
         with:
+          toolchain: nightly-2021-10-18
           components: rustfmt, clippy
       - uses: actions-rs/cargo@v1
         with:
