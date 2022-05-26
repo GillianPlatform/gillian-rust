@@ -46,10 +46,9 @@ jobs:
           esy import-dependencies _export
           rm -rf _export
         working-directory: "Gillian-Rust"
-      - name: Build Rust
-        run: "cargo build"
       - name: Build
         run: "esy"
+        working-directory: "Gillian-Rust"
       - name: build-and-test
         run: "esy test"
         working-directory: "Gillian-Rust"
