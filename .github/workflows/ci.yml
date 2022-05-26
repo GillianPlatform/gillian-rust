@@ -48,6 +48,7 @@ jobs:
       - name: Build Rust
         run: "cargo build"
       - name: Build
+        run: "esy"
       - name: build-and-test
         run: "esy test"
         working-directory: "Gillian-Rust"
