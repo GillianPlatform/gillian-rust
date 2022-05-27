@@ -17,6 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2021-10-18
+          components: rustfmt, clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+      - run: ./compile_all.sh
       - name: Installing esy
         run: sudo npm install -g esy@0.6.12 --unsafe-perm
       - name: Restore Cache
@@ -35,8 +46,12 @@ jobs:
           esy import-dependencies _export
           rm -rf _export
         working-directory: "Gillian-Rust"
+      - name: Build
+        run: "esy"
+        working-directory: "Gillian-Rust"
       - name: build-and-test
-        run: "make"
+        run: "esy test"
+        working-directory: "Gillian-Rust"
       - name: Setting dependency cache
         run: |
           esy cleanup .
