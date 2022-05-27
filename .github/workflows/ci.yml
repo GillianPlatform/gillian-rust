@@ -15,8 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      # Basic setups
+      - uses: actions/checkout@v3
       - uses: actions/setup-node@v2
+      
+      # Rust setup and build/test
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2021-10-18
@@ -29,6 +32,8 @@ jobs:
         with:
           command: check
       - run: ./compile_all.sh
+      
+      # OCaml setup and build/test
       - name: Installing esy
         run: sudo npm install -g esy@0.6.12 --unsafe-perm
       - name: Restore Cache
@@ -49,13 +54,19 @@ jobs:
         working-directory: "Gillian-Rust"
       - name: Build
         run: "esy"
-        working-directory: "Gillian-Rust"
-      - name: build-and-test
-        run: "esy test"
-        working-directory: "Gillian-Rust"
       - name: Setting dependency cache
         run: |
           esy cleanup .
           esy export-dependencies
         if: steps.restore-cache.outputs.cache-hit != 'true'
         working-directory: "Gillian-Rust"
+        working-directory: "Gillian-Rust"
+      - name: build-and-test
+        run: "esy test"
+        working-directory: "Gillian-Rust"
+        
+      # External tests
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+      - run: ./test_all.sh

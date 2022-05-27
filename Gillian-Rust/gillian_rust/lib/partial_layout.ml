@@ -194,9 +194,9 @@ type access = {
 let distance_to_next_field (partial_layout : partial_layout) (a : int) =
   match partial_layout.fields with
   | Arbitrary offsets when a >= 0 && a + 1 < Array.length offsets -> (
-      Format.printf "offsets.(a)=%a, offsets.(a+1)=%a 179;\n" pp_offset
-        offsets.(a) pp_offset
-        offsets.(a + 1);
+      (* Format.printf "offsets.(a)=%a, offsets.(a+1)=%a 179;\n" pp_offset
+         offsets.(a) pp_offset
+         offsets.(a + 1); *)
       match (offsets.(a), offsets.(a + 1)) with
       | Bytes n, Bytes n' -> Some (Bytes (n' - n))
       | FromIndex (n, b), FromIndex (n', b') when n = n' ->
@@ -246,24 +246,24 @@ let signum (n : int) = if n < 0 then -1 else if n = 0 then 0 else 1
 let rec resolve ~genv ~(context : context) (accesses : access list)
     (ty : Rust_types.t) (rs : op list) (index : int option) : access list =
   let resolve = resolve ~genv ~context in
-  let dump_state () =
-    (* FOR DEBUG PURPOSES, TODO REMOVE *)
-    Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Rust_types.pp ty
-    @@ Option.fold ~none:"- (None)" ~some:Int.to_string index;
-    List.iter (Format.printf "%a;\n" Projections.pp_op) rs;
-    Format.print_string "]\n\taccesses=[";
-    List.iter (Format.printf "%a;\n" pp_access) accesses;
-    Format.print_string "]\nEND\n"
-  in
-  Format.printf "RESOLVE <--new";
-  dump_state ();
+  (* let dump_state () =
+          (* FOR DEBUG PURPOSES, TODO REMOVE *)
+          Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Rust_types.pp ty
+          @@ Option.fold ~none:"- (None)" ~some:Int.to_string index;
+          List.iter (Format.printf "%a;\n" Projections.pp_op) rs;
+          Format.print_string "]\n\taccesses=[";
+          List.iter (Format.printf "%a;\n" pp_access) accesses;
+          Format.print_string "]\nEND\n"
+        in
+     Format.printf "RESOLVE <--new";
+        dump_state (); *)
   let ix =
     if Option.is_some index then index
     else
       match (context.partial_layouts ty).fields with
       | Arbitrary [||] -> None
       | Arbitrary offsets
-        when print_string "offsets.(0) 210;\n";
+        when (* print_string "offsets.(0) 210;\n"; *)
              offsets.(0) = Bytes 0 ->
           Some 0
       | Array (_, _) -> Some 0
@@ -279,7 +279,7 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
     match ix with
     | Some ix ->
         let ix' = ix + DownTreeDirection.magnitude dir in
-        Format.printf "(context.members ty).(ix') 219 : %d\n" ix';
+        (* Format.printf "(context.members ty).(ix') 219 : %d\n" ix'; *)
         let ix'_type = (context.members ty).(ix') in
         let casted_ix =
           match dir with
@@ -305,7 +305,7 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
 
   match (rs, ix) with
   | Field (i, t) :: rs', None when t = ty ->
-      print_string "(context.members t).(i) 243;\n";
+      (* print_string "(context.members t).(i) 243;\n"; *)
       let t' = (context.members t).(i) in
       resolve (accesses' i t') t' rs' None
   (* TODO handle invalid indices etc. *)
@@ -316,7 +316,7 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
       resolve accesses ty rs' (Some (i + ix))
   | Downcast (i, t) :: VField (j, t', idx) :: rs', None
     when i = idx && Rust_types.(equal t ty && equal t' ty) ->
-      print_string "(context.members t).(i) 253;\n";
+      (* print_string "(context.members t).(i) 253;\n"; *)
       let t' = (context.variant_members t i).(j) in
       resolve (accesses' ~variant:idx j t') t rs' None
   | Cast (_, _) :: rs', ix -> resolve accesses ty rs' ix
@@ -336,17 +336,17 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
           else
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
-      | Struct _ ->
+      | Struct _ -> (
           let moving_over_field, next_i, next_ix =
             if i < 0 then (ix - 1, ( + ) i, ix - 1) else (ix, ( - ) i, ix + 1)
           and members = context.members ty in
           if i < 0 && ix = 0 then
             (* We can up-tree cast directly since we're at field ix 0 *)
             up_tree_cast UpTreeDirection.Curr accesses rs
-          else (
-            (match distance_to_next_field partial_layout moving_over_field with
-            | Some offset -> Format.printf "%a 313;\n" pp_offset offset
-            | None        -> Format.print_string "NO OFFSET 313;\n");
+          else
+            (* (match distance_to_next_field partial_layout moving_over_field with
+               | Some offset -> Format.printf "%a 313;\n" pp_offset offset
+               | None        -> print_string "NO OFFSET 313;\n"); *)
             match distance_to_next_field partial_layout moving_over_field with
             | Some (FromCount (t', n, 0)) when t' = t ->
                 (if next_ix = Array.length members then
@@ -392,7 +392,7 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
           else
             match distance_to_next_field partial_layout moving_over_field with
             | Some (Bytes size)
-              when Format.printf "Bytes %d `cmp` %d 336;\n" size i;
+              when (* Format.printf "Bytes %d `cmp` %d 336;\n" size i; *)
                    size <= abs i ->
                 (if next_ix = Array.length (context.members ty) then
                  up_tree_cast UpTreeDirection.Fwd accesses
@@ -403,7 +403,7 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
   | _ :: _, Some _ -> down_tree_cast DownTreeDirection.Curr
   | _ :: _, _ -> access_error "Stuck handling next op"
   | [], Some ix when ix > 0 ->
-      print_string "(context.members ty).(ix) 347;\n";
+      (* print_string "(context.members ty).(ix) 347;\n"; *)
       accesses' ix (context.members ty).(ix)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
   | [], _ -> accesses
@@ -411,12 +411,12 @@ let rec resolve ~genv ~(context : context) (accesses : access list)
 let rec zero_offset_types (context : context) (ty : Rust_types.t) :
     Rust_types.t list =
   let sub_tree_types () =
-    print_string "(context.members ty).(0) 355;\n";
+    (* print_string "(context.members ty).(0) 355;\n"; *)
     ty :: zero_offset_types context (context.members ty).(0)
   in
   match (context.partial_layouts ty).fields with
   | Arbitrary offsets
-    when print_string "offsets.(0) 360;\n";
+    when (* print_string "offsets.(0) 360;\n"; *)
          offsets.(0) = Bytes 0 ->
       sub_tree_types ()
   | Array (_, _) -> sub_tree_types ()
@@ -512,11 +512,11 @@ let rec end_offset (partial_layouts : Rust_types.t -> partial_layout)
 
 let next_offset (partial_layouts : Rust_types.t -> partial_layout)
     (ix, curr_offset) ((ty, pl), (ty_next, pl_next)) =
-  Format.printf
-    "ty=%a ty_next=%a curr_offset=%a end_offset=%a pl_next.align=%a 482;\n"
-    Rust_types.pp ty Rust_types.pp ty_next pp_offset curr_offset pp_offset
-    (end_offset partial_layouts ty pl)
-    Partial_align.pp pl_next.align;
+  (* Format.printf
+     "ty=%a ty_next=%a curr_offset=%a end_offset=%a pl_next.align=%a 482;\n"
+     Rust_types.pp ty Rust_types.pp ty_next pp_offset curr_offset pp_offset
+     (end_offset partial_layouts ty pl)
+     Partial_align.pp pl_next.align; *)
   let ix' = ix + 1 in
   ( ix',
     match (curr_offset, end_offset partial_layouts ty pl, pl_next.align) with
@@ -617,7 +617,7 @@ let rec partial_layout_of ?(name : string option = None) (genv : C_global_env.t)
         offsets_from_tys_and_pls (partial_layout_of genv known) ts pls
       in
       let size =
-        print_string "offsets.(Array.length offsets - 1) 521;\n";
+        (* print_string "offsets.(Array.length offsets - 1) 521;\n"; *)
         match offsets.(Array.length offsets - 1) with
         | Bytes n -> Partial_size.Exactly n
         | _       ->
