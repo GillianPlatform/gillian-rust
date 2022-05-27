@@ -46,13 +46,18 @@ let rec of_lit = function
         | "char"  -> Char
         | _       -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
-  | LList [ String "named"; String name ] -> Named name
-  | LList [ String "struct"; LList l ] ->
+  | LList [ String "adt"; String name ] -> Named name
+  | LList [ String "struct"; LList l; repr ] ->
       let parse_field = function
         | Literal.LList [ String field_name; ty ] -> (field_name, of_lit ty)
         | _ -> failwith "Invalid struct field"
       in
-      Struct (ReprRust, List.map parse_field l)
+      let parse_repr = function
+        | Literal.String "c"    -> ReprC
+        | Literal.String "rust" -> ReprRust
+        | _                     -> failwith "invalid repr for struct"
+      in
+      Struct (parse_repr repr, List.map parse_field l)
   | LList [ String "variant"; LList l ] ->
       let parse_variant = function
         | Literal.LList [ String variant_name; LList tys ] ->
@@ -85,7 +90,7 @@ let rec to_lit = function
         | Bool       -> "bool"
         | Char       -> "char")
   | Tuple fls            -> LList [ String "tuple"; LList (List.map to_lit fls) ]
-  | Named x              -> LList [ String "named"; String x ]
+  | Named x              -> LList [ String "adt"; String x ]
   | Struct (_, fields)   ->
       let make_field (field_name, ty) =
         Literal.LList [ String field_name; to_lit ty ]

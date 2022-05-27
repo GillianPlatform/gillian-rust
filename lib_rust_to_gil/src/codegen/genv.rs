@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rustc_middle::ty::AdtDef;
+use rustc_middle::ty::{AdtDef, ReprOptions};
 use std::collections::{HashSet, VecDeque};
 
 const DECLARE_TYPE_ACTION: &str = "genv_decl_type";
@@ -36,6 +36,20 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
+    fn encode_repr(&self, repr: &ReprOptions) -> Literal {
+        if repr.int.is_some() || repr.align.is_some() || repr.pack.is_some() {
+            fatal!(
+                self,
+                "Cant handle this specific representations at the moment, only C"
+            )
+        };
+        if repr.c() {
+            "c".into()
+        } else {
+            "rust".into()
+        }
+    }
+
     // Panics if not called with an ADT
     fn type_decl_action(&mut self, ty: Ty<'tcx>) -> ProcBodyItem {
         let (name, decl) = match ty.kind() {
@@ -55,7 +69,8 @@ impl<'tcx> GlobalEnv<'tcx> {
                         vec![name, typ.into()].into()
                     })
                     .collect();
-                let decl: Literal = vec!["struct".into(), fields.into()].into();
+                let decl: Literal =
+                    vec!["struct".into(), fields.into(), self.encode_repr(&def.repr)].into();
                 (name, decl.into())
             }
             TyKind::Adt(def, subst) if def.is_enum() => {

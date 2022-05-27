@@ -81,7 +81,7 @@ pub trait TypeEncoder<'tcx> {
                 let name = self.atd_def_name(def);
                 // Adts are encoded by the environment
                 self.add_type_to_genv(ty);
-                EncodedType(Literal::LList(vec!["named".into(), name.into()]))
+                EncodedType(Literal::LList(vec!["adt".into(), name.into()]))
             }
             Slice(ty) => EncodedType(Literal::LList(vec![
                 "slice".into(),
