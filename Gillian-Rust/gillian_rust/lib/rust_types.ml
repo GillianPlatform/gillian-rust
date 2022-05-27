@@ -145,3 +145,5 @@ let rec pp ft t =
   | Ref { mut; ty }      -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty             -> Fmt.pf ft "[%a]" pp ty
+
+let slice_elements = function Slice t -> t | _ -> failwith "not a slice type"
