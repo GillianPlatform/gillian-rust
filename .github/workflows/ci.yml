@@ -21,6 +21,7 @@ jobs:
         with:
           toolchain: nightly-2021-10-18
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
           command: build
