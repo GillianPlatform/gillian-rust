@@ -22,7 +22,7 @@ extern crate rustc_target;
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
     pub(crate) use crate::codegen::genv::*;
-    pub(crate) use crate::codegen::typ_encoding::{TypeEncoder, TypeEncoderable};
+    pub(crate) use crate::codegen::typ_encoding::{EncodedType, TypeEncoder};
     pub(crate) use crate::codegen::{names, runtime};
     pub(crate) use crate::utils::fatal::*;
     pub(crate) use gillian::gil::*;

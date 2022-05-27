@@ -2,20 +2,44 @@ use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{AdtDef, Const, ConstKind, IntTy, UintTy};
 
-pub trait TypeEncoderable<'tcx> {
-    fn add_type_to_genv(&mut self, ty: Ty<'tcx>);
-    fn atd_def_name(&self, def: &AdtDef) -> String;
+/// This type is use to type-check that we're indeed using a
+/// literal obtained from encoding a type
+#[derive(Clone, Debug)]
+pub struct EncodedType(Literal);
+
+impl From<EncodedType> for Literal {
+    fn from(e: EncodedType) -> Self {
+        e.0
+    }
+}
+
+impl From<EncodedType> for Expr {
+    fn from(e: EncodedType) -> Self {
+        Expr::Lit(e.0)
+    }
+}
+
+impl From<&str> for EncodedType {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
 }
 
 pub trait TypeEncoder<'tcx> {
-    fn encode_type(&mut self, ty: Ty<'tcx>) -> Literal;
-}
+    fn add_type_to_genv(&mut self, ty: Ty<'tcx>);
+    fn atd_def_name(&self, def: &AdtDef) -> String;
 
-impl<'tcx, T> TypeEncoder<'tcx> for T
-where
-    T: TypeEncoderable<'tcx>,
-{
-    fn encode_type(&mut self, ty: Ty<'tcx>) -> Literal {
+    fn array_size_value(&self, sz: &Const) -> i128 {
+        match sz {
+            Const {
+                val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(x))),
+                ..
+            } => x.to_bits(x.size()).unwrap() as i128,
+            _ => panic!("Invalid array size"),
+        }
+    }
+
+    fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
         use TyKind::*;
         match &ty.kind() {
             Never => panic!("Should not encode never for memory"),
@@ -34,44 +58,52 @@ where
             Uint(UintTy::U64) => "u64".into(),
             Uint(UintTy::U128) => "u128".into(),
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
-            Tuple(_) => Literal::LList(vec![
+            Tuple(_) => EncodedType(Literal::LList(vec![
                 "tuple".into(),
                 ty.tuple_fields()
-                    .map(|x| self.encode_type(x))
+                    .map(|x| self.encode_type(x).into())
                     .collect::<Vec<_>>()
                     .into(),
-            ]),
+            ])),
             // &mut t -> ["ref", true, encode(t)]
             Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
                 };
-                Literal::LList(vec!["ref".into(), mutability.into(), self.encode_type(ty)])
+                EncodedType(Literal::LList(vec![
+                    "ref".into(),
+                    mutability.into(),
+                    self.encode_type(ty).into(),
+                ]))
             }
             Adt(def, _) => {
                 let name = self.atd_def_name(def);
                 // Adts are encoded by the environment
                 self.add_type_to_genv(ty);
-                Literal::LList(vec!["named".into(), name.into()])
+                EncodedType(Literal::LList(vec!["named".into(), name.into()]))
             }
-            Slice(ty) => Literal::LList(vec!["slice".into(), self.encode_type(ty)]),
+            Slice(ty) => EncodedType(Literal::LList(vec![
+                "slice".into(),
+                self.encode_type(ty).into(),
+            ])),
             Array(ty, sz) => {
-                let sz_i = match sz {
-                    Const {
-                        val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(x))),
-                        ..
-                    } => x.to_bits(x.size()).unwrap() as i128,
-                    _ => panic!("Invalid array size"),
-                };
-                vec!["array".into(), self.encode_type(ty), Literal::Int(sz_i)].into()
+                let sz_i = self.array_size_value(sz);
+                EncodedType(
+                    vec![
+                        "array".into(),
+                        self.encode_type(ty).into(),
+                        Literal::Int(sz_i),
+                    ]
+                    .into(),
+                )
             }
             _ => panic!("Cannot encode this type yet: {:#?}", ty),
         }
     }
 }
 
-impl<'tcx, 'body> TypeEncoderable<'tcx> for GilCtxt<'tcx, 'body> {
+impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
     fn add_type_to_genv(&mut self, ty: Ty<'tcx>) {
         self.global_env.add_type(ty);
     }

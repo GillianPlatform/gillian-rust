@@ -17,7 +17,7 @@ impl<'tcx> CanFatal for GlobalEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeEncoderable<'tcx> for GlobalEnv<'tcx> {
+impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
     fn add_type_to_genv(&mut self, ty: Ty<'tcx>) {
         self.add_type(ty);
     }
@@ -52,7 +52,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .map(|field| {
                         let name = Literal::from(self.tcx.item_name(field.did).to_string());
                         let typ = self.encode_type(field.ty(self.tcx, subst));
-                        vec![name, typ].into()
+                        vec![name, typ.into()].into()
                     })
                     .collect();
                 let decl: Literal = vec!["struct".into(), fields.into()].into();
@@ -70,7 +70,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                         let fields: Literal = variant
                             .fields
                             .iter()
-                            .map(|field| self.encode_type(field.ty(self.tcx, subst)))
+                            .map(|field| self.encode_type(field.ty(self.tcx, subst)).into())
                             .collect::<Vec<_>>()
                             .into();
                         let name = self.tcx.item_name(variant.def_id).to_string();

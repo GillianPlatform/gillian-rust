@@ -93,9 +93,11 @@ module TreeBlock = struct
         { ty; content }
     | Named a, LList [ String x; LList data ] when String.equal a x -> (
         match C_global_env.resolve_named ~genv ty with
-        | Struct fields_tys -> of_rust_struct_value ~genv ~ty ~fields_tys data
-        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
-        | _                 ->
+        | Struct (_repr, fields_tys) ->
+            of_rust_struct_value ~genv ~ty ~fields_tys data
+        | Enum variants_tys          -> of_rust_enum_value ~genv ~ty
+                                          ~variants_tys data
+        | _                          ->
             failwith "Deserializing a Named type that is not a struct or enum")
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
@@ -121,7 +123,7 @@ module TreeBlock = struct
     | Named a                    ->
         let uninit_a = uninitialized ~genv (C_global_env.get_type genv a) in
         { uninit_a with ty }
-    | Struct fields              ->
+    | Struct (_repr, fields)     ->
         let tuple =
           List.map (fun (_, t) -> uninitialized ~genv t) fields |> Vec.of_list
         in
@@ -133,118 +135,136 @@ module TreeBlock = struct
     | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
     | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
 
-  module Proj_result = struct
-    type t = Whole_node of t | Index_on of t vec * int
-
-    let resolve = function
-      | Whole_node t    -> t
-      | Index_on (t, i) -> Result.get_ok t.%[i]
-  end
-
-  let rec find_proj ~genv ~update ~return t proj =
-    let rec_call = find_proj ~genv ~update ~return in
-    match (proj, t) with
+  let rec find_path ~genv ~update ~return t (path : Partial_layout.access list)
+      =
+    let rec_call = find_path ~genv ~update ~return in
+    let replace_vec c v =
+      match c with
+      | Fields _          -> Fields v
+      | Array _           -> Array v
+      | Enum { discr; _ } -> Enum { discr; fields = v }
+      | _                 -> failwith "impossible"
+    in
+    match (path, t) with
     | [], block ->
         let new_block = update block in
         let ret_value = return block in
         (ret_value, new_block)
-    | Projections.Index i :: r, { content = Array vec; ty = ty' } ->
-        let e = Result.ok_or vec.%[i] "Index out of bound" in
-        let v, sub_block = rec_call e r in
-        let new_block = Result.get_ok (vec.%[i] <- sub_block) in
-        (v, { ty = ty'; content = Array new_block })
-    | Projections.Field p :: r, { content = Fields vec; ty = ty' } ->
-        let e = Result.ok_or vec.%[p] "Projection out of bound" in
-        let v, sub_block = rec_call e r in
-        let new_block = Result.get_ok (vec.%[p] <- sub_block) in
-        (v, { ty = ty'; content = Fields new_block })
-    | Projections.Field p :: r, { content = Enum { discr; fields }; ty = ty' }
-      ->
-        let e = Result.ok_or fields.%[p] "Projection out of enum bound" in
-        let v, sub_block = rec_call e r in
-        let new_fields = Result.get_ok (fields.%[p] <- sub_block) in
-        (v, { ty = ty'; content = Enum { discr; fields = new_fields } })
-    | Downcast p :: r, { content = Enum { discr; _ }; _ } when discr = p ->
-        rec_call t r
-    | Cast _ :: r, t -> rec_call t r
-    | _ -> Fmt.failwith "Invalid projection %a on %a" Projections.pp proj pp t
+    | { index; index_type = _; against; variant } :: r, { ty; content }
+      when Rust_types.equal against ty -> (
+        match (content, variant) with
+        | (Fields vec | Array vec), None ->
+            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let v, sub_block = rec_call e r in
+            let new_block = Result.get_ok (vec.%[index] <- sub_block) in
+            (v, { ty; content = replace_vec content new_block })
+        | Enum { fields = vec; discr }, Some discr' when discr = discr' ->
+            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let v, sub_block = rec_call e r in
+            let new_block = Result.get_ok (vec.%[index] <- sub_block) in
+            (v, { ty; content = replace_vec content new_block })
+        | _ -> failwith "Invalid node")
+    | _ -> failwith "Type mismatch"
 
   let get_forest ~genv t proj size ty copy =
-    let start, proj = Projections.slice_start proj in
+    let open Partial_layout in
+    let start_address =
+      {
+        block_type = t.ty;
+        route = proj;
+        address_type = Rust_types.slice_elements ty;
+      }
+    in
+    let context = context_from_env genv in
+    let start_accesses = resolve_address ~genv ~context start_address in
+    let start, array_accesses =
+      match start_accesses with
+      | { index; _ } :: r -> (index, List.rev r)
+      | _                 -> failwith "wrong slice pointer"
+    in
     let update block =
-      if Rust_types.is_slice_of ty block.ty then
-        if copy then block
-        else
-          match block.content with
-          | Array vec ->
-              {
-                content =
-                  Array
-                    (Result.ok_or
-                       (Vec.override_range vec ~start ~size (fun _ ->
-                            uninitialized ~genv ty))
-                       "Invalid slice range");
-                ty;
-              }
-          | _         -> failwith "Not an array"
-      else failwith "Not a subslice"
+      if copy then block
+      else
+        match block.content with
+        | Array vec ->
+            {
+              content =
+                Array
+                  (Result.ok_or
+                     (Vec.override_range vec ~start ~size (fun _ ->
+                          uninitialized ~genv ty))
+                     "Invalid slice range");
+              ty;
+            }
+        | _         -> failwith "Not an array"
     in
     let return block =
       match block.content with
       | Array vec -> sublist_map ~start ~size ~f:(to_rust_value ~genv) vec
       | _         -> failwith "Not an array"
     in
-    find_proj ~genv ~update ~return t proj
+    find_path ~genv ~update ~return t array_accesses
 
   let set_forest ~genv t proj size ty values =
     assert (List.length values = size);
-    let start, proj = Projections.slice_start proj in
+    let open Partial_layout in
+    let start_address =
+      {
+        block_type = t.ty;
+        route = proj;
+        address_type = Rust_types.slice_elements ty;
+      }
+    in
+    let context = context_from_env genv in
+    let start_accesses = resolve_address ~genv ~context start_address in
+    let start, array_accesses =
+      match start_accesses with
+      | { index; _ } :: r -> (index, List.rev r)
+      | _                 -> failwith "wrong slice pointer"
+    in
     let return _ = () in
     let update block =
-      if Rust_types.is_slice_of ty block.ty then
-        match (block.content, block.ty) with
-        | Array vec, Rust_types.Array { ty; _ } ->
-            {
-              content =
-                Array
-                  (Result.ok_or
-                     (Vec.override_range_with_list vec ~start
-                        ~f:(of_rust_value ~genv ~ty) values)
-                     "Invalid slice range");
-              ty;
-            }
-        | _ -> failwith "Not an array"
-      else failwith "Not a subslice"
+      match (block.content, block.ty) with
+      | Array vec, Rust_types.Array { ty = ty'; _ } ->
+          assert (Rust_types.equal ty ty');
+          {
+            content =
+              Array
+                (Result.ok_or
+                   (Vec.override_range_with_list vec ~start
+                      ~f:(of_rust_value ~genv ~ty) values)
+                   "Invalid slice range");
+            ty;
+          }
+      | _ -> failwith "Not an array"
     in
-    let _, new_block = find_proj ~genv ~return ~update t proj in
+    let _, new_block = find_path ~genv ~return ~update t array_accesses in
     new_block
 
-  let get_proj ~genv t proj ty copy =
-    let update block =
-      (* Subtype seems unnecessary *)
-      if C_global_env.subtypes ~genv block.ty ty then
-        if copy then block else uninitialized ~genv ty
-      else
-        Fmt.failwith "[get_proj] Invalid type: expected %a got %a" Rust_types.pp
-          block.ty Rust_types.pp ty
-    in
+  let find_proj ~genv ~update ~return ~ty t proj =
+    let open Partial_layout in
+    let address = { block_type = t.ty; route = proj; address_type = ty } in
+    let context = context_from_env genv in
+    Logging.normal (fun m ->
+        m "PL for %a: %a" Rust_types.pp t.ty pp_partial_layout
+          (context.partial_layouts t.ty));
+    let accesses = resolve_address ~genv ~context address |> List.rev in
+    Logging.normal (fun m ->
+        m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
+    find_path ~genv ~update ~return t accesses
 
+  let get_proj ~genv t proj ty copy =
+    let update block = if copy then block else uninitialized ~genv ty in
     let return = to_rust_value ~genv in
-    find_proj ~genv ~update ~return t proj
+    find_proj ~genv ~update ~return ~ty t proj
 
   let set_proj ~genv t proj ty value =
     let return _ = () in
-    let update block =
-      if C_global_env.subtypes ~genv ty block.ty then
-        of_rust_value ~genv ~ty value
-      else
-        Fmt.failwith "[set_proj] Invalid type: expected %a got %a "
-          Rust_types.pp block.ty Rust_types.pp ty
-    in
-    let _, new_block = find_proj ~genv ~return ~update t proj in
+    let update _block = of_rust_value ~genv ~ty value in
+    let _, new_block = find_proj ~genv ~ty ~return ~update t proj in
     new_block
 
-  let get_discr ~genv t proj =
+  let get_discr ~genv t proj enum_typ =
     let return { content; _ } =
       match content with
       | Enum t -> t.discr
@@ -252,7 +272,7 @@ module TreeBlock = struct
                     content
     in
     let update block = block in
-    let discr, _ = find_proj ~genv ~return ~update t proj in
+    let discr, _ = find_proj ~genv ~return ~update ~ty:enum_typ t proj in
     discr
 end
 
@@ -298,9 +318,9 @@ let free ~genv (mem : t) loc ty =
   in
   mem
 
-let load_discr (mem : t) loc proj =
+let load_discr (mem : t) loc proj enum_typ =
   let block = Hashtbl.find mem loc in
-  let discr = TreeBlock.get_discr block proj in
+  let discr = TreeBlock.get_discr block proj enum_typ in
   discr
 
 let empty () : t = Hashtbl.create 1

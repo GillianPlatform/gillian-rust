@@ -1,0 +1,8 @@
+(executable
+ (name run_tests)
+ (libraries alcotest gillian_rust))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./run_tests.exe -q --color=always)))

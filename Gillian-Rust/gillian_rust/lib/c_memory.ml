@@ -96,9 +96,10 @@ let execute_genv_decl_type mem args =
 
 let execute_load_discr mem args =
   match args with
-  | [ Literal.Loc loc; Literal.LList proj ] ->
+  | [ Literal.Loc loc; Literal.LList proj; enum_typ ] ->
+      let enum_typ = Rust_types.of_lit enum_typ in
       let proj = Projections.of_lit_list proj in
-      let discr = C_heap.load_discr ~genv:mem.genv mem.heap loc proj in
+      let discr = C_heap.load_discr ~genv:mem.genv mem.heap loc proj enum_typ in
       ASucc (mem, [ Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
