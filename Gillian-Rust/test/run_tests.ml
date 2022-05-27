@@ -108,15 +108,14 @@ module Mixed_repr_context = struct
 end
 
 module No_context_tests = struct
-  let context =
-    let genv = C_global_env.empty () in
-    Partial_layout.context_from_env genv
+  let genv = C_global_env.empty ()
+  let context = Partial_layout.context_from_env genv
 
   let snd_of_tuple () =
     let tpl = Rust_types.(Tuple [ Scalar (Int I32); Scalar Bool ]) in
     check_accesses "(i32, bool).1 resolves to bool at index 1"
-      [ { index = 1; index_type = Scalar Bool; against = tpl } ]
-    @@ Partial_layout.resolve_address context
+      [ { index = 1; index_type = Scalar Bool; against = tpl; variant = None } ]
+    @@ Partial_layout.resolve_address ~genv ~context
          {
            block_type = tpl;
            route = Projections.[ Field (1, tpl) ];
@@ -132,11 +131,11 @@ module No_context_tests = struct
     let tpl = Tuple [ Tuple [ i32; i32 ]; tpl_1 ] in
     check_accesses "((i32, i32), (i32, i32, (i32, i32))).1.2.0 resolves to i32"
       [
-        { index = 0; against = tpl_1_2; index_type = i32 };
-        { index = 2; against = tpl_1; index_type = tpl_1_2 };
-        { index = 1; against = tpl; index_type = tpl_1 };
+        { index = 0; against = tpl_1_2; index_type = i32; variant = None };
+        { index = 2; against = tpl_1; index_type = tpl_1_2; variant = None };
+        { index = 1; against = tpl; index_type = tpl_1; variant = None };
       ]
-    @@ Partial_layout.resolve_address context
+    @@ Partial_layout.resolve_address ~context ~genv
          {
            block_type = tpl;
            route =
@@ -441,11 +440,13 @@ module Resolution_repr_C = struct
   open Repr_C_context
   open Type_names
 
+  let resolve_address = Partial_layout.resolve_address ~genv ~context
+
   let second_field_via_add () =
     check_accesses
       "struct A { u8, u16, u32 }.0 +^U 2 resolves to the u16 at index 1"
-      [ { index = 1; index_type = u16; against = tA } ]
-    @@ Partial_layout.resolve_address context
+      [ { index = 1; index_type = u16; against = tA; variant = None } ]
+    @@ resolve_address
          {
            block_type = tA;
            route =
@@ -455,8 +456,8 @@ module Resolution_repr_C = struct
 
   let second_field_directly () =
     check_accesses "struct A { u8, u16, u32 }.1 resolves to the u16 at index 1"
-      [ { index = 1; index_type = u16; against = tA } ]
-    @@ Partial_layout.resolve_address context
+      [ { index = 1; index_type = u16; against = tA; variant = None } ]
+    @@ resolve_address
          {
            block_type = tA;
            route = [ Projections.Field (1, tA) ];
@@ -468,20 +469,22 @@ module Resolution_repr_C = struct
       "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } \
        }.0.0[3].0 should resolve to a particular u8"
       [
-        { index = 0; index_type = u8; against = tA };
+        { index = 0; index_type = u8; against = tA; variant = None };
         {
           index = 3;
           index_type = tA;
           against = Rust_types.Array { ty = tA; length = 5 };
+          variant = None;
         };
         {
           index = 1;
           index_type = Rust_types.Array { ty = tA; length = 5 };
           against = tC;
+          variant = None;
         };
-        { index = 1; index_type = tC; against = tB };
+        { index = 1; index_type = tC; against = tB; variant = None };
       ]
-    @@ Partial_layout.resolve_address context
+    @@ resolve_address
          {
            block_type = tB;
            route =
@@ -506,18 +509,24 @@ module Resolution_mixed_repr = struct
   open Mixed_repr_context
   open Type_names
 
+  let resolve_address_debug_access_error =
+    Partial_layout.resolve_address_debug_access_error ~context ~genv
+
+  let resolve_address = Partial_layout.resolve_address ~context ~genv
+
   let next_element_field () =
     check_accesses
       "[struct A { R8, R64 };2][0].0 +^A 1 resolves to the second R8"
       [
-        { index = 0; index_type = tR8; against = tA };
+        { index = 0; index_type = tR8; against = tA; variant = None };
         {
           index = 1;
           index_type = tA;
           against = Rust_types.Array { ty = tA; length = 2 };
+          variant = None;
         };
       ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+    @@ resolve_address_debug_access_error
          {
            block_type = Rust_types.Array { ty = tA; length = 2 };
            route =
@@ -536,7 +545,7 @@ module Resolution_mixed_repr = struct
       "struct B { struct A { R8, R64 }, R64 }.0.1 +^R64 1 mustn't resolve to \
        the second R64"
       (Partial_layout.AccessError
-         ( [ { index = 1; index_type = tR64; against = tA } ],
+         ( [ { index = 1; index_type = tR64; against = tA; variant = None } ],
            [ Projections.Plus (Projections.Overflow, 1, tR64) ],
            tR64,
            None,
@@ -544,7 +553,7 @@ module Resolution_mixed_repr = struct
     (* Use correct error from test, we just care that it fails *)
     @@ fun () ->
     let _ =
-      Partial_layout.resolve_address context
+      resolve_address
         {
           block_type = tA;
           route =
@@ -565,14 +574,16 @@ module Resolution_mixed_repr = struct
           index = 0;
           index_type = tR8;
           against = Rust_types.Array { ty = tR8; length = 2 };
+          variant = None;
         };
         {
           index = 1;
           index_type = Rust_types.Array { ty = tR8; length = 2 };
+          variant = None;
           against = tC;
         };
       ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+    @@ resolve_address
          {
            block_type = tC;
            route =
@@ -588,8 +599,8 @@ module Resolution_mixed_repr = struct
     check_accesses
       "struct D { struct C { [R8; 2], [R8; 2] }, R8}.0[0] +^R8 4 resolves to \
        the fifth R8"
-      [ { index = 1; index_type = tR8; against = tD } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 1; index_type = tR8; against = tD; variant = None } ]
+    @@ resolve_address
          {
            block_type = tD;
            route =
@@ -606,8 +617,8 @@ module Resolution_mixed_repr = struct
     check_accesses
       "struct F { struct E { u8, R64 }, R64}).0.1 + 1 resolves to the second \
        R64"
-      [ { index = 1; index_type = tR64; against = tF } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 1; index_type = tR64; against = tF; variant = None } ]
+    @@ resolve_address_debug_access_error
          {
            block_type = tF;
            route =
@@ -621,8 +632,8 @@ module Resolution_mixed_repr = struct
 
   let resolve_mixed_move_forward_from_bigger_to_smaller () =
     check_accesses "struct G { R64, u16, u8 }).1 + 1 resolves to the u8"
-      [ { index = 2; index_type = u8; against = tG } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 2; index_type = u8; against = tG; variant = None } ]
+    @@ resolve_address_debug_access_error
          {
            block_type = tG;
            route =
@@ -636,8 +647,8 @@ module Resolution_mixed_repr = struct
 
   let resolve_mixed_move_backward_from_smaller_to_bigger () =
     check_accesses "struct G { R64, u16, u8 }.2 - 2 resolves to the u16"
-      [ { index = 1; index_type = u16; against = tG } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 1; index_type = u16; against = tG; variant = None } ]
+    @@ resolve_address_debug_access_error
          {
            block_type = tG;
            route =
@@ -653,7 +664,7 @@ module Resolution_mixed_repr = struct
     Alcotest.check_raises
       "struct GFail { R64, u8, u16 }).1 + 1 mustn't resolve to the u16"
       (Partial_layout.AccessError
-         ( [ { index = 1; index_type = u8; against = tGFail } ],
+         ( [ { index = 1; index_type = u8; against = tGFail; variant = None } ],
            [ Projections.UPlus (Projections.Overflow, 1) ],
            u8,
            None,
@@ -661,7 +672,7 @@ module Resolution_mixed_repr = struct
     (* Use correct error from test, we just care that it fails *)
     @@ fun () ->
     let _ =
-      Partial_layout.resolve_address context
+      resolve_address
         {
           block_type = tGFail;
           route =
@@ -684,7 +695,7 @@ module Resolution_mixed_repr = struct
     @@
     fun () ->
     let _ =
-      Partial_layout.resolve_address_debug_access_error context
+      resolve_address_debug_access_error
         {
           block_type = tGFail;
           route =
@@ -700,8 +711,8 @@ module Resolution_mixed_repr = struct
 
   let resolve_mixed_move_forward_from_bigger_to_smaller_struct () =
     check_accesses "struct H { R64, C16, C8 }).1 + 1 resolves to the C8"
-      [ { index = 2; index_type = tC8; against = tH } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 2; index_type = tC8; against = tH; variant = None } ]
+    @@ resolve_address_debug_access_error
          {
            block_type = tH;
            route =
@@ -715,8 +726,8 @@ module Resolution_mixed_repr = struct
 
   let resolve_mixed_move_backward_from_smaller_to_bigger_struct () =
     check_accesses "struct H { R64, C16, C8 }.2 - 2 resolves to the C16"
-      [ { index = 1; index_type = tC16; against = tH } ]
-    @@ Partial_layout.resolve_address_debug_access_error context
+      [ { index = 1; index_type = tC16; against = tH; variant = None } ]
+    @@ resolve_address_debug_access_error
          {
            block_type = tH;
            route =

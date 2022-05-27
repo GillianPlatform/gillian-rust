@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::{ConstKind, TypeFoldable};
 use rustc_target::abi::Size;
 
@@ -40,24 +41,23 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.monomorphize(rv.ty(self.mir().local_decls(), self.ty_ctxt))
     }
 
-    pub fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
+    pub fn place_ty(&self, place: &Place<'tcx>) -> PlaceTy<'tcx> {
         self.monomorphize(Place::ty_from(
             place.local,
             place.projection,
             self.mir().local_decls(),
             self.ty_ctxt,
         ))
-        .ty
     }
 
-    pub fn place_ty_until(&self, place: &Place<'tcx>, i: usize) -> Ty<'tcx> {
+    pub fn place_ty_until(&self, place: &Place<'tcx>, i: usize) -> PlaceTy<'tcx> {
         let place_ty = Place::ty_from(
             place.local,
             &place.projection[..i],
             self.mir().local_decls(),
             self.ty_ctxt,
         );
-        self.monomorphize(place_ty).ty
+        self.monomorphize(place_ty)
     }
 
     // pub fn field_def_type(&self, field_def: &FieldDef, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
