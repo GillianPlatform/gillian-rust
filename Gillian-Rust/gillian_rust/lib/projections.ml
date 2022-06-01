@@ -16,12 +16,15 @@ type op =
 let pp_elem fmt =
   let str_ak = function Wrap -> "w" | Overflow -> "" in
   function
-  | Field (i, _) | VField (i, _, _) -> Fmt.pf fmt ".%d" i
-  | Downcast (i, _) -> Fmt.pf fmt "as_v(%d)" i
-  | Index (i, _, _) -> Fmt.pf fmt "[%d]" i
-  | Cast (_, into_ty) -> Fmt.pf fmt ">:%a" Rust_types.pp into_ty
-  | Plus (k, i, _) -> Fmt.pf fmt "+%s(%d)" (str_ak k) i
-  | UPlus (k, i) -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
+  | Field (i, ty)           -> Fmt.pf fmt ".%d<%a>" i Rust_types.pp ty
+  | VField (i, ty, vidx)    -> Fmt.pf fmt ".%d<%a.%d>" i Rust_types.pp ty vidx
+  | Downcast (i, ty)        -> Fmt.pf fmt "<%a>as_v(%d)" Rust_types.pp ty i
+  | Index (i, ty, sz)       -> Fmt.pf fmt "[%d]<[%a; %d]>" i Rust_types.pp ty sz
+  | Cast (from_ty, into_ty) ->
+      Fmt.pf fmt "%a>%a" Rust_types.pp from_ty Rust_types.pp into_ty
+  | Plus (k, i, ty)         -> Fmt.pf fmt "+%s(%d)<%a>" (str_ak k) i
+                                 Rust_types.pp ty
+  | UPlus (k, i)            -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
 
 type t = op list
 

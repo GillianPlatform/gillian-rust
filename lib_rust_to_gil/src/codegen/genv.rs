@@ -4,11 +4,17 @@ use std::collections::{HashSet, VecDeque};
 
 const DECLARE_TYPE_ACTION: &str = "genv_decl_type";
 
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub enum CustomRuntime<'tcx> {
+    PtrPlus(Ty<'tcx>, String),
+}
+
 pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
     types_in_queue: VecDeque<Ty<'tcx>>,
     encoded_types: HashSet<Ty<'tcx>>,
+    runtime_to_encode: HashSet<CustomRuntime<'tcx>>,
 }
 
 impl<'tcx> CanFatal for GlobalEnv<'tcx> {
@@ -33,6 +39,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             tcx,
             types_in_queue: Default::default(),
             encoded_types: Default::default(),
+            runtime_to_encode: Default::default(),
         }
     }
 
@@ -114,7 +121,11 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    pub fn declaring_proc(mut self) -> Proc {
+    pub fn add_runtime(&mut self, r: CustomRuntime<'tcx>) {
+        self.runtime_to_encode.insert(r);
+    }
+
+    fn declaring_proc(&mut self) -> Proc {
         let mut body: Vec<ProcBodyItem> = vec![];
         while !self.types_in_queue.is_empty() {
             let ty = self.types_in_queue.pop_front().unwrap();
@@ -129,5 +140,20 @@ impl<'tcx> GlobalEnv<'tcx> {
         );
         body.push(Cmd::ReturnNormal.into());
         Proc::new(names::global_env_proc(), vec![], body)
+    }
+
+    fn proc_of_custom_runtime(&mut self, r: CustomRuntime<'tcx>) -> Proc {
+        match r {
+            CustomRuntime::PtrPlus(ty, fname) => self.ptr_plus_impl(ty, fname),
+        }
+    }
+
+    pub fn add_all_procs(mut self, prog: &mut Prog) {
+        let runtime = self.runtime_to_encode.clone();
+        for r in runtime {
+            prog.add_proc(self.proc_of_custom_runtime(r))
+        }
+        // Importantly, this has to be done after pushing the custom runtime!
+        prog.add_proc(self.declaring_proc());
     }
 }

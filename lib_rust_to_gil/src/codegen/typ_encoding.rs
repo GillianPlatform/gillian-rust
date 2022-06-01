@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::ty::TypeAndMut;
 use rustc_middle::ty::{AdtDef, Const, ConstKind, IntTy, UintTy};
 
 /// This type is use to type-check that we're indeed using a
@@ -65,8 +66,15 @@ pub trait TypeEncoder<'tcx> {
                     .collect::<Vec<_>>()
                     .into(),
             ])),
-            // &mut t -> ["ref", true, encode(t)]
-            Ref(_, ty, mutability) => {
+            //   *mut t
+            // | &mut t -> ["ref", true, encode(t)]
+            // Not sure this is the best solution, but we're
+            // not doing anything with the lifetime anyway
+            RawPtr(TypeAndMut {
+                ty,
+                mutbl: mutability,
+            })
+            | Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
@@ -109,6 +117,6 @@ impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {
-        self.ty_ctxt.item_name(def.did).to_string()
+        self.tcx.item_name(def.did).to_string()
     }
 }

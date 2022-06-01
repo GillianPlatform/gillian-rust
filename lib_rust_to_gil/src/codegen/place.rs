@@ -288,4 +288,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }),
         }
     }
+
+    pub fn encode_simple_ptr_cast(
+        &mut self,
+        e: Expr,
+        from_ty: Ty<'tcx>,
+        into_ty: Ty<'tcx>,
+    ) -> Expr {
+        let mut gil_place = GilPlace::base(e, from_ty);
+        gil_place.proj.push(GilProj::Cast(
+            self.encode_type(from_ty),
+            self.encode_type(into_ty),
+        ));
+        gil_place.into_expr_ptr()
+    }
 }

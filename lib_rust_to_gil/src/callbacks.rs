@@ -32,8 +32,7 @@ impl ToGil {
             let ctx = GilCtxt::new(did, body, *tcx, &mut global_env);
             prog.add_proc(ctx.push_body());
         }
-        let global_env_proc = global_env.declaring_proc();
-        prog.add_proc(global_env_proc);
+        global_env.add_all_procs(&mut prog);
         prog
     }
 }

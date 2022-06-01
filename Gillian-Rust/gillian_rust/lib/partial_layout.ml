@@ -72,10 +72,10 @@ type align = { pow2 : int } [@@deriving eq, show]
 type wrapping_range = { start : int; finish : int } [@@deriving eq, show]
 type base_integer = I8 | I16 | I32 | I64 | I128 [@@deriving eq, show]
 
-type primative = Int of base_integer * bool | F32 | F64 | Pointer
+type primitive = Int of base_integer * bool | F32 | F64 | Pointer
 [@@deriving eq, show]
 
-type scalar = { primative : primative; valid_range : wrapping_range }
+type scalar = { primitive : primitive; valid_range : wrapping_range }
 [@@deriving eq, show]
 
 type offset =
@@ -85,7 +85,7 @@ type offset =
 [@@deriving eq, show]
 
 type fields_shape =
-  | Primative
+  | Primitive
   | Union     of int
   | Array     of Partial_size.t * int
   (* offset array includes the offset of the end *)
@@ -504,7 +504,7 @@ let rec end_offset (partial_layouts : Rust_types.t -> partial_layout)
       | Bytes n               -> Bytes (n * length)
       | FromCount (ty', n, 0) -> FromCount (ty', n * length, 0)
       | _                     -> FromCount (ty_elem, length, 0))
-  | Primative, Rust_types.Scalar s -> (
+  | Primitive, Rust_types.Scalar s -> (
       match Partial_size.from_alignment @@ align_scalar_t s with
       | Partial_size.Exactly n -> Bytes n
       | Partial_size.AtLeast _ -> FromCount (ty, 1, 0))
@@ -585,7 +585,7 @@ let rec partial_layout_of ?(name : string option = None) (genv : C_global_env.t)
   | Rust_types.Scalar scalar_t ->
       let align = align_scalar_t scalar_t in
       {
-        fields = Primative;
+        fields = Primitive;
         variant = Single 0;
         align;
         size = Partial_size.from_alignment align;
@@ -660,7 +660,7 @@ let rec partial_layout_of ?(name : string option = None) (genv : C_global_env.t)
   | Rust_types.Ref { mut = _; ty = _ } ->
       (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
       {
-        fields = Primative;
+        fields = Primitive;
         variant = Single 0;
         align = AtLeastPow2 0;
         size = AtLeast 1;
@@ -668,7 +668,7 @@ let rec partial_layout_of ?(name : string option = None) (genv : C_global_env.t)
   | Rust_types.Slice _ ->
       (* Is this a slice or slice reference; assumed slice reference *)
       {
-        fields = Primative;
+        fields = Primitive;
         variant = Single 0;
         align = AtLeastPow2 0;
         size = AtLeast 2;
@@ -697,7 +697,7 @@ let members_from_env (genv : C_global_env.t) (ty : Rust_types.t) :
   | Array { ty; length } -> Array.make length ty
   | Tuple tys            -> Array.of_list tys
   | _                    -> [||]
-(* Consider making 1 t for internal navigation, especially primatives *)
+(* Consider making 1 t for internal navigation, especially primitives *)
 
 let context_from_env (genv : C_global_env.t) : context =
   {

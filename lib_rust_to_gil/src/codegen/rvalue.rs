@@ -84,11 +84,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                                 val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(i))), ..
                             }), TyKind::Slice(..)) => {
                                 let element_pointer = self.push_cast_array_to_element_pointer(enc_op, left, element_ty);
-                                vec![element_pointer, i.try_to_machine_usize(self.ty_ctxt).unwrap().into()].into()
+                                vec![element_pointer, i.try_to_machine_usize(self.tcx).unwrap().into()].into()
                             },
                             (a, b) => fatal!(
                                 self,
-                                "Unsizing something that is not two refs! an array to slice! Casting {:#?} to {:#?}",
+                                "Unsizing something that is not an array to slice! Casting {:#?} to {:#?}",
                                 a,
                                 b
                             ),
@@ -102,10 +102,26 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     ),
                 }
             }
-            _ => {
-                log::warn!("Ignoring misc cast! {:#?} to {:#?}", op, ty_to);
-                enc_op
+            CastKind::Misc => {
+                let opty = self.operand_ty(op);
+                match (opty.kind(), ty_to.kind()) {
+                    (
+                        TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
+                        TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
+                    )
+                    | (TyKind::Ref(_, ty, _), TyKind::Ref(_, typ, _)) => {
+                        self.encode_simple_ptr_cast(enc_op, ty, typ)
+                    }
+                    _ => fatal!(self, "Cannot encode cast from {:#?} to {:#?}", opty, ty_to),
+                }
             }
+            CastKind::Pointer(k) => fatal!(
+                self,
+                "Cannot encode this kind of pointer cast yet: {:#?}, from {:#?} to {:#?}",
+                k,
+                self.operand_ty(op),
+                ty_to
+            ),
         }
     }
 
@@ -122,7 +138,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         assert!(TyS::same_type(left_ty, right_ty));
         match binop {
             mir::BinOp::Add if left_ty.is_numeric() => {
-                let max_val = left_ty.numeric_max_val(self.ty_ctxt).unwrap();
+                let max_val = left_ty.numeric_max_val(self.tcx).unwrap();
                 let max_val = self.encode_const(max_val);
                 let temp = self.temp_var();
                 self.push_cmd(runtime::checked_add(
@@ -196,7 +212,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn encode_const(&self, cst: &Const<'tcx>) -> Literal {
-        let cst = self.ty_ctxt.lift(cst).unwrap();
+        let cst = self.tcx.lift(cst).unwrap();
         match cst {
             Const {
                 val: ConstKind::Value(v),
@@ -255,14 +271,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 offset: _,
             } => match ty.kind() {
                 TyKind::Tuple(..) if !ty.potentially_has_param_types_or_consts() => {
-                    let contents = self
-                        .ty_ctxt
-                        .destructure_const(ty::ParamEnv::reveal_all().and(self.ty_ctxt.mk_const(
-                            ty::Const {
-                                val: ty::ConstKind::Value(*val),
-                                ty,
-                            },
-                        )));
+                    let contents = self.tcx.destructure_const(ty::ParamEnv::reveal_all().and(
+                        self.tcx.mk_const(ty::Const {
+                            val: ty::ConstKind::Value(*val),
+                            ty,
+                        }),
+                    ));
                     let fields: Vec<Literal> = contents
                         .fields
                         .iter()
@@ -275,31 +289,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 _ => fatal!(self, "Cannot encode ByRef value yet"),
             },
             _ => fatal!(self, "Cannot encode value yet: {:#?}", val),
-        }
-    }
-
-    /// ty has to be a tuple, otherwise, this will panic!
-    // pub fn encode_tuple_alloc(&self, _alloc: &Allocation, _ty: Ty<'tcx>) -> Expr {
-    //     Expr::undefined()
-    // }
-
-    pub fn fname_from_operand(&self, operand: &Operand<'tcx>) -> String {
-        match &operand {
-            Operand::Constant(box mir::Constant {
-                literal: ConstantKind::Ty(Const { ty, val }),
-                ..
-            }) if Self::const_is_zst(val) && ty.is_fn() => match ty.kind() {
-                TyKind::FnDef(did, _) => match self.shim_with(*did) {
-                    Some(s) => s,
-                    None => self.ty_ctxt.def_path_str(*did),
-                },
-                tyk => fatal!(self, "unhandled TyKind for function name: {:#?}", tyk),
-            },
-            _ => fatal!(
-                self,
-                "Can't handle dynamic calls yet! Got fun operand: {:#?}",
-                operand
-            ),
         }
     }
 }

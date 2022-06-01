@@ -34,11 +34,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn operand_ty(&self, o: &Operand<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(o.ty(self.mir().local_decls(), self.ty_ctxt))
+        self.monomorphize(o.ty(self.mir().local_decls(), self.tcx))
     }
 
     pub fn rvalue_ty(&self, rv: &Rvalue<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(rv.ty(self.mir().local_decls(), self.ty_ctxt))
+        self.monomorphize(rv.ty(self.mir().local_decls(), self.tcx))
     }
 
     pub fn place_ty(&self, place: &Place<'tcx>) -> PlaceTy<'tcx> {
@@ -46,7 +46,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             place.local,
             place.projection,
             self.mir().local_decls(),
-            self.ty_ctxt,
+            self.tcx,
         ))
     }
 
@@ -55,7 +55,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             place.local,
             &place.projection[..i],
             self.mir().local_decls(),
-            self.ty_ctxt,
+            self.tcx,
         );
         self.monomorphize(place_ty)
     }

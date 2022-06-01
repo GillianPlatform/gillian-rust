@@ -53,7 +53,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn log_body(&self) {
         use std::io::*;
         let mut buf = BufWriter::new(Vec::new());
-        write_mir_fn(self.ty_ctxt, self.mir(), &mut |_, _| Ok(()), &mut buf).unwrap();
+        write_mir_fn(self.tcx, self.mir(), &mut |_, _| Ok(()), &mut buf).unwrap();
         let bytes = buf.into_inner().unwrap();
         let string = String::from_utf8(bytes).unwrap();
         log::debug!("{}", string)
@@ -61,7 +61,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
-        let proc_name = self.ty_ctxt.def_path_str(self.body_did());
+        let proc_name = self.tcx.def_path_str(self.body_did());
 
         log::debug!("Compiling {}", proc_name);
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector

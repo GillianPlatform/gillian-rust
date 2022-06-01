@@ -136,11 +136,15 @@ let rec pp ft t =
   | Tuple t              ->
       let pp_tuple = parens (list ~sep:comma pp) in
       pp_tuple ft t
-  | Struct (_, f)        ->
+  | Struct (repr, f)     ->
+      let pp_repr ft = function
+        | ReprC    -> pf ft "#[repr(C)] "
+        | ReprRust -> pf ft "#[repr(Rust)] "
+      in
       let pp_struct =
         braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
       in
-      pp_struct ft f
+      (pair ~sep:nop pp_repr pp_struct) ft (repr, f)
   | Enum v               ->
       let pp_variant ftt (name, tys) =
         pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys

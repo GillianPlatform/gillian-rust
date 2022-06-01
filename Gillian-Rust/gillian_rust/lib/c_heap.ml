@@ -246,6 +246,8 @@ module TreeBlock = struct
     let address = { block_type = t.ty; route = proj; address_type = ty } in
     let context = context_from_env genv in
     Logging.normal (fun m ->
+        m "Finding address: %a" (Fmt.Dump.list Projections.pp_elem) proj);
+    Logging.normal (fun m ->
         m "PL for %a: %a" Rust_types.pp t.ty pp_partial_layout
           (context.partial_layouts t.ty));
     let accesses = resolve_address ~genv ~context address |> List.rev in

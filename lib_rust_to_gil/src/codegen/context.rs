@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub struct GilCtxt<'tcx, 'body> {
     locals_in_memory: HashSet<Local>,
     did: DefId,
-    pub(crate) ty_ctxt: TyCtxt<'tcx>,
+    pub(crate) tcx: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
     switch_label_counter: usize,
@@ -20,7 +20,7 @@ pub struct GilCtxt<'tcx, 'body> {
 
 impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
     fn fatal(&self, str: &str) -> ! {
-        self.ty_ctxt.sess.fatal(str)
+        self.tcx.sess.fatal(str)
     }
 }
 
@@ -33,7 +33,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) -> Self {
         GilCtxt {
             did,
-            ty_ctxt,
+            tcx: ty_ctxt,
             locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,

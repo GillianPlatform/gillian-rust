@@ -24,39 +24,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 args,
                 destination,
                 ..
-            } => {
-                // TODO: Handle cleanups at some point
-                let mut gil_args = Vec::with_capacity(args.len());
-                for arg in args {
-                    gil_args.push(self.push_encode_operand(arg));
-                }
-                let fname = self.fname_from_operand(func).into();
-                match destination {
-                    Some((place, bb)) => {
-                        let target = self.temp_var();
-                        self.push_cmd(Cmd::Call {
-                            variable: target.clone(),
-                            parameters: gil_args,
-                            proc_ident: fname,
-                            error_lab: None,
-                            bindings: None,
-                        });
-                        let call_ret_ty = self.place_ty(place).ty;
-                        self.push_place_write(place, Expr::PVar(target), call_ret_ty);
-                        self.push_cmd(Cmd::Goto(bb_label(bb)));
-                    }
-                    None => {
-                        let variable = names::unused_var();
-                        self.push_cmd(Cmd::Call {
-                            variable,
-                            parameters: gil_args,
-                            proc_ident: fname,
-                            error_lab: None,
-                            bindings: None,
-                        })
-                    }
-                }
-            }
+            } => self.push_function_call(func, args, destination),
             TerminatorKind::Assert {
                 cond: op,
                 expected,

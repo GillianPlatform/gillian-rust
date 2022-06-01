@@ -450,7 +450,8 @@ module Resolution_repr_C = struct
          {
            block_type = tA;
            route =
-             [ Projections.Field (0, tA); Projections.Plus (Overflow, 2, u8) ];
+             Projections.
+               [ Field (0, tA); Plus (Overflow, 2, u8); Cast (u8, u16) ];
            address_type = u16;
          }
 
