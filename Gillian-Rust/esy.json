@@ -10,7 +10,7 @@
   "homepage": "GillianPlatform.github.io",
   "license": "BSD-3-Clause",
   "esy": {
-    "build": "dune build @install",
+    "build": "dune build @install --promote-install-files",
     "buildsInSource": "_build",
     "exportedEnv": {
       "GILLIAN_RUST_RUNTIME_PATH": {

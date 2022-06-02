@@ -1,0 +1,4 @@
+(install
+ (section share)
+ (files i__binop.gil i__lang.gil i__slice_shims.gil)
+ (package gillian-rust))

@@ -32,7 +32,7 @@ def gillian_rust(gil_file):
             "gillian-rust",
             "exec",
             "-R",
-            "../runtime",
+            "runtime",
             "-a",
             f"../{gil_file}",
         ],

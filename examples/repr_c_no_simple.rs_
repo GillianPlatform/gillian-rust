@@ -1,0 +1,38 @@
+#![no_std]
+
+#[repr(C)]
+struct A {
+    x: u8,
+    y: u16,
+    z: u32,
+}
+
+#[repr(C)]
+struct B {
+    x: A,
+    y: C,
+}
+
+#[repr(C)]
+struct C {
+    x: [u8; 5],
+    y: [A; 5],
+}
+
+#[repr(C)]
+struct D {
+    x: u16,
+    y: u8,
+}
+
+fn main() -> u16 {
+  let a = A {
+    x: 1,
+    y: 2,
+    z: 3
+  }
+  
+  let p = &a.x as *const u8;
+  let pp = p.add(2);
+  unsafe { *(pp as *const u16) }
+}

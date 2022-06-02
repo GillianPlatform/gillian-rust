@@ -6,7 +6,7 @@ SYSROOT = $(shell ${RUSTC} --print sysroot)
 RUSTC_ARGS =  -C panic=abort --sysroot ${SYSROOT} --out-dir ${OUT_DIR} --crate-type lib
 EMIT_MIR = ${RUSTC} ${RUSTC_ARGS} --emit=mir
 OCAML_DIR = "Gillian-Rust"
-GILLIAN_RUST = cd ${OCAML_DIR}; esy x gillian-rust exec -R ../runtime -a
+GILLIAN_RUST = cd ${OCAML_DIR}; esy x gillian-rust exec -R ./runtime -a
 RUST_TO_GIL = cargo run -- --out-dir output 
 
 .PHONY: $(EXAMPLE_TASKS) build
