@@ -28,7 +28,7 @@ let map = Array.map
 
 let override_range_with_list vec ~start ~f list =
   let rec aux v idx = function
-    | []     -> ()
+    | [] -> ()
     | x :: r ->
         v.(idx) <- f x;
         aux v (idx + 1) r

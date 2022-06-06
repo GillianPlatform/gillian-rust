@@ -21,6 +21,6 @@ let rec subtypes ~genv ty ty' =
 let rec resolve_named ~genv ty =
   match ty with
   | Rust_types.Named a -> get_type genv a |> resolve_named ~genv
-  | _                  -> ty
+  | _ -> ty
 
 let pp = Fmt.Dump.hashtbl Fmt.string Rust_types.pp

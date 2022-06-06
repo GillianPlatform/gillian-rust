@@ -25,7 +25,7 @@ let execute_alloc mem args =
       let new_loc, new_heap = C_heap.alloc ~genv:mem.genv mem.heap rust_ty in
       let ret = [ Literal.Loc new_loc; Literal.LList [] ] in
       ASucc ({ mem with heap = new_heap }, ret)
-  | _      -> wrong_args "alloc" args
+  | _ -> wrong_args "alloc" args
 
 let execute_load_value mem args =
   match args with
@@ -79,7 +79,7 @@ let execute_free mem args =
       let () =
         match proj with
         | [] -> ()
-        | _  -> Fmt.failwith "Invalid free: (%s, %a)" loc Literal.pp (LList proj)
+        | _ -> Fmt.failwith "Invalid free: (%s, %a)" loc Literal.pp (LList proj)
       in
       let rust_ty = Rust_types.of_lit ty in
       let new_heap = C_heap.free ~genv:mem.genv mem.heap loc rust_ty in
@@ -108,14 +108,14 @@ let protect f mem args =
 
 let execute_action act_name mem args =
   match Actions.of_name act_name with
-  | Alloc          -> protect execute_alloc mem args
-  | Load_value     -> protect execute_load_value mem args
-  | Store_value    -> protect execute_store_value mem args
-  | Load_slice     -> protect execute_load_slice mem args
-  | Store_slice    -> protect execute_store_slice mem args
-  | Free           -> protect execute_free mem args
+  | Alloc -> protect execute_alloc mem args
+  | Load_value -> protect execute_load_value mem args
+  | Store_value -> protect execute_store_value mem args
+  | Load_slice -> protect execute_load_slice mem args
+  | Store_slice -> protect execute_store_slice mem args
+  | Free -> protect execute_free mem args
   | Genv_decl_type -> protect execute_genv_decl_type mem args
-  | LoadDiscr      -> protect execute_load_discr mem args
+  | LoadDiscr -> protect execute_load_discr mem args
 
 let copy { heap; genv } =
   { heap = C_heap.copy heap; genv = C_global_env.copy genv }

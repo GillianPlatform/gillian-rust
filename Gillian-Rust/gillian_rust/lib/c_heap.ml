@@ -9,12 +9,12 @@ module TreeBlock = struct
   type t = { ty : Rust_types.t; content : tree_content }
 
   and tree_content =
-    | Scalar  of Literal.t
-    | Fields  of t vec
-    | Array   of t vec
-    | Enum    of { discr : int; fields : t vec }
+    | Scalar of Literal.t
+    | Fields of t vec
+    | Array of t vec
+    | Enum of { discr : int; fields : t vec }
     | ThinPtr of string * Projections.t
-    | FatPtr  of string * Projections.t * int
+    | FatPtr of string * Projections.t * int
     | Uninit
 
   let rec pp fmt { ty; content } =
@@ -23,33 +23,33 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Scalar s                 -> Literal.pp ft s
-    | Fields v                 -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
-    | Enum { discr; fields }   ->
+    | Scalar s -> Literal.pp ft s
+    | Fields v -> (parens (Vec.pp ~sep:Fmt.comma pp)) ft v
+    | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Vec.pp ~sep:comma pp) fields
-    | ThinPtr (loc, proj)      -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
+    | ThinPtr (loc, proj) -> pf ft "Ptr(%s, %a)" loc Projections.pp proj
     | FatPtr (loc, proj, meta) ->
         pf ft "FatPtr(%s, %a | %d)" loc Projections.pp proj meta
-    | Array v                  -> (brackets (Vec.pp ~sep:comma pp)) ft v
-    | Uninit                   -> Fmt.string ft "UNINIT"
+    | Array v -> (brackets (Vec.pp ~sep:comma pp)) ft v
+    | Uninit -> Fmt.string ft "UNINIT"
 
   let rec to_rust_value ~genv ({ content; ty } as t) =
     match content with
-    | Scalar s                 -> (
+    | Scalar s -> (
         match (ty, s) with
         | Scalar (Uint _ | Int _ | Char), _ -> s
         | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
-    | Fields v | Array v       -> (
+    | Fields v | Array v -> (
         let tuple = Vec.map (to_rust_value ~genv) v |> Vec.to_list in
         match C_global_env.resolve_named ~genv ty with
         | Struct _ -> LList [ String (Rust_types.name_exn ty); LList tuple ]
-        | _        -> LList tuple)
-    | Enum { discr; fields }   ->
+        | _ -> LList tuple)
+    | Enum { discr; fields } ->
         let fields = Vec.map (to_rust_value ~genv) fields |> Vec.to_list in
         let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
         LList [ String (Rust_types.name_exn ty); data ]
-    | ThinPtr (loc, proj)      ->
+    | ThinPtr (loc, proj) ->
         LList [ Loc loc; LList (Projections.to_lit_list proj) ]
     | FatPtr (loc, proj, meta) ->
         LList
@@ -57,8 +57,7 @@ module TreeBlock = struct
             LList [ Loc loc; LList (Projections.to_lit_list proj) ];
             Int (Z.of_int meta);
           ]
-    | Uninit                   -> mem_error
-                                    "Attempting to read uninitialized value"
+    | Uninit -> mem_error "Attempting to read uninitialized value"
 
   let rec of_rust_struct_value ~genv ~ty ~fields_tys fields =
     let content =
@@ -99,9 +98,8 @@ module TreeBlock = struct
         match C_global_env.resolve_named ~genv ty with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~genv ~ty ~fields_tys data
-        | Enum variants_tys          -> of_rust_enum_value ~genv ~ty
-                                          ~variants_tys data
-        | _                          ->
+        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
+        | _ ->
             failwith "Deserializing a Named type that is not a struct or enum")
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
@@ -121,13 +119,13 @@ module TreeBlock = struct
 
   let rec uninitialized ~genv ty =
     match ty with
-    | Rust_types.Tuple v         ->
+    | Rust_types.Tuple v ->
         let tuple = List.map (uninitialized ~genv) v |> Vec.of_list in
         { ty; content = Fields tuple }
-    | Named a                    ->
+    | Named a ->
         let uninit_a = uninitialized ~genv (C_global_env.get_type genv a) in
         { uninit_a with ty }
-    | Struct (_repr, fields)     ->
+    | Struct (_repr, fields) ->
         let tuple =
           List.map (fun (_, t) -> uninitialized ~genv t) fields |> Vec.of_list
         in
@@ -136,18 +134,18 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~genv ty' in
         let content = Vec.init length uninit_field in
         { ty; content = Array content }
-    | Enum _ | Scalar _ | Ref _  -> { ty; content = Uninit }
-    | Slice _                    -> Fmt.failwith "Cannot initialize unsized type"
+    | Enum _ | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let rec find_path ~genv ~update ~return t (path : Partial_layout.access list)
       =
     let rec_call = find_path ~genv ~update ~return in
     let replace_vec c v =
       match c with
-      | Fields _          -> Fields v
-      | Array _           -> Array v
+      | Fields _ -> Fields v
+      | Array _ -> Array v
       | Enum { discr; _ } -> Enum { discr; fields = v }
-      | _                 -> failwith "impossible"
+      | _ -> failwith "impossible"
     in
     match (path, t) with
     | [], block ->
@@ -184,7 +182,7 @@ module TreeBlock = struct
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
-      | _                 -> failwith "wrong slice pointer"
+      | _ -> failwith "wrong slice pointer"
     in
     let update block =
       if copy then block
@@ -200,12 +198,12 @@ module TreeBlock = struct
                      "Invalid slice range");
               ty;
             }
-        | _         -> failwith "Not an array"
+        | _ -> failwith "Not an array"
     in
     let return block =
       match block.content with
       | Array vec -> sublist_map ~start ~size ~f:(to_rust_value ~genv) vec
-      | _         -> failwith "Not an array"
+      | _ -> failwith "Not an array"
     in
     find_path ~genv ~update ~return t array_accesses
 
@@ -224,7 +222,7 @@ module TreeBlock = struct
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
-      | _                 -> failwith "wrong slice pointer"
+      | _ -> failwith "wrong slice pointer"
     in
     let return _ = () in
     let update block =
@@ -274,8 +272,7 @@ module TreeBlock = struct
     let return { content; _ } =
       match content with
       | Enum t -> t.discr
-      | _      -> Fmt.failwith "Cannot get the discriminant of %a" pp_content
-                    content
+      | _ -> Fmt.failwith "Cannot get the discriminant of %a" pp_content content
     in
     let update block = block in
     let discr, _ = find_proj ~genv ~return ~update ~ty:enum_typ t proj in

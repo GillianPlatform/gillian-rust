@@ -25,9 +25,9 @@ module Expectations = struct
   let rec concretize e =
     let open Expr in
     match e with
-    | Lit l   -> l
+    | Lit l -> l
     | EList l -> LList (List.map concretize l)
-    | _       ->
+    | _ ->
         failwith (Format.asprintf "%a should be concrete but isn't" Expr.pp e)
 
   let expected_outcome filename =
@@ -49,7 +49,7 @@ module Expectations = struct
               | Some i ->
                   let () = continue := false in
                   ret := String.sub line (i + 10) (String.length line - i - 10)
-              | None   -> ()
+              | None -> ()
             with End_of_file ->
               failwith "Expected outcome not written in file"
           done;
