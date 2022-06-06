@@ -3,8 +3,7 @@ open Gillian.Gil_syntax
 
 type vt = Values.t
 type st = Subst.t
-type err_t = unit
-type fix_t = unit
+type err_t = string
 type t = { genv : C_global_env.t; heap : C_heap.t }
 type action_ret = ASucc of (t * vt list) | AFail of err_t list
 
@@ -103,16 +102,20 @@ let execute_load_discr mem args =
       ASucc (mem, [ Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
+let protect f mem args =
+  try f mem args with C_heap.MemoryError s -> AFail [ s ]
+  [@@inline]
+
 let execute_action act_name mem args =
   match Actions.of_name act_name with
-  | Alloc          -> execute_alloc mem args
-  | Load_value     -> execute_load_value mem args
-  | Store_value    -> execute_store_value mem args
-  | Load_slice     -> execute_load_slice mem args
-  | Store_slice    -> execute_store_slice mem args
-  | Free           -> execute_free mem args
-  | Genv_decl_type -> execute_genv_decl_type mem args
-  | LoadDiscr      -> execute_load_discr mem args
+  | Alloc          -> protect execute_alloc mem args
+  | Load_value     -> protect execute_load_value mem args
+  | Store_value    -> protect execute_store_value mem args
+  | Load_slice     -> protect execute_load_slice mem args
+  | Store_slice    -> protect execute_store_slice mem args
+  | Free           -> protect execute_free mem args
+  | Genv_decl_type -> protect execute_genv_decl_type mem args
+  | LoadDiscr      -> protect execute_load_discr mem args
 
 let copy { heap; genv } =
   { heap = C_heap.copy heap; genv = C_global_env.copy genv }
@@ -126,14 +129,3 @@ let pp =
        ]
 
 let pp_err _ _ = failwith "Not implemented yet!"
-
-(* SYMBOLIC STUFF -- never instantiated *)
-let ga_to_setter _ga = failwith "Not implemented yet!"
-let ga_to_deleter _ga = failwith "Not implemented yet!"
-let ga_to_getter _ga = failwith "Not implemented yet!"
-let is_overlapping_asrt _ = failwith "Not implemented yet!"
-let substitution_in_place _ _ = ()
-let fresh_val _ = failwith "Not implemented yet!"
-let clean_up ?keep:_ _ = failwith "Not implemented yet!"
-let lvars _ = failwith "Not implemented yet!"
-let assertions ?to_keep:_ _ = failwith "Not implemented yet!"

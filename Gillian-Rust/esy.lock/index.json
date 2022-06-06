@@ -1,5 +1,5 @@
 {
-  "checksum": "77bf3da079a09ff88e4c1defd619cfbc",
+  "checksum": "01f62e4bda494bc5dd18dd1af54d3eb5",
   "root": "gillian-rust@link-dev:./esy.json",
   "node": {
     "yarn-pkg-config@github:esy-ocaml/yarn-pkg-config#db3a0b63883606dd57c54a7158d560d6cba8cd79@d41d8cd9": {
@@ -40,7 +40,7 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.0@d41d8cd9",
-        "gillian@github:GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#959890c9baf82484f505be925ce4d799b8bc08b1@d41d8cd9",
         "@opam/yojson@opam:1.7.0@69d87312",
         "@opam/printbox@opam:0.5@b264109e",
         "@opam/ppxlib@opam:0.25.0@8553d2e8",
@@ -55,16 +55,16 @@
         "@opam/ocaml-lsp-server@opam:1.11.6@31f0970f"
       ]
     },
-    "gillian@github:GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1@d41d8cd9": {
+    "gillian@github:GillianPlatform/Gillian:gillian.json#959890c9baf82484f505be925ce4d799b8bc08b1@d41d8cd9": {
       "id":
-        "gillian@github:GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#959890c9baf82484f505be925ce4d799b8bc08b1@d41d8cd9",
       "name": "gillian",
       "version":
-        "github:GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1",
+        "github:GillianPlatform/Gillian:gillian.json#959890c9baf82484f505be925ce4d799b8bc08b1",
       "source": {
         "type": "install",
         "source": [
-          "github:GillianPlatform/Gillian:gillian.json#45d193a652922357b9990d794a73482d212969a1"
+          "github:GillianPlatform/Gillian:gillian.json#959890c9baf82484f505be925ce4d799b8bc08b1"
         ]
       },
       "overrides": [],
@@ -1559,20 +1559,20 @@
         "@opam/base-bytes@opam:base@19d0c2ff"
       ]
     },
-    "@opam/ocamlformat-rpc-lib@opam:0.21.0@80728c7f": {
-      "id": "@opam/ocamlformat-rpc-lib@opam:0.21.0@80728c7f",
+    "@opam/ocamlformat-rpc-lib@opam:0.22.4@a64a22f6": {
+      "id": "@opam/ocamlformat-rpc-lib@opam:0.22.4@a64a22f6",
       "name": "@opam/ocamlformat-rpc-lib",
-      "version": "opam:0.21.0",
+      "version": "opam:0.22.4",
       "source": {
         "type": "install",
         "source": [
-          "archive:https://opam.ocaml.org/cache/sha256/2a/2a1817f6bc581ff0cce9f0aa9687b897b02726e2ab75749ee98d57637057332d#sha256:2a1817f6bc581ff0cce9f0aa9687b897b02726e2ab75749ee98d57637057332d",
-          "archive:https://github.com/ocaml-ppx/ocamlformat/releases/download/0.21.0/ocamlformat-0.21.0.tbz#sha256:2a1817f6bc581ff0cce9f0aa9687b897b02726e2ab75749ee98d57637057332d"
+          "archive:https://opam.ocaml.org/cache/sha256/eb/eb54de2b81ac7cc2e68d81a7dc80b391a81b737fcfa3ef969ea91bdad6c9c060#sha256:eb54de2b81ac7cc2e68d81a7dc80b391a81b737fcfa3ef969ea91bdad6c9c060",
+          "archive:https://github.com/ocaml-ppx/ocamlformat/releases/download/0.22.4/ocamlformat-0.22.4.tbz#sha256:eb54de2b81ac7cc2e68d81a7dc80b391a81b737fcfa3ef969ea91bdad6c9c060"
         ],
         "opam": {
           "name": "ocamlformat-rpc-lib",
-          "version": "0.21.0",
-          "path": "esy.lock/opam/ocamlformat-rpc-lib.0.21.0"
+          "version": "0.22.4",
+          "path": "esy.lock/opam/ocamlformat-rpc-lib.0.22.4"
         }
       },
       "overrides": [],
@@ -1770,7 +1770,7 @@
         "@opam/pp@opam:1.1.2@89ad03b5", "@opam/ordering@opam:3.2.0@2a4d05ec",
         "@opam/omd@opam:1.3.1@a0702cc6",
         "@opam/octavius@opam:1.2.2@2205cc65",
-        "@opam/ocamlformat-rpc-lib@opam:0.21.0@80728c7f",
+        "@opam/ocamlformat-rpc-lib@opam:0.22.4@a64a22f6",
         "@opam/fiber@opam:3.2.0@ec167d26", "@opam/dyn@opam:3.2.0@a0890fb6",
         "@opam/dune-rpc@opam:3.2.0@1db3db99",
         "@opam/dune-build-info@opam:3.2.0@edf5cd0a",
@@ -1786,7 +1786,7 @@
         "@opam/pp@opam:1.1.2@89ad03b5", "@opam/ordering@opam:3.2.0@2a4d05ec",
         "@opam/omd@opam:1.3.1@a0702cc6",
         "@opam/octavius@opam:1.2.2@2205cc65",
-        "@opam/ocamlformat-rpc-lib@opam:0.21.0@80728c7f",
+        "@opam/ocamlformat-rpc-lib@opam:0.22.4@a64a22f6",
         "@opam/fiber@opam:3.2.0@ec167d26", "@opam/dyn@opam:3.2.0@a0890fb6",
         "@opam/dune-rpc@opam:3.2.0@1db3db99",
         "@opam/dune-build-info@opam:3.2.0@edf5cd0a",

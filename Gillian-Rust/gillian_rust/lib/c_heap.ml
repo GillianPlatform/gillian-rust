@@ -1,6 +1,10 @@
 open Gillian.Gil_syntax
 open Vec
 
+exception MemoryError of string
+
+let mem_error p = Fmt.kstr (fun s -> raise (MemoryError s)) p
+
 module TreeBlock = struct
   type t = { ty : Rust_types.t; content : tree_content }
 
@@ -53,8 +57,8 @@ module TreeBlock = struct
             LList [ Loc loc; LList (Projections.to_lit_list proj) ];
             Int (Z.of_int meta);
           ]
-    | Uninit                   ->
-        Fmt.failwith "Cannot serialize Uninit or partially uninit values"
+    | Uninit                   -> mem_error
+                                    "Attempting to read uninitialized value"
 
   let rec of_rust_struct_value ~genv ~ty ~fields_tys fields =
     let content =

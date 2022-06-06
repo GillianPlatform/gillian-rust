@@ -2,7 +2,9 @@ use super::memory::MemoryAction;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{self, adjustment::PointerCast, AdtKind, Const, ConstKind, TypeFoldable};
+use rustc_middle::ty::{
+    self, adjustment::PointerCast, AdtKind, Const, ConstKind, ParamEnv, TypeFoldable,
+};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -218,7 +220,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 val: ConstKind::Value(v),
                 ty,
             } => self.encode_value(v, ty),
-
+            // Const {
+            //     val: ConstKind::Unevaluated(uneval),
+            //     ty,
+            // } => {
+            //     let v = self
+            //         .tcx
+            //         .const_eval_resolve(ParamEnv::reveal_all(), *uneval, None)
+            //         .expect("Unevaluated cannot be resolved");
+            //     self.encode_value(&v, ty)
+            // }
             _ => fatal!(self, "Cannot encode const yet! {:#?}", cst),
         }
     }

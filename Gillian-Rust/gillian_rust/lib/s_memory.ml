@@ -3,7 +3,6 @@ open Gillian.Gil_syntax
 
 type vt = Values.t
 type st = Subst.t
-type i_fix_t = unit
 type c_fix_t = unit
 type err_t = unit [@@deriving yojson]
 type t = unit [@@deriving yojson]
@@ -29,7 +28,6 @@ let lvars _ = failwith "Not yet implemented"
 let alocs _ = failwith "Not yet implemented"
 let assertions ?to_keep:_ _ = failwith "Not yet implemented"
 let mem_constraints _ = failwith "Not yet implemented"
-let pp_i_fix _ _ = failwith "Not yet implemented"
 let pp_c_fix _ _ = failwith "Not yet implemented"
 let get_recovery_vals _ _ = failwith "Not yet implemented"
 let pp_err _ _ = failwith "Not yet implemented"

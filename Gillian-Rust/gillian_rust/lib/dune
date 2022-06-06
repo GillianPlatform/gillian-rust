@@ -1,5 +1,5 @@
 (library
  (name gillian_rust)
- (libraries gillian)
+ (libraries gillian gillian.alcotest-runner)
  (preprocess
   (pps ppx_deriving.std ppx_deriving_yojson)))
