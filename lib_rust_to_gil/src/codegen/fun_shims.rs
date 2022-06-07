@@ -140,16 +140,17 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
 
         log::debug!("{:#?}", path);
-        if matches!(
-            path.data[1..],
+        match path.data[1..] {
             [tns!(sym::const_ptr), d!(Impl), vns!(sym::add)]
-        ) {
-            log::debug!("adding PtrPlus<{:#?}>", self.operand_ty(&args[0]));
-            self.global_env.add_runtime(CustomRuntime::PtrPlus(
-                self.operand_ty(&args[0]),
-                fname.clone(),
-            ));
-            return fname;
+            | [tns!(sym::const_ptr), d!(Impl), vns!(sym::offset)] => {
+                log::debug!("adding PtrPlus<{:#?}>", self.operand_ty(&args[0]));
+                self.global_env.add_runtime(CustomRuntime::PtrPlus(
+                    self.operand_ty(&args[0]),
+                    fname.clone(),
+                ));
+                return fname;
+            }
+            _ => (),
         }
 
         fname

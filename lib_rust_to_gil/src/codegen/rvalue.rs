@@ -3,8 +3,23 @@ use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, adjustment::PointerCast, AdtKind, Const, ConstKind, ParamEnv, TypeFoldable,
+    self, adjustment::PointerCast, AdtKind, Const, ConstKind, IntTy::*, ParamEnv, TypeFoldable,
+    UintTy::*,
 };
+
+macro_rules! extract_int {
+    ($self: ident, $c: expr, $ty: expr, $t: ty, $n: expr) => {{
+        let i = <$t>::from_be_bytes(
+            $c.try_eval_bits($self.tcx, ParamEnv::reveal_all(), $ty)
+                .unwrap()
+                .to_be_bytes()[(16 - $n)..]
+                .try_into()
+                .expect("Unreachable"),
+        );
+        log::debug!("GOT HERE FOR VALUE: {:#?}", i);
+        Literal::Int(i as i128)
+    }};
+}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -215,11 +230,39 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn encode_const(&self, cst: &Const<'tcx>) -> Literal {
         let cst = self.tcx.lift(cst).unwrap();
+
         match cst {
             Const {
                 val: ConstKind::Value(v),
                 ty,
-            } => self.encode_value(v, ty),
+            } => match ty.kind() {
+                TyKind::Int(I128) => {
+                    extract_int!(self, cst, ty, i128, 16)
+                }
+                TyKind::Int(I64) => {
+                    extract_int!(self, cst, ty, i64, 8)
+                }
+                TyKind::Int(I32) => {
+                    extract_int!(self, cst, ty, i32, 4)
+                }
+                TyKind::Int(I16) => {
+                    extract_int!(self, cst, ty, i32, 2)
+                }
+                TyKind::Int(I8) => {
+                    extract_int!(self, cst, ty, i32, 1)
+                }
+                TyKind::Int(Isize) => {
+                    extract_int!(self, cst, ty, isize, std::mem::size_of::<isize>())
+                }
+                TyKind::Uint(U128) => fatal!(self, "Cannot handle u128"),
+                TyKind::Uint(..) => {
+                    let i = cst
+                        .try_eval_bits(self.tcx, ParamEnv::reveal_all(), ty)
+                        .unwrap() as i128;
+                    Literal::Int(i)
+                }
+                _ => self.encode_value(v, ty), // This should be replaced here, it's not really useful anymore
+            },
             // Const {
             //     val: ConstKind::Unevaluated(uneval),
             //     ty,
@@ -250,33 +293,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             return self.zst_value_of_type(ty);
         };
         match val {
-            ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_scalar() => {
-                let x = scalar_int.to_bits(scalar_int.size()).unwrap() as i128;
-                Literal::Int(x)
-            }
-            ConstValue::Scalar(Scalar::Int(scalar_int))
-                if matches!(
-                        ty.kind(),
-                        TyKind::Adt(def, _) if def.is_struct()
-                ) =>
-            {
-                // It's a struct with only one field
-                let x: i128 = scalar_int
-                    .to_bits(scalar_int.size())
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
-                vec![Literal::Int(x)].into()
-            }
-            ConstValue::Scalar(Scalar::Int(scalar_int)) if ty.is_enum() => {
-                // It's an enum value with no fields
-                let x: i128 = scalar_int
-                    .to_bits(scalar_int.size())
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
-                vec![Literal::Int(x)].into()
-            }
             ConstValue::ByRef {
                 alloc: _,
                 offset: _,

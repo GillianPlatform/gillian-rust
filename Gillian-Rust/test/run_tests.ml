@@ -468,7 +468,7 @@ module Resolution_repr_C = struct
   let complicated_resolution () =
     check_accesses
       "struct B { struct A { u8, u16, u32 }, struct C { [u8; 5], [A; 5] } \
-       }.0.0[3].0 should resolve to a particular u8"
+       }.1.1[3].0 should resolve to a particular u8"
       [
         { index = 0; index_type = u8; against = tA; variant = None };
         {
@@ -598,7 +598,7 @@ module Resolution_mixed_repr = struct
 
   let resolve_mixed_next_end_of_array_and_up () =
     check_accesses
-      "struct D { struct C { [R8; 2], [R8; 2] }, R8}.0[0] +^R8 4 resolves to \
+      "struct D { struct C { [R8; 2], [R8; 2] }, R8}.0.0[0] +^R8 4 resolves to \
        the fifth R8"
       [ { index = 1; index_type = tR8; against = tD; variant = None } ]
     @@ resolve_address
