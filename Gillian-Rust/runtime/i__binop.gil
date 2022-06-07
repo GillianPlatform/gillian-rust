@@ -2,6 +2,12 @@
 
 proc i__binop_checked_add(v1, v2, max_val) {
   sum := v1 i+ v2;
-  ret := {{ sum, max_val i< sum }};
+  ret := {{ sum, max_val i< sum }}; (* TODO: there should be more bounds checks *)
+  return
+};
+
+proc i__binop_checked_sub(v1, v2) {
+  sum := v1 i- v2;
+  ret := {{ sum, false }}; (* TODO: add bounds checks *)
   return
 };

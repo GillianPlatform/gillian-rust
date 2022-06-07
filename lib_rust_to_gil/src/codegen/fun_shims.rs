@@ -124,6 +124,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn shim_with(&mut self, def_id: DefId, args: &[Operand<'tcx>], fname: String) -> String {
+        // We only shim core
+
         if !self.is_core(def_id.krate) {
             return fname;
         }
@@ -133,26 +135,32 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         use DefPathData::*;
 
         // Slice shims
-        if let Some(tns!(sym::slice)) = path.data.get(0) {
-            if matches!(path.data[1..], [d!(Impl), vns!(sym::len)]) {
-                return runtime::slice::SLICE_LEN.to_string();
-            }
-        }
 
-        log::debug!("{:#?}", path);
-        match path.data[1..] {
-            [tns!(sym::const_ptr), d!(Impl), vns!(sym::add)]
-            | [tns!(sym::const_ptr), d!(Impl), vns!(sym::offset)] => {
+        match path.data[..] {
+            // slice::len
+            [tns!(sym::slice), d!(Impl), vns!(sym::len)] => runtime::slice::SLICE_LEN.to_string(),
+
+            // const_ptr::offset or const_ptr::add
+            [tns!(sm), tns!(sym::const_ptr), d!(Impl), vns!(sym::add)]
+            | [tns!(sm), tns!(sym::const_ptr), d!(Impl), vns!(sym::offset)]
+                if sm.as_str() == "ptr" =>
+            {
                 log::debug!("adding PtrPlus<{:#?}>", self.operand_ty(&args[0]));
                 self.global_env.add_runtime(CustomRuntime::PtrPlus(
                     self.operand_ty(&args[0]),
                     fname.clone(),
                 ));
-                return fname;
+                fname
             }
-            _ => (),
+            [_, vns!(sm)] if sm.as_str() == "slice_from_raw_parts" => {
+                runtime::ptr::SLICE_FROM_RAW_PARTS.to_string()
+            }
+            _ => {
+                if !def_id.is_local() {
+                    log::warn!("Non-local function is not shimed: {:#?}", path)
+                };
+                fname
+            }
         }
-
-        fname
     }
 }

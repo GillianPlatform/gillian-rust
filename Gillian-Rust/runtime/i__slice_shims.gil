@@ -4,3 +4,8 @@ proc i__slice_length(p) {
        return;
   err: fail[PTRREPR]("should be a fat pointer", p)
 };
+
+proc i__slice_from_raw_parts(p, l) {
+     ret := {{ p, l }};
+     return
+};

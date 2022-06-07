@@ -125,8 +125,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     (
                         TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
                         TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
+                    ) if matches!(ty.kind(), TyKind::Slice(..))
+                        && !matches!(typ.kind(), TyKind::Slice(..)) =>
+                    {
+                        Expr::lnth(enc_op, 0)
+                    }
+                    (
+                        TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
+                        TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
                     )
                     | (TyKind::Ref(_, ty, _), TyKind::Ref(_, typ, _)) => {
+                        log::debug!(
+                            "Encoding cast from *{:#?} to *{:#?} as simple cast!",
+                            ty,
+                            typ
+                        );
                         self.encode_simple_ptr_cast(enc_op, ty, typ)
                     }
                     _ => fatal!(self, "Cannot encode cast from {:#?} to {:#?}", opty, ty_to),
@@ -153,8 +166,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let left_ty = self.operand_ty(left);
         let right_ty = self.operand_ty(right);
         assert!(TyS::same_type(left_ty, right_ty));
+        use mir::BinOp::*;
         match binop {
-            mir::BinOp::Add if left_ty.is_numeric() => {
+            Add if left_ty.is_integral() => {
                 let max_val = left_ty.numeric_max_val(self.tcx).unwrap();
                 let max_val = self.encode_const(max_val);
                 let temp = self.temp_var();
@@ -166,7 +180,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 ));
                 Expr::PVar(temp)
             }
-            mir::BinOp::Gt if left_ty.is_numeric() => {
+            Sub if left_ty.is_integral() => {
+                // TODO: add bound checks
+                let temp = self.temp_var();
+                self.push_cmd(runtime::checked_sub(temp.clone(), e1, e2));
+                Expr::PVar(temp)
+            }
+            Gt if left_ty.is_numeric() => {
                 let ret = self.temp_var();
                 let comp_expr = if left_ty.is_integral() {
                     Expr::i_gt(e1, e2)
@@ -176,7 +196,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
                 Expr::PVar(ret)
             }
-            mir::BinOp::Lt if left_ty.is_numeric() => {
+            Lt if left_ty.is_numeric() => {
                 let ret = self.temp_var();
                 let comp_expr = if left_ty.is_integral() {
                     Expr::i_lt(e1, e2)
@@ -186,13 +206,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
                 Expr::PVar(ret)
             }
-            mir::BinOp::Gt | mir::BinOp::Add => fatal!(
-                self,
-                "Numeric operation on non-numeric values: {:#?} {:#?} and {:#?}",
-                binop,
-                left,
-                right
-            ),
             _ => fatal!(
                 self,
                 "Cannot yet encode binop {:#?} with operands {:#?} and {:#?}",

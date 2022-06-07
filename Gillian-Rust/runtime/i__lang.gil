@@ -24,11 +24,3 @@ proc i__lang_int_of_bool(b) {
   zer: ret := 0i;
        return
 };
-
-proc i__ptr_add(p, i, t) {
-     addr := l-nth(p, 0i);
-     proj := l-nth(p, 1i);
-     nproj := l+ (proj, {{ {{ "+", i, t }} }});
-     ret := {{ addr, nproj }};
-     return
-};
