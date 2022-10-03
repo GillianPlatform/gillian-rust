@@ -4,7 +4,7 @@ use rustc_middle::mir::pretty::write_mir_fn;
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
-            if self.local_is_in_store(&loc) {
+            if self.local_is_in_store(loc) {
                 return;
             }
             if let TyKind::Never = decl.ty.kind() {
@@ -15,10 +15,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     let temp = self.temp_var();
                     self.push_cmd(Cmd::Assignment {
                         variable: temp.clone(),
-                        assigned_expr: Expr::PVar(self.name_from_local(&loc)),
+                        assigned_expr: Expr::PVar(self.name_from_local(loc)),
                     });
                     self.push_alloc_into_local(loc, decl.ty);
-                    self.push_place_write(&loc.into(), Expr::PVar(temp), decl.ty)
+                    self.push_place_write(loc.into(), Expr::PVar(temp), decl.ty)
                 }
                 _ => self.push_alloc_into_local(loc, decl.ty),
             }
@@ -28,7 +28,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_free_local_decls_and_return(&mut self, mir: &Body<'tcx>) {
         self.push_label(names::ret_label());
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
-            if self.local_is_in_store(&loc) {
+            if self.local_is_in_store(loc) {
                 return;
             }
             if let TyKind::Never = decl.ty.kind() {
@@ -79,12 +79,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
         let args: Vec<String> = mir_body
             .args_iter()
-            .map(|local| self.name_from_local(&local))
+            .map(|local| self.name_from_local(local))
             .collect();
         self.push_alloc_local_decls(mir_body);
         for (bb, bb_data) in mir_body.basic_blocks().iter_enumerated() {
             if !bb_data.is_cleanup {
-                self.push_basic_block(&bb, bb_data);
+                self.push_basic_block(bb, bb_data);
             }
         }
         self.push_free_local_decls_and_return(mir_body);

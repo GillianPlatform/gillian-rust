@@ -1,7 +1,5 @@
 use crate::prelude::*;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::TypeAndMut;
-use rustc_middle::ty::{AdtDef, Const, ConstKind, IntTy, UintTy};
+use rustc_middle::ty::{AdtDef, Const, ConstKind};
 
 /// This type is use to type-check that we're indeed using a
 /// literal obtained from encoding a type
@@ -31,17 +29,14 @@ pub trait TypeEncoder<'tcx> {
     fn atd_def_name(&self, def: &AdtDef) -> String;
 
     fn array_size_value(&self, sz: &Const) -> i128 {
-        match sz {
-            Const {
-                val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(x))),
-                ..
-            } => x.to_bits(x.size()).unwrap() as i128,
+        match sz.kind() {
+            ConstKind::Value(ValTree::Leaf(x)) => x.to_bits(x.size()).unwrap() as i128,
             _ => panic!("Invalid array size"),
         }
     }
 
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
-        use TyKind::*;
+        use rustc_middle::ty::*;
         match &ty.kind() {
             Never => panic!("Should not encode never for memory"),
             Bool => "bool".into(),
@@ -62,6 +57,7 @@ pub trait TypeEncoder<'tcx> {
             Tuple(_) => EncodedType(Literal::LList(vec![
                 "tuple".into(),
                 ty.tuple_fields()
+                    .iter()
                     .map(|x| self.encode_type(x).into())
                     .collect::<Vec<_>>()
                     .into(),
@@ -82,7 +78,7 @@ pub trait TypeEncoder<'tcx> {
                 EncodedType(Literal::LList(vec![
                     "ref".into(),
                     mutability.into(),
-                    self.encode_type(ty).into(),
+                    self.encode_type(*ty).into(),
                 ]))
             }
             Adt(def, _) => {
@@ -93,15 +89,15 @@ pub trait TypeEncoder<'tcx> {
             }
             Slice(ty) => EncodedType(Literal::LList(vec![
                 "slice".into(),
-                self.encode_type(ty).into(),
+                self.encode_type(*ty).into(),
             ])),
             Array(ty, sz) => {
                 let sz_i = self.array_size_value(sz);
                 EncodedType(
                     vec![
                         "array".into(),
-                        self.encode_type(ty).into(),
-                        Literal::Int(sz_i),
+                        self.encode_type(*ty).into(),
+                        Literal::int(sz_i),
                     ]
                     .into(),
                 )
@@ -117,6 +113,6 @@ impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did).to_string()
+        self.tcx.item_name(def.did()).to_string()
     }
 }

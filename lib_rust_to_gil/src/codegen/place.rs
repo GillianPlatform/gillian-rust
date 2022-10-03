@@ -144,6 +144,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_action(res, action);
     }
 
+    fn push_deinit_gil_place_in_memory(&mut self, gil_place: GilPlace<'tcx>, typ: Ty<'tcx>) {
+        let (location, projection, meta) = gil_place.into_loc_proj_meta();
+        if meta.is_some() {
+            fatal!(self, "Deinit a fat location");
+        }
+        let action = MemoryAction::Deinit {
+            location,
+            projection,
+            typ,
+        };
+        let ret = names::unused_var();
+        self.push_action(ret, action);
+    }
+
     fn push_write_gil_place_in_memory(
         &mut self,
         gil_place: GilPlace<'tcx>,
@@ -181,11 +195,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         Expr::PVar(ret)
     }
 
-    pub fn push_get_gil_place(&mut self, place: &Place<'tcx>) -> GilPlace<'tcx> {
+    pub fn push_get_gil_place(&mut self, place: Place<'tcx>) -> GilPlace<'tcx> {
         let mut cur_gil_place = GilPlace {
-            base: Expr::PVar(self.name_from_local(&place.local)),
+            base: Expr::PVar(self.name_from_local(place.local)),
             proj: vec![],
-            base_ty: self.place_ty(&place.local.into()).ty,
+            base_ty: self.place_ty(place.local.into()).ty,
         };
         for (idx, proj) in place.projection.into_iter().enumerate() {
             let curr_typ = self.place_ty_until(place, idx);
@@ -217,14 +231,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 },
 
                 ProjectionElem::Index(local) => {
-                    let expr = self.push_place_read(&local.into(), true);
+                    let expr = self.push_place_read(local.into(), true);
                     match curr_typ.ty.kind() {
                         TyKind::Slice(ty) => cur_gil_place
                             .proj
-                            .push(GilProj::SliceIndex(expr, self.encode_type(ty))),
+                            .push(GilProj::SliceIndex(expr, self.encode_type(*ty))),
                         TyKind::Array(ty, cst) => cur_gil_place.proj.push(GilProj::ArrayIndex(
                             expr,
-                            self.encode_type(ty),
+                            self.encode_type(*ty),
                             self.array_size_value(cst),
                         )),
                         _ => panic!("Indexing something that is neither an array nor a slice"),
@@ -240,7 +254,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         cur_gil_place
     }
 
-    pub fn push_place_read(&mut self, place: &Place<'tcx>, copy: bool) -> Expr {
+    pub fn push_place_read(&mut self, place: Place<'tcx>, copy: bool) -> Expr {
         match self.place_in_store(place) {
             None => {
                 let read_ty = self.place_ty(place).ty;
@@ -267,7 +281,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn push_place_read_into(&mut self, ret: String, place: &Place<'tcx>, copy: bool) {
+    pub fn push_place_read_into(&mut self, ret: String, place: Place<'tcx>, copy: bool) {
         let assigned_expr = self.push_place_read(place, copy);
         let assign = Cmd::Assignment {
             variable: ret,
@@ -276,7 +290,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_cmd(assign)
     }
 
-    pub fn push_place_write(&mut self, place: &Place<'tcx>, value: Expr, value_ty: Ty<'tcx>) {
+    pub fn push_place_write(&mut self, place: Place<'tcx>, value: Expr, value_ty: Ty<'tcx>) {
         match self.place_in_store(place) {
             None => {
                 let gil_place = self.push_get_gil_place(place);
@@ -285,6 +299,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Some(variable) => self.push_cmd(Cmd::Assignment {
                 variable,
                 assigned_expr: value,
+            }),
+        }
+    }
+
+    pub fn push_deinit_place(&mut self, place: Place<'tcx>) {
+        match self.place_in_store(place) {
+            None => {
+                let ty = self.place_ty(place).ty;
+                let gil_place = self.push_get_gil_place(place);
+                self.push_deinit_gil_place_in_memory(gil_place, ty);
+            }
+            Some(variable) => self.push_cmd(Cmd::Assignment {
+                variable,
+                assigned_expr: Expr::undefined(),
             }),
         }
     }

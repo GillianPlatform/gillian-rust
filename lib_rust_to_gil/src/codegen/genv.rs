@@ -29,7 +29,7 @@ impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did).to_string()
+        self.tcx.item_name(def.did()).to_string()
     }
 }
 
@@ -67,7 +67,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 if def.is_variant_list_non_exhaustive() {
                     fatal!(self, "Can't handle #[non_exhaustive] yet");
                 }
-                let name = self.tcx.item_name(def.did).to_string();
+                let name = self.tcx.item_name(def.did()).to_string();
                 let fields: Vec<Literal> = def
                     .all_fields()
                     .map(|field| {
@@ -76,17 +76,21 @@ impl<'tcx> GlobalEnv<'tcx> {
                         vec![name, typ.into()].into()
                     })
                     .collect();
-                let decl: Literal =
-                    vec!["struct".into(), fields.into(), self.encode_repr(&def.repr)].into();
+                let decl: Literal = vec![
+                    "struct".into(),
+                    fields.into(),
+                    self.encode_repr(&def.repr()),
+                ]
+                .into();
                 (name, decl.into())
             }
             TyKind::Adt(def, subst) if def.is_enum() => {
                 if def.is_variant_list_non_exhaustive() {
                     fatal!(self, "Can't handle #[non_exhaustive] yet");
                 }
-                let name = self.tcx.item_name(def.did).to_string();
+                let name = self.tcx.item_name(def.did()).to_string();
                 let variants: Vec<Literal> = def
-                    .variants
+                    .variants()
                     .iter()
                     .map(|variant| {
                         let fields: Literal = variant
@@ -116,7 +120,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub fn add_type(&mut self, ty: Ty<'tcx>) {
-        if !(self.encoded_types.contains(ty) || self.types_in_queue.contains(&ty)) {
+        if !(self.encoded_types.contains(&ty) || self.types_in_queue.contains(&ty)) {
             self.types_in_queue.push_back(ty);
         }
     }

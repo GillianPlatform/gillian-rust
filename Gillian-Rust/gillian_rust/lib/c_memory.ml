@@ -73,6 +73,15 @@ let execute_store_slice mem args =
       ASucc ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_slice" args
 
+let execute_deinit mem args =
+  match args with
+  | [ Literal.Loc loc; LList proj; ty ] ->
+      let rust_ty = Rust_types.of_lit ty in
+      let proj = Projections.of_lit_list proj in
+      let new_heap = C_heap.deinit ~genv:mem.genv mem.heap loc proj rust_ty in
+      ASucc ({ mem with heap = new_heap }, [])
+  | _ -> wrong_args "execute_deinit" args
+
 let execute_free mem args =
   match args with
   | [ Literal.Loc loc; LList proj; ty ] ->
@@ -113,6 +122,7 @@ let execute_action act_name mem args =
   | Store_value -> protect execute_store_value mem args
   | Load_slice -> protect execute_load_slice mem args
   | Store_slice -> protect execute_store_slice mem args
+  | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Genv_decl_type -> protect execute_genv_decl_type mem args
   | LoadDiscr -> protect execute_load_discr mem args

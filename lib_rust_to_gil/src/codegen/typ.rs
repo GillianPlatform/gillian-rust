@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::ty::{ConstKind, TypeFoldable};
+use rustc_middle::ty::TypeFoldable;
 use rustc_target::abi::Size;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -26,11 +26,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn const_is_zst(val: &ConstKind) -> bool {
-        match val {
-            ConstKind::Value(ConstValue::Scalar(Scalar::Int(sci))) => sci.size() == Size::ZERO,
-            _ => false,
-        }
+    pub fn valtree_is_zst(val: &ValTree) -> bool {
+        matches!(val, ValTree::Branch([]))
     }
 
     pub fn operand_ty(&self, o: &Operand<'tcx>) -> Ty<'tcx> {
@@ -41,7 +38,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.monomorphize(rv.ty(self.mir().local_decls(), self.tcx))
     }
 
-    pub fn place_ty(&self, place: &Place<'tcx>) -> PlaceTy<'tcx> {
+    pub fn place_ty(&self, place: Place<'tcx>) -> PlaceTy<'tcx> {
         self.monomorphize(Place::ty_from(
             place.local,
             place.projection,
@@ -50,7 +47,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         ))
     }
 
-    pub fn place_ty_until(&self, place: &Place<'tcx>, i: usize) -> PlaceTy<'tcx> {
+    pub fn place_ty_until(&self, place: Place<'tcx>, i: usize) -> PlaceTy<'tcx> {
         let place_ty = Place::ty_from(
             place.local,
             &place.projection[..i],

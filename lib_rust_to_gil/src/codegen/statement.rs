@@ -5,8 +5,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         match &stmt.kind {
             StatementKind::Assign(box (place, rvalue)) => {
                 let compiled_rvalue = self.push_encode_rvalue(rvalue);
-                self.push_place_write(place, compiled_rvalue, self.rvalue_ty(rvalue));
+                self.push_place_write(*place, compiled_rvalue, self.rvalue_ty(rvalue));
             }
+            StatementKind::Deinit(box place) => self.push_deinit_place(*place),
             StatementKind::SetDiscriminant { .. } => {
                 let cmd = Cmd::Fail {
                     name: "SET_DISCR".to_owned(),

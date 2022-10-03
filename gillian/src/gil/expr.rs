@@ -1,5 +1,6 @@
 use super::print_utils::comma_separated_display;
 use super::{BinOp, Literal, NOp, UnOp};
+use num_bigint::BigInt;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -85,8 +86,11 @@ impl Expr {
         f.into()
     }
 
-    pub fn int(i: i128) -> Self {
-        i.into()
+    pub fn int<T>(i: T) -> Self
+    where
+        T: Into<BigInt>,
+    {
+        Expr::Lit(Literal::Int(i.into()))
     }
 
     pub fn null() -> Self {
@@ -137,23 +141,28 @@ impl Expr {
         }
     }
 
-    pub fn lnth(e: Expr, i: usize) -> Self {
-        match e {
-            Expr::EList(vec) => vec.get(i).expect("lnth of a small vector!").to_owned(),
-            Expr::Lit(Literal::LList(vec)) => {
-                Expr::Lit(vec.get(i).expect("lnth of a small vector!").to_owned())
+    pub fn lnth<I>(e: Expr, i: I) -> Self
+    where
+        I: Into<BigInt> + Clone,
+    {
+        let bg: BigInt = i.clone().into();
+        let us: Result<usize, _> = bg.try_into();
+        match (&e, us) {
+            (Expr::EList(vec), Ok(idx)) => vec.get(idx).expect("lnth of small vector!").to_owned(),
+            (Expr::Lit(Literal::LList(vec)), Ok(idx)) => {
+                Expr::Lit(vec.get(idx).expect("lnth of a small vector!").to_owned())
             }
             _ => Self::BinOp {
                 operator: BinOp::LstNth,
                 left_operand: Box::new(e),
-                right_operand: Box::new(Self::int(i as i128)),
+                right_operand: Box::new(Self::int(i)),
             },
         }
     }
 
     pub fn lnth_e(e: Expr, i: Expr) -> Self {
         match i {
-            Expr::Lit(Literal::Int(i)) => Self::lnth(e, i as usize),
+            Expr::Lit(Literal::Int(i)) => Self::lnth(e, i),
             Expr::Lit(Literal::Num(f)) => Self::lnth(e, f as usize),
             _ => Self::BinOp {
                 operator: BinOp::LstNth,

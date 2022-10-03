@@ -44,13 +44,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn local_is_in_store(&self, local: &Local) -> bool {
-        !self.locals_in_memory.contains(local)
+    pub fn local_is_in_store(&self, local: Local) -> bool {
+        !self.locals_in_memory.contains(&local)
     }
 
-    pub fn place_in_store(&self, place: &Place<'tcx>) -> Option<String> {
-        if self.local_is_in_store(&place.local) {
-            Some(self.name_from_local(&place.local))
+    pub fn place_in_store(&self, place: Place<'tcx>) -> Option<String> {
+        if self.local_is_in_store(place.local) {
+            Some(self.name_from_local(place.local))
         } else {
             None
         }
@@ -68,13 +68,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
-    fn original_name_from_local(&self, local: &Local) -> Option<String> {
+    fn original_name_from_local(&self, local: Local) -> Option<String> {
         self.mir()
             .var_debug_info
             .iter()
             .find_map(|debug_info| match debug_info.value {
                 VarDebugInfoContents::Place(place)
-                    if place.local == *local && place.projection.is_empty() =>
+                    if place.local == local && place.projection.is_empty() =>
                 {
                     Some(debug_info.name.to_string())
                 }
@@ -82,7 +82,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             })
     }
 
-    pub fn name_from_local(&self, local: &Local) -> String {
+    pub fn name_from_local(&self, local: Local) -> String {
         temp_name_from_local(local) + &self.original_name_from_local(local).unwrap_or_default()
     }
 

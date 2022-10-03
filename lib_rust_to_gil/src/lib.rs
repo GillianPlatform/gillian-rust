@@ -18,6 +18,7 @@ extern crate rustc_mir_transform;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+extern crate rustc_type_ir;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
@@ -28,7 +29,7 @@ mod prelude {
     pub(crate) use gillian::gil::*;
     // pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_middle::ty::{Ty, TyCtxt, TyKind, TyS};
+    pub(crate) use rustc_middle::ty::{Ty, TyCtxt, TyKind, ValTree};
 }
 
 mod codegen;

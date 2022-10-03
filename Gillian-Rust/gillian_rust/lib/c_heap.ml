@@ -277,6 +277,12 @@ module TreeBlock = struct
     let update block = block in
     let discr, _ = find_proj ~genv ~return ~update ~ty:enum_typ t proj in
     discr
+
+  let deinit ~genv t proj ty =
+    let return _ = () in
+    let update _block = uninitialized ~genv ty in
+    let _, new_block = find_proj ~genv ~ty ~return ~update t proj in
+    new_block
 end
 
 type t = (string, TreeBlock.t) Hashtbl.t
@@ -308,6 +314,12 @@ let store_slice ~genv (mem : t) loc proj size ty values =
 let store ~genv (mem : t) loc proj ty value =
   let block = Hashtbl.find mem loc in
   let new_block = TreeBlock.set_proj ~genv block proj ty value in
+  Hashtbl.replace mem loc new_block;
+  mem
+
+let deinit ~genv (mem : t) loc proj ty =
+  let block = Hashtbl.find mem loc in
+  let new_block = TreeBlock.deinit ~genv block proj ty in
   Hashtbl.replace mem loc new_block;
   mem
 

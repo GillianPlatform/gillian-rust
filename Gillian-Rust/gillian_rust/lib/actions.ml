@@ -4,6 +4,7 @@ type t =
   | Store_value
   | Load_slice
   | Store_slice
+  | Deinit
   | Free
   | LoadDiscr
   | Genv_decl_type
@@ -14,6 +15,7 @@ let of_name = function
   | "mem_store_value" -> Store_value
   | "mem_load_slice" -> Load_slice
   | "mem_store_slice" -> Store_slice
+  | "mem_deinit" -> Deinit
   | "mem_free" -> Free
   | "mem_load_discr" -> LoadDiscr
   | "genv_decl_type" -> Genv_decl_type

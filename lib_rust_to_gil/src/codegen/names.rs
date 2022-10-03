@@ -10,7 +10,7 @@ const GIL_TEMP_PREFIX: &str = "g_";
 const GIL_UNUSED_VAR: &str = "u";
 const GLOBAL_ENV_DECL: &str = "i__init_global_env";
 
-pub fn bb_label(bb: &BasicBlock) -> String {
+pub fn bb_label(bb: BasicBlock) -> String {
     format!("{}{}", BB_LABEL, bb.as_usize())
 }
 
@@ -22,7 +22,7 @@ pub fn ret_var() -> String {
     String::from(RET_VAR)
 }
 
-pub fn temp_name_from_local(local: &Local) -> String {
+pub fn temp_name_from_local(local: Local) -> String {
     format!("{}{}", MIR_TEMP_PREFIX, local.as_usize())
 }
 
@@ -45,8 +45,8 @@ mod tests {
     #[test]
     fn bb_label_test() {
         let bb = BasicBlock::from(0usize);
-        assert_eq!(bb_label(&bb), String::from("bb0"));
+        assert_eq!(bb_label(bb), String::from("bb0"));
         let bb = BasicBlock::from(100usize);
-        assert_eq!(bb_label(&bb), String::from("bb100"));
+        assert_eq!(bb_label(bb), String::from("bb100"));
     }
 }

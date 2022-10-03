@@ -13,18 +13,19 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 ..
             }
             | TerminatorKind::Goto { target } => {
-                self.push_cmd(Cmd::Goto(bb_label(target)));
+                self.push_cmd(Cmd::Goto(bb_label(*target)));
             }
             TerminatorKind::Return => {
-                self.push_place_read_into(names::ret_var(), &Place::return_place(), false);
+                self.push_place_read_into(names::ret_var(), Place::return_place(), false);
                 self.push_cmd(Cmd::Goto(names::ret_label()));
             }
             TerminatorKind::Call {
                 func,
                 args,
                 destination,
+                target,
                 ..
-            } => self.push_function_call(func, args, destination),
+            } => self.push_function_call(func, args, *destination, *target),
             TerminatorKind::Assert {
                 cond: op,
                 expected,
@@ -40,7 +41,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let to_assert = if *expected { cond_bool } else { !cond_bool };
                 let assert_call = runtime::lang_assert(to_assert, msg);
                 self.push_cmd(assert_call);
-                self.push_cmd(Cmd::Goto(bb_label(target)));
+                self.push_cmd(Cmd::Goto(bb_label(*target)));
             }
             TerminatorKind::SwitchInt {
                 discr,
@@ -52,7 +53,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let mut else_lab = self.switch_label();
                 for (value, target) in targets.iter() {
                     let v_expr = Expr::int(value as i128);
-                    let target = bb_label(&target);
+                    let target = bb_label(target);
                     let goto = Cmd::GuardedGoto {
                         guard: Expr::eq_expr(discr_expr.clone(), v_expr),
                         then_branch: target,
@@ -62,7 +63,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     self.push_label(else_lab);
                     else_lab = self.switch_label();
                 }
-                let goto = Cmd::Goto(bb_label(&targets.otherwise()));
+                let goto = Cmd::Goto(bb_label(targets.otherwise()));
                 self.push_cmd(goto)
             }
             TerminatorKind::Unreachable => {
@@ -76,7 +77,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn push_basic_block(&mut self, bb: &BasicBlock, bb_data: &BasicBlockData<'tcx>) {
+    pub fn push_basic_block(&mut self, bb: BasicBlock, bb_data: &BasicBlockData<'tcx>) {
         if bb_data.is_cleanup {
             return;
         }
