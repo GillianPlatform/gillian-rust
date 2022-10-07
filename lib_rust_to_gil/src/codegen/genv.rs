@@ -59,11 +59,9 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     // Panics if not called with an ADT
     fn type_decl_action(&mut self, ty: Ty<'tcx>) -> ProcBodyItem {
+        self.encoded_types.insert(ty);
         let (name, decl) = match ty.kind() {
             TyKind::Adt(def, subst) if def.is_struct() => {
-                if def.has_ctor() {
-                    fatal!(self, "Can't handle struct with constructors yet");
-                }
                 if def.is_variant_list_non_exhaustive() {
                     fatal!(self, "Can't handle #[non_exhaustive] yet");
                 }

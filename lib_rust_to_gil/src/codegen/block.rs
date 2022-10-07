@@ -73,6 +73,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 };
                 self.push_cmd(cmd);
             }
+            TerminatorKind::Drop { place, target, .. } => {
+                log::warn!("Not handling drop properly yet: {:?}", place);
+                let goto = Cmd::Goto(bb_label(*target));
+                self.push_cmd(goto);
+            }
             _ => fatal!(self, "Terminator not handled yet: {:#?}", terminator),
         }
     }
