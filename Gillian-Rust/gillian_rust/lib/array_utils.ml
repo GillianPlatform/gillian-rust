@@ -1,18 +1,15 @@
-type 'a vec = 'a array
+module Infix = struct
+  let ( .%[] ) arr idx =
+    try Ok (Array.get arr idx) with Invalid_argument _ -> Error ()
 
-let make = Array.make
-let init = Array.init
-
-let ( .%[] ) vec idx =
-  try Ok (Array.get vec idx) with Invalid_argument _ -> Error ()
-
-let ( .%[]<- ) vec idx value =
-  try
-    Ok
-      (let copy = Array.copy vec in
-       Array.set copy idx value;
-       copy)
-  with Invalid_argument _ -> Error ()
+  let ( .%[]<- ) vec idx value =
+    try
+      Ok
+        (let copy = Array.copy vec in
+         Array.set copy idx value;
+         copy)
+    with Invalid_argument _ -> Error ()
+end
 
 let override_range vec ~start ~size update =
   try
@@ -23,8 +20,6 @@ let override_range vec ~start ~size update =
        done;
        copy)
   with Invalid_argument _ -> Error ()
-
-let map = Array.map
 
 let override_range_with_list vec ~start ~f list =
   let rec aux v idx = function
@@ -45,8 +40,3 @@ let sublist_map ~start ~size ~f vec =
     if idx < start then acc else aux (idx - 1) (f vec.(idx) :: acc)
   in
   aux (start + size - 1) []
-
-let fold_left = Array.fold_left
-let of_list l = Array.of_list l
-let to_list l = Array.to_list l
-let pp = Fmt.array
