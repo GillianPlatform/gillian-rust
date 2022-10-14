@@ -233,8 +233,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn encode_constant_kind(&self, ckind: &mir::ConstantKind<'tcx>) -> Literal {
         match ckind {
-            ConstantKind::Ty(cst) => self.encode_const(&cst),
-            ConstantKind::Val(val, ty) => self.encode_value(&val, *ty),
+            ConstantKind::Ty(cst) => self.encode_const(cst),
+            ConstantKind::Val(val, ty) => self.encode_value(val, *ty),
         }
     }
 
