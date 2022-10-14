@@ -1,0 +1,39 @@
+proc i__slice_length(p) {
+       goto [(typeOf l-nth(p, 0i)) = List] ctn err;
+  ctn: ret := l-nth(p, 1i);
+       return;
+  err: fail[PTRREPR]("should be a fat pointer", p)
+};
+
+proc i__slice_from_raw_parts(p, l) {
+     ret := {{ p, l }};
+     return
+};
+
+proc i__nonnull_as_ptr(p) {
+     ret := l-nth(l-nth(p, 1i), 0i);
+     return
+};
+
+proc i__alloc_box_boxed_new(v, ty) {
+     global := {{ "Global", {{}} }};
+     ptr := [mem_alloc](ty);
+     non_null := {{ "NonNull", {{ ptr }} }};
+     phantom_data := {{ "PhantomData", {{}} }};
+     unique := {{ "Unique", {{ non_null, phantom_data }} }};
+     box := {{ "Box", {{ unique, global }} }};
+     ret := box;
+     return
+};
+
+
+proc i__alloc_box_leak(b) {
+     ret := l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(b, 1i), 0i), 1i), 0i), 1i), 0i);
+     return
+};
+
+
+proc "<&mut Node as std::convert::Into<std::ptr::NonNull<Node>>>::into"(ref) {
+     ret := {{ "NonNull", {{ ref }} }};
+     return
+};

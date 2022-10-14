@@ -141,20 +141,20 @@ impl Expr {
         }
     }
 
-    pub fn lnth<I>(e: Expr, i: I) -> Self
+    pub fn lnth<I>(self, i: I) -> Self
     where
         I: Into<BigInt> + Clone,
     {
         let bg: BigInt = i.clone().into();
         let us: Result<usize, _> = bg.try_into();
-        match (&e, us) {
+        match (&self, us) {
             (Expr::EList(vec), Ok(idx)) => vec.get(idx).expect("lnth of small vector!").to_owned(),
             (Expr::Lit(Literal::LList(vec)), Ok(idx)) => {
                 Expr::Lit(vec.get(idx).expect("lnth of a small vector!").to_owned())
             }
             _ => Self::BinOp {
                 operator: BinOp::LstNth,
-                left_operand: Box::new(e),
+                left_operand: Box::new(self),
                 right_operand: Box::new(Self::int(i)),
             },
         }

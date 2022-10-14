@@ -56,6 +56,8 @@ pub struct GilPlace<'tcx> {
 }
 
 impl<'tcx> GilPlace<'tcx> {
+    /// Every place should be constructed through that, as it will take care of
+    /// handling boxes correctly.
     pub fn base(base: Expr, base_ty: Ty<'tcx>) -> GilPlace<'tcx> {
         GilPlace {
             base,
@@ -196,11 +198,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn push_get_gil_place(&mut self, place: Place<'tcx>) -> GilPlace<'tcx> {
-        let mut cur_gil_place = GilPlace {
-            base: Expr::PVar(self.name_from_local(place.local)),
-            proj: vec![],
-            base_ty: self.place_ty(place.local.into()).ty,
-        };
+        let mut cur_gil_place = GilPlace::base(
+            Expr::PVar(self.name_from_local(place.local)),
+            self.place_ty(place.local.into()).ty,
+        );
         for (idx, proj) in place.projection.into_iter().enumerate() {
             let curr_typ = self.place_ty_until(place, idx);
             match proj {
@@ -213,11 +214,22 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         true,
                     );
                     let next_typ = self.place_ty_until(place, idx + 1);
-                    cur_gil_place = GilPlace {
-                        base: Expr::PVar(new_base),
-                        proj: vec![],
-                        base_ty: next_typ.ty,
+                    let new_base = if curr_typ.ty.is_box() {
+                        // Box is a special case, it can be dereferenced,
+                        // and has theoretically the exact same representation as a pointer.
+                        // However, it's "value" is a tree with many things,
+                        // and we need to access the actual pointer
+                        Expr::PVar(new_base)
+                            .lnth(1)
+                            .lnth(0)
+                            .lnth(1)
+                            .lnth(0)
+                            .lnth(1)
+                            .lnth(0)
+                    } else {
+                        Expr::PVar(new_base)
                     };
+                    cur_gil_place = GilPlace::base(new_base, next_typ.ty);
                 }
                 ProjectionElem::Field(u, _) => match curr_typ.variant_index {
                     Some(vidx) => cur_gil_place.proj.push(GilProj::VField(

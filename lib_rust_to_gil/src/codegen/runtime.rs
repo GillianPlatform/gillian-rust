@@ -13,7 +13,7 @@ pub fn imports() -> Vec<Import> {
     vec![
         import!("i__binop.gil"),
         import!("i__lang.gil"),
-        import!("i__slice_shims.gil"),
+        import!("i__std_shims.gil"),
     ]
 }
 
@@ -79,4 +79,10 @@ pub(crate) mod slice {
 
 pub(crate) mod ptr {
     pub const SLICE_FROM_RAW_PARTS: &str = "i__slice_from_raw_parts";
+    pub const NONNULL_AS_PTR: &str = "i__nonnull_as_ptr";
+}
+
+pub(crate) mod boxed {
+    pub const BOX_NEW: &str = "i__alloc_box_boxed_new";
+    pub const LEAK: &str = "i__alloc_box_leak";
 }

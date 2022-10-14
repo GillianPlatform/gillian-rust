@@ -1,9 +1,47 @@
 use crate::codegen::place::{ArithKind, GilProj};
 use crate::prelude::*;
 use names::bb_label;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{print::with_no_trimmed_paths, TypeAndMut};
-use rustc_span::symbol::sym;
+
+trait FunctionShim {
+    fn call_cmd(&mut self, target: String, params: Vec<Expr>) -> Cmd;
+}
+
+struct CallWithArgs {
+    fname: String,
+    additional_args: Vec<Expr>,
+}
+impl From<String> for Box<dyn FunctionShim> {
+    fn from(s: String) -> Self {
+        Box::new(CallWithArgs {
+            fname: s,
+            additional_args: vec![],
+        })
+    }
+}
+
+impl CallWithArgs {
+    fn new(fname: String, additional_args: Vec<Expr>) -> Self {
+        CallWithArgs {
+            fname,
+            additional_args,
+        }
+    }
+}
+
+impl FunctionShim for CallWithArgs {
+    fn call_cmd(&mut self, target: String, mut params: Vec<Expr>) -> Cmd {
+        params.append(&mut self.additional_args);
+        Cmd::Call {
+            variable: target,
+            parameters: params,
+            proc_ident: self.fname.clone().into(),
+            error_lab: None,
+            bindings: None,
+        }
+    }
+}
 
 impl<'tcx> GlobalEnv<'tcx> {
     // This should be interned instead of rebuilt every time
@@ -24,8 +62,8 @@ impl<'tcx> GlobalEnv<'tcx> {
             Expr::PVar(i.into()),
             self.encode_type(*ty),
         );
-        let addr = Expr::lnth(Expr::PVar(p.into()), 0);
-        let proj = Expr::lnth(Expr::PVar(p.into()), 1);
+        let addr = Expr::PVar(p.into()).lnth(0);
+        let proj = Expr::PVar(p.into()).lnth(1);
         let nproj = Expr::lst_concat(proj, vec![plus.into_expr()].into());
         let ret_val = vec![addr, nproj].into();
         let assign = Cmd::Assignment {
@@ -45,10 +83,6 @@ impl<'tcx> GlobalEnv<'tcx> {
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn is_core(&self, krate: CrateNum) -> bool {
-        matches!(self.tcx.crate_name(krate), sym::core)
-    }
-
     pub fn push_function_call(
         &mut self,
         func: &Operand<'tcx>,
@@ -66,15 +100,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         for arg in args {
             gil_args.push(self.push_encode_operand(arg));
         }
-        let fname = self.shim_with(def_id, args, fname).into();
         let ivar = self.temp_var();
-        self.push_cmd(Cmd::Call {
-            variable: ivar.clone(),
-            parameters: gil_args,
-            proc_ident: fname,
-            error_lab: None,
-            bindings: None,
-        });
+        let call = self
+            .shim_with(def_id, args, fname)
+            .call_cmd(ivar.clone(), gil_args);
+        self.push_cmd(call);
         let call_ret_ty = self.place_ty(destination).ty;
         self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
         if let Some(bb) = target {
@@ -82,20 +112,22 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn shim_with(&mut self, def_id: DefId, args: &[Operand<'tcx>], fname: String) -> String {
-        // We only shim core
-
-        if !self.is_core(def_id.krate) {
-            return fname;
+    fn shim_with(
+        &mut self,
+        def_id: DefId,
+        args: &[Operand<'tcx>],
+        fname: String,
+    ) -> Box<dyn FunctionShim> {
+        if def_id.is_local() {
+            return fname.into();
         }
 
         let name = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
-
         log::debug!("Can I shim: {name}");
 
         match name.as_str() {
             // slice::len
-            "core::slice::<impl [T]>::len" => runtime::slice::SLICE_LEN.to_string(),
+            "core::slice::<impl [T]>::len" => runtime::slice::SLICE_LEN.to_string().into(),
             "core::ptr::const_ptr::<impl *const T>::add"
             | "core::ptr::const_ptr::<impl *const T>::offset" => {
                 log::debug!("adding PtrPlus<{:#?}>", self.operand_ty(&args[0]));
@@ -103,14 +135,24 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     self.operand_ty(&args[0]),
                     fname.clone(),
                 ));
-                fname
+                fname.into()
             }
-            "core::ptr::slice_from_raw_parts" => runtime::ptr::SLICE_FROM_RAW_PARTS.to_string(),
+            "core::ptr::slice_from_raw_parts" => {
+                runtime::ptr::SLICE_FROM_RAW_PARTS.to_string().into()
+            }
+            "std::boxed::Box::<T, A>::leak" => runtime::boxed::LEAK.to_string().into(),
+            "std::boxed::Box::<T>::new" => {
+                let ty = self.operand_ty(&args[0]);
+                let encoded_ty: Expr = self.encode_type(ty).into();
+                let shim = CallWithArgs::new(runtime::boxed::BOX_NEW.to_string(), vec![encoded_ty]);
+                Box::new(shim)
+            }
+            "std::ptr::NonNull::<T>::as_ptr" => runtime::ptr::NONNULL_AS_PTR.to_string().into(),
             _ => {
                 if !def_id.is_local() {
                     log::warn!("Non-local function is not shimed: {:#?}", name)
                 };
-                fname
+                fname.into()
             }
         }
     }
