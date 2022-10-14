@@ -58,6 +58,7 @@ jobs:
         working-directory: "Gillian-Rust"
       - name: Build
         run: "esy"
+        working-directory: "Gillian-Rust"
       - name: Setting dependency cache
         run: |
           esy cleanup .
