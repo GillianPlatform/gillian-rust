@@ -60,7 +60,6 @@ jobs:
           esy export-dependencies
         if: steps.restore-cache.outputs.cache-hit != 'true'
         working-directory: "Gillian-Rust"
-        working-directory: "Gillian-Rust"
       - name: build-and-test
         run: "esy test"
         working-directory: "Gillian-Rust"
