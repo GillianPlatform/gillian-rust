@@ -40,11 +40,11 @@ module TreeBlock = struct
         | Scalar (Uint _ | Int _ | Char), _ -> s
         | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
-    | Fields v | Array v -> (
+    | Fields v | Array v ->
         let tuple = Array.map (to_rust_value ~genv) v |> Array.to_list in
-        match C_global_env.resolve_named ~genv ty with
-        | Struct _ -> LList [ String (Rust_types.name_exn ty); LList tuple ]
-        | _ -> LList tuple)
+        if C_global_env.is_struct ~genv ty then
+          LList [ String (Rust_types.name_exn ty); LList tuple ]
+        else LList tuple
     | Enum { discr; fields } ->
         let fields = Array.map (to_rust_value ~genv) fields |> Array.to_list in
         let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
@@ -94,13 +94,11 @@ module TreeBlock = struct
         in
         let content = Fields (Array.of_list content) in
         { ty; content }
-    | Named a, LList [ String x; LList data ] when String.equal a x -> (
-        match C_global_env.resolve_named ~genv ty with
+    | Adt name, LList [ String x; LList data ] when String.equal name x -> (
+        match C_global_env.adt_def ~genv name with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~genv ~ty ~fields_tys data
-        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
-        | _ ->
-            failwith "Deserializing a Named type that is not a struct or enum")
+        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data)
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -122,19 +120,20 @@ module TreeBlock = struct
     | Rust_types.Tuple v ->
         let tuple = List.map (uninitialized ~genv) v |> Array.of_list in
         { ty; content = Fields tuple }
-    | Named a ->
-        let uninit_a = uninitialized ~genv (C_global_env.get_type genv a) in
-        { uninit_a with ty }
-    | Struct (_repr, fields) ->
-        let tuple =
-          List.map (fun (_, t) -> uninitialized ~genv t) fields |> Array.of_list
-        in
-        { ty; content = Fields tuple }
+    | Adt name -> (
+        match C_global_env.adt_def ~genv name with
+        | Struct (_repr, fields) ->
+            let tuple =
+              List.map (fun (_, t) -> uninitialized ~genv t) fields
+              |> Array.of_list
+            in
+            { ty; content = Fields tuple }
+        | Enum _ -> { ty; content = Uninit })
     | Array { length; ty = ty' } ->
         let uninit_field _ = uninitialized ~genv ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
-    | Enum _ | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let rec find_path ~genv ~update ~return t (path : Partial_layout.access list)
@@ -324,10 +323,10 @@ let deinit ~genv (mem : t) loc proj ty =
   Hashtbl.replace mem loc new_block;
   mem
 
-let free ~genv (mem : t) loc ty =
+let free (mem : t) loc ty =
   let block = Hashtbl.find mem loc in
   let () =
-    if C_global_env.subtypes ~genv block.ty ty then Hashtbl.remove mem loc
+    if Rust_types.equal block.ty ty then Hashtbl.remove mem loc
     else
       Fmt.failwith "Incompatible types for free: %a and %a" Rust_types.pp
         block.ty Rust_types.pp ty

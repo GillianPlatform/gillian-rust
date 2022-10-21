@@ -333,7 +333,7 @@ let rec resolve
       and modify_plus_eliminating_zero new_i =
         if new_i = 0 then rs' else Plus (w, new_i, t) :: rs'
       and partial_layout = context.partial_layouts ty in
-      match C_global_env.resolve_named ~genv ty with
+      match ty with
       | Rust_types.Array { ty = tElem; length = n } when tElem = t ->
           if i' < 0 then
             up_tree_cast UpTreeDirection.Curr accesses
@@ -342,24 +342,30 @@ let rec resolve
           else
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
-      | Struct _ -> (
-          let moving_over_field, next_i, next_ix =
-            if i < 0 then (ix - 1, ( + ) i, ix - 1) else (ix, ( - ) i, ix + 1)
-          and members = context.members ty in
-          if i < 0 && ix = 0 then
-            (* We can up-tree cast directly since we're at field ix 0 *)
-            up_tree_cast UpTreeDirection.Curr accesses rs
-          else
-            (* (match distance_to_next_field partial_layout moving_over_field with
-               | Some offset -> Format.printf "%a 313;\n" pp_offset offset
-               | None        -> print_string "NO OFFSET 313;\n"); *)
-            match distance_to_next_field partial_layout moving_over_field with
-            | Some (FromCount (t', n, 0)) when t' = t ->
-                (if next_ix = Array.length members then
-                 up_tree_cast UpTreeDirection.Fwd accesses
-                else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
-                  (modify_plus_eliminating_zero (next_i n))
-            | _ -> down_tree_cast (DownTreeDirection.from_int i))
+      | Adt name -> (
+          match C_global_env.adt_def ~genv name with
+          | Struct _ -> (
+              let moving_over_field, next_i, next_ix =
+                if i < 0 then (ix - 1, ( + ) i, ix - 1)
+                else (ix, ( - ) i, ix + 1)
+              and members = context.members ty in
+              if i < 0 && ix = 0 then
+                (* We can up-tree cast directly since we're at field ix 0 *)
+                up_tree_cast UpTreeDirection.Curr accesses rs
+              else
+                (* (match distance_to_next_field partial_layout moving_over_field with
+                   | Some offset -> Format.printf "%a 313;\n" pp_offset offset
+                   | None        -> print_string "NO OFFSET 313;\n"); *)
+                match
+                  distance_to_next_field partial_layout moving_over_field
+                with
+                | Some (FromCount (t', n, 0)) when t' = t ->
+                    (if next_ix = Array.length members then
+                     up_tree_cast UpTreeDirection.Fwd accesses
+                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                      (modify_plus_eliminating_zero (next_i n))
+                | _ -> down_tree_cast (DownTreeDirection.from_int i))
+          | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
   | UPlus (_, 0) :: _, _ ->
       access_error "Invalid +^U 0 should not exist at resolution stage"
@@ -367,7 +373,7 @@ let rec resolve
       let modify_uplus_eliminating_zero new_i =
         if new_i = 0 then rs' else UPlus (w, new_i) :: rs'
       and partial_layout = context.partial_layouts ty in
-      match C_global_env.resolve_named ~genv ty with
+      match ty with
       | Rust_types.Array { ty = tElem; length = n } -> (
           match (context.partial_layouts tElem).size with
           | Exactly size ->
@@ -388,23 +394,28 @@ let rec resolve
                 @@ modify_uplus_eliminating_zero
                 @@ (i - ((n - ix) * size))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))
-      | Struct _ -> (
-          let moving_over_field, next_ix =
-            if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
-          in
-          if next_ix < 0 then
-            (* We can up-tree cast directly since we're at field ix 0 *)
-            up_tree_cast UpTreeDirection.Curr accesses rs
-          else
-            match distance_to_next_field partial_layout moving_over_field with
-            | Some (Bytes size)
-              when (* Format.printf "Bytes %d `cmp` %d 336;\n" size i; *)
-                   size <= abs i ->
-                (if next_ix = Array.length (context.members ty) then
-                 up_tree_cast UpTreeDirection.Fwd accesses
-                else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
-                  (modify_uplus_eliminating_zero (i - (signum i * size)))
-            | _ -> down_tree_cast (DownTreeDirection.from_int i))
+      | Adt name -> (
+          match C_global_env.adt_def ~genv name with
+          | Struct _ -> (
+              let moving_over_field, next_ix =
+                if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
+              in
+              if next_ix < 0 then
+                (* We can up-tree cast directly since we're at field ix 0 *)
+                up_tree_cast UpTreeDirection.Curr accesses rs
+              else
+                match
+                  distance_to_next_field partial_layout moving_over_field
+                with
+                | Some (Bytes size)
+                  when (* Format.printf "Bytes %d `cmp` %d 336;\n" size i; *)
+                       size <= abs i ->
+                    (if next_ix = Array.length (context.members ty) then
+                     up_tree_cast UpTreeDirection.Fwd accesses
+                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                      (modify_uplus_eliminating_zero (i - (signum i * size)))
+                | _ -> down_tree_cast (DownTreeDirection.from_int i))
+          | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | _ -> down_tree_cast (DownTreeDirection.from_int i))
   | _ :: _, Some _ -> down_tree_cast DownTreeDirection.Curr
   | _ :: _, _ -> access_error "Stuck handling next op"
@@ -573,20 +584,9 @@ let offsets_from_tys_and_pls
        (Seq.append (Seq.drop 1 tys_pls) @@ List.to_seq [ end_offset ])
 
 let rec partial_layout_of
-    ?(name : string option = None)
     (genv : C_global_env.t)
     (known : (string, partial_layout) Hashtbl.t) :
     Rust_types.t -> partial_layout = function
-  | Rust_types.Named n -> (
-      match Hashtbl.find_opt known n with
-      | Some layout -> layout
-      | None ->
-          let partial_layout =
-            partial_layout_of ~name:(Some n) genv known
-              (C_global_env.get_type genv n)
-          in
-          Hashtbl.add known n partial_layout;
-          partial_layout)
   | Rust_types.Array { length; ty } ->
       let pl_ty = partial_layout_of genv known ty in
       {
@@ -622,54 +622,64 @@ let rec partial_layout_of
         (* This is suboptimal, but comes around from the model error. Structs/enums are not types *)
         size = AtLeast 0;
       }
-  | Rust_types.Struct (Rust_types.ReprC, fs) ->
-      let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
-      let pls = Seq.map (partial_layout_of genv known) ts in
-      let align = Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls in
-      let offsets =
-        offsets_from_tys_and_pls (partial_layout_of genv known) ts pls
-      in
-      let size =
-        (* print_string "offsets.(Array.length offsets - 1) 521;\n"; *)
-        match offsets.(Array.length offsets - 1) with
-        | Bytes n -> Partial_size.Exactly n
-        | _ ->
-            Partial_size.align_to align
-            @@ Partial_size.sum
-            @@ Seq.map (fun pl -> pl.size) pls
-      in
-      { fields = Arbitrary offsets; variant = Single 0; align; size }
-  | Rust_types.Struct (Rust_types.ReprRust, fs) as ty ->
-      let offsets =
-        Array.init (List.length fs + 1) (fun i -> FromIndex (i, 0))
-      in
-      {
-        fields = Arbitrary offsets;
-        variant = Single 0;
-        align =
-          ToType (Option.fold ~none:ty ~some:(fun x -> Rust_types.Named x) name);
-        (* This is suboptimal, but comes around from the model error. Structs/enums are not types *)
-        size = AtLeast 0;
-      }
-  | Rust_types.Enum variants ->
-      (* Check how RustC actually uses Enum offsets (not variant offsets). We're not using this so it's fine *)
-      let offsets = [||] in
-      {
-        fields = Arbitrary offsets;
-        variant =
-          Multiple
-            {
-              tag = None;
-              (* No tag type since we're not handling ReprC enums yet *)
-              variants =
-                Array.of_seq
-                @@ Seq.map (fun (_, fs) ->
-                       partial_layout_of genv known @@ Rust_types.Tuple fs)
-                @@ List.to_seq variants;
-            };
-        align = AtLeastPow2 0;
-        size = AtLeast 0;
-      }
+  | Rust_types.Adt name -> (
+      match Hashtbl.find_opt known name with
+      | Some layout -> layout
+      | None ->
+          let partial_layout =
+            match C_global_env.adt_def ~genv name with
+            | Rust_types.Struct (Rust_types.ReprC, fs) ->
+                let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
+                let pls = Seq.map (partial_layout_of genv known) ts in
+                let align =
+                  Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls
+                in
+                let offsets =
+                  offsets_from_tys_and_pls (partial_layout_of genv known) ts pls
+                in
+                let size =
+                  (* print_string "offsets.(Array.length offsets - 1) 521;\n"; *)
+                  match offsets.(Array.length offsets - 1) with
+                  | Bytes n -> Partial_size.Exactly n
+                  | _ ->
+                      Partial_size.align_to align
+                      @@ Partial_size.sum
+                      @@ Seq.map (fun pl -> pl.size) pls
+                in
+                { fields = Arbitrary offsets; variant = Single 0; align; size }
+            | Rust_types.Struct (Rust_types.ReprRust, fs) ->
+                let offsets =
+                  Array.init (List.length fs + 1) (fun i -> FromIndex (i, 0))
+                in
+                {
+                  fields = Arbitrary offsets;
+                  variant = Single 0;
+                  align = ToType (Rust_types.Adt name);
+                  size = AtLeast 0;
+                }
+            | Rust_types.Enum variants ->
+                (* Check how RustC actually uses Enum offsets (not variant offsets). We're not using this so it's fine *)
+                let offsets = [||] in
+                {
+                  fields = Arbitrary offsets;
+                  variant =
+                    Multiple
+                      {
+                        tag = None;
+                        (* No tag type since we're not handling ReprC enums yet *)
+                        variants =
+                          Array.of_seq
+                          @@ Seq.map (fun (_, fs) ->
+                                 partial_layout_of genv known
+                                 @@ Rust_types.Tuple fs)
+                          @@ List.to_seq variants;
+                      };
+                  align = AtLeastPow2 0;
+                  size = AtLeast 0;
+                }
+          in
+          Hashtbl.add known name partial_layout;
+          partial_layout)
   | Rust_types.Ref { mut = _; ty = _ } ->
       (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
       {
@@ -698,19 +708,23 @@ let enum_variant_members_from_env
     (genv : C_global_env.t)
     (ty : Rust_types.t)
     (vidx : int) =
-  let ty = C_global_env.resolve_named ~genv ty in
   match ty with
-  | Enum variants -> List.nth variants vidx |> snd |> Array.of_list
+  | Adt name -> (
+      match C_global_env.adt_def ~genv name with
+      | Enum variants -> List.nth variants vidx |> snd |> Array.of_list
+      | _ -> failwith "enum_variant_members for non-enum")
   | _ -> failwith "enum_variant_members for non-enum"
 
 let members_from_env (genv : C_global_env.t) (ty : Rust_types.t) :
     Rust_types.t array =
-  let ty = C_global_env.resolve_named ~genv ty in
   match ty with
-  | Struct (_, fs) ->
-      fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
   | Array { ty; length } -> Array.make length ty
   | Tuple tys -> Array.of_list tys
+  | Adt name -> (
+      match C_global_env.adt_def ~genv name with
+      | Struct (_, fs) ->
+          fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
+      | _ -> [||])
   | _ -> [||]
 (* Consider making 1 t for internal navigation, especially primitives *)
 

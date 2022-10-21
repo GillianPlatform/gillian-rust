@@ -92,7 +92,7 @@ let execute_free mem args =
         | _ -> Fmt.failwith "Invalid free: (%s, %a)" loc Literal.pp (LList proj)
       in
       let rust_ty = Rust_types.of_lit ty in
-      let new_heap = C_heap.free ~genv:mem.genv mem.heap loc rust_ty in
+      let new_heap = C_heap.free mem.heap loc rust_ty in
       ASucc ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "free" args
 

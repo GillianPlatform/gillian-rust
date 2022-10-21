@@ -3,24 +3,26 @@ open Gillian.Gil_syntax
 type int_t = Isize | I8 | I16 | I32 | I64 | I128 [@@deriving eq]
 type uint_t = Usize | U8 | U16 | U32 | U64 | U128 [@@deriving eq]
 type scalar_t = Bool | Char | Int of int_t | Uint of uint_t [@@deriving eq]
-type repr_t = ReprC | ReprRust [@@deriving eq]
+type repr = ReprC | ReprRust [@@deriving eq]
 
 type t =
   | Scalar of scalar_t
   | Tuple of t list
-  | Struct of repr_t * (string * t) list
-  | Enum of (string * t list) list
-      (** Each variant has a name and the type of the list of fields.
-          Maybe I should add the name of each field for each variant? *)
-  | Named of string
+  | Adt of string
       (** This will have to be looked up in the global environment *)
   | Ref of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
   | Slice of t
 [@@deriving eq]
 
+type adt_def =
+  | Enum of (string * t list) list
+      (** Each variant has a name and the type of the list of fields.
+      Maybe I should add the name of each field for each variant? *)
+  | Struct of repr * (string * t) list
+
 let name_exn = function
-  | Named s -> s
+  | Adt s -> s
   | _ -> raise (Invalid_argument "Not a valid name!")
 
 let is_slice_of a b =
@@ -48,8 +50,15 @@ let rec of_lit = function
         | "char" -> Char
         | _ -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
-  | LList [ String "adt"; String name ] -> Named name
-  | LList [ String "struct"; LList l; repr ] ->
+  | LList [ String "adt"; String name ] -> Adt name
+  | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
+  | LList [ String "array"; ty; Int i ] ->
+      Array { length = Z.to_int i; ty = of_lit ty }
+  | LList [ String "slice"; ty ] -> Slice (of_lit ty)
+  | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
+
+let adt_def_of_lit = function
+  | Literal.LList [ String "struct"; LList l; repr ] ->
       let parse_field = function
         | Literal.LList [ String field_name; ty ] -> (field_name, of_lit ty)
         | _ -> failwith "Invalid struct field"
@@ -67,11 +76,7 @@ let rec of_lit = function
         | _ -> failwith "Invalid enum field"
       in
       Enum (List.map parse_variant l)
-  | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
-  | LList [ String "array"; ty; Int i ] ->
-      Array { length = Z.to_int i; ty = of_lit ty }
-  | LList [ String "slice"; ty ] -> Slice (of_lit ty)
-  | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
+  | lit -> Fmt.failwith "Incorrect adt definition: %a" Literal.pp lit
 
 let rec to_lit = function
   | Scalar s ->
@@ -92,21 +97,23 @@ let rec to_lit = function
         | Bool -> "bool"
         | Char -> "char")
   | Tuple fls -> LList [ String "tuple"; LList (List.map to_lit fls) ]
-  | Named x -> LList [ String "adt"; String x ]
+  | Adt x -> LList [ String "adt"; String x ]
+  | Ref { mut; ty } -> LList [ String "ref"; Bool mut; to_lit ty ]
+  | Array { length; ty } ->
+      LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
+  | Slice t -> LList [ String "slice"; to_lit t ]
+
+let adt_def_to_lit = function
   | Struct (_, fields) ->
       let make_field (field_name, ty) =
         Literal.LList [ String field_name; to_lit ty ]
       in
-      LList [ String "struct"; LList (List.map make_field fields) ]
+      Literal.LList [ String "struct"; LList (List.map make_field fields) ]
   | Enum variants ->
       let make_variant (vname, tys) =
         Literal.LList [ String vname; LList (List.map to_lit tys) ]
       in
       LList [ String "variant"; LList (List.map make_variant variants) ]
-  | Ref { mut; ty } -> LList [ String "ref"; Bool mut; to_lit ty ]
-  | Array { length; ty } ->
-      LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
-  | Slice t -> LList [ String "slice"; to_lit t ]
 
 let no_fields_for_downcast ty d =
   match ty with
@@ -141,6 +148,14 @@ let rec pp ft t =
   | Tuple t ->
       let pp_tuple = parens (list ~sep:comma pp) in
       pp_tuple ft t
+  | Adt s -> string ft s
+  | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
+  | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
+  | Slice ty -> Fmt.pf ft "[%a]" pp ty
+
+let pp_adt_def ft t =
+  let open Fmt in
+  match t with
   | Struct (repr, f) ->
       let pp_repr ft = function
         | ReprC -> pf ft "#[repr(C)] "
@@ -155,10 +170,6 @@ let rec pp ft t =
         pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys
       in
       (list ~sep:sp pp_variant) ft v
-  | Named s -> string ft s
-  | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
-  | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
-  | Slice ty -> Fmt.pf ft "[%a]" pp ty
 
 let slice_elements = function
   | Slice t -> t
