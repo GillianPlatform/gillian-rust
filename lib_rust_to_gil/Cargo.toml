@@ -1,7 +1,7 @@
 [package]
 name = "lib_rtg"
 version = "0.1.0"
-authors = ["Sacha Ayoun <sachaayoun@gmail.com>"]
+authors = ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
 description = "Library of a compiler from Rust to GIL, for analysis with Gillian"
 edition = "2021"
 
