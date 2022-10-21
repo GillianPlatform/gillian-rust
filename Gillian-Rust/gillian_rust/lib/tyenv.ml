@@ -1,21 +1,21 @@
-type t = (string, Rust_types.adt_def) Hashtbl.t
+type t = (string, Ty.Adt_def.t) Hashtbl.t
 
 let empty () = Hashtbl.create 10
 let copy x = Hashtbl.copy x
 let declared genv = genv
 
 let declare_struct genv name decl =
-  Hashtbl.replace genv name (Rust_types.adt_def_of_lit decl)
+  Hashtbl.replace genv name (Ty.Adt_def.of_lit decl)
 
 let adt_def ~genv name = Hashtbl.find genv name
 
 let is_struct ~genv ty =
   match ty with
-  | Rust_types.Adt name -> (
+  | Ty.Adt name -> (
       match adt_def ~genv name with
-      | Rust_types.Struct _ -> true
+      | Ty.Adt_def.Struct _ -> true
       | _ -> false)
   | _ -> false
 
 let declare = Hashtbl.replace
-let pp = Fmt.Dump.hashtbl Fmt.string Rust_types.pp_adt_def
+let pp = Fmt.Dump.hashtbl Fmt.string Ty.Adt_def.pp

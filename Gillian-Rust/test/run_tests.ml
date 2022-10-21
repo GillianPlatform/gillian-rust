@@ -15,23 +15,23 @@ let check_accesses =
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
-  let tA = Rust_types.Named "A"
-  let tB = Rust_types.Named "B"
-  let tC = Rust_types.Named "C"
-  let tD = Rust_types.Named "D"
-  let tE = Rust_types.Named "E"
-  let tF = Rust_types.Named "F"
-  let tG = Rust_types.Named "G"
-  let tGFail = Rust_types.Named "GFail"
-  let tH = Rust_types.Named "H"
-  let u8 = Rust_types.of_lit @@ Gil_syntax.Literal.String "u8"
-  let u16 = Rust_types.of_lit @@ Gil_syntax.Literal.String "u16"
-  let u32 = Rust_types.of_lit @@ Gil_syntax.Literal.String "u32"
-  let u64 = Rust_types.of_lit @@ Gil_syntax.Literal.String "u64"
-  let tR8 = Rust_types.Named "R8"
-  let tR64 = Rust_types.Named "R64"
-  let tC8 = Rust_types.Named "C8"
-  let tC16 = Rust_types.Named "C16"
+  let tA = Ty.Named "A"
+  let tB = Ty.Named "B"
+  let tC = Ty.Named "C"
+  let tD = Ty.Named "D"
+  let tE = Ty.Named "E"
+  let tF = Ty.Named "F"
+  let tG = Ty.Named "G"
+  let tGFail = Ty.Named "GFail"
+  let tH = Ty.Named "H"
+  let u8 = Ty.of_lit @@ Gil_syntax.Literal.String "u8"
+  let u16 = Ty.of_lit @@ Gil_syntax.Literal.String "u16"
+  let u32 = Ty.of_lit @@ Gil_syntax.Literal.String "u32"
+  let u64 = Ty.of_lit @@ Gil_syntax.Literal.String "u64"
+  let tR8 = Ty.Named "R8"
+  let tR64 = Ty.Named "R64"
+  let tC8 = Ty.Named "C8"
+  let tC16 = Ty.Named "C16"
 end
 
 module Repr_C_context = struct
@@ -40,20 +40,19 @@ module Repr_C_context = struct
   let genv =
     let genv = Tyenv.empty () in
     Tyenv.declare genv "A"
-      (Rust_types.Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
+      (Ty.Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
 
-    Tyenv.declare genv "B" (Rust_types.Struct (ReprC, [ ("x", tA); ("y", tC) ]));
+    Tyenv.declare genv "B" (Ty.Struct (ReprC, [ ("x", tA); ("y", tC) ]));
 
     Tyenv.declare genv "C"
-      (Rust_types.Struct
+      (Ty.Struct
          ( ReprC,
            [
-             ("x", Rust_types.Array { ty = u8; length = 5 });
-             ("y", Rust_types.Array { ty = tA; length = 5 });
+             ("x", Ty.Array { ty = u8; length = 5 });
+             ("y", Ty.Array { ty = tA; length = 5 });
            ] ));
 
-    Tyenv.declare genv "D"
-      (Rust_types.Struct (ReprC, [ ("x", u16); ("y", u8) ]));
+    Tyenv.declare genv "D" (Ty.Struct (ReprC, [ ("x", u16); ("y", u8) ]));
     genv
 
   let context : Partial_layout.context = Partial_layout.context_from_env genv
@@ -64,42 +63,37 @@ module Mixed_repr_context = struct
 
   let genv =
     let genv = Tyenv.empty () in
-    Tyenv.declare genv "R8" (Rust_types.Struct (ReprRust, [ ("x", u8) ]));
-    Tyenv.declare genv "R64" (Rust_types.Struct (ReprRust, [ ("x", u64) ]));
+    Tyenv.declare genv "R8" (Ty.Struct (ReprRust, [ ("x", u8) ]));
+    Tyenv.declare genv "R64" (Ty.Struct (ReprRust, [ ("x", u64) ]));
 
-    Tyenv.declare genv "C8" (Rust_types.Struct (ReprC, [ ("x", u8) ]));
-    Tyenv.declare genv "C16" (Rust_types.Struct (ReprC, [ ("x", u16) ]));
+    Tyenv.declare genv "C8" (Ty.Struct (ReprC, [ ("x", u8) ]));
+    Tyenv.declare genv "C16" (Ty.Struct (ReprC, [ ("x", u16) ]));
 
-    Tyenv.declare genv "A"
-      (Rust_types.Struct (ReprC, [ ("x", tR8); ("y", tR64) ]));
+    Tyenv.declare genv "A" (Ty.Struct (ReprC, [ ("x", tR8); ("y", tR64) ]));
 
-    Tyenv.declare genv "B"
-      (Rust_types.Struct (ReprC, [ ("x", tA); ("y", tR64) ]));
+    Tyenv.declare genv "B" (Ty.Struct (ReprC, [ ("x", tA); ("y", tR64) ]));
 
     Tyenv.declare genv "C"
-      (Rust_types.Struct
+      (Ty.Struct
          ( ReprC,
            [
-             ("x", Rust_types.Array { ty = tR8; length = 2 });
-             ("y", Rust_types.Array { ty = tR8; length = 2 });
+             ("x", Ty.Array { ty = tR8; length = 2 });
+             ("y", Ty.Array { ty = tR8; length = 2 });
            ] ));
 
-    Tyenv.declare genv "D"
-      (Rust_types.Struct (ReprC, [ ("x", tC); ("y", tR8) ]));
+    Tyenv.declare genv "D" (Ty.Struct (ReprC, [ ("x", tC); ("y", tR8) ]));
 
-    Tyenv.declare genv "E"
-      (Rust_types.Struct (ReprC, [ ("x", u8); ("y", tR64) ]));
+    Tyenv.declare genv "E" (Ty.Struct (ReprC, [ ("x", u8); ("y", tR64) ]));
 
-    Tyenv.declare genv "F"
-      (Rust_types.Struct (ReprC, [ ("x", tE); ("y", tR64) ]));
+    Tyenv.declare genv "F" (Ty.Struct (ReprC, [ ("x", tE); ("y", tR64) ]));
 
     Tyenv.declare genv "G"
-      (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", u16); ("z", u8) ]));
+      (Ty.Struct (ReprC, [ ("x", tR64); ("y", u16); ("z", u8) ]));
     Tyenv.declare genv "GFail"
-      (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", u8); ("z", u16) ]));
+      (Ty.Struct (ReprC, [ ("x", tR64); ("y", u8); ("z", u16) ]));
 
     Tyenv.declare genv "H"
-      (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
+      (Ty.Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
     genv
 
   let context : Partial_layout.context = Partial_layout.context_from_env genv
@@ -110,7 +104,7 @@ module No_context_tests = struct
   let context = Partial_layout.context_from_env genv
 
   let snd_of_tuple () =
-    let tpl = Rust_types.(Tuple [ Scalar (Int I32); Scalar Bool ]) in
+    let tpl = Ty.(Tuple [ Scalar (Int I32); Scalar Bool ]) in
     check_accesses "(i32, bool).1 resolves to bool at index 1"
       [ { index = 1; index_type = Scalar Bool; against = tpl; variant = None } ]
     @@ Partial_layout.resolve_address ~genv ~context
@@ -121,7 +115,7 @@ module No_context_tests = struct
          }
 
   let complex_tuple () =
-    let open Rust_types in
+    let open Ty in
     let i32 = Scalar (Int I32) in
 
     let tpl_1_2 = Tuple [ i32; i32 ] in
@@ -472,12 +466,12 @@ module Resolution_repr_C = struct
         {
           index = 3;
           index_type = tA;
-          against = Rust_types.Array { ty = tA; length = 5 };
+          against = Ty.Array { ty = tA; length = 5 };
           variant = None;
         };
         {
           index = 1;
-          index_type = Rust_types.Array { ty = tA; length = 5 };
+          index_type = Ty.Array { ty = tA; length = 5 };
           against = tC;
           variant = None;
         };
@@ -521,13 +515,13 @@ module Resolution_mixed_repr = struct
         {
           index = 1;
           index_type = tA;
-          against = Rust_types.Array { ty = tA; length = 2 };
+          against = Ty.Array { ty = tA; length = 2 };
           variant = None;
         };
       ]
     @@ resolve_address_debug_access_error
          {
-           block_type = Rust_types.Array { ty = tA; length = 2 };
+           block_type = Ty.Array { ty = tA; length = 2 };
            route =
              [
                Projections.Index (0, tA, 2);
@@ -572,12 +566,12 @@ module Resolution_mixed_repr = struct
         {
           index = 0;
           index_type = tR8;
-          against = Rust_types.Array { ty = tR8; length = 2 };
+          against = Ty.Array { ty = tR8; length = 2 };
           variant = None;
         };
         {
           index = 1;
-          index_type = Rust_types.Array { ty = tR8; length = 2 };
+          index_type = Ty.Array { ty = tR8; length = 2 };
           variant = None;
           against = tC;
         };

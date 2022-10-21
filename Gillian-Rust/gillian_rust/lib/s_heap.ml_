@@ -9,7 +9,7 @@ module TreeBlock = struct
   type t = { ty : Ty.t; content : tree_content }
 
   and tree_content =
-    | Scalar of Literal.t
+    | Scalar of Expr.t
     | Fields of t array
     | Array of t array
     | Enum of { discr : int; fields : t array }
@@ -40,11 +40,11 @@ module TreeBlock = struct
         | Scalar (Uint _ | Int _ | Char), _ -> s
         | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
-    | Fields v | Array v ->
+    | Fields v | Array v -> (
         let tuple = Array.map (to_rust_value ~genv) v |> Array.to_list in
-        if Tyenv.is_struct ~genv ty then
-          LList [ String (Ty.name_exn ty); LList tuple ]
-        else LList tuple
+        match Tyenv.resolve_named ~genv ty with
+        | Struct _ -> LList [ String (Ty.name_exn ty); LList tuple ]
+        | _ -> LList tuple)
     | Enum { discr; fields } ->
         let fields = Array.map (to_rust_value ~genv) fields |> Array.to_list in
         let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
@@ -81,7 +81,8 @@ module TreeBlock = struct
 
   and of_rust_value ~genv ~ty v =
     match (ty, v) with
-    | Ty.Scalar (Uint _ | Int _), Literal.Int _ -> { ty; content = Scalar v }
+    | Ty.Scalar (Uint _ | Int _), Literal.Int _ ->
+        { ty; content = Scalar v }
     | Ty.Scalar Bool, Literal.Int i ->
         if Z.equal i Z.one then { ty; content = Scalar (Bool true) }
         else if Z.equal i Z.zero then { ty; content = Scalar (Bool false) }
@@ -93,11 +94,13 @@ module TreeBlock = struct
         in
         let content = Fields (Array.of_list content) in
         { ty; content }
-    | Adt name, LList [ String x; LList data ] when String.equal name x -> (
-        match Tyenv.adt_def ~genv name with
+    | Named a, LList [ String x; LList data ] when String.equal a x -> (
+        match Tyenv.resolve_named ~genv ty with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~genv ~ty ~fields_tys data
-        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data)
+        | Enum variants_tys -> of_rust_enum_value ~genv ~ty ~variants_tys data
+        | _ ->
+            failwith "Deserializing a Named type that is not a struct or enum")
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -110,27 +113,28 @@ module TreeBlock = struct
           List.map (of_rust_value ~genv ~ty:ty') l |> Array.of_list
         in
         { ty; content = Array mem_array }
-    | _ -> Fmt.failwith "Type error: %a is not of type %a" Literal.pp v Ty.pp ty
+    | _ ->
+        Fmt.failwith "Type error: %a is not of type %a" Literal.pp v
+          Ty.pp ty
 
   let rec uninitialized ~genv ty =
     match ty with
     | Ty.Tuple v ->
         let tuple = List.map (uninitialized ~genv) v |> Array.of_list in
         { ty; content = Fields tuple }
-    | Adt name -> (
-        match Tyenv.adt_def ~genv name with
-        | Struct (_repr, fields) ->
-            let tuple =
-              List.map (fun (_, t) -> uninitialized ~genv t) fields
-              |> Array.of_list
-            in
-            { ty; content = Fields tuple }
-        | Enum _ -> { ty; content = Uninit })
+    | Named a ->
+        let uninit_a = uninitialized ~genv (Tyenv.get_type genv a) in
+        { uninit_a with ty }
+    | Struct (_repr, fields) ->
+        let tuple =
+          List.map (fun (_, t) -> uninitialized ~genv t) fields |> Array.of_list
+        in
+        { ty; content = Fields tuple }
     | Array { length; ty = ty' } ->
         let uninit_field _ = uninitialized ~genv ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Enum _ | Scalar _ | Ref _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let rec find_path ~genv ~update ~return t (path : Partial_layout.access list)
@@ -167,7 +171,11 @@ module TreeBlock = struct
   let get_forest ~genv t proj size ty copy =
     let open Partial_layout in
     let start_address =
-      { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
+      {
+        block_type = t.ty;
+        route = proj;
+        address_type = Ty.slice_elements ty;
+      }
     in
     let context = context_from_env genv in
     let start_accesses = resolve_address ~genv ~context start_address in
@@ -204,7 +212,11 @@ module TreeBlock = struct
     assert (List.length values = size);
     let open Partial_layout in
     let start_address =
-      { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
+      {
+        block_type = t.ty;
+        route = proj;
+        address_type = Ty.slice_elements ty;
+      }
     in
     let context = context_from_env genv in
     let start_accesses = resolve_address ~genv ~context start_address in
@@ -312,13 +324,13 @@ let deinit ~genv (mem : t) loc proj ty =
   Hashtbl.replace mem loc new_block;
   mem
 
-let free (mem : t) loc ty =
+let free ~genv (mem : t) loc ty =
   let block = Hashtbl.find mem loc in
   let () =
-    if Ty.equal block.ty ty then Hashtbl.remove mem loc
+    if Tyenv.subtypes ~genv block.ty ty then Hashtbl.remove mem loc
     else
-      Fmt.failwith "Incompatible types for free: %a and %a" Ty.pp block.ty Ty.pp
-        ty
+      Fmt.failwith "Incompatible types for free: %a and %a" Ty.pp
+        block.ty Ty.pp ty
   in
   mem
 

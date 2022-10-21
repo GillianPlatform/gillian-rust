@@ -4,9 +4,9 @@ type t
 
 val empty : unit -> t
 val copy : t -> t
-val declared : t -> (string, Rust_types.adt_def) Hashtbl.t
-val adt_def : genv:t -> string -> Rust_types.adt_def
-val is_struct : genv:t -> Rust_types.t -> bool
+val declared : t -> (string, Ty.Adt_def.t) Hashtbl.t
+val adt_def : genv:t -> string -> Ty.Adt_def.t
+val is_struct : genv:t -> Ty.t -> bool
 val declare_struct : t -> string -> Literal.t -> unit
-val declare : t -> string -> Rust_types.adt_def -> unit
+val declare : t -> string -> Ty.Adt_def.t -> unit
 val pp : t Fmt.t

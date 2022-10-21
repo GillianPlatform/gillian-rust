@@ -15,12 +15,6 @@ type t =
   | Slice of t
 [@@deriving eq]
 
-type adt_def =
-  | Enum of (string * t list) list
-      (** Each variant has a name and the type of the list of fields.
-      Maybe I should add the name of each field for each variant? *)
-  | Struct of repr * (string * t) list
-
 let name_exn = function
   | Adt s -> s
   | _ -> raise (Invalid_argument "Not a valid name!")
@@ -57,27 +51,6 @@ let rec of_lit = function
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
 
-let adt_def_of_lit = function
-  | Literal.LList [ String "struct"; LList l; repr ] ->
-      let parse_field = function
-        | Literal.LList [ String field_name; ty ] -> (field_name, of_lit ty)
-        | _ -> failwith "Invalid struct field"
-      in
-      let parse_repr = function
-        | Literal.String "c" -> ReprC
-        | Literal.String "rust" -> ReprRust
-        | _ -> failwith "invalid repr for struct"
-      in
-      Struct (parse_repr repr, List.map parse_field l)
-  | LList [ String "variant"; LList l ] ->
-      let parse_variant = function
-        | Literal.LList [ String variant_name; LList tys ] ->
-            (variant_name, List.map of_lit tys)
-        | _ -> failwith "Invalid enum field"
-      in
-      Enum (List.map parse_variant l)
-  | lit -> Fmt.failwith "Incorrect adt definition: %a" Literal.pp lit
-
 let rec to_lit = function
   | Scalar s ->
       Literal.String
@@ -102,26 +75,6 @@ let rec to_lit = function
   | Array { length; ty } ->
       LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
   | Slice t -> LList [ String "slice"; to_lit t ]
-
-let adt_def_to_lit = function
-  | Struct (_, fields) ->
-      let make_field (field_name, ty) =
-        Literal.LList [ String field_name; to_lit ty ]
-      in
-      Literal.LList [ String "struct"; LList (List.map make_field fields) ]
-  | Enum variants ->
-      let make_variant (vname, tys) =
-        Literal.LList [ String vname; LList (List.map to_lit tys) ]
-      in
-      LList [ String "variant"; LList (List.map make_variant variants) ]
-
-let no_fields_for_downcast ty d =
-  match ty with
-  | Enum l -> (
-      match snd (List.nth l d) with
-      | [] -> true
-      | _ -> false)
-  | _ -> Fmt.failwith "[no_fields_for_downcast] Not an enum!"
 
 let pp_scalar fmt t =
   let str = Fmt.string fmt in
@@ -153,23 +106,72 @@ let rec pp ft t =
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
 
-let pp_adt_def ft t =
-  let open Fmt in
-  match t with
-  | Struct (repr, f) ->
-      let pp_repr ft = function
-        | ReprC -> pf ft "#[repr(C)] "
-        | ReprRust -> pf ft "#[repr(Rust)] "
-      in
-      let pp_struct =
-        braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
-      in
-      (pair ~sep:nop pp_repr pp_struct) ft (repr, f)
-  | Enum v ->
-      let pp_variant ftt (name, tys) =
-        pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys
-      in
-      (list ~sep:sp pp_variant) ft v
+module Adt_def = struct
+  type nonrec t =
+    | Enum of (string * t list) list
+        (** Each variant has a name and the type of the list of fields.
+        Maybe I should add the name of each field for each variant? *)
+    | Struct of repr * (string * t) list
+
+  let of_lit = function
+    | Literal.LList [ String "struct"; LList l; repr ] ->
+        let parse_field = function
+          | Literal.LList [ String field_name; ty ] -> (field_name, of_lit ty)
+          | _ -> failwith "Invalid struct field"
+        in
+        let parse_repr = function
+          | Literal.String "c" -> ReprC
+          | Literal.String "rust" -> ReprRust
+          | _ -> failwith "invalid repr for struct"
+        in
+        Struct (parse_repr repr, List.map parse_field l)
+    | LList [ String "variant"; LList l ] ->
+        let parse_variant = function
+          | Literal.LList [ String variant_name; LList tys ] ->
+              (variant_name, List.map of_lit tys)
+          | _ -> failwith "Invalid enum field"
+        in
+        Enum (List.map parse_variant l)
+    | lit -> Fmt.failwith "Incorrect adt definition: %a" Literal.pp lit
+
+  let adt_def_to_lit = function
+    | Struct (_, fields) ->
+        let make_field (field_name, ty) =
+          Literal.LList [ String field_name; to_lit ty ]
+        in
+        Literal.LList [ String "struct"; LList (List.map make_field fields) ]
+    | Enum variants ->
+        let make_variant (vname, tys) =
+          Literal.LList [ String vname; LList (List.map to_lit tys) ]
+        in
+        LList [ String "variant"; LList (List.map make_variant variants) ]
+
+  let no_fields_for_downcast ty d =
+    match ty with
+    | Enum l -> (
+        match snd (List.nth l d) with
+        | [] -> true
+        | _ -> false)
+    | _ -> Fmt.failwith "[no_fields_for_downcast] Not an enum!"
+
+  let pp ft t =
+    let open Fmt in
+    match t with
+    | Struct (repr, f) ->
+        let pp_repr ft = function
+          | ReprC -> pf ft "#[repr(C)] "
+          | ReprRust -> pf ft "#[repr(Rust)] "
+        in
+        let pp_struct =
+          braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
+        in
+        (pair ~sep:nop pp_repr pp_struct) ft (repr, f)
+    | Enum v ->
+        let pp_variant ftt (name, tys) =
+          pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys
+        in
+        (list ~sep:sp pp_variant) ft v
+end
 
 let slice_elements = function
   | Slice t -> t
