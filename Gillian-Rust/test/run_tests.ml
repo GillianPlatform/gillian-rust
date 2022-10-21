@@ -38,14 +38,13 @@ module Repr_C_context = struct
   open Type_names
 
   let genv =
-    let genv = C_global_env.empty () in
-    C_global_env.declare genv "A"
+    let genv = Tyenv.empty () in
+    Tyenv.declare genv "A"
       (Rust_types.Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
 
-    C_global_env.declare genv "B"
-      (Rust_types.Struct (ReprC, [ ("x", tA); ("y", tC) ]));
+    Tyenv.declare genv "B" (Rust_types.Struct (ReprC, [ ("x", tA); ("y", tC) ]));
 
-    C_global_env.declare genv "C"
+    Tyenv.declare genv "C"
       (Rust_types.Struct
          ( ReprC,
            [
@@ -53,7 +52,7 @@ module Repr_C_context = struct
              ("y", Rust_types.Array { ty = tA; length = 5 });
            ] ));
 
-    C_global_env.declare genv "D"
+    Tyenv.declare genv "D"
       (Rust_types.Struct (ReprC, [ ("x", u16); ("y", u8) ]));
     genv
 
@@ -64,21 +63,20 @@ module Mixed_repr_context = struct
   open Type_names
 
   let genv =
-    let genv = C_global_env.empty () in
-    C_global_env.declare genv "R8" (Rust_types.Struct (ReprRust, [ ("x", u8) ]));
-    C_global_env.declare genv "R64"
-      (Rust_types.Struct (ReprRust, [ ("x", u64) ]));
+    let genv = Tyenv.empty () in
+    Tyenv.declare genv "R8" (Rust_types.Struct (ReprRust, [ ("x", u8) ]));
+    Tyenv.declare genv "R64" (Rust_types.Struct (ReprRust, [ ("x", u64) ]));
 
-    C_global_env.declare genv "C8" (Rust_types.Struct (ReprC, [ ("x", u8) ]));
-    C_global_env.declare genv "C16" (Rust_types.Struct (ReprC, [ ("x", u16) ]));
+    Tyenv.declare genv "C8" (Rust_types.Struct (ReprC, [ ("x", u8) ]));
+    Tyenv.declare genv "C16" (Rust_types.Struct (ReprC, [ ("x", u16) ]));
 
-    C_global_env.declare genv "A"
+    Tyenv.declare genv "A"
       (Rust_types.Struct (ReprC, [ ("x", tR8); ("y", tR64) ]));
 
-    C_global_env.declare genv "B"
+    Tyenv.declare genv "B"
       (Rust_types.Struct (ReprC, [ ("x", tA); ("y", tR64) ]));
 
-    C_global_env.declare genv "C"
+    Tyenv.declare genv "C"
       (Rust_types.Struct
          ( ReprC,
            [
@@ -86,21 +84,21 @@ module Mixed_repr_context = struct
              ("y", Rust_types.Array { ty = tR8; length = 2 });
            ] ));
 
-    C_global_env.declare genv "D"
+    Tyenv.declare genv "D"
       (Rust_types.Struct (ReprC, [ ("x", tC); ("y", tR8) ]));
 
-    C_global_env.declare genv "E"
+    Tyenv.declare genv "E"
       (Rust_types.Struct (ReprC, [ ("x", u8); ("y", tR64) ]));
 
-    C_global_env.declare genv "F"
+    Tyenv.declare genv "F"
       (Rust_types.Struct (ReprC, [ ("x", tE); ("y", tR64) ]));
 
-    C_global_env.declare genv "G"
+    Tyenv.declare genv "G"
       (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", u16); ("z", u8) ]));
-    C_global_env.declare genv "GFail"
+    Tyenv.declare genv "GFail"
       (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", u8); ("z", u16) ]));
 
-    C_global_env.declare genv "H"
+    Tyenv.declare genv "H"
       (Rust_types.Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
     genv
 
@@ -108,7 +106,7 @@ module Mixed_repr_context = struct
 end
 
 module No_context_tests = struct
-  let genv = C_global_env.empty ()
+  let genv = Tyenv.empty ()
   let context = Partial_layout.context_from_env genv
 
   let snd_of_tuple () =

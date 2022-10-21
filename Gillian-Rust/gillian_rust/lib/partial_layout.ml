@@ -343,7 +343,7 @@ let rec resolve
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
       | Adt name -> (
-          match C_global_env.adt_def ~genv name with
+          match Tyenv.adt_def ~genv name with
           | Struct _ -> (
               let moving_over_field, next_i, next_ix =
                 if i < 0 then (ix - 1, ( + ) i, ix - 1)
@@ -395,7 +395,7 @@ let rec resolve
                 @@ (i - ((n - ix) * size))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | Adt name -> (
-          match C_global_env.adt_def ~genv name with
+          match Tyenv.adt_def ~genv name with
           | Struct _ -> (
               let moving_over_field, next_ix =
                 if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
@@ -584,7 +584,7 @@ let offsets_from_tys_and_pls
        (Seq.append (Seq.drop 1 tys_pls) @@ List.to_seq [ end_offset ])
 
 let rec partial_layout_of
-    (genv : C_global_env.t)
+    (genv : Tyenv.t)
     (known : (string, partial_layout) Hashtbl.t) :
     Rust_types.t -> partial_layout = function
   | Rust_types.Array { length; ty } ->
@@ -627,7 +627,7 @@ let rec partial_layout_of
       | Some layout -> layout
       | None ->
           let partial_layout =
-            match C_global_env.adt_def ~genv name with
+            match Tyenv.adt_def ~genv name with
             | Rust_types.Struct (Rust_types.ReprC, fs) ->
                 let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
                 let pls = Seq.map (partial_layout_of genv known) ts in
@@ -697,38 +697,34 @@ let rec partial_layout_of
         size = AtLeast 2;
       }
 
-let partial_layouts_from_env (genv : C_global_env.t) :
-    Rust_types.t -> partial_layout =
-  let partial_layouts =
-    Hashtbl.create (Hashtbl.length (C_global_env.declared genv))
-  in
+let partial_layouts_from_env (genv : Tyenv.t) : Rust_types.t -> partial_layout =
+  let partial_layouts = Hashtbl.create (Hashtbl.length (Tyenv.declared genv)) in
   partial_layout_of genv partial_layouts
 
 let enum_variant_members_from_env
-    (genv : C_global_env.t)
+    (genv : Tyenv.t)
     (ty : Rust_types.t)
     (vidx : int) =
   match ty with
   | Adt name -> (
-      match C_global_env.adt_def ~genv name with
+      match Tyenv.adt_def ~genv name with
       | Enum variants -> List.nth variants vidx |> snd |> Array.of_list
       | _ -> failwith "enum_variant_members for non-enum")
   | _ -> failwith "enum_variant_members for non-enum"
 
-let members_from_env (genv : C_global_env.t) (ty : Rust_types.t) :
-    Rust_types.t array =
+let members_from_env (genv : Tyenv.t) (ty : Rust_types.t) : Rust_types.t array =
   match ty with
   | Array { ty; length } -> Array.make length ty
   | Tuple tys -> Array.of_list tys
   | Adt name -> (
-      match C_global_env.adt_def ~genv name with
+      match Tyenv.adt_def ~genv name with
       | Struct (_, fs) ->
           fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
       | _ -> [||])
   | _ -> [||]
 (* Consider making 1 t for internal navigation, especially primitives *)
 
-let context_from_env (genv : C_global_env.t) : context =
+let context_from_env (genv : Tyenv.t) : context =
   {
     partial_layouts = partial_layouts_from_env genv;
     members = members_from_env genv;

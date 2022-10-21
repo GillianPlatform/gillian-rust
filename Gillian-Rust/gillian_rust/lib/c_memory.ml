@@ -5,7 +5,7 @@ type init_data = unit
 type vt = Values.t
 type st = Subst.t
 type err_t = string
-type t = { genv : C_global_env.t; heap : C_heap.t }
+type t = { genv : Tyenv.t; heap : C_heap.t }
 type action_ret = ASucc of (t * vt list) | AFail of err_t list
 
 (* Utils *)
@@ -15,7 +15,7 @@ let wrong_args act args =
 
 (* Basic memory things *)
 
-let init () = { genv = C_global_env.empty (); heap = C_heap.empty () }
+let init () = { genv = Tyenv.empty (); heap = C_heap.empty () }
 
 (* Actions *)
 
@@ -99,7 +99,7 @@ let execute_free mem args =
 let execute_genv_decl_type mem args =
   match args with
   | [ Literal.String name; decl ] ->
-      C_global_env.declare_struct mem.genv name decl;
+      Tyenv.declare_struct mem.genv name decl;
       ASucc (mem, [])
   | _ -> wrong_args "execute_genv_decl_type" args
 
@@ -128,14 +128,13 @@ let execute_action act_name mem args =
   | Genv_decl_type -> protect execute_genv_decl_type mem args
   | LoadDiscr -> protect execute_load_discr mem args
 
-let copy { heap; genv } =
-  { heap = C_heap.copy heap; genv = C_global_env.copy genv }
+let copy { heap; genv } = { heap = C_heap.copy heap; genv = Tyenv.copy genv }
 
 let pp =
   Fmt.braces
   @@ Fmt.record ~sep:Fmt.semi
        [
-         Fmt.field "genv" (fun x -> x.genv) C_global_env.pp;
+         Fmt.field "genv" (fun x -> x.genv) Tyenv.pp;
          Fmt.field "heap" (fun x -> x.heap) C_heap.pp;
        ]
 
