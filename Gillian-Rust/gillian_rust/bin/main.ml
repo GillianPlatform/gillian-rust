@@ -1,7 +1,8 @@
 open Gillian_rust
 
 module CLI =
-  Gillian.CommandLine.Make (C_memory) (S_memory)
+  Gillian.CommandLine.Make (Gillian.General.Init_data.Dummy) (C_memory)
+    (S_memory)
     (Gillian.General.External.Dummy)
     (Parser_and_compiler)
     (struct

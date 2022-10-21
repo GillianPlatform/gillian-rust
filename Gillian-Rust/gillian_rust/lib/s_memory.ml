@@ -1,6 +1,7 @@
 open Gillian.Symbolic
 open Gillian.Gil_syntax
 
+type init_data = unit
 type vt = Values.t
 type st = Subst.t
 type c_fix_t = unit
@@ -12,6 +13,7 @@ type action_ret =
   | AFail of err_t list
 
 let init () = ()
+let clear () = ()
 let execute_action ?unification:_ _action _mem _pfs _gamma _args = AFail []
 let ga_to_setter _ = failwith "Not yet implemented"
 let ga_to_getter _ = failwith "Not yet implemented"

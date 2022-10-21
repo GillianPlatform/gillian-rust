@@ -1,6 +1,7 @@
 open Gillian.Concrete
 open Gillian.Gil_syntax
 
+type init_data = unit
 type vt = Values.t
 type st = Subst.t
 type err_t = string

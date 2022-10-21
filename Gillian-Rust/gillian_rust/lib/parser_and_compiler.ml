@@ -21,6 +21,7 @@ module TargetLangOptions = struct
     Option.iter (fun c -> R_config.compiler_root := c) compiler_root
 end
 
+type init_data = unit
 type err = unit
 type tl_ast = unit (* We unfortunately don't have access to the tl ast *)
 
@@ -49,4 +50,10 @@ let parse_and_compile_files files =
   in
   let out_file = Filename.concat temp_dir (no_ext ^ ".gil") in
   let gil_prog = Gillian.Gil_parsing.parse_eprog_from_file out_file in
-  Ok { gil_progs = [ (file, gil_prog) ]; source_files; tl_ast = () }
+  Ok
+    {
+      gil_progs = [ (file, gil_prog.labeled_prog) ];
+      source_files;
+      tl_ast = ();
+      init_data = ();
+    }
