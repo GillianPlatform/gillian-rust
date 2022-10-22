@@ -7,7 +7,6 @@ type t =
   | Deinit
   | Free
   | LoadDiscr
-  | Genv_decl_type
 
 let of_name = function
   | "mem_alloc" -> Alloc
@@ -18,5 +17,4 @@ let of_name = function
   | "mem_deinit" -> Deinit
   | "mem_free" -> Free
   | "mem_load_discr" -> LoadDiscr
-  | "genv_decl_type" -> Genv_decl_type
-  | "genv_" | _ -> failwith "incorrect compilation: unkown action"
+  | _ -> failwith "incorrect compilation: unkown action"

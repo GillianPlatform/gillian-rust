@@ -15,45 +15,42 @@ let check_accesses =
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
-  let tA = Ty.Named "A"
-  let tB = Ty.Named "B"
-  let tC = Ty.Named "C"
-  let tD = Ty.Named "D"
-  let tE = Ty.Named "E"
-  let tF = Ty.Named "F"
-  let tG = Ty.Named "G"
-  let tGFail = Ty.Named "GFail"
-  let tH = Ty.Named "H"
+  let tA = Ty.Adt "A"
+  let tB = Ty.Adt "B"
+  let tC = Ty.Adt "C"
+  let tD = Ty.Adt "D"
+  let tE = Ty.Adt "E"
+  let tF = Ty.Adt "F"
+  let tG = Ty.Adt "G"
+  let tGFail = Ty.Adt "GFail"
+  let tH = Ty.Adt "H"
   let u8 = Ty.of_lit @@ Gil_syntax.Literal.String "u8"
   let u16 = Ty.of_lit @@ Gil_syntax.Literal.String "u16"
   let u32 = Ty.of_lit @@ Gil_syntax.Literal.String "u32"
   let u64 = Ty.of_lit @@ Gil_syntax.Literal.String "u64"
-  let tR8 = Ty.Named "R8"
-  let tR64 = Ty.Named "R64"
-  let tC8 = Ty.Named "C8"
-  let tC16 = Ty.Named "C16"
+  let tR8 = Ty.Adt "R8"
+  let tR64 = Ty.Adt "R64"
+  let tC8 = Ty.Adt "C8"
+  let tC16 = Ty.Adt "C16"
 end
 
 module Repr_C_context = struct
   open Type_names
 
   let genv =
-    let genv = Tyenv.empty () in
-    Tyenv.declare genv "A"
-      (Ty.Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
-
-    Tyenv.declare genv "B" (Ty.Struct (ReprC, [ ("x", tA); ("y", tC) ]));
-
-    Tyenv.declare genv "C"
-      (Ty.Struct
-         ( ReprC,
-           [
-             ("x", Ty.Array { ty = u8; length = 5 });
-             ("y", Ty.Array { ty = tA; length = 5 });
-           ] ));
-
-    Tyenv.declare genv "D" (Ty.Struct (ReprC, [ ("x", u16); ("y", u8) ]));
-    genv
+    Tyenv.of_declaration_list
+      [
+        ("A", Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
+        ("B", Struct (ReprC, [ ("x", tA); ("y", tC) ]));
+        ( "C",
+          Struct
+            ( ReprC,
+              [
+                ("x", Array { ty = u8; length = 5 });
+                ("y", Array { ty = tA; length = 5 });
+              ] ) );
+        ("D", Struct (ReprC, [ ("x", u16); ("y", u8) ]));
+      ]
 
   let context : Partial_layout.context = Partial_layout.context_from_env genv
 end
@@ -62,45 +59,34 @@ module Mixed_repr_context = struct
   open Type_names
 
   let genv =
-    let genv = Tyenv.empty () in
-    Tyenv.declare genv "R8" (Ty.Struct (ReprRust, [ ("x", u8) ]));
-    Tyenv.declare genv "R64" (Ty.Struct (ReprRust, [ ("x", u64) ]));
-
-    Tyenv.declare genv "C8" (Ty.Struct (ReprC, [ ("x", u8) ]));
-    Tyenv.declare genv "C16" (Ty.Struct (ReprC, [ ("x", u16) ]));
-
-    Tyenv.declare genv "A" (Ty.Struct (ReprC, [ ("x", tR8); ("y", tR64) ]));
-
-    Tyenv.declare genv "B" (Ty.Struct (ReprC, [ ("x", tA); ("y", tR64) ]));
-
-    Tyenv.declare genv "C"
-      (Ty.Struct
-         ( ReprC,
-           [
-             ("x", Ty.Array { ty = tR8; length = 2 });
-             ("y", Ty.Array { ty = tR8; length = 2 });
-           ] ));
-
-    Tyenv.declare genv "D" (Ty.Struct (ReprC, [ ("x", tC); ("y", tR8) ]));
-
-    Tyenv.declare genv "E" (Ty.Struct (ReprC, [ ("x", u8); ("y", tR64) ]));
-
-    Tyenv.declare genv "F" (Ty.Struct (ReprC, [ ("x", tE); ("y", tR64) ]));
-
-    Tyenv.declare genv "G"
-      (Ty.Struct (ReprC, [ ("x", tR64); ("y", u16); ("z", u8) ]));
-    Tyenv.declare genv "GFail"
-      (Ty.Struct (ReprC, [ ("x", tR64); ("y", u8); ("z", u16) ]));
-
-    Tyenv.declare genv "H"
-      (Ty.Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
-    genv
+    Tyenv.of_declaration_list
+      [
+        ("R8", Struct (ReprRust, [ ("x", u8) ]));
+        ("R64", Struct (ReprRust, [ ("x", u64) ]));
+        ("C8", Struct (ReprC, [ ("x", u8) ]));
+        ("C16", Struct (ReprC, [ ("x", u16) ]));
+        ("A", Struct (ReprC, [ ("x", tR8); ("y", tR64) ]));
+        ("B", Struct (ReprC, [ ("x", tA); ("y", tR64) ]));
+        ( "C",
+          Struct
+            ( ReprC,
+              [
+                ("x", Ty.Array { ty = tR8; length = 2 });
+                ("y", Ty.Array { ty = tR8; length = 2 });
+              ] ) );
+        ("D", Struct (ReprC, [ ("x", tC); ("y", tR8) ]));
+        ("E", Struct (ReprC, [ ("x", u8); ("y", tR64) ]));
+        ("F", Struct (ReprC, [ ("x", tE); ("y", tR64) ]));
+        ("G", Struct (ReprC, [ ("x", tR64); ("y", u16); ("z", u8) ]));
+        ("GFail", Struct (ReprC, [ ("x", tR64); ("y", u8); ("z", u16) ]));
+        ("H", Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
+      ]
 
   let context : Partial_layout.context = Partial_layout.context_from_env genv
 end
 
 module No_context_tests = struct
-  let genv = Tyenv.empty ()
+  let genv = Tyenv.of_declaration_list []
   let context = Partial_layout.context_from_env genv
 
   let snd_of_tuple () =

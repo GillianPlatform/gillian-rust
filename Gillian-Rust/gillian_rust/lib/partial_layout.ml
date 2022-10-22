@@ -486,7 +486,7 @@ let resolve_address_debug_access_error
     []
 
 (* We return align not size as it's easier to convert this to a size than the reverse *)
-let align_scalar_t : Ty.scalar_t -> Partial_align.t = function
+let align_scalar_ty : Ty.scalar_ty -> Partial_align.t = function
   | Ty.Bool -> ExactlyPow2 0
   | Ty.Char -> ExactlyPow2 2
   | Ty.Int Ty.Isize -> AtLeastPow2 0
@@ -519,7 +519,7 @@ let rec end_offset
       | FromCount (ty', n, 0) -> FromCount (ty', n * length, 0)
       | _ -> FromCount (ty_elem, length, 0))
   | Primitive, Ty.Scalar s -> (
-      match Partial_size.from_alignment @@ align_scalar_t s with
+      match Partial_size.from_alignment @@ align_scalar_ty s with
       | Partial_size.Exactly n -> Bytes n
       | Partial_size.AtLeast _ -> FromCount (ty, 1, 0))
   | _, _ -> FromCount (ty, 1, 0)
@@ -586,8 +586,8 @@ let rec partial_layout_of
         align = pl_ty.align;
         size = Partial_size.map (fun x -> x * length) pl_ty.size;
       }
-  | Ty.Scalar scalar_t ->
-      let align = align_scalar_t scalar_t in
+  | Ty.Scalar scalar_ty ->
+      let align = align_scalar_ty scalar_ty in
       {
         fields = Primitive;
         variant = Single 0;
@@ -688,7 +688,7 @@ let rec partial_layout_of
       }
 
 let partial_layouts_from_env (genv : Tyenv.t) : Ty.t -> partial_layout =
-  let partial_layouts = Hashtbl.create (Hashtbl.length (Tyenv.declared genv)) in
+  let partial_layouts = Hashtbl.create 1024 in
   partial_layout_of genv partial_layouts
 
 let enum_variant_members_from_env (genv : Tyenv.t) (ty : Ty.t) (vidx : int) =
