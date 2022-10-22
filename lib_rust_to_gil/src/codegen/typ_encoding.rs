@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::ty::{AdtDef, Const, ConstKind};
+use serde_json::json;
 
 /// This type is use to type-check that we're indeed using a
 /// literal obtained from encoding a type
@@ -25,7 +26,7 @@ impl From<&str> for EncodedType {
 }
 
 pub trait TypeEncoder<'tcx> {
-    fn add_type_to_genv(&mut self, ty: Ty<'tcx>);
+    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>);
     fn atd_def_name(&self, def: &AdtDef) -> String;
 
     fn array_size_value(&self, sz: &Const) -> i128 {
@@ -35,9 +36,76 @@ pub trait TypeEncoder<'tcx> {
         }
     }
 
+    fn serialize_type(&mut self, ty: Ty<'tcx>) -> serde_json::Value {
+        // This is mostly duplicated from encode_type, it should be factorize
+        // together under serde, with 2 different serializers or something.
+        use rustc_middle::ty::*;
+
+        fn serialize_scalar(name: &str) -> serde_json::Value {
+            json!(["Scalar", name])
+        }
+
+        match ty.kind() {
+            Never => panic!("Should not encode never for tyenv"),
+            Bool => serialize_scalar("bool"),
+            Char => serialize_scalar("char"),
+            Int(IntTy::Isize) => serialize_scalar("isize"),
+            Int(IntTy::I8) => serialize_scalar("i8"),
+            Int(IntTy::I16) => serialize_scalar("i16"),
+            Int(IntTy::I32) => serialize_scalar("i32"),
+            Int(IntTy::I64) => serialize_scalar("i64"),
+            Int(IntTy::I128) => serialize_scalar("i128"),
+            Uint(UintTy::Usize) => serialize_scalar("usize"),
+            Uint(UintTy::U8) => serialize_scalar("u8"),
+            Uint(UintTy::U16) => serialize_scalar("u16"),
+            Uint(UintTy::U32) => serialize_scalar("u32"),
+            Uint(UintTy::U64) => serialize_scalar("u64"),
+            Uint(UintTy::U128) => serialize_scalar("u128"),
+            Tuple(_) => json!([
+                "Tuple",
+                ty.tuple_fields()
+                    .iter()
+                    .map(|x| self.serialize_type(x))
+                    .collect::<Vec<_>>()
+            ]),
+            RawPtr(TypeAndMut {
+                ty,
+                mutbl: mutability,
+            })
+            | Ref(_, ty, mutability) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                json!([ "Ref", {
+                    "mut": mutability,
+                    "ty": self.serialize_type(*ty)
+                }])
+            }
+            Adt(def, _) => {
+                let name = self.atd_def_name(def);
+                // Adts are encoded by the environment
+                self.add_adt_to_genv(ty);
+                json!(["Adt", name])
+            }
+            Slice(ty) => json!(["Slice", self.serialize_type(*ty)]),
+            Array(ty, sz) => {
+                let sz_i: i64 = self
+                    .array_size_value(sz)
+                    .try_into()
+                    .expect("Size of array is greater than i64::MAX, cannot encode!");
+                json!(["Array", {
+                    "length": sz_i,
+                    "ty": self.serialize_type(*ty)
+                }])
+            }
+            _ => panic!("Cannot serialize this type to json yet: {}", ty),
+        }
+    }
+
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
         use rustc_middle::ty::*;
-        match &ty.kind() {
+        match ty.kind() {
             Never => panic!("Should not encode never for memory"),
             Bool => "bool".into(),
             Char => "char".into(),
@@ -62,10 +130,10 @@ pub trait TypeEncoder<'tcx> {
                     .collect::<Vec<_>>()
                     .into(),
             ])),
-            //   *mut t
-            // | &mut t -> ["ref", true, encode(t)]
-            // Not sure this is the best solution, but we're
-            // not doing anything with the lifetime anyway
+            //   *mut t | &mut t -> ["ref", true, encode(t)]
+            // We'll have to change this later when we start
+            // caring about the aliasing model,
+            // but we don't at the moment
             RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
@@ -84,7 +152,7 @@ pub trait TypeEncoder<'tcx> {
             Adt(def, _) => {
                 let name = self.atd_def_name(def);
                 // Adts are encoded by the environment
-                self.add_type_to_genv(ty);
+                self.add_adt_to_genv(ty);
                 EncodedType(Literal::LList(vec!["adt".into(), name.into()]))
             }
             Slice(ty) => EncodedType(Literal::LList(vec![
@@ -108,8 +176,8 @@ pub trait TypeEncoder<'tcx> {
 }
 
 impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
-    fn add_type_to_genv(&mut self, ty: Ty<'tcx>) {
-        self.global_env.add_type(ty);
+    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
+        self.global_env.add_adt(ty);
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {

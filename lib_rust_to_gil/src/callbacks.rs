@@ -15,7 +15,7 @@ impl ToGil {
         Self { opts }
     }
 
-    fn compile_prog<'gil>(&self, tcx: &'gil TyCtxt) -> gillian::gil::Prog {
+    fn compile_prog<'gil>(&self, tcx: &'gil TyCtxt) -> gillian::gil::ParsingUnit {
         let _ = self.opts;
         let mut prog = gillian::gil::Prog::new(runtime::imports());
         let mut global_env = GlobalEnv::new(*tcx);
@@ -33,7 +33,8 @@ impl ToGil {
             prog.add_proc(ctx.push_body());
         }
         global_env.add_all_procs(&mut prog);
-        prog
+        let init_data = global_env.serialized_adt_declarations();
+        ParsingUnit { prog, init_data }
     }
 }
 

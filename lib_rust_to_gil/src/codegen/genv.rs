@@ -1,8 +1,7 @@
 use crate::prelude::*;
 use rustc_middle::ty::{AdtDef, ReprOptions};
+use serde_json::{self, json};
 use std::collections::{HashSet, VecDeque};
-
-const DECLARE_TYPE_ACTION: &str = "genv_decl_type";
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum CustomRuntime<'tcx> {
@@ -13,7 +12,7 @@ pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
     types_in_queue: VecDeque<Ty<'tcx>>,
-    encoded_types: HashSet<Ty<'tcx>>,
+    encoded_adts: HashSet<Ty<'tcx>>,
     runtime_to_encode: HashSet<CustomRuntime<'tcx>>,
 }
 
@@ -24,8 +23,8 @@ impl<'tcx> CanFatal for GlobalEnv<'tcx> {
 }
 
 impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
-    fn add_type_to_genv(&mut self, ty: Ty<'tcx>) {
-        self.add_type(ty);
+    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
+        self.add_adt(ty);
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {
@@ -38,12 +37,12 @@ impl<'tcx> GlobalEnv<'tcx> {
         Self {
             tcx,
             types_in_queue: Default::default(),
-            encoded_types: Default::default(),
+            encoded_adts: Default::default(),
             runtime_to_encode: Default::default(),
         }
     }
 
-    fn encode_repr(&self, repr: &ReprOptions) -> Literal {
+    fn serialize_repr(&self, repr: &ReprOptions) -> serde_json::Value {
         if repr.int.is_some() || repr.align.is_some() || repr.pack.is_some() {
             fatal!(
                 self,
@@ -51,74 +50,62 @@ impl<'tcx> GlobalEnv<'tcx> {
             )
         };
         if repr.c() {
-            "c".into()
+            "ReprC".into()
         } else {
-            "rust".into()
+            "ReprRust".into()
         }
     }
 
     // Panics if not called with an ADT
-    fn type_decl_action(&mut self, ty: Ty<'tcx>) -> ProcBodyItem {
-        self.encoded_types.insert(ty);
-        let (name, decl) = match ty.kind() {
+    fn serialize_adt_decl(&mut self, ty: Ty<'tcx>) -> (String, serde_json::Value) {
+        self.encoded_adts.insert(ty);
+        match ty.kind() {
             TyKind::Adt(def, subst) if def.is_struct() => {
                 if def.is_variant_list_non_exhaustive() {
                     fatal!(self, "Can't handle #[non_exhaustive] yet");
                 }
                 let name = self.tcx.item_name(def.did()).to_string();
-                let fields: Vec<Literal> = def
+                let fields: Vec<serde_json::Value> = def
                     .all_fields()
                     .map(|field| {
-                        let name = Literal::from(self.tcx.item_name(field.did).to_string());
-                        let typ = self.encode_type(field.ty(self.tcx, subst));
-                        vec![name, typ.into()].into()
+                        let field_name = self.tcx.item_name(field.did).to_string();
+                        let typ = self.serialize_type(field.ty(self.tcx, subst));
+                        json!([field_name, typ])
                     })
                     .collect();
-                let decl: Literal = vec![
-                    "struct".into(),
-                    fields.into(),
-                    self.encode_repr(&def.repr()),
-                ]
-                .into();
-                (name, decl.into())
+                let decl = json!(["Struct", self.serialize_repr(&def.repr()), fields]);
+                (name, decl)
             }
             TyKind::Adt(def, subst) if def.is_enum() => {
                 if def.is_variant_list_non_exhaustive() {
                     fatal!(self, "Can't handle #[non_exhaustive] yet");
                 }
                 let name = self.tcx.item_name(def.did()).to_string();
-                let variants: Vec<Literal> = def
+                let variants: Vec<serde_json::Value> = def
                     .variants()
                     .iter()
                     .map(|variant| {
-                        let fields: Literal = variant
+                        let fields: Vec<serde_json::Value> = variant
                             .fields
                             .iter()
-                            .map(|field| self.encode_type(field.ty(self.tcx, subst)).into())
-                            .collect::<Vec<_>>()
-                            .into();
+                            .map(|field| self.serialize_type(field.ty(self.tcx, subst)))
+                            .collect();
                         let name = self.tcx.item_name(variant.def_id).to_string();
-                        vec![name.into(), fields].into()
+                        json!([name, fields])
                     })
                     .collect();
-                let decl: Literal = vec!["variant".into(), variants.into()].into();
-                (name, decl.into())
+                let decl = json!(["Enum", variants]);
+                (name, decl)
             }
             _ => panic!(
                 "This function should never be called with this type {:#?}",
                 ty
             ),
-        };
-        Cmd::Action {
-            variable: names::unused_var(),
-            action_name: DECLARE_TYPE_ACTION.into(),
-            parameters: vec![name.into(), decl],
         }
-        .into()
     }
 
-    pub fn add_type(&mut self, ty: Ty<'tcx>) {
-        if !(self.encoded_types.contains(&ty) || self.types_in_queue.contains(&ty)) {
+    pub fn add_adt(&mut self, ty: Ty<'tcx>) {
+        if !(self.encoded_adts.contains(&ty) || self.types_in_queue.contains(&ty)) {
             self.types_in_queue.push_back(ty);
         }
     }
@@ -127,21 +114,26 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.runtime_to_encode.insert(r);
     }
 
-    fn declaring_proc(&mut self) -> Proc {
-        let mut body: Vec<ProcBodyItem> = vec![];
+    pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
+        use serde_json::{Map, Value};
+        let mut obj: Map<String, Value> = Map::new();
         while !self.types_in_queue.is_empty() {
             let ty = self.types_in_queue.pop_front().unwrap();
-            body.push(self.type_decl_action(ty));
-        }
-        body.push(
-            Cmd::Assignment {
-                variable: names::ret_var(),
-                assigned_expr: Expr::undefined(),
+            let (name, ser_decl) = self.serialize_adt_decl(ty);
+            let previous_entry = obj.insert(name.clone(), ser_decl.clone());
+            if let Some(previous_entry) = previous_entry {
+                if previous_entry != ser_decl {
+                    fatal!(
+                        self,
+                        "Encoded two different types with the same name {}: {}\nAND\n{}",
+                        name,
+                        previous_entry,
+                        ser_decl
+                    )
+                }
             }
-            .into(),
-        );
-        body.push(Cmd::ReturnNormal.into());
-        Proc::new(names::global_env_proc(), vec![], body)
+        }
+        Value::Object(obj)
     }
 
     fn proc_of_custom_runtime(&mut self, r: CustomRuntime<'tcx>) -> Proc {
@@ -150,12 +142,10 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    pub fn add_all_procs(mut self, prog: &mut Prog) {
+    pub fn add_all_procs(&mut self, prog: &mut Prog) {
         let runtime = self.runtime_to_encode.clone();
         for r in runtime {
             prog.add_proc(self.proc_of_custom_runtime(r))
         }
-        // Importantly, this has to be done after pushing the custom runtime!
-        prog.add_proc(self.declaring_proc());
     }
 }

@@ -619,7 +619,7 @@ let rec partial_layout_of
       | None ->
           let partial_layout =
             match Tyenv.adt_def ~genv name with
-            | Ty.Adt_def.Struct (Ty.ReprC, fs) ->
+            | Ty.Adt_def.Struct (ReprC, fs) ->
                 let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
                 let pls = Seq.map (partial_layout_of genv known) ts in
                 let align =
@@ -638,7 +638,7 @@ let rec partial_layout_of
                       @@ Seq.map (fun pl -> pl.size) pls
                 in
                 { fields = Arbitrary offsets; variant = Single 0; align; size }
-            | Struct (Ty.ReprRust, fs) ->
+            | Struct (ReprRust, fs) ->
                 let offsets =
                   Array.init (List.length fs + 1) (fun i -> FromIndex (i, 0))
                 in

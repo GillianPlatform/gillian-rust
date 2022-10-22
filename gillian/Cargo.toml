@@ -8,3 +8,4 @@ authors = ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
 
 [dependencies]
 num-bigint = "0.4"
+serde_json = "1.0"

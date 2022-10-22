@@ -39,17 +39,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_cmd(Cmd::ReturnNormal);
     }
 
-    fn push_global_env_call(&mut self) {
-        let call = Cmd::Call {
-            variable: names::unused_var(),
-            proc_ident: Expr::string(names::global_env_proc()),
-            parameters: vec![],
-            error_lab: None,
-            bindings: None,
-        };
-        self.push_cmd(call)
-    }
-
     pub fn log_body(&self) {
         use std::io::*;
         let mut buf = BufWriter::new(Vec::new());
@@ -73,9 +62,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
-        }
-        if proc_name.ends_with("main") {
-            self.push_global_env_call();
         }
         let args: Vec<String> = mir_body
             .args_iter()

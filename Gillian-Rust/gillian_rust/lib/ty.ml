@@ -3,7 +3,6 @@ open Gillian.Gil_syntax
 type int_ty = Isize | I8 | I16 | I32 | I64 | I128 [@@deriving eq]
 type uint_ty = Usize | U8 | U16 | U32 | U64 | U128 [@@deriving eq]
 type scalar_ty = Bool | Char | Int of int_ty | Uint of uint_ty [@@deriving eq]
-type repr = ReprC | ReprRust [@@deriving eq, yojson]
 
 let scalar_ty_to_string = function
   | Bool -> "bool"
@@ -149,6 +148,20 @@ let rec pp ft t =
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
 
 module Adt_def = struct
+  type repr = ReprC | ReprRust [@@deriving eq]
+
+  let repr_to_yojson = function
+    | ReprC -> `String "ReprC"
+    | ReprRust -> `String "ReprRust"
+
+  let repr_of_yojson = function
+    | `String "ReprC" -> Ok ReprC
+    | `String "ReprRust" -> Ok ReprRust
+    | js ->
+        Fmt.error "Invalid json for repr: %a"
+          (Yojson.Safe.pretty_print ~std:true)
+          js
+
   type ty = t [@@deriving yojson]
   (* Necessary because ppx_deriving_yojson doesn't work for [nonrec] things. *)
 
