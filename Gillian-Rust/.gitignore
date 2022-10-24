@@ -4,3 +4,4 @@ _build
 file.log
 *.install
 !lib
+.gillian
