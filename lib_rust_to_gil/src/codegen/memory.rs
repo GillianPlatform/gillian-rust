@@ -2,14 +2,14 @@ use crate::prelude::*;
 
 mod action_names {
 
-    pub(crate) const ALLOC: &str = "mem_alloc";
-    pub(crate) const LOAD_VALUE: &str = "mem_load_value";
-    pub(crate) const STORE_VALUE: &str = "mem_store_value";
-    pub(crate) const LOAD_SLICE: &str = "mem_load_slice";
-    pub(crate) const STORE_SLICE: &str = "mem_store_slice";
-    pub(crate) const DEINIT: &str = "mem_deinit";
-    pub(crate) const FREE: &str = "mem_free";
-    pub(crate) const LOAD_DISCR: &str = "mem_load_discr";
+    pub(crate) const ALLOC: &str = "alloc";
+    pub(crate) const LOAD_VALUE: &str = "load_value";
+    pub(crate) const STORE_VALUE: &str = "store_value";
+    pub(crate) const LOAD_SLICE: &str = "load_slice";
+    pub(crate) const STORE_SLICE: &str = "store_slice";
+    pub(crate) const DEINIT: &str = "deinit";
+    pub(crate) const FREE: &str = "free";
+    pub(crate) const LOAD_DISCR: &str = "load_discr";
 }
 
 pub enum MemoryAction<'tcx> {
