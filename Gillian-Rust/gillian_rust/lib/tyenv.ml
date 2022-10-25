@@ -19,12 +19,12 @@ let to_yojson : t -> Yojson.Safe.t =
        (fun name def acc -> (name, Ty.Adt_def.to_yojson def) :: acc)
        tbl [])
 
-let adt_def ~genv name = Hashtbl.find genv name
+let adt_def ~tyenv name = Hashtbl.find tyenv name
 
-let is_struct ~genv ty =
+let is_struct ~tyenv ty =
   match ty with
   | Ty.Adt name -> (
-      match adt_def ~genv name with
+      match adt_def ~tyenv name with
       | Ty.Adt_def.Struct _ -> true
       | _ -> false)
   | _ -> false
@@ -32,6 +32,6 @@ let is_struct ~genv ty =
 let pp = Fmt.Dump.hashtbl Fmt.string Ty.Adt_def.pp
 
 let of_declaration_list decls : t =
-  let genv = Hashtbl.create 10 in
-  List.iter (fun (name, decl) -> Hashtbl.replace genv name decl) decls;
-  genv
+  let tyenv = Hashtbl.create 10 in
+  List.iter (fun (name, decl) -> Hashtbl.replace tyenv name decl) decls;
+  tyenv
