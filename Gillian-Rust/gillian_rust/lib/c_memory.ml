@@ -122,7 +122,7 @@ let execute_action act_name mem args =
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | LoadDiscr -> protect execute_load_discr mem args
-  | GetValue | SetValue | RemValue ->
+  | Get_value | Set_value | Rem_value ->
       failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = C_heap.copy heap; tyenv }

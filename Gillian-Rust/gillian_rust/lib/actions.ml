@@ -8,20 +8,20 @@ type t =
   | Free
   | LoadDiscr
   (* Core predicate manipulation *)
-  | GetValue
-  | SetValue
-  | RemValue
+  | Get_value
+  | Set_value
+  | Rem_value
 
 type core_predicate = Value
 
 let ga_to_getter = function
-  | Value -> GetValue
+  | Value -> Get_value
 
 let ga_to_setter = function
-  | Value -> SetValue
+  | Value -> Set_value
 
 let ga_to_deleter = function
-  | Value -> RemValue
+  | Value -> Rem_value
 
 let of_name = function
   | "alloc" -> Alloc
@@ -32,10 +32,10 @@ let of_name = function
   | "deinit" -> Deinit
   | "free" -> Free
   | "load_discr" -> LoadDiscr
-  | "get_value" -> GetValue
-  | "set_value" -> SetValue
-  | "rem_value" -> RemValue
-  | _ -> failwith "incorrect compilation: unkown action"
+  | "get_value" -> Get_value
+  | "set_value" -> Set_value
+  | "rem_value" -> Rem_value
+  | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
   | Alloc -> "alloc"
@@ -46,16 +46,16 @@ let to_name = function
   | Deinit -> "deinit"
   | Free -> "free"
   | LoadDiscr -> "load_discr"
-  | GetValue -> "get_value"
-  | SetValue -> "set_value"
-  | RemValue -> "rem_value"
+  | Get_value -> "get_value"
+  | Set_value -> "set_value"
+  | Rem_value -> "rem_value"
 
 let cp_to_name = function
   | Value -> "value"
 
 let cp_of_name = function
   | "value" -> Value
-  | _ -> failwith "incorrect compilation: unkown core predicate"
+  | _ -> failwith "incorrect compilation: unknown core predicate"
 
 let ga_to_getter_str str = str |> cp_of_name |> ga_to_getter |> to_name
 let ga_to_setter_str str = str |> cp_of_name |> ga_to_setter |> to_name

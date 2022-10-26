@@ -1,4 +1,5 @@
 open Gillian_rust
+module S_memory = Gillian.Monadic.MonadicSMemory.Lift (S_memory)
 
 module CLI =
   Gillian.CommandLine.Make (Tyenv) (C_memory) (S_memory)
