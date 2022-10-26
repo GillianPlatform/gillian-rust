@@ -37,7 +37,7 @@ end
 module Repr_C_context = struct
   open Type_names
 
-  let genv =
+  let tyenv =
     Tyenv.of_declaration_list
       [
         ("A", Struct (ReprC, [ ("x", u8); ("y", u16); ("z", u32) ]));
@@ -52,13 +52,13 @@ module Repr_C_context = struct
         ("D", Struct (ReprC, [ ("x", u16); ("y", u8) ]));
       ]
 
-  let context : Partial_layout.context = Partial_layout.context_from_env genv
+  let context : Partial_layout.context = Partial_layout.context_from_env tyenv
 end
 
 module Mixed_repr_context = struct
   open Type_names
 
-  let genv =
+  let tyenv =
     Tyenv.of_declaration_list
       [
         ("R8", Struct (ReprRust, [ ("x", u8) ]));
@@ -82,18 +82,18 @@ module Mixed_repr_context = struct
         ("H", Struct (ReprC, [ ("x", tR64); ("y", tC16); ("z", tC8) ]));
       ]
 
-  let context : Partial_layout.context = Partial_layout.context_from_env genv
+  let context : Partial_layout.context = Partial_layout.context_from_env tyenv
 end
 
 module No_context_tests = struct
-  let genv = Tyenv.of_declaration_list []
-  let context = Partial_layout.context_from_env genv
+  let tyenv = Tyenv.of_declaration_list []
+  let context = Partial_layout.context_from_env tyenv
 
   let snd_of_tuple () =
     let tpl = Ty.(Tuple [ Scalar (Int I32); Scalar Bool ]) in
     check_accesses "(i32, bool).1 resolves to bool at index 1"
       [ { index = 1; index_type = Scalar Bool; against = tpl; variant = None } ]
-    @@ Partial_layout.resolve_address ~genv ~context
+    @@ Partial_layout.resolve_address ~tyenv ~context
          {
            block_type = tpl;
            route = Projections.[ Field (1, tpl) ];
@@ -113,7 +113,7 @@ module No_context_tests = struct
         { index = 2; against = tpl_1; index_type = tpl_1_2; variant = None };
         { index = 1; against = tpl; index_type = tpl_1; variant = None };
       ]
-    @@ Partial_layout.resolve_address ~context ~genv
+    @@ Partial_layout.resolve_address ~context ~tyenv
          {
            block_type = tpl;
            route =
@@ -418,7 +418,7 @@ module Resolution_repr_C = struct
   open Repr_C_context
   open Type_names
 
-  let resolve_address = Partial_layout.resolve_address ~genv ~context
+  let resolve_address = Partial_layout.resolve_address ~tyenv ~context
 
   let second_field_via_add () =
     check_accesses
@@ -489,9 +489,9 @@ module Resolution_mixed_repr = struct
   open Type_names
 
   let resolve_address_debug_access_error =
-    Partial_layout.resolve_address_debug_access_error ~context ~genv
+    Partial_layout.resolve_address_debug_access_error ~context ~tyenv
 
-  let resolve_address = Partial_layout.resolve_address ~context ~genv
+  let resolve_address = Partial_layout.resolve_address ~context ~tyenv
 
   let next_element_field () =
     check_accesses
