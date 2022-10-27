@@ -149,14 +149,22 @@ proc "LinkedList::push_front"(m_1self, m_2elt) {
 
 pred dll_seg(+head, +tail_next, +tail, +head_prev, data):
       (head == tail_next) * (tail == head_prev) * (data == {{}}),
-      (head  == {{ "Option", {{ 1i, {{ {{ #hloc, #hproj }} }} }} }}) *
-      types(#hloc: Obj, #hproj: List) *
-      (<value>(#hloc, #hproj, {{ "adt", "Node" }}; {{ "Node", {{ #head_next, #head_prev, #element }} }})) *
+      (head  == {{
+                  "Option",
+                    {{ 1i,
+                      {{
+                        {{ "NonNull", {{ {{ #hloc, {{ }} }} }} }}
+                      }}
+                    }}
+                }}) *
+      types(#hloc: Obj) *
+      (<value>(#hloc, {{}}, {{ "adt", "Node" }}; {{ "Node", {{ #head_next, #head_prev, #element }} }})) *
       dll_seg(#head_next, tail_next, tail, head, #rest) *
       (data == l+({{ #element }}, #rest));
 
 pred dll(+linked_list, data):
-      (linked_list == {{ "LinkedList", {{ #head, #tail, #len, {{ "PhantomData", {{ }} }} }} }}) *
+      (linked_list == {{ #loc, {{ }} }}) * types(#loc: Obj) *
+      <value>(#loc, {{}}, {{ "adt", "LinkedList" }}; {{ "LinkedList", {{ #head, #tail, #len, {{ "PhantomData", {{ }} }} }} }}) *
       (#len == l-len(data)) * dll_seg(#head, {{ "Option", {{ 0i, {{ }} }} }}, #tail, {{ "Option", {{ 0i, {{ }} }} }}, data);
 
 pred box_new_node(+box, element: Int):

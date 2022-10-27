@@ -7,7 +7,7 @@ type init_data = Tyenv.t
 type vt = Values.t
 type st = Subst.t
 type c_fix_t = unit
-type err_t = string [@@deriving yojson]
+type err_t = S_err.t [@@deriving yojson]
 type t = { tyenv : Tyenv.t; mem : S_heap.t } [@@deriving yojson]
 type action_ret = Success of (t * vt list) | Failure of err_t
 
@@ -41,12 +41,10 @@ let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
       Delayed.return l
 
 let resolve_loc_result loc =
-  Delayed_result.of_do
-    ~none:(Fmt.str "Invalid loc: %a" Expr.pp loc)
-    (Delayed.resolve_loc loc)
+  Delayed_result.of_do ~none:(S_err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
-let init tyenv = { tyenv; mem = S_heap.empty () }
-let clear t = { t with mem = S_heap.empty () }
+let init tyenv = { tyenv; mem = S_heap.empty }
+let clear t = { t with mem = S_heap.empty }
 let make_branch ~tyenv ~mem ?(rets = []) () = ({ mem; tyenv }, rets)
 
 let execute_alloc ~tyenv mem args =
@@ -56,7 +54,7 @@ let execute_alloc ~tyenv mem args =
       let loc, new_mem = S_heap.alloc ~tyenv mem ty in
       DR.ok
         (make_branch ~tyenv ~mem:new_mem ~rets:[ Expr.ALoc loc; EList [] ] ())
-  | _ -> Fmt.failwith "Invalid arguemnts for alloc"
+  | _ -> Fmt.failwith "Invalid arguments for alloc"
 
 let execute_store ~tyenv mem args =
   let open DR.Syntax in
@@ -65,9 +63,31 @@ let execute_store ~tyenv mem args =
       let ty = Ty.of_lit (concretize_expr ty) in
       let proj = concretize_proj proj in
       let** loc = resolve_loc_result loc in
-      let new_mem = S_heap.store ~tyenv mem loc proj ty value in
-      DR.ok (make_branch ~tyenv ~mem:new_mem ())
-  | _ -> Fmt.failwith "Invalid arguemnts for store"
+      let++ new_mem = S_heap.store ~tyenv mem loc proj ty value in
+      make_branch ~tyenv ~mem:new_mem ()
+  | _ -> Fmt.failwith "Invalid arguments for store"
+
+let execute_load ~tyenv mem args =
+  let open DR.Syntax in
+  match args with
+  | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
+      let ty = Ty.of_lit (concretize_expr ty) in
+      let proj = concretize_proj proj in
+      let** loc = resolve_loc_result loc in
+      let++ value, new_mem = S_heap.load ~tyenv mem loc proj ty copy in
+      make_branch ~tyenv ~mem:new_mem ~rets:[ value ] ()
+  | _ -> Fmt.failwith "Invalid arguments for load"
+
+let execute_load_discr ~tyenv mem args =
+  let open DR.Syntax in
+  match args with
+  | [ loc; proj; enum_typ ] ->
+      let enum_typ = Ty.of_lit (concretize_expr enum_typ) in
+      let proj = concretize_proj proj in
+      let** loc = resolve_loc_result loc in
+      let++ discr = S_heap.load_discr ~tyenv mem loc proj enum_typ in
+      make_branch ~tyenv ~mem ~rets:[ Expr.Lit (Int (Z.of_int discr)) ] ()
+  | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_set_value ~tyenv mem args =
   let open DR.Syntax in
@@ -85,14 +105,14 @@ let ga_to_setter str = Actions.ga_to_setter_str str
 let ga_to_getter str = Actions.ga_to_getter_str str
 let ga_to_deleter str = Actions.ga_to_deleter_str str
 let is_overlapping_asrt _ = false
-let copy t = { t with mem = S_heap.copy t.mem }
+let copy t = t
 let pp ft t = S_heap.pp ft t.mem
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
 
 let substitution_in_place s mem =
-  let () = S_heap.substitution mem.mem s in
-  Delayed.return mem
+  Delayed.return
+  @@ { mem with mem = S_heap.substitution ~tyenv:mem.tyenv mem.mem s }
 
 let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
@@ -105,14 +125,14 @@ let mem_constraints _ =
   []
 
 let pp_c_fix _ _ = failwith "pp_c_fix: Not yet implemented"
-let get_recovery_vals _ _ = failwith "get_recovery_vals: Not yet implemented"
-let pp_err _ _ = failwith "pp_err: Not yet implemented"
+let pp_err ft t = S_err.pp ft t
 
 let get_failing_constraint _ =
   failwith "get_failing_constraints: Not yet implemented"
 
 let get_fixes ?simple_fix:_ _ _ _ = failwith "get_fixes: Not yet implemented"
 let apply_fix _ _ _ _ = failwith "apply_fix: Not yet implemented"
+let get_recovery_vals _ e = S_err.recovery_vals e
 
 let lift_res res =
   match res with
@@ -139,7 +159,9 @@ let execute_action ~action_name mem args =
   let a_ret =
     match action with
     | Alloc -> execute_alloc ~tyenv mem args
+    | Load_value -> execute_load ~tyenv mem args
     | Store_value -> execute_store ~tyenv mem args
+    | Load_discr -> execute_load_discr ~tyenv mem args
     | Set_value -> execute_set_value ~tyenv mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in

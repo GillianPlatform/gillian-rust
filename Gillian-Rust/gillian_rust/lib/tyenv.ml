@@ -22,12 +22,16 @@ let to_yojson : t -> Yojson.Safe.t =
 let adt_def ~tyenv name = Hashtbl.find tyenv name
 
 let is_struct ~tyenv ty =
-  match ty with
-  | Ty.Adt name -> (
-      match adt_def ~tyenv name with
-      | Ty.Adt_def.Struct _ -> true
-      | _ -> false)
-  | _ -> false
+  let res =
+    match ty with
+    | Ty.Adt name -> (
+        match adt_def ~tyenv name with
+        | Ty.Adt_def.Struct _ -> true
+        | _ -> false)
+    | _ -> false
+  in
+  Logging.verbose (fun m -> m "Is struct? %a : %b" Ty.pp ty res);
+  res
 
 let pp = Fmt.Dump.hashtbl Fmt.string Ty.Adt_def.pp
 

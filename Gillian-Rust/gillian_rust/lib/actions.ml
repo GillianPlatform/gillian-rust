@@ -6,22 +6,28 @@ type t =
   | Store_slice
   | Deinit
   | Free
-  | LoadDiscr
+  | Load_discr
   (* Core predicate manipulation *)
   | Get_value
   | Set_value
   | Rem_value
+  | Get_freed
+  | Set_freed
+  | Rem_freed
 
-type core_predicate = Value
+type core_predicate = Value | Freed
 
 let ga_to_getter = function
   | Value -> Get_value
+  | Freed -> Get_freed
 
 let ga_to_setter = function
   | Value -> Set_value
+  | Freed -> Set_freed
 
 let ga_to_deleter = function
   | Value -> Rem_value
+  | Freed -> Rem_freed
 
 let of_name = function
   | "alloc" -> Alloc
@@ -31,10 +37,13 @@ let of_name = function
   | "store_slice" -> Store_slice
   | "deinit" -> Deinit
   | "free" -> Free
-  | "load_discr" -> LoadDiscr
+  | "load_discr" -> Load_discr
   | "get_value" -> Get_value
   | "set_value" -> Set_value
   | "rem_value" -> Rem_value
+  | "get_freed" -> Get_freed
+  | "set_freed" -> Set_freed
+  | "rem_freed" -> Rem_freed
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
@@ -45,16 +54,21 @@ let to_name = function
   | Store_slice -> "store_slice"
   | Deinit -> "deinit"
   | Free -> "free"
-  | LoadDiscr -> "load_discr"
+  | Load_discr -> "load_discr"
   | Get_value -> "get_value"
   | Set_value -> "set_value"
   | Rem_value -> "rem_value"
+  | Get_freed -> "get_freed"
+  | Set_freed -> "set_freed"
+  | Rem_freed -> "rem_freed"
 
 let cp_to_name = function
   | Value -> "value"
+  | Freed -> "freed"
 
 let cp_of_name = function
   | "value" -> Value
+  | "freed" -> Freed
   | _ -> failwith "incorrect compilation: unknown core predicate"
 
 let ga_to_getter_str str = str |> cp_of_name |> ga_to_getter |> to_name
