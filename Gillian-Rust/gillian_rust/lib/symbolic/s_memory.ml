@@ -89,6 +89,35 @@ let execute_load_discr ~tyenv mem args =
       make_branch ~tyenv ~mem ~rets:[ Expr.Lit (Int (Z.of_int discr)) ] ()
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
+let execute_free ~tyenv mem args =
+  let open DR.Syntax in
+  match args with
+  | [ loc; proj; ty ] ->
+      let** () =
+        Delayed.branch_on
+          (Formula.Eq (proj, EList []))
+          ~then_:(fun () -> DR.ok ())
+          ~else_:(fun () -> DR.error (S_err.Invalid_free_pointer (loc, proj)))
+      in
+      let** loc = resolve_loc_result loc in
+      let ty = Ty.of_lit (concretize_expr ty) in
+      let++ new_mem = S_heap.free mem loc ty in
+      make_branch ~tyenv ~mem:new_mem ()
+  | _ -> Fmt.failwith "Invalid arguments for free"
+
+let execute_get_value ~tyenv mem args =
+  let open DR.Syntax in
+  match args with
+  | [ loc; proj_exp; ty_exp ] ->
+      let ty = Ty.of_lit (concretize_expr ty_exp) in
+      let** loc_name = resolve_loc_result loc in
+      let proj = concretize_proj proj_exp in
+      let++ value = S_heap.get_value ~tyenv mem loc_name proj ty in
+      make_branch ~tyenv ~mem
+        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
+        ()
+  | _ -> Fmt.failwith "Invalid arguments for get_value"
+
 let execute_set_value ~tyenv mem args =
   let open DR.Syntax in
   let open Delayed.Syntax in
@@ -100,6 +129,18 @@ let execute_set_value ~tyenv mem args =
       let++ new_mem = S_heap.set_value ~tyenv mem loc_name proj ty value in
       make_branch ~tyenv ~mem:new_mem ()
   | _ -> Fmt.failwith "Invalid arguments for set_value"
+
+let execute_rem_value ~tyenv mem args =
+  match args with
+  | [ loc; _proj_exp; _ty_exp ] ->
+      let loc_name =
+        match loc with
+        | Expr.ALoc loc | Lit (Loc loc) -> loc
+        | _ -> failwith "unreachable"
+      in
+      let mem = S_heap.rem_value mem loc_name in
+      DR.ok (make_branch ~tyenv ~mem ())
+  | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let ga_to_setter str = Actions.ga_to_setter_str str
 let ga_to_getter str = Actions.ga_to_getter_str str
@@ -162,7 +203,10 @@ let execute_action ~action_name mem args =
     | Load_value -> execute_load ~tyenv mem args
     | Store_value -> execute_store ~tyenv mem args
     | Load_discr -> execute_load_discr ~tyenv mem args
+    | Free -> execute_free ~tyenv mem args
+    | Get_value -> execute_get_value ~tyenv mem args
     | Set_value -> execute_set_value ~tyenv mem args
+    | Rem_value -> execute_rem_value ~tyenv mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   lift_dr_and_log a_ret

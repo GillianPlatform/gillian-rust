@@ -455,6 +455,17 @@ let store ~tyenv (mem : t) loc proj ty value =
   let++ new_block = TreeBlock.set_proj ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
+let get_value ~tyenv (mem : t) loc proj ty =
+  let open DR.Syntax in
+  let** () =
+    match proj with
+    | [] -> DR.ok ()
+    | _ -> DR.error (Unhandled "can't handle projections on cps yet")
+  in
+  let** block = find_not_freed loc mem in
+  let++ value, _ = TreeBlock.get_proj ~tyenv block [] ty false in
+  value
+
 let set_value ~tyenv (mem : t) loc proj ty value =
   let open DR.Syntax in
   let++ () =
@@ -466,6 +477,11 @@ let set_value ~tyenv (mem : t) loc proj ty value =
   in
   let new_block = T (TreeBlock.of_rust_value ~tyenv ~ty value) in
   MemMap.add loc new_block mem
+
+let rem_value (mem : t) loc =
+  (* We assume that rem is *always* called after get.
+     Therefore we don't need to check anything, we just remove. *)
+  MemMap.remove loc mem
 
 let deinit ~tyenv (mem : t) loc proj ty =
   let open DR.Syntax in
@@ -491,7 +507,8 @@ let assertions ~tyenv (mem : t) =
         let cp = Actions.cp_to_name Value in
         let ty = Expr.Lit (Ty.to_lit block.TreeBlock.ty) in
         let value = TreeBlock.to_rust_value ~tyenv block in
-        Asrt.GA (cp, [ Expr.loc_from_loc_name loc; ty ], [ value ])
+        Asrt.GA
+          (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])
     | Freed ->
         let cp = Actions.cp_to_name Freed in
         Asrt.GA (cp, [ Expr.loc_from_loc_name loc ], [])

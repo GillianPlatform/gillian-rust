@@ -18,6 +18,7 @@ proc i__nonnull_as_ptr(p) {
 proc i__alloc_box_boxed_new(v, ty) {
      global := {{ "Global", {{}} }};
      ptr := [alloc](ty);
+     u := [store_value](l-nth(ptr, 0i), l-nth(ptr, 1i), ty, v);
      non_null := {{ "NonNull", {{ ptr }} }};
      phantom_data := {{ "PhantomData", {{}} }};
      unique := {{ "Unique", {{ non_null, phantom_data }} }};

@@ -46,18 +46,6 @@
 #end_init_data
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil";
 
-spec "LinkedList::new"()
-      [[ emp ]]
-      [[ (ret == {{
-            "LinkedList",
-            {{ 
-              {{ "Option", {{ 0i, {{  }} }} }},
-              {{ "Option", {{ 0i, {{  }} }} }},
-              0i,
-              {{ "PhantomData", {{  }} }}
-            }}
-      }}) ]]
-      normal
 
 proc "LinkedList::new"() {
   bb0:  m_1 := {{ "Option", {{ 0i, {{  }} }} }};
@@ -77,18 +65,6 @@ proc "LinkedList::new"() {
   rlab: return
 };
 
-
-spec "Node::new"(m_1element)
-      [[ (m_1element == #m_1elment) ]]
-      [[ (ret == {{
-            "Node",
-            {{ 
-              {{ "Option", {{ 0i, {{  }} }} }},
-              {{ "Option", {{ 0i, {{  }} }} }},
-              #m_1element
-            }}
-      }}) ]]
-      normal
 proc "Node::new"(m_1element) {
   bb0:  m_2 := {{ "Option", {{ 0i, {{  }} }} }};
         m_3 := {{ "Option", {{ 0i, {{  }} }} }};
@@ -108,15 +84,24 @@ proc "Node::new"(m_1element) {
 };
 
 
+spec "LinkedList::push_front"(m_1self, m_2elt)
+      [[
+          (m_1self == #self) * (m_2elt == #elt) *
+          types(#elt: Int) * dll(#self, #data) *
+          (l-len #data i<=# 18446744073709551614i)
+      ]]
+      [[
+          dll(#self, l+({{ #elt }}, #data))
+      ]]
+      normal
+      
 proc "LinkedList::push_front"(m_1self, m_2elt) {
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList" }} }});
-        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                               {{ "ref", true, {{ "adt", "LinkedList" }} }},
-                               g_0);
-  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                {{ "ref", true, {{ "adt", "LinkedList" }} }},
-                                true);
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
+                           true, {{ "adt", "LinkedList" }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
+                            true, {{ "adt", "LinkedList" }} }}, true);
         g_1 := l-nth(g_2, 0i);
         m_4 := g_1;
         m_7 := m_2elt;
@@ -142,10 +127,12 @@ proc "LinkedList::push_front"(m_1self, m_2elt) {
         m_0 := none;
         ret := g_10;
         goto rlab;
-  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
-                        true, {{ "adt", "LinkedList" }} }});
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true,
+                    {{ "adt", "LinkedList" }} }});
         return
 };
+
+
 
 pred dll_seg(+head, +tail_next, +tail, +head_prev, data):
       (head == tail_next) * (tail == head_prev) * (data == {{}}),
@@ -186,67 +173,65 @@ pred box_new_node(+box, element: Int):
 spec "LinkedList::push_front_node"(m_1self, m_2node)
       [[
           (m_1self == #self) * (m_2node == #node) *
-          dll(#self, #data) * box_new_node(#node, #element)
+          dll(#self, #data) * box_new_node(#node, #element) *
+          (l-len #data i<=# 18446744073709551614i)
       ]]
       [[
           dll(#self, l+({{ #element }}, #data))
       ]]
       normal
-
 proc "LinkedList::push_front_node"(m_1self, m_2node) {
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList" }} }});
-        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                               {{ "ref", true, {{ "adt", "LinkedList" }} }},
-                               g_0);
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
+                           true, {{ "adt", "LinkedList" }} }}, g_0);
         g_1 := m_2node;
         m_2node := [alloc]({{ "adt", "Box" }});
-        u := [store_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
-                               {{ "adt", "Box" }}, g_1);
+        u := [store_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i), {{ "adt",
+                           "Box" }}, g_1);
         m_8 := [alloc]({{ "ref", true, {{ "adt", "Node" }} }});
         m_15 := [alloc]({{ "ref", true, {{ "adt", "Node" }} }});
         m_18 := [alloc]({{ "tuple", {{ "usize", "bool" }} }});
-  bb0:  g_3 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                {{ "ref", true, {{ "adt", "LinkedList" }} }},
-                                true);
+  bb0:  g_3 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
+                            true, {{ "adt", "LinkedList" }} }}, true);
         g_2 := l-nth(g_3, 0i);
         g_5 := [load_value](l-nth(g_2, 0i),
-                                l+ (l-nth(g_2, 1i), {{ {{ "f", 0i, {{ "adt",
-                                    "LinkedList" }} }} }}),
-                                {{ "adt", "Option" }}, true);
+                            l+ (l-nth(g_2, 1i), {{ {{ "f", 0i, {{ "adt",
+                                "LinkedList" }} }} }}),
+                            {{ "adt", "Option" }}, true);
         g_4 := l-nth(g_5, 0i);
         m_3 := g_4;
         g_6 := m_3;
         m_3 := none;
-        g_8 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
-                                {{ "adt", "Box" }}, true);
+        g_8 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i), {{ "adt",
+                            "Box" }}, true);
         g_7 := l-nth(g_8, 0i);
         u := [store_value](l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_7, 1i), 0i), 1i), 0i), 1i), 0i), 0i),
-                               l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_7, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
-                                   {{ {{ "f", 0i, {{ "adt", "Node" }} }} }}),
-                               {{ "adt", "Option" }}, g_6);
+                           l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_7, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
+                               {{ {{ "f", 0i, {{ "adt", "Node" }} }} }}),
+                           {{ "adt", "Option" }}, g_6);
         m_4 := {{ "Option", {{ 0i, {{  }} }} }};
         g_9 := m_4;
         m_4 := none;
         g_11 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
-                                 {{ "adt", "Box" }}, true);
+                             {{ "adt", "Box" }}, true);
         g_10 := l-nth(g_11, 0i);
         u := [store_value](l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_10, 1i), 0i), 1i), 0i), 1i), 0i), 0i),
-                               l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_10, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
-                                   {{ {{ "f", 1i, {{ "adt", "Node" }} }} }}),
-                               {{ "adt", "Option" }}, g_9);
+                           l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_10, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
+                               {{ {{ "f", 1i, {{ "adt", "Node" }} }} }}),
+                           {{ "adt", "Option" }}, g_9);
         g_13 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
-                                 {{ "adt", "Box" }}, false);
+                             {{ "adt", "Box" }}, false);
         g_12 := l-nth(g_13, 0i);
         m_9 := g_12;
         g_14 := m_9;
         m_9 := none;
         g_15 := "i__alloc_box_leak"(g_14);
-        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref",
-                               true, {{ "adt", "Node" }} }}, g_15);
+        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", true,
+                           {{ "adt", "Node" }} }}, g_15);
         goto bb1;
-  bb1:  g_17 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref",
-                                 true, {{ "adt", "Node" }} }}, true);
+  bb1:  g_17 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", true,
+                             {{ "adt", "Node" }} }}, true);
         g_16 := l-nth(g_17, 0i);
         m_7 := g_16;
         g_18 := m_7;
@@ -259,13 +244,13 @@ proc "LinkedList::push_front_node"(m_1self, m_2node) {
         m_6 := none;
         m_5node := {{ "Option", {{ 1i, {{ g_20 }} }} }};
         g_22 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
         g_21 := l-nth(g_22, 0i);
         g_24 := [load_discr](l-nth(g_21, 0i),
-                                 l+ (l-nth(g_21, 1i), {{ {{ "f", 0i,
-                                     {{ "adt", "LinkedList" }} }} }}),
-                                 {{ "adt", "Option" }});
+                             l+ (l-nth(g_21, 1i), {{ {{ "f", 0i, {{ "adt",
+                                 "LinkedList" }} }} }}),
+                             {{ "adt", "Option" }});
         g_23 := l-nth(g_24, 0i);
         m_11 := g_23;
         g_25 := m_11;
@@ -275,15 +260,15 @@ proc "LinkedList::push_front_node"(m_1self, m_2node) {
   sw1:  goto bb5;
   bb3:  goto bb6;
   bb4:  g_27 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
         g_26 := l-nth(g_27, 0i);
         g_29 := [load_value](l-nth(g_26, 0i),
-                                 l+ (l-nth(g_26, 1i), {{ {{ "f", 0i,
-                                     {{ "adt", "LinkedList" }} }}, {{ "d",
-                                     1i, {{ "adt", "Option" }} }}, {{ "vf",
-                                     0i, {{ "adt", "Option" }}, 1i }} }}),
-                                 {{ "adt", "NonNull" }}, true);
+                             l+ (l-nth(g_26, 1i), {{ {{ "f", 0i, {{ "adt",
+                                 "LinkedList" }} }}, {{ "d", 1i, {{ "adt",
+                                 "Option" }} }}, {{ "vf", 0i, {{ "adt",
+                                 "Option" }}, 1i }} }}),
+                             {{ "adt", "NonNull" }}, true);
         g_28 := l-nth(g_29, 0i);
         m_13head := g_28;
         m_14 := m_5node;
@@ -291,95 +276,92 @@ proc "LinkedList::push_front_node"(m_1self, m_2node) {
         g_30 := m_16;
         m_16 := none;
         g_31 := "i__nonnull_as_ptr"(g_30);
-        u := [store_value](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "ref",
-                               true, {{ "adt", "Node" }} }}, g_31);
+        u := [store_value](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "ref", true,
+                           {{ "adt", "Node" }} }}, g_31);
         goto bb7;
   bb5:  fail [Unreachable]();
   bb6:  m_12 := m_5node;
         g_32 := m_12;
         m_12 := none;
         g_34 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
         g_33 := l-nth(g_34, 0i);
         u := [store_value](l-nth(g_33, 0i),
-                               l+ (l-nth(g_33, 1i), {{ {{ "f", 1i, {{ "adt",
-                                   "LinkedList" }} }} }}),
-                               {{ "adt", "Option" }}, g_32);
+                           l+ (l-nth(g_33, 1i), {{ {{ "f", 1i, {{ "adt",
+                               "LinkedList" }} }} }}),
+                           {{ "adt", "Option" }}, g_32);
         m_10 := {{  }};
         goto bb8;
   bb7:  g_35 := m_14;
         m_14 := none;
         g_37 := [load_value](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "ref",
-                                 true, {{ "adt", "Node" }} }}, true);
+                             true, {{ "adt", "Node" }} }}, true);
         g_36 := l-nth(g_37, 0i);
         u := [store_value](l-nth(g_36, 0i),
-                               l+ (l-nth(g_36, 1i), {{ {{ "f", 1i, {{ "adt",
-                                   "Node" }} }} }}),
-                               {{ "adt", "Option" }}, g_35);
+                           l+ (l-nth(g_36, 1i), {{ {{ "f", 1i, {{ "adt",
+                               "Node" }} }} }}),
+                           {{ "adt", "Option" }}, g_35);
         m_10 := {{  }};
         goto bb8;
   bb8:  m_17 := m_5node;
         g_38 := m_17;
         m_17 := none;
         g_40 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
         g_39 := l-nth(g_40, 0i);
         u := [store_value](l-nth(g_39, 0i),
-                               l+ (l-nth(g_39, 1i), {{ {{ "f", 0i, {{ "adt",
-                                   "LinkedList" }} }} }}),
-                               {{ "adt", "Option" }}, g_38);
+                           l+ (l-nth(g_39, 1i), {{ {{ "f", 0i, {{ "adt",
+                               "LinkedList" }} }} }}),
+                           {{ "adt", "Option" }}, g_38);
         g_42 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
         g_41 := l-nth(g_42, 0i);
         g_44 := [load_value](l-nth(g_41, 0i),
-                                 l+ (l-nth(g_41, 1i), {{ {{ "f", 2i,
-                                     {{ "adt", "LinkedList" }} }} }}),
-                                 "usize", true);
+                             l+ (l-nth(g_41, 1i), {{ {{ "f", 2i, {{ "adt",
+                                 "LinkedList" }} }} }}),
+                             "usize", true);
         g_43 := l-nth(g_44, 0i);
         g_45 := "i__binop_checked_add"(g_43, 1i, 18446744073709551615i);
         u := [store_value](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple",
-                               {{ "usize", "bool" }} }}, g_45);
+                           {{ "usize", "bool" }} }}, g_45);
         g_47 := [load_value](l-nth(m_18, 0i),
-                                 l+ (l-nth(m_18, 1i), {{ {{ "f", 1i,
-                                     {{ "tuple", {{ "usize",
-                                     "bool" }} }} }} }}),
-                                 "bool", false);
+                             l+ (l-nth(m_18, 1i), {{ {{ "f", 1i, {{ "tuple",
+                                 {{ "usize", "bool" }} }} }} }}),
+                             "bool", false);
         g_46 := l-nth(g_47, 0i);
-        g_48 := "i__bool_of_lang_int"(g_46);
-        u := "i__lang_assert"((not g_48), "Ugly assert message for now");
+        u := "i__lang_assert"((not g_46), "Ugly assert message for now");
         goto bb9;
-  bb9:  g_50 := [load_value](l-nth(m_18, 0i),
-                                 l+ (l-nth(m_18, 1i), {{ {{ "f", 0i,
-                                     {{ "tuple", {{ "usize",
-                                     "bool" }} }} }} }}),
-                                 "usize", false);
-        g_49 := l-nth(g_50, 0i);
-        g_52 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
-                                 {{ "ref", true, {{ "adt",
-                                 "LinkedList" }} }}, true);
-        g_51 := l-nth(g_52, 0i);
-        u := [store_value](l-nth(g_51, 0i),
-                               l+ (l-nth(g_51, 1i), {{ {{ "f", 2i, {{ "adt",
-                                   "LinkedList" }} }} }}),
-                               "usize", g_49);
+  bb9:  g_49 := [load_value](l-nth(m_18, 0i),
+                             l+ (l-nth(m_18, 1i), {{ {{ "f", 0i, {{ "tuple",
+                                 {{ "usize", "bool" }} }} }} }}),
+                             "usize", false);
+        g_48 := l-nth(g_49, 0i);
+        g_51 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
+                             {{ "ref", true, {{ "adt", "LinkedList" }} }},
+                             true);
+        g_50 := l-nth(g_51, 0i);
+        u := [store_value](l-nth(g_50, 0i),
+                           l+ (l-nth(g_50, 1i), {{ {{ "f", 2i, {{ "adt",
+                               "LinkedList" }} }} }}),
+                           "usize", g_48);
         m_0 := {{  }};
         goto bb10;
-  bb10: g_53 := m_0;
+  bb10: g_52 := m_0;
         m_0 := none;
-        ret := g_53;
+        ret := g_52;
         goto rlab;
-  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
-                        true, {{ "adt", "LinkedList" }} }});
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true,
+                    {{ "adt", "LinkedList" }} }});
         u := [free](l-nth(m_2node, 0i), l-nth(m_2node, 1i), {{ "adt",
-                        "Box" }});
-        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", true,
-                        {{ "adt", "Node" }} }});
+                    "Box" }});
+        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", true, {{ "adt",
+                    "Node" }} }});
         u := [free](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "ref", true,
-                        {{ "adt", "Node" }} }});
-        u := [free](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple",
-                        {{ "usize", "bool" }} }});
+                    {{ "adt", "Node" }} }});
+        u := [free](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize",
+                    "bool" }} }});
         return
 };
