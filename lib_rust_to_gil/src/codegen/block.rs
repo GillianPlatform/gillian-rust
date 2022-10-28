@@ -34,37 +34,55 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 cleanup: _,
             } => {
                 let msg = "Ugly assert message for now".to_string();
-                let cond_int = self.push_encode_operand(op);
-                let cond_bool = self.temp_var();
-                self.push_cmd(runtime::bool_of_int(cond_bool.clone(), cond_int));
-                let cond_bool = Expr::PVar(cond_bool);
-                let to_assert = if *expected { cond_bool } else { !cond_bool };
+                let cond = self.push_encode_operand(op);
+                let to_assert = if *expected { cond } else { !cond };
                 let assert_call = runtime::lang_assert(to_assert, msg);
                 self.push_cmd(assert_call);
                 self.push_cmd(Cmd::Goto(bb_label(*target)));
             }
             TerminatorKind::SwitchInt {
                 discr,
-                switch_ty: _,
+                switch_ty,
                 targets,
             } => {
-                // FIXME: The switch ty should maybe be used at some point, when Gillian has ints...
                 let discr_expr = self.push_encode_operand(discr);
-                let mut else_lab = self.switch_label();
-                for (value, target) in targets.iter() {
-                    let v_expr = Expr::int(value as i128);
-                    let target = bb_label(target);
+                if switch_ty.is_bool() {
+                    // We maintain the boolean abstraction, so we can't do a "normal" switch int.
+                    // Instead, we're going to do a normal goto.
+                    assert_eq!(targets.all_targets().len(), 2, "bite");
+                    let first_target_is_true =
+                        targets.iter().next().expect("SwitchInt with no target").0 == 1;
+                    let all_targets = targets.all_targets();
+                    let (then_branch, else_branch) = if first_target_is_true {
+                        (all_targets[0], all_targets[1])
+                    } else {
+                        (all_targets[1], all_targets[0])
+                    };
+                    let (then_branch, else_branch) =
+                        (names::bb_label(then_branch), names::bb_label(else_branch));
                     let goto = Cmd::GuardedGoto {
-                        guard: Expr::eq_expr(discr_expr.clone(), v_expr),
-                        then_branch: target,
-                        else_branch: else_lab.clone(),
+                        guard: discr_expr,
+                        then_branch,
+                        else_branch,
                     };
                     self.push_cmd(goto);
-                    self.push_label(else_lab);
-                    else_lab = self.switch_label();
+                } else {
+                    let mut else_lab = self.switch_label();
+                    for (value, target) in targets.iter() {
+                        let v_expr = Expr::int(value);
+                        let target = bb_label(target);
+                        let goto = Cmd::GuardedGoto {
+                            guard: Expr::eq_expr(discr_expr.clone(), v_expr),
+                            then_branch: target,
+                            else_branch: else_lab.clone(),
+                        };
+                        self.push_cmd(goto);
+                        self.push_label(else_lab);
+                        else_lab = self.switch_label();
+                    }
+                    let goto = Cmd::Goto(bb_label(targets.otherwise()));
+                    self.push_cmd(goto)
                 }
-                let goto = Cmd::Goto(bb_label(targets.otherwise()));
-                self.push_cmd(goto)
             }
             TerminatorKind::Unreachable => {
                 let cmd = Cmd::Fail {

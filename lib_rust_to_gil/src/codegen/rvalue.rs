@@ -180,24 +180,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Expr::PVar(temp)
             }
             Gt if left_ty.is_numeric() && left_ty == right_ty => {
-                let ret = self.temp_var();
-                let comp_expr = if left_ty.is_integral() {
+                if left_ty.is_integral() {
                     Expr::i_gt(e1, e2)
                 } else {
                     Expr::f_gt(e1, e2)
-                };
-                self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
-                Expr::PVar(ret)
+                }
             }
             Lt if left_ty.is_numeric() && left_ty == right_ty => {
-                let ret = self.temp_var();
-                let comp_expr = if left_ty.is_integral() {
+                if left_ty.is_integral() {
                     Expr::i_lt(e1, e2)
                 } else {
                     Expr::f_lt(e1, e2)
-                };
-                self.push_cmd(runtime::int_of_bool(ret.clone(), comp_expr));
-                Expr::PVar(ret)
+                }
             }
             _ => fatal!(
                 self,

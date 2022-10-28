@@ -37,8 +37,7 @@ module TreeBlock = struct
     match content with
     | Scalar s -> (
         match (ty, s) with
-        | Scalar (Uint _ | Int _ | Char), _ -> s
-        | Scalar Bool, Bool b -> if b then Int Z.one else Int Z.zero
+        | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
         let tuple = Array.map (to_rust_value ~tyenv) v |> Array.to_list in
@@ -82,11 +81,7 @@ module TreeBlock = struct
   and of_rust_value ~tyenv ~ty v =
     match (ty, v) with
     | Ty.Scalar (Uint _ | Int _), Literal.Int _ -> { ty; content = Scalar v }
-    | Ty.Scalar Bool, Literal.Int i ->
-        if Z.equal i Z.one then { ty; content = Scalar (Bool true) }
-        else if Z.equal i Z.zero then { ty; content = Scalar (Bool false) }
-        else Fmt.failwith "Invalid boolean: %a" Z.pp_print i
-    | Scalar Bool, Bool _ -> { ty; content = Scalar v }
+    | Scalar Bool, Literal.Bool b -> { ty; content = Scalar (Bool b) }
     | Tuple ts, LList tup ->
         let content =
           List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) ts tup

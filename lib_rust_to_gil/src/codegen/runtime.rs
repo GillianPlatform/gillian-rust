@@ -20,8 +20,8 @@ pub fn imports() -> Vec<Import> {
 const CHECKED_ADD: &str = "i__binop_checked_add";
 const CHECKED_SUB: &str = "i__binop_checked_sub";
 const LANG_ASSERT: &str = "i__lang_assert";
-const INT_OF_BOOL: &str = "i__lang_int_of_bool";
-const BOOL_OF_INT: &str = "i__bool_of_lang_int";
+const _INT_OF_BOOL: &str = "i__lang_int_of_bool";
+const _BOOL_OF_INT: &str = "i__bool_of_lang_int";
 
 pub fn checked_add(variable: String, e1: Expr, e2: Expr, max_val: Expr) -> Cmd {
     Cmd::Call {
@@ -53,20 +53,21 @@ pub fn lang_assert(cond: Expr, msg: String) -> Cmd {
     }
 }
 
-pub fn bool_of_int(variable: String, int_expr: Expr) -> Cmd {
+// We might use this later for casts involving booleans.
+fn _bool_of_int(variable: String, int_expr: Expr) -> Cmd {
     Cmd::Call {
         variable,
-        proc_ident: BOOL_OF_INT.into(),
+        proc_ident: _BOOL_OF_INT.into(),
         parameters: vec![int_expr],
         error_lab: None,
         bindings: None,
     }
 }
 
-pub fn int_of_bool(variable: String, bool_expr: Expr) -> Cmd {
+fn _int_of_bool(variable: String, bool_expr: Expr) -> Cmd {
     Cmd::Call {
         variable,
-        proc_ident: Expr::string(INT_OF_BOOL.to_string()),
+        proc_ident: Expr::string(_INT_OF_BOOL.to_string()),
         parameters: vec![bool_expr],
         error_lab: None,
         bindings: None,
