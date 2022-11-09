@@ -1,5 +1,6 @@
 use super::config::Config;
 use crate::prelude::*;
+use crate::utils::cleanup_logic::cleanup_logic;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def::DefKind;
 use rustc_interface::{interface::Compiler, Queries};
@@ -19,8 +20,12 @@ impl ToGil {
         let _ = self.opts;
         let mut prog = gillian::gil::Prog::new(runtime::imports());
         let mut global_env = GlobalEnv::new(*tcx);
-        for key in tcx.mir_keys(()) {
+        for key in tcx.hir().body_owners() {
             let did = key.to_def_id();
+            if crate::utils::attrs::is_logic(*tcx, did) {
+                dbg!(crate::logic::compile_logic(*tcx, did));
+                panic!()
+            }
             let body = match tcx.def_kind(did) {
                 DefKind::Ctor(..) => tcx.optimized_mir(did),
                 _ => std::cell::Ref::leak(
@@ -39,6 +44,17 @@ impl ToGil {
 }
 
 impl Callbacks for ToGil {
+    fn config(&mut self, config: &mut rustc_interface::Config) {
+        config.override_queries = Some(|_sess, providers, _external_providers| {
+            providers.mir_built = |tcx, def_id| {
+                let mir = (rustc_interface::DEFAULT_QUERY_PROVIDERS.mir_built)(tcx, def_id);
+                let mut mir = mir.steal();
+                cleanup_logic(tcx, def_id.def_id_for_type_of(), &mut mir);
+                tcx.alloc_steal_mir(mir)
+            }
+        })
+    }
+
     fn after_expansion<'tcx>(
         &mut self,
         compiler: &Compiler,
@@ -46,7 +62,6 @@ impl Callbacks for ToGil {
     ) -> Compilation {
         compiler.session().abort_if_errors();
         queries.prepare_outputs().unwrap();
-        queries.global_ctxt().unwrap();
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             let prog = self.compile_prog(&tcx);
             let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);

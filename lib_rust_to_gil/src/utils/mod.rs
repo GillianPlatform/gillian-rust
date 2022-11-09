@@ -6,4 +6,6 @@ pub fn init() {
 }
 
 // pub use cgu_reuse::{determine_cgu_reuse, reuse_workproduct_for_cgu};
+pub(crate) mod attrs;
+pub(crate) mod cleanup_logic;
 pub mod fatal;

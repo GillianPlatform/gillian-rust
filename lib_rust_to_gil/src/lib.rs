@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(cell_leak)]
+extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -30,9 +31,11 @@ mod prelude {
     // pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::{Ty, TyCtxt, TyKind, ValTree};
+    pub(crate) use rustc_span::{def_id::DefId, Symbol};
 }
 
 mod codegen;
+mod logic;
 pub mod utils;
 
 pub mod callbacks;

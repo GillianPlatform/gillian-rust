@@ -1,4 +1,4 @@
-use super::print_utils::comma_separated_display;
+use super::print_utils::{comma_separated_display, write_maybe_quoted};
 use super::{Annot, Cmd, Spec};
 use std::fmt::{self, Write};
 
@@ -56,7 +56,9 @@ impl fmt::Display for Proc {
         let longest_label = self.longest_label();
         let indent = "  ";
         let empty_string = String::new();
-        write!(f, "proc \"{}\"(", self.name)?;
+        write!(f, "proc ")?;
+        write_maybe_quoted(&self.name, f)?;
+        write!(f, "(")?;
         comma_separated_display(&self.params, f)?;
         writeln!(f, ") {{")?;
         let mut is_first = true;

@@ -1,24 +1,56 @@
-use super::{Assertion, Type};
+use std::fmt::Display;
 
-#[derive(Debug)]
-pub struct DefinitionLabel {
-    pub name: String,
-    pub existentials: Vec<String>,
-}
-
-#[derive(Debug)]
-pub struct PredDefinition {
-    pub lab_opt: Option<DefinitionLabel>,
-    pub assertion: Assertion,
-}
+use super::{print_utils, Assertion, Formula, Type};
 
 #[derive(Debug)]
 pub struct Pred {
     pub name: String,
-    pub num_params: i32,
+    pub num_params: usize,
     pub params: Vec<(String, Option<Type>)>,
-    pub ins: Vec<i32>,
-    pub definitions: Vec<PredDefinition>,
+    pub ins: Vec<usize>,
+    pub definitions: Vec<Assertion>,
     pub pure: bool,
-    pub normalised: bool,
+    pub abstract_: bool,
+    pub facts: Vec<Formula>,
+}
+
+impl Display for Pred {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.abstract_ {
+            write!(f, "abstract ")?;
+        }
+        if self.pure {
+            write!(f, "pure ")?;
+        }
+
+        write!(f, "pred ")?;
+        print_utils::write_maybe_quoted(&self.name, f)?;
+        write!(f, "(")?;
+        for (i, (name, typ)) in self.params.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            if self.ins.contains(&i) {
+                write!(f, "+")?;
+            }
+            write!(f, "{}", &name)?;
+            if let Some(typ) = typ {
+                write!(f, ": {}", typ)?;
+            }
+        }
+        write!(f, ")")?;
+        if !self.definitions.is_empty() {
+            writeln!(f, ":")?;
+            let mut first = false;
+            for def in &self.definitions {
+                if first {
+                    first = false;
+                } else {
+                    writeln!(f, ",")?;
+                }
+                write!(f, "{}", def)?;
+            }
+        }
+        write!(f, ";")
+    }
 }

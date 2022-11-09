@@ -1,4 +1,4 @@
-use super::{Assertion, DefinitionLabel};
+use super::Assertion;
 use std::fmt;
 
 #[derive(Debug)]
@@ -13,7 +13,6 @@ pub struct SingleSpec {
     pub posts: Vec<Assertion>,
     pub flag: Flag,
     pub to_verify: bool,
-    pub label: Option<DefinitionLabel>,
 }
 
 #[derive(Debug)]
@@ -21,7 +20,6 @@ pub struct Spec {
     pub name: String,
     pub params: Vec<String>,
     pub sspecs: Vec<SingleSpec>,
-    pub normalised: bool,
     pub to_verify: bool,
 }
 

@@ -5,5 +5,4 @@ pub struct BiSpec {
     pub name: String,
     pub params: Vec<String>,
     pub pres: Vec<Assertion>,
-    pub normalised: bool,
 }
