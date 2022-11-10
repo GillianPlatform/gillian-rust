@@ -24,7 +24,7 @@ impl ToGil {
             let did = key.to_def_id();
             if crate::utils::attrs::is_logic(*tcx, did) {
                 dbg!(crate::logic::compile_logic(*tcx, did));
-                panic!()
+                panic!("OKKKK")
             }
             let body = match tcx.def_kind(did) {
                 DefKind::Ctor(..) => tcx.optimized_mir(did),

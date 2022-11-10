@@ -1,14 +1,19 @@
 use std::fmt::Debug;
 
 use quote::ToTokens;
+
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    BinOp, Error, Expr,
+    token, BinOp, Error, Expr,
 };
 
 pub enum Formula {
-    Eq(Box<Expr>, Box<Expr>),
+    Eq {
+        left: Box<Expr>,
+        tok: token::EqEq,
+        right: Box<Expr>,
+    },
 }
 
 impl TryFrom<Expr> for Formula {
@@ -21,8 +26,12 @@ impl TryFrom<Expr> for Formula {
             _ => return err,
         };
 
-        if let BinOp::Eq(_tok) = binary.op {
-            Ok(Formula::Eq(binary.left, binary.right))
+        if let BinOp::Eq(tok) = binary.op {
+            Ok(Formula::Eq {
+                left: binary.left,
+                tok,
+                right: binary.right,
+            })
         } else {
             err
         }
@@ -32,8 +41,13 @@ impl TryFrom<Expr> for Formula {
 impl Debug for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Eq(e1, e2) => {
-                write!(f, "({} == {})", e1.to_token_stream(), e2.to_token_stream())
+            Self::Eq { left, right, .. } => {
+                write!(
+                    f,
+                    "({} == {})",
+                    left.to_token_stream(),
+                    right.to_token_stream()
+                )
             }
         }
     }

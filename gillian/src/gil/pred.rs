@@ -41,7 +41,7 @@ impl Display for Pred {
         write!(f, ")")?;
         if !self.definitions.is_empty() {
             writeln!(f, ":")?;
-            let mut first = false;
+            let mut first = true;
             for def in &self.definitions {
                 if first {
                     first = false;
@@ -51,6 +51,19 @@ impl Display for Pred {
                 write!(f, "{}", def)?;
             }
         }
-        write!(f, ";")
+        writeln!(f, ";")?;
+        if !self.facts.is_empty() {
+            write!(f, "facts: ")?;
+            let mut first = false;
+            for fact in &self.facts {
+                if first {
+                    first = false;
+                } else {
+                    writeln!(f, " and ")?;
+                }
+                write!(f, "{}", fact)?;
+            }
+        }
+        Ok(())
     }
 }

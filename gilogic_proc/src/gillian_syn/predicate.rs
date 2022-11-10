@@ -132,8 +132,17 @@ pub(crate) enum Predicate {
     Concrete {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
-        body: Vec<Assertion>,
+        body: Punctuated<Assertion, Token![;]>,
     },
+}
+
+impl Predicate {
+    pub(crate) fn args(&self) -> &Punctuated<PredParam, Token![,]> {
+        match self {
+            Predicate::Abstract { args, .. } => args,
+            Predicate::Concrete { args, .. } => args,
+        }
+    }
 }
 
 fn validate_sig(sig: &Signature) -> syn::Result<()> {
@@ -183,7 +192,6 @@ impl Parse for Predicate {
             let body;
             let _ = braced!(body in input);
             let body: Punctuated<Assertion, Token![;]> = Punctuated::parse_terminated(&body)?;
-            let body = body.into_iter().collect();
             let result = Predicate::Concrete { name, args, body };
             Ok(result)
         }
