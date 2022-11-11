@@ -25,6 +25,8 @@ impl CanFatal for PredCtx<'_> {
     }
 }
 
+// FIXME: this code isn't very elegant, there should be also a "LocalLogCtx" with a reference to the thir body,
+//        that would allow to not resolve everything every time. Also, it would be reused for other logic items.
 impl<'tcx> PredCtx<'tcx> {
     fn get_ins(&self) -> Vec<usize> {
         let ins_attr = crate::utils::attrs::get_attr(
@@ -110,9 +112,11 @@ impl<'tcx> PredCtx<'tcx> {
     fn is_call_to(&self, ty: Ty<'tcx>, name: &str) -> bool {
         // TODO: Cache the diagnostic item's type to avoid the cost of lookup every time
         // There is also probably a more direct way of doing this
-        let did = self.tcx.get_diagnostic_item(Symbol::intern(name)).unwrap();
-        let tty = self.tcx.type_of(did);
-        tty == ty
+        if let TyKind::FnDef(did, _) = ty.kind() {
+            self.tcx.is_diagnostic_item(Symbol::intern(name), *did)
+        } else {
+            false
+        }
     }
 
     fn compile_formula(&self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
@@ -179,8 +183,6 @@ impl<'tcx> PredCtx<'tcx> {
             ))
             .expect("Predicate body failed to typecheck");
         let thir = thir.borrow();
-
-        dbg!(&thir, _expr);
 
         // FIXME: Use the list of statements of the main block expr
         let definitions = thir

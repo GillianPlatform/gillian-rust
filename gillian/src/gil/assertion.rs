@@ -35,7 +35,7 @@ impl Display for Assertion {
                 comma_separated_display(params, f)?;
                 write!(f, ")")
             }
-            Pure(formula) => write!(f, "({})", formula),
+            Pure(formula) => formula.fmt(f),
             Types(types) => {
                 write!(f, "types(")?;
                 let mut first = true;
