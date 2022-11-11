@@ -2,7 +2,8 @@ use crate::prelude::*;
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
-    thir::{ExprId, ExprKind, StmtKind, Thir},
+    mir::Field,
+    thir::{Adt, ExprId, ExprKind, StmtKind, Thir},
     ty::WithOptConstParam,
 };
 
@@ -119,6 +120,49 @@ impl<'tcx> PredCtx<'tcx> {
         }
     }
 
+    fn compile_expression(&self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
+        let expr = &thir[e];
+        match &expr.kind {
+            ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
+            ExprKind::VarRef { id } => {
+                let var_id = id.0.local_id.as_usize();
+                let name = format!("#pred_arg{}", var_id);
+                GExpr::LVar(name)
+            }
+            ExprKind::Adt(box Adt {
+                adt_def: def,
+                variant_index: _,
+                fields,
+                base,
+                substs: _,
+                user_ty: _,
+            }) => {
+                if base.is_some() {
+                    fatal!(self, "Illegal base in logic ADT expression")
+                }
+                let mut fields_with_idx: Vec<(Field, GExpr)> = fields
+                    .iter()
+                    .map(|f| (f.name, self.compile_expression(f.expr, thir)))
+                    .collect();
+                fields_with_idx.sort_by(|(f1, _), (f2, _)| f1.cmp(f2));
+                let fields: Vec<GExpr> = fields_with_idx.into_iter().map(|(_, e)| e).collect();
+
+                let adt_name: GExpr = self.tcx.item_name(def.did()).to_string().into();
+                vec![adt_name, fields.into()].into()
+            }
+            ExprKind::Literal { lit, neg } => {
+                if *neg {
+                    fatal!(self, "Negged literal? {:?}", expr)
+                }
+                match lit.node {
+                    LitKind::Int(i, _) => i.into(),
+                    _ => fatal!(self, "Unsupported literal {:?}", expr),
+                }
+            }
+            _ => fatal!(self, "{:?} unsupported Thir expression in assertion", expr),
+        }
+    }
+
     fn compile_formula(&self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
         let expr = &thir.exprs[e];
         if !self.is_formula_ty(expr.ty) {
@@ -137,8 +181,8 @@ impl<'tcx> PredCtx<'tcx> {
             } if self.is_call_to(*ty, "gillian::formula::equal") => {
                 // FIXME: This doesn't match because equal is polymorphic and it gets monomorphized here.
                 assert!(args.len() == 2, "Equal call must have one argument");
-                let left = Box::new(GExpr::int(0));
-                let right = Box::new(GExpr::int(1));
+                let left = Box::new(self.compile_expression(args[0], thir));
+                let right = Box::new(self.compile_expression(args[1], thir));
                 Formula::Eq { left, right }
             }
             _ => fatal!(self, "Unsupported formula: {:?}", expr),
