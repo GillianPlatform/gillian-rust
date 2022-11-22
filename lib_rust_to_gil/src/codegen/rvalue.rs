@@ -109,7 +109,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     ),
                 }
             }
-            CastKind::Misc => {
+            CastKind::PtrToPtr => {
                 let opty = self.operand_ty(op);
                 match (opty.kind(), ty_to.kind()) {
                     (
@@ -142,7 +142,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.operand_ty(op),
                 ty_to
             ),
-            CastKind::PointerExposeAddress | CastKind::PointerFromExposedAddress => fatal!(
+            CastKind::FnPtrToPtr
+            | CastKind::IntToInt
+            | CastKind::PointerExposeAddress
+            | CastKind::PointerFromExposedAddress
+            | CastKind::DynStar
+            | CastKind::FloatToFloat
+            | CastKind::FloatToInt
+            | CastKind::IntToFloat => fatal!(
                 self,
                 "Cannot encode PonterExposeAddress and PointerFromExposedAddress yet"
             ),
@@ -229,6 +236,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         match ckind {
             ConstantKind::Ty(cst) => self.encode_const(cst),
             ConstantKind::Val(val, ty) => self.encode_value(val, *ty),
+            ConstantKind::Unevaluated(..) => fatal!(self, "Can't encode unevaluated constants yet"),
         }
     }
 
@@ -259,6 +267,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             ConstValue::Scalar(Scalar::Int(scalar_int)) => {
                 self.encode_valtree(&ValTree::Leaf(*scalar_int), ty)
             }
+            ConstValue::ZeroSized => self.zst_value_of_type(ty),
             _ => fatal!(self, "Cannot encode value yet: {:#?}", val),
         }
     }

@@ -3,7 +3,7 @@ use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
     mir::Field,
-    thir::{Adt, ExprId, ExprKind, StmtKind, Thir},
+    thir::{AdtExpr, ExprId, ExprKind, StmtKind, Thir},
     ty::WithOptConstParam,
 };
 
@@ -129,7 +129,7 @@ impl<'tcx> PredCtx<'tcx> {
                 let name = format!("#pred_arg{}", var_id);
                 GExpr::LVar(name)
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def: def,
                 variant_index: _,
                 fields,

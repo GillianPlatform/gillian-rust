@@ -50,7 +50,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
-        let proc_name = self.tcx.def_path_str(self.body_did());
+        let proc_name =
+            rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(self.body_did()));
 
         log::debug!("Compiling {}", proc_name);
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
@@ -68,7 +69,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             .map(|local| self.name_from_local(local))
             .collect();
         self.push_alloc_local_decls(mir_body);
-        for (bb, bb_data) in mir_body.basic_blocks().iter_enumerated() {
+        for (bb, bb_data) in mir_body.basic_blocks.iter_enumerated() {
             if !bb_data.is_cleanup {
                 self.push_basic_block(bb, bb_data);
             }

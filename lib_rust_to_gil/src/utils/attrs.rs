@@ -9,7 +9,7 @@ pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a 
             AttrKind::DocComment(..) => {
                 return None;
             }
-            AttrKind::Normal(item, ..) => item,
+            AttrKind::Normal(p) => &p.item,
         };
 
         if attr.path.segments.len() != path.len() {

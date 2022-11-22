@@ -118,11 +118,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args: &[Operand<'tcx>],
         fname: String,
     ) -> Box<dyn FunctionShim> {
-        if def_id.is_local() {
-            return fname.into();
-        }
-
         let name = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+        if def_id.is_local() {
+            return name.into();
+        }
         log::debug!("Can I shim: {name}");
 
         match name.as_str() {
