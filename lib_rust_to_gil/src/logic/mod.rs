@@ -13,22 +13,12 @@ pub enum LogicItem {
 
 pub fn compile_logic(tcx: TyCtxt, did: DefId) -> LogicItem {
     if is_abstract_predicate(tcx, did) {
-        let pred = predicate::PredCtx {
-            tcx,
-            did,
-            abstract_: true,
-        }
-        .compile();
+        let pred = predicate::PredCtx::new(tcx, did, true).compile();
         println!("{}", &pred);
         return LogicItem::Pred(pred);
     }
     if is_predicate(tcx, did) {
-        let pred = predicate::PredCtx {
-            tcx,
-            did,
-            abstract_: false,
-        }
-        .compile();
+        let pred = predicate::PredCtx::new(tcx, did, false).compile();
         println!("{}", &pred);
         return LogicItem::Pred(pred);
     }

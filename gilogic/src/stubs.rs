@@ -21,7 +21,7 @@ pub fn pure(_: RustFormula) -> RustAssertion {
 pub trait PointsTo<T>: Sized {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::asrt::points_to"]
-    fn points_to(self, _: T) -> bool {
+    fn points_to(self, _: T) -> RustAssertion {
         unreachable!()
     }
 }
@@ -33,4 +33,19 @@ impl<T> PointsTo<T> for *mut T {}
 
 pub fn star(_: RustAssertion, _: RustAssertion) -> RustAssertion {
     unreachable!()
+}
+
+pub trait InstantiateLVar {
+    fn instantiate_lvar() -> Self;
+}
+
+impl<T> InstantiateLVar for T
+where
+    T: core::any::Any,
+{
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::logic::instantiate_lvar"]
+    fn instantiate_lvar() -> Self {
+        unreachable!()
+    }
 }

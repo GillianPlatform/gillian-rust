@@ -13,11 +13,18 @@ mod gillian_syn;
 
 use gillian_syn::*;
 
+use assertion::Assertion;
 use predicate::Predicate;
 
 #[proc_macro_attribute]
 pub fn predicate(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     parse_macro_input!(input as Predicate)
+        .to_token_stream()
+        .into()
+}
+#[proc_macro]
+pub fn assertion(input: TokenStream_) -> TokenStream_ {
+    parse_macro_input!(input as Assertion)
         .to_token_stream()
         .into()
 }

@@ -3,11 +3,9 @@ use std::fmt::Debug;
 use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
-    braced, parse::Parse, punctuated::Punctuated, spanned::Spanned, Error, FnArg, GenericArgument,
-    Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
+    braced, parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Brace, Block, Error,
+    FnArg, GenericArgument, Pat, PatType, PathArguments, Signature, Stmt, Token, Type, TypePath,
 };
-
-use crate::assertion::Assertion;
 
 #[derive(Debug)]
 pub(crate) enum ParamMode {
@@ -112,7 +110,7 @@ impl TryFrom<FnArg> for PredParam {
                     }
                     _ => ((*ty).clone(), ParamMode::Out),
                 };
-                let name = Self::ident_pat(&*pat)?;
+                let name = Self::ident_pat(&pat)?;
                 Ok(PredParam {
                     name,
                     ty,
@@ -132,7 +130,8 @@ pub(crate) enum Predicate {
     Concrete {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
-        body: Punctuated<Assertion, Token![;]>,
+        brace_token: Brace,
+        body: Vec<Stmt>,
     },
 }
 
@@ -189,10 +188,15 @@ impl Parse for Predicate {
             let result = Predicate::Abstract { name, args };
             Ok(result)
         } else {
-            let body;
-            let _ = braced!(body in input);
-            let body: Punctuated<Assertion, Token![;]> = Punctuated::parse_terminated(&body)?;
-            let result = Predicate::Concrete { name, args, body };
+            let inside;
+            let brace_token = braced!(inside in input);
+            let body = Block::parse_within(&inside)?;
+            let result = Predicate::Concrete {
+                name,
+                args,
+                brace_token,
+                body,
+            };
             Ok(result)
         }
     }

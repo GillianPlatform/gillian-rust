@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::prelude::*;
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
     mir::Field,
-    thir::{AdtExpr, ExprId, ExprKind, StmtKind, Thir},
-    ty::WithOptConstParam,
+    thir::{AdtExpr, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
+    ty::{AdtKind, WithOptConstParam},
 };
 
 struct PredSig {
@@ -15,9 +17,10 @@ struct PredSig {
 }
 
 pub(crate) struct PredCtx<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub did: DefId,
-    pub abstract_: bool,
+    tcx: TyCtxt<'tcx>,
+    did: DefId,
+    abstract_: bool,
+    var_names: HashMap<LocalVarId, String>,
 }
 
 impl CanFatal for PredCtx<'_> {
@@ -26,9 +29,30 @@ impl CanFatal for PredCtx<'_> {
     }
 }
 
+macro_rules! get_thir {
+    ($thir:pat, $expr:pat, $s:expr) => {
+        let (___thir, $expr) = $s
+            .tcx
+            .thir_body(WithOptConstParam::unknown(
+                $s.did.as_local().expect("non-local predicate"),
+            ))
+            .expect("Predicate body failed to typecheck");
+        let $thir = ___thir.borrow();
+    };
+}
+
 // FIXME: this code isn't very elegant, there should be also a "LocalLogCtx" with a reference to the thir body,
 //        that would allow to not resolve everything every time. Also, it would be reused for other logic items.
 impl<'tcx> PredCtx<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, did: DefId, abstract_: bool) -> Self {
+        PredCtx {
+            tcx,
+            did,
+            abstract_,
+            var_names: HashMap::new(),
+        }
+    }
+
     fn get_ins(&self) -> Vec<usize> {
         let ins_attr = crate::utils::attrs::get_attr(
             self.tcx.get_attrs_unchecked(self.did),
@@ -61,20 +85,48 @@ impl<'tcx> PredCtx<'tcx> {
         self.tcx.def_path_str(self.did)
     }
 
-    fn sig(&self) -> PredSig {
-        let ins = self.get_ins();
-        let sig = self.tcx.fn_sig(self.did);
-        let inputs = sig.inputs();
-        if !inputs.bound_vars().is_empty() {
-            fatal!(self, "Predicate signature as bound regions or variables")
-        };
-        let params = inputs
-            .skip_binder()
-            .iter()
-            .enumerate()
-            .map(|(i, _)| (format!("pred_arg{}", i), None))
-            .collect();
+    fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
+        match &param.pat {
+            Some(box Pat {
+                kind:
+                    PatKind::Binding {
+                        mutability,
+                        name,
+                        var,
+                        subpattern,
+                        is_primary,
+                        mode: _,
+                        ty: _,
+                    },
+                ..
+            }) => {
+                let name = name.to_string();
+                let ty = param.ty;
+                if !is_primary {
+                    fatal!(self, "Predicate parameters must be primary");
+                }
+                if let Mutability::Mut = mutability {
+                    fatal!(self, "Predicate parameters cannot be mutable");
+                }
+                if subpattern.is_some() {
+                    fatal!(self, "Predicate parameters cannot have subpatterns");
+                }
+                self.var_names.insert(*var, name.clone());
+                (name, ty)
+            }
+            _ => fatal!(self, "Predicate parameters must be variables"),
+        }
+    }
 
+    fn sig(&mut self) -> PredSig {
+        let ins = self.get_ins();
+        get_thir!(thir, _expr, self);
+        let params = thir
+            .params
+            .iter()
+            .map(|p| self.extract_param(p))
+            .map(|(name, _ty)| (name, None))
+            .collect::<Vec<_>>();
         PredSig {
             name: self.pred_name(),
             params,
@@ -83,7 +135,7 @@ impl<'tcx> PredCtx<'tcx> {
         }
     }
 
-    fn compile_abstract(self) -> Pred {
+    fn compile_abstract(mut self) -> Pred {
         let PredSig {
             name,
             params,
@@ -124,14 +176,17 @@ impl<'tcx> PredCtx<'tcx> {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
-            ExprKind::VarRef { id } => {
-                let var_id = id.0.local_id.as_usize();
-                let name = format!("#pred_arg{}", var_id);
-                GExpr::LVar(name)
-            }
+            ExprKind::VarRef { id } => match self.var_names.get(id) {
+                Some(name) => GExpr::PVar(name.clone()),
+                None => {
+                    let var_id = id.0.local_id.as_usize();
+                    let name = format!("#pred_lvar{}", var_id);
+                    GExpr::LVar(name)
+                }
+            },
             ExprKind::Adt(box AdtExpr {
                 adt_def: def,
-                variant_index: _,
+                variant_index,
                 fields,
                 base,
                 substs: _,
@@ -146,9 +201,18 @@ impl<'tcx> PredCtx<'tcx> {
                     .collect();
                 fields_with_idx.sort_by(|(f1, _), (f2, _)| f1.cmp(f2));
                 let fields: Vec<GExpr> = fields_with_idx.into_iter().map(|(_, e)| e).collect();
-
                 let adt_name: GExpr = self.tcx.item_name(def.did()).to_string().into();
-                vec![adt_name, fields.into()].into()
+                match def.adt_kind() {
+                    AdtKind::Enum => {
+                        let n: GExpr = variant_index.as_u32().into();
+                        let value = vec![n, fields.into()].into();
+                        vec![adt_name, value].into()
+                    }
+                    AdtKind::Struct => vec![adt_name, fields.into()].into(),
+                    AdtKind::Union => {
+                        fatal!(self, "Unions are not supported in logic yet")
+                    }
+                }
             }
             ExprKind::Literal { lit, neg } => {
                 if *neg {
@@ -213,21 +277,15 @@ impl<'tcx> PredCtx<'tcx> {
         }
     }
 
-    fn compile_concrete(self) -> Pred {
+    fn compile_concrete(mut self) -> Pred {
         let PredSig {
             name,
             params,
             ins,
             facts,
         } = self.sig();
-        let (thir, _expr) = self
-            .tcx
-            .thir_body(WithOptConstParam::unknown(
-                self.did.as_local().expect("non-local predicate"),
-            ))
-            .expect("Predicate body failed to typecheck");
-        let thir = thir.borrow();
-
+        get_thir!(thir, _expr, self);
+        dbg!(&thir, _expr);
         // FIXME: Use the list of statements of the main block expr
         let definitions = thir
             .stmts

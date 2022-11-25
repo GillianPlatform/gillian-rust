@@ -83,19 +83,24 @@ impl Parse for SimpleAssertion {
     }
 }
 
+pub struct Assertion {
+    pub(crate) lvars: Vec<Ident>,
+    pub(crate) inner: AssertionInner,
+}
+
 /// An assertion is the "star" of a bunch of simple assertions.
 /// That's probably how we should formalize it too.
-pub enum Assertion {
+pub enum AssertionInner {
     Leaf(SimpleAssertion),
     Star {
-        left: Box<Assertion>,
-        right: Box<Assertion>,
+        left: Box<AssertionInner>,
+        right: Box<AssertionInner>,
         star_token: Token![*],
     },
 }
 
 struct Accumulator {
-    current: Option<Assertion>,
+    current: Option<AssertionInner>,
     trailing_token: Option<Token![*]>,
 }
 
@@ -116,7 +121,7 @@ impl Accumulator {
 
     fn push_simple_assertion(&mut self, sasrt: SimpleAssertion) {
         let token = self.trailing_token.take();
-        let new_assertion = Assertion::Leaf(sasrt);
+        let new_assertion = AssertionInner::Leaf(sasrt);
         let current = self.current.take();
         match current {
             None => {
@@ -128,7 +133,7 @@ impl Accumulator {
             }
             Some(asrt) => {
                 let token = token.expect("Pushed two assertions in a row");
-                self.current = Some(Assertion::Star {
+                self.current = Some(AssertionInner::Star {
                     left: Box::new(asrt),
                     right: Box::new(new_assertion),
                     star_token: token,
@@ -137,7 +142,7 @@ impl Accumulator {
         }
     }
 
-    fn into_assert(self) -> Assertion {
+    fn into_assert(self) -> AssertionInner {
         match self.current {
             None => panic!("No assertion"),
             Some(asrt) => {
@@ -148,7 +153,7 @@ impl Accumulator {
     }
 }
 
-impl Parse for Assertion {
+impl Parse for AssertionInner {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut acc = Accumulator::new();
 
@@ -163,5 +168,28 @@ impl Parse for Assertion {
         }
 
         Ok(acc.into_assert())
+    }
+}
+
+impl Parse for Assertion {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lvars = if input.peek(Token![|]) {
+            let _: Token![|] = input.parse()?;
+            let mut lvars = Vec::with_capacity(2);
+            loop {
+                let lvar: Ident = input.parse()?;
+                lvars.push(lvar);
+                if !input.peek(Token![,]) {
+                    break;
+                }
+                let _: Token![,] = input.parse()?;
+            }
+            let _: Token![|] = input.parse()?;
+            lvars
+        } else {
+            Vec::new()
+        };
+        let inner = input.parse()?;
+        Ok(Self { lvars, inner })
     }
 }

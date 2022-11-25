@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 pub use tys::RustAssertion;
 
 pub mod macros {
-    pub use gilogic_proc::predicate;
+    pub use gilogic_proc::{assertion, predicate};
 }
 
 pub struct Seq<T>(PhantomData<T>);

@@ -1,4 +1,4 @@
-use quote::{quote, ToTokens};
+use quote::{quote, ToTokens, TokenStreamExt};
 
 use crate::gillian_syn::predicate::{ParamMode, PredParam, Predicate};
 
@@ -37,13 +37,22 @@ impl ToTokens for Predicate {
                 unreachable!()
               }
             }),
-            Self::Concrete { name, args, body } => tokens.extend(quote! {
-              #[gillian::decl::predicate]
-              #[gillian::decl::pred_ins=#ins]
-              fn #name(#args) {
-                #body;
-              }
-            }),
+            Self::Concrete {
+                name,
+                args,
+                body,
+                brace_token,
+            } => {
+                tokens.extend(quote! {
+                  #[gillian::decl::predicate]
+                  #[gillian::decl::pred_ins=#ins]
+                  fn #name(#args)
+                });
+                brace_token.surround(tokens, |tokens| {
+                    tokens.append_all(body);
+                    tokens.extend(quote!(;))
+                })
+            }
         }
     }
 }

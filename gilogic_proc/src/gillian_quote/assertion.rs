@@ -1,7 +1,7 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 
-use crate::gillian_syn::assertion::{Assertion, SimpleAssertion};
+use crate::gillian_syn::assertion::{Assertion, AssertionInner, SimpleAssertion};
 
 impl ToTokens for SimpleAssertion {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
@@ -28,11 +28,11 @@ impl ToTokens for SimpleAssertion {
     }
 }
 
-impl ToTokens for Assertion {
+impl ToTokens for AssertionInner {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Assertion::Leaf(simple) => simple.to_tokens(tokens),
-            Assertion::Star {
+            AssertionInner::Leaf(simple) => simple.to_tokens(tokens),
+            AssertionInner::Star {
                 left,
                 right,
                 star_token,
@@ -41,5 +41,15 @@ impl ToTokens for Assertion {
                 tokens.extend(quote_spanned!(span=> ::gilogic::__stubs::star(#left, #right)))
             }
         }
+    }
+}
+
+impl ToTokens for Assertion {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { lvars, inner } = self;
+        tokens.extend(quote!({
+            #(let #lvars = ::gilogic::__stubs::InstantiateLVar::instantiate_lvar(); )*
+            #inner
+        }))
     }
 }
