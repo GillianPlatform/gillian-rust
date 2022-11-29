@@ -314,7 +314,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn make_nonnull(&self, ptr: GExpr) -> GExpr {
@@ -481,7 +481,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     None => fatal!(self, "Array block has no expression when resolving the main expression of a predicate"),
                 }
             }
-            ExprKind::Array { fields } => fields.iter().map(|x| *x).collect(),
+            ExprKind::Array { fields } => fields.to_vec(),
             _ => fatal!(self, "Can't resolve array: {:?}", expr),
         }
     }

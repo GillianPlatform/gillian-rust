@@ -13,3 +13,4 @@ proc-macro=true
 proc-macro2 = "1.0.47"
 syn = { version = "1.0.103", features = [ "full" ] }
 quote = "1.0.21"
+uuid = { version = "1.2.2", features = [ "v4", "fast-rng" ] }

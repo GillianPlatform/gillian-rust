@@ -72,7 +72,7 @@ impl Callbacks for ToGil {
             log::debug!("Writing to {:#?}", &tmp_file);
             if let Err(err) = std::fs::write(&tmp_file, prog.to_string()) {
                 tcx.sess
-                    .fatal(&format!("Error writing in GIL file: {}", err))
+                    .fatal(format!("Error writing in GIL file: {}", err))
             }
         });
 
