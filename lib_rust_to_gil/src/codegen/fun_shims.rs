@@ -64,8 +64,8 @@ impl<'tcx> GlobalEnv<'tcx> {
         );
         let addr = Expr::PVar(p.into()).lnth(0);
         let proj = Expr::PVar(p.into()).lnth(1);
-        let nproj = Expr::lst_concat(proj, vec![plus.into_expr()].into());
-        let ret_val = vec![addr, nproj].into();
+        let nproj = Expr::lst_concat(proj, [plus.into_expr()].into());
+        let ret_val = [addr, nproj].into();
         let assign = Cmd::Assignment {
             variable: names::ret_var(),
             assigned_expr: ret_val,

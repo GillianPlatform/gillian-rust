@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
+use super::builtins::Stubs;
 use crate::prelude::*;
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
     mir::Field,
-    thir::{AdtExpr, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtKind, WithOptConstParam},
+    thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
+    ty::{AdtDef, AdtKind, WithOptConstParam},
 };
 
 struct PredSig {
@@ -16,14 +17,25 @@ struct PredSig {
     facts: Vec<Formula>,
 }
 
-pub(crate) struct PredCtx<'tcx> {
+pub(crate) struct PredCtx<'tcx, 'genv> {
     tcx: TyCtxt<'tcx>,
+    global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
     abstract_: bool,
     var_names: HashMap<LocalVarId, String>,
+    temp_idx: u32,
 }
 
-impl CanFatal for PredCtx<'_> {
+impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
+    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
+        self.global_env.add_adt(ty);
+    }
+
+    fn atd_def_name(&self, def: &AdtDef) -> String {
+        self.tcx.item_name(def.did()).to_string()
+    }
+}
+impl CanFatal for PredCtx<'_, '_> {
     fn fatal(&self, str: &str) -> ! {
         self.tcx.sess.fatal(str)
     }
@@ -43,14 +55,27 @@ macro_rules! get_thir {
 
 // FIXME: this code isn't very elegant, there should be also a "LocalLogCtx" with a reference to the thir body,
 //        that would allow to not resolve everything every time. Also, it would be reused for other logic items.
-impl<'tcx> PredCtx<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, did: DefId, abstract_: bool) -> Self {
+impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        global_env: &'genv mut GlobalEnv<'tcx>,
+        did: DefId,
+        abstract_: bool,
+    ) -> Self {
         PredCtx {
+            global_env,
             tcx,
             did,
             abstract_,
             var_names: HashMap::new(),
+            temp_idx: 0,
         }
+    }
+
+    fn new_temp(&mut self) -> String {
+        let temp = format!("#lvar_{}", self.temp_idx);
+        self.temp_idx += 1;
+        temp
     }
 
     fn get_ins(&self) -> Vec<usize> {
@@ -155,21 +180,15 @@ impl<'tcx> PredCtx<'tcx> {
     }
 
     fn is_assertion_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_assertion_ty(self.tcx, ty)
+        super::builtins::is_assertion_ty(ty, self.tcx)
     }
 
     fn is_formula_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_formula_ty(self.tcx, ty)
+        super::builtins::is_formula_ty(ty, self.tcx)
     }
 
-    fn is_call_to(&self, ty: Ty<'tcx>, name: &str) -> bool {
-        // TODO: Cache the diagnostic item's type to avoid the cost of lookup every time
-        // There is also probably a more direct way of doing this
-        if let TyKind::FnDef(did, _) = ty.kind() {
-            self.tcx.is_diagnostic_item(Symbol::intern(name), *did)
-        } else {
-            false
-        }
+    fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
+        super::builtins::get_stub(ty, self.tcx)
     }
 
     fn compile_expression(&self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
@@ -223,6 +242,40 @@ impl<'tcx> PredCtx<'tcx> {
                     _ => fatal!(self, "Unsupported literal {:?}", expr),
                 }
             }
+            ExprKind::Call {
+                ty, fun: _, args, ..
+            } => match self.get_stub(*ty) {
+                Some(Stubs::SeqNil) => {
+                    assert!(args.is_empty());
+                    GExpr::EList(vec![])
+                }
+                Some(Stubs::SeqAppend) => {
+                    assert!(args.len() == 2);
+                    let list = self.compile_expression(args[0], thir);
+                    let elem = self.compile_expression(args[1], thir);
+                    let elem = vec![elem].into();
+                    Expr::lst_concat(list, elem)
+                }
+                Some(Stubs::SeqPrepend) => {
+                    assert!(args.len() == 2);
+                    let list = self.compile_expression(args[0], thir);
+                    let elem = self.compile_expression(args[1], thir);
+                    let elem = vec![elem].into();
+                    Expr::lst_concat(elem, list)
+                }
+                Some(Stubs::SeqConcat) => {
+                    assert!(args.len() == 2);
+                    let left = self.compile_expression(args[0], thir);
+                    let right = self.compile_expression(args[1], thir);
+                    Expr::lst_concat(left, right)
+                }
+                Some(Stubs::SeqLen) => {
+                    assert!(args.len() == 1);
+                    let list = self.compile_expression(args[0], thir);
+                    list.lst_len()
+                }
+                _ => fatal!(self, "{:?} unsupported call expression in assertion", expr),
+            },
             _ => fatal!(self, "{:?} unsupported Thir expression in assertion", expr),
         }
     }
@@ -242,7 +295,7 @@ impl<'tcx> PredCtx<'tcx> {
             ExprKind::Use { source } => self.compile_formula(*source, thir),
             ExprKind::Call {
                 ty, fun: _, args, ..
-            } if self.is_call_to(*ty, "gillian::formula::equal") => {
+            } if self.get_stub(*ty) == Some(Stubs::FormulaEqual) => {
                 // FIXME: This doesn't match because equal is polymorphic and it gets monomorphized here.
                 assert!(args.len() == 2, "Equal call must have one argument");
                 let left = Box::new(self.compile_expression(args[0], thir));
@@ -253,7 +306,62 @@ impl<'tcx> PredCtx<'tcx> {
         }
     }
 
-    fn compile_assertion(&self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
+    fn is_nonnull(&self, ty: Ty<'tcx>) -> bool {
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if let "core::ptr::NonNull" | "std::ptr::NonNull" =
+                self.tcx.def_path_str(adt_def.did()).as_str()
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn make_nonnull(&self, ptr: GExpr) -> GExpr {
+        ["NonNull".into(), [ptr].into()].into()
+    }
+
+    fn make_box(&self, ptr: GExpr) -> GExpr {
+        let non_null = self.make_nonnull(ptr);
+        let unique = ["Unique".into(), [non_null].into()].into();
+        let phantom_data = ["PhantomData".into(), [].into()].into();
+        let global = ["Global".into(), [].into()].into();
+        ["Box".into(), [unique, phantom_data, global].into()].into()
+    }
+
+    fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {
+        assert!(args.len() == 2, "Pure call must have one argument");
+        // The type in the points_to is the type of the pointee.
+        let ty = self.encode_type(thir.exprs[args[1]].ty);
+        let left = self.compile_expression(args[0], thir);
+        let right = self.compile_expression(args[1], thir);
+        let right_ty = thir.exprs[args[0]].ty;
+        // If the type is a box or a nonnull, we need to access its pointer.
+        let (left, pfs) = if thir.exprs[args[0]].ty.is_box() {
+            let ptr = GExpr::LVar(self.new_temp());
+            let box_ = self.make_box(ptr.clone());
+            let eq = Formula::Eq {
+                left: Box::new(box_),
+                right: Box::new(left),
+            };
+            let eq = Assertion::Pure(eq);
+            (ptr, eq)
+        } else if self.is_nonnull(right_ty) {
+            let ptr = GExpr::LVar(self.new_temp());
+            let non_null = self.make_nonnull(ptr.clone());
+            let eq = Formula::Eq {
+                left: Box::new(non_null),
+                right: Box::new(left),
+            };
+            let eq = Assertion::Pure(eq);
+            (ptr, eq)
+        } else {
+            (left, Assertion::Emp)
+        };
+        Assertion::star(pfs, super::core_preds::value(left, ty, right))
+    }
+
+    fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let expr = &thir.exprs[e];
         if !self.is_assertion_ty(expr.ty) {
             fatal!(self, "{:?} is not the assertion type", expr.ty)
@@ -268,12 +376,140 @@ impl<'tcx> PredCtx<'tcx> {
             ExprKind::Use { source } => self.compile_assertion(*source, thir),
             ExprKind::Call {
                 ty, fun: _, args, ..
-            } if self.is_call_to(*ty, "gillian::asrt::pure") => {
-                assert!(args.len() == 1, "Pure call must have one argument");
-                let formula = self.compile_formula(args[0], thir);
-                Assertion::Pure(formula)
-            }
+            } => match self.get_stub(*ty) {
+                Some(Stubs::AssertPure) => {
+                    assert!(args.len() == 1, "Pure call must have one argument");
+                    let formula = self.compile_formula(args[0], thir);
+                    Assertion::Pure(formula)
+                }
+                Some(Stubs::AssertStar) => {
+                    assert!(args.len() == 2, "Pure call must have one argument");
+                    let left = self.compile_assertion(args[0], thir);
+                    let right = self.compile_assertion(args[1], thir);
+                    Assertion::star(left, right)
+                }
+                Some(Stubs::AssertEmp) => {
+                    assert!(args.len() == 0, "Emp call must have no arguments");
+                    Assertion::Emp
+                }
+                Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
+                _ => {
+                    let name = match ty.kind() {
+                        TyKind::FnDef(def_id, _) => self.tcx.def_path_str(*def_id),
+                        _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
+                    };
+                    let params = args
+                        .iter()
+                        .map(|e| self.compile_expression(*e, thir))
+                        .collect();
+                    Assertion::Pred { name, params }
+                }
+            },
             _ => fatal!(self, "Can't compile assertion yet: {:?}", expr),
+        }
+    }
+
+    fn resolve_block(&self, e: ExprId, thir: &Thir<'tcx>) -> BlockId {
+        let expr = &thir.exprs[e];
+        match &expr.kind {
+            ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.resolve_block(*value, thir),
+            ExprKind::Use { source } => self.resolve_block(*source, thir),
+            ExprKind::Block { block, .. } => *block,
+            _ => fatal!(self, "Can't resolve block: {:?}", expr),
+        }
+    }
+
+    fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
+        let block = self.resolve_block(e, thir);
+        let block = &thir.blocks[block];
+        let expr = block
+            .expr
+            .unwrap_or_else(|| fatal!(self, "Assertion block has no expression?"));
+        for stmt in block.stmts.iter() {
+            // We could do additional check that the rhs is actually a call
+            // to `gilogic::new_lvar()` but 🤷‍♂️.
+            if let StmtKind::Let {
+                pattern:
+                    box Pat {
+                        kind:
+                            PatKind::Binding { name, var, .. }
+                            | PatKind::AscribeUserType {
+                                ascription: _,
+                                subpattern:
+                                    box Pat {
+                                        kind: PatKind::Binding { name, var, .. },
+                                        ..
+                                    },
+                            },
+                        ..
+                    },
+                ..
+            } = thir.stmts[*stmt].kind
+            {
+                self.var_names.insert(var, format!("#{}", name.as_str()));
+            } else {
+                fatal!(
+                    self,
+                    "Unsupported statement in assertion: {:?}",
+                    thir.stmts[*stmt]
+                )
+            }
+        }
+        self.compile_assertion(expr, thir)
+    }
+
+    fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
+        let expr = &thir.exprs[e];
+        match &expr.kind {
+            ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.resolve_array(*value, thir),
+            ExprKind::Use { source } => self.resolve_array(*source, thir),
+            ExprKind::Block { block } => {
+                let block = &thir.blocks[*block];
+                if !block.stmts.is_empty() {
+                    fatal!(self, "Array block has statements when resolving the main expression of a predicate")
+                }
+                match &block.expr {
+                    Some(e) => self.resolve_array(*e, thir),
+                    None => fatal!(self, "Array block has no expression when resolving the main expression of a predicate"),
+                }
+            }
+            ExprKind::Array { fields } => fields.iter().map(|x| *x).collect(),
+            _ => fatal!(self, "Can't resolve array: {:?}", expr),
+        }
+    }
+
+    fn resolve_definitions(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
+        let expr = &thir.exprs[e];
+        match &expr.kind {
+            ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.resolve_definitions(*value, thir),
+            ExprKind::Use { source } => self.resolve_definitions(*source, thir),
+            ExprKind::Block { block } => {
+                let block = &thir.blocks[*block];
+                if !block.stmts.is_empty() {
+                    fatal!(self, "Definitions block has statements when resolving the main expression of a predicate")
+                }
+                match &block.expr {
+                Some(e) => self.resolve_definitions(*e, thir),
+                None => fatal!(self, "Definition block has no expression when resolving the main expression of a predicate"),
+            }
+            }
+            ExprKind::Call { ty, args, .. } if self.get_stub(*ty) == Some(Stubs::PredDefs) => {
+                assert!(args.len() == 1, "Defs call must have one argument");
+                self.resolve_array(args[0], thir)
+            }
+            _ => fatal!(self, "Can't resolve array: {:?}", expr),
         }
     }
 
@@ -284,16 +520,12 @@ impl<'tcx> PredCtx<'tcx> {
             ins,
             facts,
         } = self.sig();
-        get_thir!(thir, _expr, self);
-        dbg!(&thir, _expr);
+        get_thir!(thir, ret_expr, self);
         // FIXME: Use the list of statements of the main block expr
-        let definitions = thir
-            .stmts
+        let definitions = self
+            .resolve_definitions(ret_expr, &thir)
             .iter()
-            .map(|stmt| match &stmt.kind {
-                StmtKind::Let { .. } => fatal!(self, "let statement is not an assertion"),
-                StmtKind::Expr { expr, .. } => self.compile_assertion(*expr, &thir),
-            })
+            .map(|e| self.compile_assertion_outer(*e, &thir))
             .collect();
 
         Pred {

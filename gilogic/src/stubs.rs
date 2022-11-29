@@ -1,8 +1,22 @@
+use core::ptr::NonNull;
+
 use super::tys::{RustAssertion, RustFormula};
 
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::emp"]
 pub fn emp() -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::star"]
+pub fn star(_: RustAssertion, _: RustAssertion) -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::pred::defs"]
+pub fn defs<const N: usize>(_: [RustAssertion; N]) -> RustAssertion {
     unreachable!()
 }
 
@@ -30,10 +44,8 @@ impl<T> PointsTo<T> for &T {}
 impl<T> PointsTo<T> for &mut T {}
 impl<T> PointsTo<T> for *const T {}
 impl<T> PointsTo<T> for *mut T {}
-
-pub fn star(_: RustAssertion, _: RustAssertion) -> RustAssertion {
-    unreachable!()
-}
+impl<T> PointsTo<T> for Box<T> {}
+impl<T> PointsTo<T> for NonNull<T> {}
 
 pub trait InstantiateLVar {
     fn instantiate_lvar() -> Self;

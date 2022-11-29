@@ -6,9 +6,10 @@ use syn::{
     buffer::Cursor,
     parenthesized,
     parse::{discouraged::Speculative, Parse, ParseStream},
+    spanned::Spanned,
     token,
     token::Token,
-    Error, Expr, Ident, Token,
+    Error, Expr, ExprCall, Ident, Token, Type,
 };
 
 use crate::formula::Formula;
@@ -17,6 +18,7 @@ pub enum SimpleAssertion {
     Emp(Span),
     Pure(Box<Formula>),
     PointsTo(Ident, Token![-], Token![>], Box<Expr>),
+    PredCall(ExprCall),
 }
 
 impl Debug for SimpleAssertion {
@@ -27,11 +29,47 @@ impl Debug for SimpleAssertion {
             SimpleAssertion::PointsTo(id, _, _, exp) => {
                 write!(f, "({} -> {})", id, exp.to_token_stream())
             }
+            SimpleAssertion::PredCall(call) => write!(f, "{}", call.to_token_stream()),
         }
     }
 }
 
 impl SimpleAssertion {
+    fn expr_is_simple_identifier(expr: &Expr) -> bool {
+        match expr {
+            Expr::Path(path) => {
+                path.path.segments.len() == 1
+                    && path.attrs.is_empty()
+                    && path.qself.is_none()
+                    && path.path.leading_colon.is_none()
+            }
+            _ => false,
+        }
+    }
+
+    fn parse_pred_call(input: ParseStream) -> syn::Result<Self> {
+        // This is clearly suboptimal since we already parse the input as an expression,
+        // when trying for Formula, but let's keep it simple for now.
+        let e: Expr = input.parse()?;
+        print!("Trying to parse as pred call: {}", e.to_token_stream());
+        let err = Err(Error::new(e.span(), "Expr is not a predicate call"));
+        if let Expr::Call(call) = e {
+            if !call.attrs.is_empty() {
+                println!(" ERROR!");
+                return err;
+            }
+            if !Self::expr_is_simple_identifier(&call.func) {
+                println!(" ERROR!");
+                return err;
+            }
+            println!(" SUCCESS!");
+            Ok(SimpleAssertion::PredCall(call))
+        } else {
+            println!(" ERROR!");
+            err
+        }
+    }
+
     fn parse_points_to_inner(input: ParseStream) -> syn::Result<Self> {
         let left: Ident = input.parse()?;
         let arrow_dash: Token![-] = input.parse()?;
@@ -61,6 +99,11 @@ impl Parse for SimpleAssertion {
             input.advance_to(&fork);
             return Ok(Self::Pure(Box::new(formula)));
         }
+        let fork = input.fork();
+        if let Ok(assertion) = Self::parse_pred_call(&fork) {
+            input.advance_to(&fork);
+            return Ok(assertion);
+        }
         if input.peek(token::Paren) {
             let inner;
             let _ = parenthesized!(inner in input);
@@ -83,8 +126,13 @@ impl Parse for SimpleAssertion {
     }
 }
 
+pub struct LvarDecl {
+    pub(crate) ident: Ident,
+    pub(crate) ty_opt: Option<(Token![:], Type)>,
+}
+
 pub struct Assertion {
-    pub(crate) lvars: Vec<Ident>,
+    pub(crate) lvars: Vec<LvarDecl>,
     pub(crate) inner: AssertionInner,
 }
 
@@ -177,8 +225,15 @@ impl Parse for Assertion {
             let _: Token![|] = input.parse()?;
             let mut lvars = Vec::with_capacity(2);
             loop {
-                let lvar: Ident = input.parse()?;
-                lvars.push(lvar);
+                let ident: Ident = input.parse()?;
+                let ty_opt = if input.peek(Token![:]) {
+                    let colon: Token![:] = input.parse()?;
+                    let ty: Type = input.parse()?;
+                    Some((colon, ty))
+                } else {
+                    None
+                };
+                lvars.push(LvarDecl { ident, ty_opt });
                 if !input.peek(Token![,]) {
                     break;
                 }

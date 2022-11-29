@@ -23,6 +23,19 @@ pub enum Assertion {
     },
 }
 
+impl Assertion {
+    pub fn star(left: Self, right: Self) -> Self {
+        match (left, right) {
+            (Assertion::Emp, x) => x,
+            (x, Assertion::Emp) => x,
+            (x, y) => Assertion::Star {
+                left: Box::new(x),
+                right: Box::new(y),
+            },
+        }
+    }
+}
+
 impl Display for Assertion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Assertion::*;

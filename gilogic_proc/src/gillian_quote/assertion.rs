@@ -1,7 +1,7 @@
 use quote::{quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 
-use crate::gillian_syn::assertion::{Assertion, AssertionInner, SimpleAssertion};
+use crate::gillian_syn::assertion::{Assertion, AssertionInner, LvarDecl, SimpleAssertion};
 
 impl ToTokens for SimpleAssertion {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
@@ -24,6 +24,7 @@ impl ToTokens for SimpleAssertion {
                     quote_spanned!(span=> ::gilogic::__stubs::PointsTo::points_to(#id, #exp)),
                 )
             }
+            Self::PredCall(call) => call.to_tokens(tokens),
         }
     }
 }
@@ -40,6 +41,17 @@ impl ToTokens for AssertionInner {
                 let span = star_token.span();
                 tokens.extend(quote_spanned!(span=> ::gilogic::__stubs::star(#left, #right)))
             }
+        }
+    }
+}
+
+impl ToTokens for LvarDecl {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { ident, ty_opt } = self;
+        ident.to_tokens(tokens);
+        if let Some((colon, ty)) = ty_opt {
+            colon.to_tokens(tokens);
+            ty.to_tokens(tokens);
         }
     }
 }

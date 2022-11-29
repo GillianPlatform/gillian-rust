@@ -30,7 +30,7 @@ pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a 
     })
 }
 
-pub(crate) fn is_abstract_predicate(tcx: TyCtxt, def_id: DefId) -> bool {
+pub(crate) fn is_abstract_predicate(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
         &["gillian", "decl", "abstract_predicate"],
@@ -38,7 +38,7 @@ pub(crate) fn is_abstract_predicate(tcx: TyCtxt, def_id: DefId) -> bool {
     .is_some()
 }
 
-pub(crate) fn is_predicate(tcx: TyCtxt, def_id: DefId) -> bool {
+pub(crate) fn is_predicate(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
         &["gillian", "decl", "predicate"],
@@ -46,6 +46,6 @@ pub(crate) fn is_predicate(tcx: TyCtxt, def_id: DefId) -> bool {
     .is_some()
 }
 
-pub(crate) fn is_logic(tcx: TyCtxt, def_id: DefId) -> bool {
-    is_predicate(tcx, def_id) || is_abstract_predicate(tcx, def_id)
+pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
+    is_predicate(def_id, tcx) || is_abstract_predicate(def_id, tcx)
 }

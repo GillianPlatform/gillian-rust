@@ -35,7 +35,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
             &Rvalue::Len(place) => {
                 let expr = self.push_place_read(place, true);
-                Expr::lst_len(expr)
+                expr.lst_len()
             }
             Rvalue::Aggregate(box kind, ops) => {
                 let ops: Vec<Expr> = ops.iter().map(|op| self.push_encode_operand(op)).collect();

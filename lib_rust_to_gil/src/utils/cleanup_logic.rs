@@ -14,7 +14,7 @@ fn make_loop(_tcx: TyCtxt) -> IndexVec<BasicBlock, BasicBlockData> {
 }
 
 pub(crate) fn cleanup_logic<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
-    if is_logic(tcx, def_id) {
+    if is_logic(def_id, tcx) {
         log::trace!("replacing function body for {:?}", def_id);
         *body.basic_blocks_mut() = make_loop(tcx);
         body.var_debug_info = Vec::new();

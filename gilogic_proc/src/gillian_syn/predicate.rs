@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
-    braced, parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Brace, Block, Error,
-    FnArg, GenericArgument, Pat, PatType, PathArguments, Signature, Stmt, Token, Type, TypePath,
+    parse::Parse, punctuated::Punctuated, spanned::Spanned, Block, Error, FnArg, GenericArgument,
+    Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
 };
 
 #[derive(Debug)]
@@ -130,8 +130,7 @@ pub(crate) enum Predicate {
     Concrete {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
-        brace_token: Brace,
-        body: Vec<Stmt>,
+        body: Block,
     },
 }
 
@@ -188,15 +187,8 @@ impl Parse for Predicate {
             let result = Predicate::Abstract { name, args };
             Ok(result)
         } else {
-            let inside;
-            let brace_token = braced!(inside in input);
-            let body = Block::parse_within(&inside)?;
-            let result = Predicate::Concrete {
-                name,
-                args,
-                brace_token,
-                body,
-            };
+            let body: Block = input.parse()?;
+            let result = Predicate::Concrete { name, args, body };
             Ok(result)
         }
     }

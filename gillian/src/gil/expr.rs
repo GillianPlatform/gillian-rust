@@ -67,6 +67,24 @@ from_lit!(
     isize
 );
 
+macro_rules! from_array {
+    ($l:literal) => {
+        impl From<[Expr; $l]> for Expr {
+            fn from(x: [Expr; $l]) -> Self {
+                let vec = Vec::from(x);
+                Expr::EList(vec)
+            }
+        }
+    };
+
+    ($l:literal, $($ls:literal),+) => {
+        from_array!($l);
+        from_array!($($ls),+);
+    };
+}
+
+from_array!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
 impl From<Vec<Expr>> for Expr {
     fn from(lst: Vec<Expr>) -> Self {
         Self::EList(lst)
@@ -172,13 +190,13 @@ impl Expr {
         }
     }
 
-    pub fn lst_len(e: Expr) -> Self {
-        match e {
-            Expr::EList(vec) => Expr::int(vec.len() as i128),
-            Expr::Lit(Literal::LList(vec)) => Expr::int(vec.len() as i128),
+    pub fn lst_len(self) -> Self {
+        match self {
+            Expr::EList(vec) => Expr::int(vec.len()),
+            Expr::Lit(Literal::LList(vec)) => Expr::int(vec.len()),
             _ => Expr::UnOp {
                 operator: UnOp::LstLen,
-                operand: Box::new(e),
+                operand: Box::new(self),
             },
         }
     }

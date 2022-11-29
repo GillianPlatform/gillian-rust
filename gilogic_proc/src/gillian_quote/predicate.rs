@@ -1,4 +1,5 @@
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, ToTokens};
+use syn::Stmt;
 
 use crate::gillian_syn::predicate::{ParamMode, PredParam, Predicate};
 
@@ -37,20 +38,23 @@ impl ToTokens for Predicate {
                 unreachable!()
               }
             }),
-            Self::Concrete {
-                name,
-                args,
-                body,
-                brace_token,
-            } => {
+            Self::Concrete { name, args, body } => {
+                let stmts: Vec<_> = body
+                    .stmts
+                    .iter()
+                    .map(|stmt| match stmt {
+                        Stmt::Semi(e, _) => Stmt::Expr(e.clone()),
+                        _ => stmt.clone(),
+                    })
+                    .collect();
+                let brace_token = body.brace_token;
                 tokens.extend(quote! {
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
-                  fn #name(#args)
+                  fn #name(#args) -> ::gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {
-                    tokens.append_all(body);
-                    tokens.extend(quote!(;))
+                    tokens.extend(quote!(::gilogic::__stubs::defs([#(#stmts),*])));
                 })
             }
         }

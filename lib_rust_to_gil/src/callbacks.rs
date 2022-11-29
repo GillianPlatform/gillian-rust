@@ -1,4 +1,5 @@
 use super::config::Config;
+use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
 use crate::utils::cleanup_logic::cleanup_logic;
 use rustc_driver::{Callbacks, Compilation};
@@ -22,20 +23,23 @@ impl ToGil {
         let mut global_env = GlobalEnv::new(*tcx);
         for key in tcx.hir().body_owners() {
             let did = key.to_def_id();
-            if crate::utils::attrs::is_logic(*tcx, did) {
-                dbg!(crate::logic::compile_logic(*tcx, did));
-                panic!("OKKKK")
+            if crate::utils::attrs::is_logic(did, *tcx) {
+                let logic_item = compile_logic(did, *tcx, &mut global_env);
+                match logic_item {
+                    LogicItem::Pred(pred) => prog.add_pred(pred),
+                }
+            } else {
+                let body = match tcx.def_kind(did) {
+                    DefKind::Ctor(..) => tcx.optimized_mir(did),
+                    _ => std::cell::Ref::leak(
+                        tcx.mir_promoted(WithOptConstParam::unknown(did.expect_local()))
+                            .0
+                            .borrow(),
+                    ),
+                };
+                let ctx = GilCtxt::new(did, body, *tcx, &mut global_env);
+                prog.add_proc(ctx.push_body());
             }
-            let body = match tcx.def_kind(did) {
-                DefKind::Ctor(..) => tcx.optimized_mir(did),
-                _ => std::cell::Ref::leak(
-                    tcx.mir_promoted(WithOptConstParam::unknown(did.expect_local()))
-                        .0
-                        .borrow(),
-                ),
-            };
-            let ctx = GilCtxt::new(did, body, *tcx, &mut global_env);
-            prog.add_proc(ctx.push_body());
         }
         global_env.add_all_procs(&mut prog);
         let init_data = global_env.serialized_adt_declarations();

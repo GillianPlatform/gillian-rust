@@ -46,6 +46,10 @@ impl Prog {
         self.proc_names.push(proc.name.clone());
         self.procs.insert(proc.name.clone(), proc);
     }
+
+    pub fn add_pred(&mut self, pred: Pred) {
+        self.preds.insert(pred.name.clone(), pred);
+    }
 }
 
 impl Display for Prog {
@@ -57,6 +61,10 @@ impl Display for Prog {
         // f.write_str(";\nimport verify ")?;
         // comma_separated_display(&ver_imports, f)?;
         f.write_str(";\n\n")?;
+        for pred in self.preds.values() {
+            pred.fmt(f)?;
+            f.write_str("\n\n")?;
+        }
         for proc in self.procs.values() {
             proc.fmt(f)?;
             f.write_str("\n\n")?;
