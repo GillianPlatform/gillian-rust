@@ -1,4 +1,4 @@
-use super::print_utils::comma_separated_display;
+use super::print_utils::separated_display;
 use std::fmt::Display;
 
 use super::{Expr, Formula, Type};
@@ -45,7 +45,7 @@ impl Display for Assertion {
             Pred { name, params } => {
                 super::print_utils::write_maybe_quoted(name, f)?;
                 write!(f, "(")?;
-                comma_separated_display(params, f)?;
+                separated_display(params, ",", f)?;
                 write!(f, ")")
             }
             Pure(formula) => formula.fmt(f),
@@ -64,9 +64,9 @@ impl Display for Assertion {
             }
             GA { name, ins, outs } => {
                 write!(f, "<{}>(", name)?;
-                comma_separated_display(ins, f)?;
+                separated_display(ins, ",", f)?;
                 write!(f, "; ")?;
-                comma_separated_display(outs, f)?;
+                separated_display(outs, ",", f)?;
                 write!(f, ")")
             }
         }

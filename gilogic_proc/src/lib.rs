@@ -22,6 +22,16 @@ pub fn predicate(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         .to_token_stream()
         .into()
 }
+
+#[proc_macro_attribute]
+pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    spec::requires(args, input)
+}
+#[proc_macro_attribute]
+pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    spec::ensures(args, input)
+}
+
 #[proc_macro]
 pub fn assertion(input: TokenStream_) -> TokenStream_ {
     parse_macro_input!(input as Assertion)

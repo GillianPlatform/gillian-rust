@@ -51,21 +51,16 @@ impl SimpleAssertion {
         // This is clearly suboptimal since we already parse the input as an expression,
         // when trying for Formula, but let's keep it simple for now.
         let e: Expr = input.parse()?;
-        print!("Trying to parse as pred call: {}", e.to_token_stream());
         let err = Err(Error::new(e.span(), "Expr is not a predicate call"));
         if let Expr::Call(call) = e {
             if !call.attrs.is_empty() {
-                println!(" ERROR!");
                 return err;
             }
             if !Self::expr_is_simple_identifier(&call.func) {
-                println!(" ERROR!");
                 return err;
             }
-            println!(" SUCCESS!");
             Ok(SimpleAssertion::PredCall(call))
         } else {
-            println!(" ERROR!");
             err
         }
     }
@@ -121,7 +116,7 @@ impl Parse for SimpleAssertion {
         }
         Err(Error::new(
             input.cursor().span(),
-            "Unexpected token in assertion",
+            format!("Unexpected token in assertion, {}", input),
         ))
     }
 }

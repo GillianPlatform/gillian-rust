@@ -1,14 +1,18 @@
 use std::fmt;
 
-pub(crate) fn comma_separated_display<T>(vec: &[T], f: &mut fmt::Formatter<'_>) -> fmt::Result
+pub(crate) fn separated_display<T, S>(vec: &[T], sep: S, f: &mut fmt::Formatter<'_>) -> fmt::Result
 where
     T: fmt::Display,
+    S: fmt::Display,
 {
-    let mut sep = "";
+    let mut first = true;
     for elem in vec {
-        f.write_str(sep)?;
+        if first {
+            first = false;
+        } else {
+            write!(f, "{}", sep)?;
+        }
         write!(f, "{}", elem)?;
-        sep = ", ";
     }
     Ok(())
 }

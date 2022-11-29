@@ -1,4 +1,4 @@
-use super::print_utils::comma_separated_display;
+use super::print_utils::separated_display;
 use super::{Constant, Type};
 use num_bigint::BigInt;
 use std::fmt;
@@ -98,7 +98,7 @@ impl fmt::Display for Literal {
             Type(typ) => write!(f, "{}", typ),
             LList(vec) => {
                 f.write_str("{{ ")?;
-                comma_separated_display(vec, f)?;
+                separated_display(vec, ",", f)?;
                 f.write_str(" }}")
             }
         }

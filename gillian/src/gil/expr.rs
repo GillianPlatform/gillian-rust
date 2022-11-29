@@ -1,4 +1,4 @@
-use super::print_utils::comma_separated_display;
+use super::print_utils::separated_display;
 use super::{BinOp, Literal, NOp, UnOp};
 use num_bigint::BigInt;
 use std::fmt;
@@ -268,7 +268,7 @@ impl fmt::Display for Expr {
             },
             NOp { operator, operands } => {
                 write!(f, "{} (", operator)?;
-                comma_separated_display(operands, f)?;
+                separated_display(operands, ",", f)?;
                 write!(f, ")")
             }
             LstSub { list, start, end } => {
@@ -276,12 +276,12 @@ impl fmt::Display for Expr {
             }
             EList(vec) => {
                 f.write_str("{{ ")?;
-                comma_separated_display(vec, f)?;
+                separated_display(vec, ",", f)?;
                 f.write_str(" }}")
             }
             ESet(vec) => {
                 f.write_str("-{ ")?;
-                comma_separated_display(vec, f)?;
+                separated_display(vec, ",", f)?;
                 f.write_str(" }-")
             }
         }

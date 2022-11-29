@@ -1,7 +1,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, predicate},
+    macros::{assertion, ensures, predicate, requires},
     Seq,
 };
 use std::marker::PhantomData;
@@ -51,6 +51,8 @@ fn dll(linked_list: In<LinkedList>, data: Seq<u32>) {
 }
 
 impl LinkedList {
+    #[requires(emp)]
+    #[ensures(dll(ret, Seq::nil()))]
     fn new() -> Self {
         Self {
             head: None,

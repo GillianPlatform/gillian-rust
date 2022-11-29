@@ -1,5 +1,5 @@
-use super::print_utils::comma_separated_display;
-use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
+use super::print_utils::separated_display;
+use super::{BiSpec, Lemma, Macro, Pred, Proc, SingleSpec, Spec};
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
@@ -50,16 +50,30 @@ impl Prog {
     pub fn add_pred(&mut self, pred: Pred) {
         self.preds.insert(pred.name.clone(), pred);
     }
+
+    pub fn add_sspec_to_existing_proc(&mut self, key: String, sspec: SingleSpec) {
+        let proc = self.procs.get_mut(&key).expect("proc not found");
+        match &mut proc.spec {
+            Some(spec) => spec.sspecs.push(sspec),
+            None => {
+                proc.spec = Some(Spec {
+                    name: proc.name.clone(),
+                    params: proc.params.clone(),
+                    sspecs: vec![sspec],
+                    to_verify: true,
+                })
+            }
+        }
+    }
 }
 
 impl Display for Prog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (reg_imports, ver_imports) = self.partition_imports();
         f.write_str("import ")?;
-        comma_separated_display(&reg_imports, f)?;
+        separated_display(&reg_imports, ",", f)?;
         assert!(ver_imports.is_empty(), "So far, imports cannot work");
         // f.write_str(";\nimport verify ")?;
-        // comma_separated_display(&ver_imports, f)?;
         f.write_str(";\n\n")?;
         for pred in self.preds.values() {
             pred.fmt(f)?;

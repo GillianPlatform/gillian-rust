@@ -99,7 +99,9 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 .sess
                 .fatal("Predicate ins attribute must be a string");
         };
-
+        if str_arg.is_empty() {
+            return vec![];
+        }
         str_arg
             .split(',')
             .map(|s| s.parse().expect("Ins should be a list of parameter number"))
