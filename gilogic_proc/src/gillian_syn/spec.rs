@@ -1,36 +1,41 @@
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
-use syn::ReturnType;
-use syn::{parse_macro_input, FnArg, ImplItemMethod};
-use syn::{Ident, Pat};
+use syn::{parse_macro_input, ImplItemMethod, ReturnType};
 use uuid::Uuid;
 
 use super::assertion::Assertion;
 
-fn retrieve_name_in_pat(pat: &Pat) -> Ident {
-    match pat {
-        Pat::Box(pbox) => retrieve_name_in_pat(&pbox.pat),
-        Pat::Ident(pid) => pid.ident.clone(),
-        Pat::Reference(pref) => retrieve_name_in_pat(&pref.pat),
-        Pat::Type(tpat) => retrieve_name_in_pat(&tpat.pat),
-        Pat::Path(_) => panic!("Cannot retrieve name in path pattern for specification"),
-        Pat::Lit(_) => panic!("Cannot retrieve name in literal pattern for specification"),
-        Pat::Macro(_) => panic!("Cannot retrieve name in macro pattern for specification"),
-        Pat::Or(_) => panic!("Cannot retrieve name in or pattern for specification"),
-        Pat::Range(_) => panic!("Cannot retrieve name in range pattern for specification"),
-        Pat::Rest(_) => panic!("Cannot retrieve name in rest pattern for specification"),
-        Pat::Slice(_) => panic!("Cannot retrieve name in slice pattern for specification"),
-        Pat::Struct(_) => panic!("Cannot retrieve name in struct pattern for specification"),
-        Pat::Tuple(_) => panic!("Cannot retrieve name in tuple pattern for specification"),
-        Pat::TupleStruct(_) => {
-            panic!("Cannot retrieve name in tuple struct pattern for specification")
-        }
-        Pat::Verbatim(_) => panic!("Cannot retrieve name in verbatim pattern for specification"),
-        Pat::Wild(_) => panic!("Cannot retrieve name in wildcard pattern for specification"),
-        &_ => panic!("Cannot retrieve name in unknown pattern for specification"),
-    }
-}
+// fn retrieve_name_in_pat(pat: &Pat) -> String {
+//     match pat {
+//         Pat::Box(pbox) => retrieve_name_in_pat(&pbox.pat),
+//         Pat::Ident(pid) => pid.ident.to_string(),
+//         Pat::Reference(pref) => retrieve_name_in_pat(&pref.pat),
+//         Pat::Type(tpat) => retrieve_name_in_pat(&tpat.pat),
+//         Pat::Path(_) => panic!("Cannot retrieve name in path pattern for specification"),
+//         Pat::Lit(_) => panic!("Cannot retrieve name in literal pattern for specification"),
+//         Pat::Macro(_) => panic!("Cannot retrieve name in macro pattern for specification"),
+//         Pat::Or(_) => panic!("Cannot retrieve name in or pattern for specification"),
+//         Pat::Range(_) => panic!("Cannot retrieve name in range pattern for specification"),
+//         Pat::Rest(_) => panic!("Cannot retrieve name in rest pattern for specification"),
+//         Pat::Slice(_) => panic!("Cannot retrieve name in slice pattern for specification"),
+//         Pat::Struct(_) => panic!("Cannot retrieve name in struct pattern for specification"),
+//         Pat::Tuple(_) => panic!("Cannot retrieve name in tuple pattern for specification"),
+//         Pat::TupleStruct(_) => {
+//             panic!("Cannot retrieve name in tuple struct pattern for specification")
+//         }
+//         Pat::Verbatim(_) => panic!("Cannot retrieve name in verbatim pattern for specification"),
+//         Pat::Wild(_) => panic!("Cannot retrieve name in wildcard pattern for specification"),
+//         &_ => panic!("Cannot retrieve name in unknown pattern for specification"),
+//     }
+// }
+
+// fn retrieve_name_in_arg(arg: &FnArg) -> String {
+//     match arg {
+//         FnArg::Receiver(_) => "self".to_string(),
+//         FnArg::Typed(typed) => retrieve_name_in_pat(&typed.pat),
+//     }
+// }
 
 pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
@@ -44,33 +49,13 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
         let name_with_uuid = format!("{}_pre_{}", ident, id).replace('-', "_");
         format_ident!("{}", name_with_uuid, span = Span::call_site())
     };
-    let mut counter = 1;
-    let pred_args: Vec<_> = item
-        .sig
-        .inputs
-        .iter()
-        .map(|arg| {
-            let ret = match arg {
-                FnArg::Receiver(..) => format_ident!("m_{}self", counter.to_string()),
-                FnArg::Typed(pat_type) => {
-                    let name = retrieve_name_in_pat(&pat_type.pat);
-                    format_ident!("m_{}{}", counter.to_string(), name)
-                }
-            };
-            counter += 1;
-            ret
-        })
-        .collect();
     let name_string = name.to_string();
-    let ins = (0..pred_args.len())
-        .map(|i| i.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
+    let inputs = &item.sig.inputs;
     let result = quote! {
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::precondition]
-        #[gillian::decl::pred_ins=#ins]
-        fn #name(#(#pred_args),*) -> ::gilogic::RustAssertion {
+        #[gillian::decl::pred_ins=""]
+        fn #name(#inputs) -> ::gilogic::RustAssertion {
            ::gilogic::__stubs::defs([#assertion])
         }
 

@@ -1,5 +1,5 @@
 use super::print_utils::separated_display;
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use super::{Expr, Formula, Type};
 
@@ -24,6 +24,27 @@ pub enum Assertion {
 }
 
 impl Assertion {
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+        match self {
+            Self::Star { left, right } => {
+                left.subst_pvar(mapping);
+                right.subst_pvar(mapping);
+            }
+            Self::Pred { params, .. } => {
+                params.iter_mut().for_each(|p| p.subst_pvar(mapping));
+            }
+            Self::Pure(f) => f.subst_pvar(mapping),
+            Self::Types(tys) => {
+                tys.iter_mut().for_each(|(e, _)| e.subst_pvar(mapping));
+            }
+            Self::GA { ins, outs, .. } => {
+                ins.iter_mut().for_each(|e| e.subst_pvar(mapping));
+                outs.iter_mut().for_each(|e| e.subst_pvar(mapping));
+            }
+            Self::Emp => (),
+        }
+    }
+
     pub fn star(left: Self, right: Self) -> Self {
         match (left, right) {
             (Assertion::Emp, x) => x,

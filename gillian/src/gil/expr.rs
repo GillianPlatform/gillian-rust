@@ -1,6 +1,7 @@
 use super::print_utils::separated_display;
 use super::{BinOp, Literal, NOp, UnOp};
 use num_bigint::BigInt;
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -245,6 +246,38 @@ impl Expr {
 
     pub fn undefined() -> Self {
         Self::Lit(Literal::Undefined)
+    }
+
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+        match self {
+            Self::PVar(s) => {
+                if let Some(e) = mapping.get(s) {
+                    *s = e.clone();
+                }
+            }
+            Self::BinOp {
+                left_operand,
+                right_operand,
+                ..
+            } => {
+                left_operand.subst_pvar(mapping);
+                right_operand.subst_pvar(mapping);
+            }
+            Self::UnOp { operand, .. } => {
+                operand.subst_pvar(mapping);
+            }
+            Self::EList(vec) | Expr::ESet(vec) | Expr::NOp { operands: vec, .. } => {
+                for e in vec {
+                    e.subst_pvar(mapping);
+                }
+            }
+            Self::LstSub { list, start, end } => {
+                list.subst_pvar(mapping);
+                start.subst_pvar(mapping);
+                end.subst_pvar(mapping);
+            }
+            Self::ALoc(..) | Self::LVar(..) | Self::Lit(..) => {}
+        }
     }
 }
 

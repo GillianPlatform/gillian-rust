@@ -5,7 +5,7 @@ use crate::prelude::*;
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
-    mir::Field,
+    mir::{BinOp, Field},
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
     ty::{AdtDef, AdtKind, WithOptConstParam},
 };
@@ -43,13 +43,14 @@ impl CanFatal for PredCtx<'_, '_> {
 
 macro_rules! get_thir {
     ($thir:pat, $expr:pat, $s:expr) => {
-        let (___thir, $expr) = $s
-            .tcx
-            .thir_body(WithOptConstParam::unknown(
-                $s.did.as_local().expect("non-local predicate"),
-            ))
-            .expect("Predicate body failed to typecheck");
-        let $thir = ___thir.borrow();
+        let ___thir = $s.tcx.thir_body(WithOptConstParam::unknown(
+            $s.did.as_local().expect("non-local predicate"),
+        ));
+        let ($thir, $expr) = if let Ok((___thir, ___expr)) = ___thir {
+            (___thir.borrow(), ___expr)
+        } else {
+            fatal!($s, "Predicate body failed to typecheck")
+        };
     };
 }
 
@@ -117,7 +118,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             Some(box Pat {
                 kind:
                     PatKind::Binding {
-                        mutability,
+                        mutability: _,
                         name,
                         var,
                         subpattern,
@@ -127,13 +128,11 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     },
                 ..
             }) => {
+                // When memory implements mutability, the information should probably be used.
                 let name = name.to_string();
                 let ty = param.ty;
                 if !is_primary {
                     fatal!(self, "Predicate parameters must be primary");
-                }
-                if let Mutability::Mut = mutability {
-                    fatal!(self, "Predicate parameters cannot be mutable");
                 }
                 if subpattern.is_some() {
                     fatal!(self, "Predicate parameters cannot have subpatterns");
@@ -242,6 +241,21 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 match lit.node {
                     LitKind::Int(i, _) => i.into(),
                     _ => fatal!(self, "Unsupported literal {:?}", expr),
+                }
+            }
+            ExprKind::Binary { op, lhs, rhs } => {
+                let left = self.compile_expression(*lhs, thir);
+                let right = self.compile_expression(*rhs, thir);
+                let ty = thir.exprs[*lhs].ty;
+                match op {
+                    BinOp::Add => {
+                        if ty.is_integral() {
+                            GExpr::plus(left, right)
+                        } else {
+                            fatal!(self, "Unsupported type for addition {:?}", ty)
+                        }
+                    }
+                    _ => fatal!(self, "Unsupported binary operator {:?}", op),
                 }
             }
             ExprKind::Call {

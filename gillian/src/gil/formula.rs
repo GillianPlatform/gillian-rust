@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use super::{Expr, Type};
@@ -20,37 +21,62 @@ pub enum Formula {
         right: Box<Expr>,
     },
     ILess {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     ILessEq {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     FLess {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     FLessEq {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     StrLess {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     SetMem {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     SetSub {
-        left: Box<Formula>,
-        right: Box<Formula>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     ForAll {
         quantified: Vec<(String, Option<Type>)>,
         formula: Box<Formula>,
     },
+}
+
+impl Formula {
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+        match self {
+            Self::Not(f) => f.subst_pvar(mapping),
+            Self::And { left, right } | Self::Or { left, right } => {
+                left.subst_pvar(mapping);
+                right.subst_pvar(mapping);
+            }
+            Self::Eq { left, right }
+            | Self::ILess { left, right }
+            | Self::ILessEq { left, right }
+            | Self::FLess { left, right }
+            | Self::FLessEq { left, right }
+            | Self::StrLess { left, right }
+            | Self::SetMem { left, right }
+            | Self::SetSub { left, right } => {
+                left.subst_pvar(mapping);
+                right.subst_pvar(mapping);
+            }
+            Self::ForAll { formula, .. } => formula.subst_pvar(mapping),
+            _ => (),
+        }
+    }
 }
 
 impl Display for Formula {

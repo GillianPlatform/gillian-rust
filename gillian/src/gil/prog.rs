@@ -1,5 +1,5 @@
 use super::print_utils::separated_display;
-use super::{BiSpec, Lemma, Macro, Pred, Proc, SingleSpec, Spec};
+use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
@@ -49,21 +49,6 @@ impl Prog {
 
     pub fn add_pred(&mut self, pred: Pred) {
         self.preds.insert(pred.name.clone(), pred);
-    }
-
-    pub fn add_sspec_to_existing_proc(&mut self, key: String, sspec: SingleSpec) {
-        let proc = self.procs.get_mut(&key).expect("proc not found");
-        match &mut proc.spec {
-            Some(spec) => spec.sspecs.push(sspec),
-            None => {
-                proc.spec = Some(Spec {
-                    name: proc.name.clone(),
-                    params: proc.params.clone(),
-                    sspecs: vec![sspec],
-                    to_verify: true,
-                })
-            }
-        }
     }
 }
 

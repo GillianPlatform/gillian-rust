@@ -10,7 +10,7 @@ mod predicate;
 #[derive(Debug)]
 pub enum LogicItem {
     Pred(Pred),
-    Precondition(Symbol, Assertion),
+    Precondition(Symbol, Vec<String>, Assertion),
     Postcondition(Symbol, Assertion),
 }
 
@@ -34,7 +34,11 @@ pub fn compile_logic<'tcx, 'genv>(
         let id = tcx
             .get_diagnostic_name(did)
             .expect("All preconditions should be diagnostic items");
-        LogicItem::Precondition(id, pred.definitions.pop().unwrap())
+        let args = std::mem::take(&mut pred.params)
+            .into_iter()
+            .map(|p| p.0)
+            .collect();
+        LogicItem::Precondition(id, args, pred.definitions.pop().unwrap())
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
         let mut pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
