@@ -41,7 +41,7 @@ impl Display for Pred {
         write!(f, ")")?;
         if !self.definitions.is_empty() {
             writeln!(f, ":")?;
-            super::print_utils::separated_display(&self.definitions, ",", f)?;
+            super::print_utils::separated_display(&self.definitions, ", ", f)?;
         }
         writeln!(f, ";")?;
         if !self.facts.is_empty() {

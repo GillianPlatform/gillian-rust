@@ -63,7 +63,7 @@ impl fmt::Display for Proc {
         write!(f, "proc ")?;
         write_maybe_quoted(&self.name, f)?;
         write!(f, "(")?;
-        separated_display(&self.params, ",", f)?;
+        separated_display(&self.params, ", ", f)?;
         writeln!(f, ") {{")?;
         let mut is_first = true;
         for ProcBodyItem { label, cmd, .. } in &self.body {

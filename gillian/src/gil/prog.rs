@@ -56,7 +56,7 @@ impl Display for Prog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (reg_imports, ver_imports) = self.partition_imports();
         f.write_str("import ")?;
-        separated_display(&reg_imports, ",", f)?;
+        separated_display(&reg_imports, ", ", f)?;
         assert!(ver_imports.is_empty(), "So far, imports cannot work");
         // f.write_str(";\nimport verify ")?;
         f.write_str(";\n\n")?;

@@ -47,7 +47,7 @@ impl fmt::Display for Spec {
         write!(f, "spec ")?;
         super::print_utils::write_maybe_quoted(&self.name, f)?;
         write!(f, "(")?;
-        super::print_utils::separated_display(&self.params, ",", f)?;
+        super::print_utils::separated_display(&self.params, ", ", f)?;
         writeln!(f, ")")?;
         super::print_utils::separated_display(&self.sspecs, ";\n", f)
     }

@@ -66,7 +66,7 @@ impl Display for Assertion {
             Pred { name, params } => {
                 super::print_utils::write_maybe_quoted(name, f)?;
                 write!(f, "(")?;
-                separated_display(params, ",", f)?;
+                separated_display(params, ", ", f)?;
                 write!(f, ")")
             }
             Pure(formula) => formula.fmt(f),
@@ -85,9 +85,9 @@ impl Display for Assertion {
             }
             GA { name, ins, outs } => {
                 write!(f, "<{}>(", name)?;
-                separated_display(ins, ",", f)?;
+                separated_display(ins, ", ", f)?;
                 write!(f, "; ")?;
-                separated_display(outs, ",", f)?;
+                separated_display(outs, ", ", f)?;
                 write!(f, ")")
             }
         }

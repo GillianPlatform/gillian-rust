@@ -98,7 +98,7 @@ impl fmt::Display for Literal {
             Type(typ) => write!(f, "{}", typ),
             LList(vec) => {
                 f.write_str("{{ ")?;
-                separated_display(vec, ",", f)?;
+                separated_display(vec, ", ", f)?;
                 f.write_str(" }}")
             }
         }

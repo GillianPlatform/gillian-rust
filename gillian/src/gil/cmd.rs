@@ -69,7 +69,7 @@ impl fmt::Display for Cmd {
                 parameters,
             } => {
                 write!(f, "{} := [{}](", variable, action_name)?;
-                separated_display(parameters, ",", f)?;
+                separated_display(parameters, ", ", f)?;
                 f.write_str(")")
             }
             Call {
@@ -81,7 +81,7 @@ impl fmt::Display for Cmd {
             } => {
                 assert!(bindings.is_none(), "Cannot print bindings yet");
                 write!(f, "{} := {}(", variable, proc_ident)?;
-                separated_display(parameters, ",", f)?;
+                separated_display(parameters, ", ", f)?;
                 f.write_str(")")?;
                 if let Some(s) = error_lab {
                     write!(f, " with {}", s)?;
@@ -97,7 +97,7 @@ impl fmt::Display for Cmd {
             } => write!(f, "goto [{}] {} {}", guard, then_branch, else_branch),
             Fail { name, parameters } => {
                 write!(f, "fail [{}](", name)?;
-                separated_display(parameters, ",", f)?;
+                separated_display(parameters, ", ", f)?;
                 f.write_str(")")
             }
             _ => panic!("Cannot write following command yet: {:#?}", self),

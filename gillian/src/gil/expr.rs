@@ -301,7 +301,7 @@ impl fmt::Display for Expr {
             },
             NOp { operator, operands } => {
                 write!(f, "{} (", operator)?;
-                separated_display(operands, ",", f)?;
+                separated_display(operands, ", ", f)?;
                 write!(f, ")")
             }
             LstSub { list, start, end } => {
@@ -309,12 +309,12 @@ impl fmt::Display for Expr {
             }
             EList(vec) => {
                 f.write_str("{{ ")?;
-                separated_display(vec, ",", f)?;
+                separated_display(vec, ", ", f)?;
                 f.write_str(" }}")
             }
             ESet(vec) => {
                 f.write_str("-{ ")?;
-                separated_display(vec, ",", f)?;
+                separated_display(vec, ", ", f)?;
                 f.write_str(" }-")
             }
         }
