@@ -4,7 +4,7 @@ open Gillian.Gil_syntax
 type init_data = Tyenv.t
 type vt = Values.t
 type st = Subst.t
-type err_t = string
+type err_t = string [@@deriving show]
 type t = { tyenv : Tyenv.t; heap : C_heap.t }
 type action_ret = ASucc of (t * vt list) | AFail of err_t list
 

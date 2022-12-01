@@ -1,9 +1,10 @@
 open Gillian
 open Gil_syntax
+module Gil_parsing = Gil_parsing.Make (Parser_and_compiler.Annot)
 
 module Outcome =
   Bulk.Outcome.Make_Concrete (C_memory) (Parser_and_compiler)
-    (General.External.Dummy)
+    (General.External.Dummy (Parser_and_compiler.Annot))
 
 module Suite = struct
   include Bulk.Suite.ByFolder (struct

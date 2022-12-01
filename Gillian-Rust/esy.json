@@ -34,7 +34,7 @@
     "@opam/ppxlib": ">=0.18.0",
     "@opam/printbox": "0.5",
     "@opam/yojson": "^1.7.0",
-    "gillian": "GillianPlatform/Gillian:gillian.json#eeba77060ee4faa5304dd44f4ecce4723b642e3d",
+    "gillian": "GillianPlatform/Gillian:gillian.json#6eeb3538282445e5a8c66aa18fe51f06eb782381",
     "ocaml": "^4.14.x"
   },
   "devDependencies": {

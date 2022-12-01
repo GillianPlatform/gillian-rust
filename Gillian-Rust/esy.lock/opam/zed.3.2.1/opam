@@ -41,10 +41,10 @@ build: [
 dev-repo: "git+https://github.com/ocaml-community/zed.git"
 url {
   src:
-    "https://github.com/ocaml-community/zed/releases/download/3.2.0/zed-3.2.0.tbz"
+    "https://github.com/ocaml-community/zed/releases/download/3.2.1/zed-3.2.1.tbz"
   checksum: [
-    "sha256=342349bd43460cf376851ac71bfc1560a087d9480fd91342a31a57426e2e513e"
-    "sha512=f122eafd7c48179e210c02fef601cc1307a32e2529a56972233c923a2ea027a17dd3494d4736b96977d696cb9673bb16c24557c972d4de60a24500ee599bed84"
+    "sha256=141091d21a03e92eed0efd96ece150c08c619bfbcd1b153a42d8a261b2b57f53"
+    "sha512=5c4c3bda52d3b8ba8618a91ac7864ebebd6020742e812d46f2a1cc78034acfc53b0a9b697424259b24fa84b367e36f154f35d4ac7ed536329294f000c7f52156"
   ]
 }
-x-commit-hash: "856a733c6fc6be4f116677d199fcf46e6960d675"
+x-commit-hash: "a7f3d7f967ab8cebe99817a0224fc8fbc3c290b5"

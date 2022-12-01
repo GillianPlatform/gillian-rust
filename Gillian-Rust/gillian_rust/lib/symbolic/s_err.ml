@@ -9,7 +9,7 @@ type t =
   | Invalid_free_pointer of Expr.t * Expr.t
   | Unhandled of string
   | MissingBlock of string
-[@@deriving yojson]
+[@@deriving yojson, show]
 
 let recovery_vals = function
   | Too_symbolic e | Invalid_loc e -> [ e ]

@@ -1,6 +1,7 @@
 open Gillian
 open IncrementalAnalysis
 open ParserAndCompiler
+module Annot = Gil_syntax.Annot.Basic
 
 module TargetLangOptions = struct
   open Cmdliner
@@ -44,6 +45,8 @@ let options ~out_dir () =
     "-Zcrate-attr='feature(rustc_attrs)'";
   ]
 
+module Parsing = Gil_parsing.Make (Annot)
+
 let compile ~out_dir file =
   let ( let* ) = Result.bind in
   let gilogic = resolve_gilogic () in
@@ -73,7 +76,7 @@ let parse_and_compile_files files =
   let () = SourceFiles.add_source_file source_files ~path:file in
   let temp_dir = Filename.get_temp_dir_name () in
   let* out_file = compile ~out_dir:temp_dir file in
-  let gil_prog = Gillian.Gil_parsing.parse_eprog_from_file out_file in
+  let gil_prog = Parsing.parse_eprog_from_file out_file in
   let init_data = Tyenv.of_yojson gil_prog.init_data |> Result.get_ok in
   Ok
     {

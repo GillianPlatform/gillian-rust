@@ -7,7 +7,7 @@ type init_data = Tyenv.t
 type vt = Values.t
 type st = Subst.t
 type c_fix_t = unit
-type err_t = S_err.t [@@deriving yojson]
+type err_t = S_err.t [@@deriving yojson, show]
 type t = { tyenv : Tyenv.t; mem : S_heap.t } [@@deriving yojson]
 type action_ret = Success of (t * vt list) | Failure of err_t
 
