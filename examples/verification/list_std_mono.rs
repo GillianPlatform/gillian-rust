@@ -20,6 +20,16 @@ struct Node {
     element: u32,
 }
 
+impl Node {
+    fn new(element: u32) -> Self {
+        Node {
+            next: None,
+            prev: None,
+            element,
+        }
+    }
+}
+
 #[predicate]
 fn dll_seg(
     head: In<Option<NonNull<Node>>>,
@@ -85,5 +95,14 @@ impl LinkedList {
             self.head = node;
             self.len += 1;
         }
+    }
+
+    #[requires(|vself, velem, vdata: Seq<u32>, vdll| (self == vself) * (elt == velem) *
+        #(vself -> vdll) * (vdata.len() < usize::MAX) *
+        (u32::MIN <= elt) * (elt <= u32::MAX) *
+        dll(vdll, vdata))]
+    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    pub fn push_front(&mut self, elt: u32) {
+        self.push_front_node(Box::new(Node::new(elt)));
     }
 }

@@ -421,10 +421,10 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
 
     fn make_box(&self, ptr: GExpr) -> GExpr {
         let non_null = self.make_nonnull(ptr);
-        let unique = ["Unique".into(), [non_null].into()].into();
         let phantom_data = ["PhantomData".into(), [].into()].into();
+        let unique = ["Unique".into(), [non_null, phantom_data].into()].into();
         let global = ["Global".into(), [].into()].into();
-        ["Box".into(), [unique, phantom_data, global].into()].into()
+        ["Box".into(), [unique, global].into()].into()
     }
 
     fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {

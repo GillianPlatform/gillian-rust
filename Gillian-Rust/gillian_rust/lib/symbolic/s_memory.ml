@@ -15,6 +15,9 @@ let rec concretize_expr expr =
   match expr with
   | Expr.Lit lit -> lit
   | EList l -> LList (List.map concretize_expr l)
+  | BinOp (((EList _ | Lit (LList _)) as l), LstNth, Lit (Int i)) ->
+      let i = Z.to_int i in
+      concretize_expr (Expr.list_nth l i)
   | _ -> Fmt.failwith "concretize: %a" Expr.pp expr
 
 let concretize_proj expr =
