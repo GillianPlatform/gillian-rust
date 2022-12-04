@@ -86,7 +86,7 @@ let execute_load_discr ~tyenv mem args =
       let proj = concretize_proj proj in
       let** loc = resolve_loc_result loc in
       let++ discr = S_heap.load_discr ~tyenv mem loc proj enum_typ in
-      make_branch ~tyenv ~mem ~rets:[ Expr.Lit (Int (Z.of_int discr)) ] ()
+      make_branch ~tyenv ~mem ~rets:[ discr ] ()
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_free ~tyenv mem args =

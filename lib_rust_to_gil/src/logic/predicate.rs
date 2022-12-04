@@ -5,7 +5,10 @@ use crate::prelude::*;
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
-    mir::{BinOp, Field},
+    mir::{
+        interpret::{ConstValue, Scalar},
+        BinOp, Field,
+    },
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
     ty::{AdtDef, AdtKind, WithOptConstParam},
 };
@@ -22,7 +25,9 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
     abstract_: bool,
-    var_names: HashMap<LocalVarId, String>,
+    var_map: HashMap<LocalVarId, GExpr>,
+    toplevel_equalities: Vec<Assertion>,
+    type_info: Vec<(Expr, Type)>,
     temp_idx: u32,
 }
 
@@ -68,7 +73,9 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             tcx,
             did,
             abstract_,
-            var_names: HashMap::new(),
+            var_map: HashMap::new(),
+            type_info: Vec::new(),
+            toplevel_equalities: Vec::new(),
             temp_idx: 0,
         }
     }
@@ -137,7 +144,20 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 if subpattern.is_some() {
                     fatal!(self, "Predicate parameters cannot have subpatterns");
                 }
-                self.var_names.insert(*var, name.clone());
+                if ty.is_any_ptr() {
+                    // FIXME: It's not necessarily a block pointer but we don't
+                    // handle otherwise for now.
+                }
+                self.var_map.insert(*var, GExpr::PVar(name.clone()));
+                if ty.is_any_ptr() {
+                    // FIXME: It shouldn't necessarily be a block pointer at all!
+                    let loc = Expr::LVar(self.new_temp());
+                    self.type_info.push((loc.clone(), Type::ObjectType));
+                    let ptr: GExpr = [loc, [].into()].into();
+                    self.var_map.insert(*var, ptr.clone());
+                    self.toplevel_equalities
+                        .push(Assertion::Pure(Formula::eq(Expr::PVar(name.clone()), ptr)));
+                }
                 (name, ty)
             }
             _ => fatal!(self, "Predicate parameters must be variables"),
@@ -192,12 +212,31 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         super::builtins::get_stub(ty, self.tcx)
     }
 
+    fn compile_constant(&self, cst: ConstValue<'tcx>, ty: Ty<'tcx>) -> GExpr {
+        match (cst, ty.kind()) {
+            (ConstValue::ZeroSized, _) => vec![].into(),
+            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Int(..)) => {
+                let i = sci
+                    .try_to_int(sci.size())
+                    .expect("Cannot fail because we chose the right size");
+                i.into()
+            }
+            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Uint(..)) => {
+                let i = sci
+                    .try_to_uint(sci.size())
+                    .expect("Cannot fail because we chose the right size");
+                i.into()
+            }
+            _ => fatal!(self, "Cannot encore constant {:?} of type {:?}", cst, ty),
+        }
+    }
+
     fn compile_expression(&self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
-            ExprKind::VarRef { id } => match self.var_names.get(id) {
-                Some(name) => GExpr::PVar(name.clone()),
+            ExprKind::VarRef { id } => match self.var_map.get(id) {
+                Some(var) => var.clone(),
                 None => {
                     let var_id = id.0.local_id.as_usize();
                     let name = format!("#pred_lvar{}", var_id);
@@ -233,6 +272,19 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                         fatal!(self, "Unions are not supported in logic yet")
                     }
                 }
+            }
+            ExprKind::NamedConst {
+                def_id,
+                substs,
+                user_ty: _,
+            } => {
+                if !substs.is_empty() {
+                    fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id);
+                };
+                let cst = self.tcx.const_eval_poly(*def_id).unwrap_or_else(|_| {
+                    fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id)
+                });
+                self.compile_constant(cst, expr.ty)
             }
             ExprKind::Literal { lit, neg } => {
                 if *neg {
@@ -311,12 +363,42 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Use { source } => self.compile_formula(*source, thir),
             ExprKind::Call {
                 ty, fun: _, args, ..
-            } if self.get_stub(*ty) == Some(Stubs::FormulaEqual) => {
-                // FIXME: This doesn't match because equal is polymorphic and it gets monomorphized here.
-                assert!(args.len() == 2, "Equal call must have one argument");
-                let left = Box::new(self.compile_expression(args[0], thir));
-                let right = Box::new(self.compile_expression(args[1], thir));
-                Formula::Eq { left, right }
+            } => {
+                let stub = self.get_stub(*ty);
+                match stub {
+                    Some(Stubs::FormulaEqual) => {
+                        // FIXME: This doesn't match because equal is polymorphic and it gets monomorphized here.
+                        assert!(args.len() == 2, "Equal call must have one argument");
+                        let left = Box::new(self.compile_expression(args[0], thir));
+                        let right = Box::new(self.compile_expression(args[1], thir));
+                        Formula::Eq { left, right }
+                    }
+                    Some(Stubs::FormulaLessEq) => {
+                        assert!(args.len() == 2, "LessEq call must have one argument");
+                        let ty = thir.exprs[args[0]].ty;
+                        if thir.exprs[args[0]].ty.is_integral() {
+                            let left = Box::new(self.compile_expression(args[0], thir));
+                            let right = Box::new(self.compile_expression(args[1], thir));
+                            Formula::ILessEq { left, right }
+                        } else {
+                            fatal!(self, "Used <= in formula for unknown type: {}", ty);
+                        }
+                    }
+                    Some(Stubs::FormulaLess) => {
+                        assert!(args.len() == 2, "Less call must have one argument");
+                        let ty = thir.exprs[args[0]].ty;
+                        if thir.exprs[args[0]].ty.is_integral() {
+                            let left = Box::new(self.compile_expression(args[0], thir));
+                            let right = Box::new(self.compile_expression(args[1], thir));
+                            Formula::ILess { left, right }
+                        } else {
+                            fatal!(self, "Used < in formula for unknown type: {}", ty);
+                        }
+                    }
+                    _ => {
+                        fatal!(self, "{:?} unsupported call expression in assertion", expr);
+                    }
+                }
             }
             _ => fatal!(self, "Unsupported formula: {:?}", expr),
         }
@@ -354,23 +436,32 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let right_ty = thir.exprs[args[0]].ty;
         // If the type is a box or a nonnull, we need to access its pointer.
         let (left, pfs) = if thir.exprs[args[0]].ty.is_box() {
-            let ptr = GExpr::LVar(self.new_temp());
+            // boxes have to be block pointers
+            let loc = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), [].into()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
             let box_ = self.make_box(ptr.clone());
             let eq = Formula::Eq {
                 left: Box::new(box_),
                 right: Box::new(left),
             };
             let eq = Assertion::Pure(eq);
-            (ptr, eq)
+            let pfs = Assertion::star(typing, eq);
+            (ptr, pfs)
         } else if self.is_nonnull(right_ty) {
-            let ptr = GExpr::LVar(self.new_temp());
+            // FIXME: this is technically not correct,
+            // we would need to annotate the pointsTo to make sure that's true.
+            let loc = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), [].into()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
             let non_null = self.make_nonnull(ptr.clone());
             let eq = Formula::Eq {
                 left: Box::new(non_null),
                 right: Box::new(left),
             };
             let eq = Assertion::Pure(eq);
-            (ptr, eq)
+            let pfs = Assertion::star(typing, eq);
+            (ptr, pfs)
         } else {
             (left, Assertion::Emp)
         };
@@ -466,7 +557,8 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 ..
             } = thir.stmts[*stmt].kind
             {
-                self.var_names.insert(var, format!("#{}", name.as_str()));
+                self.var_map
+                    .insert(var, GExpr::LVar(format!("#{}", name.as_str())));
             } else {
                 fatal!(
                     self,
@@ -475,7 +567,17 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 )
             }
         }
-        self.compile_assertion(expr, thir)
+        let inner = self.compile_assertion(expr, thir);
+        let inner = self
+            .toplevel_equalities
+            .iter()
+            .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
+
+        if self.type_info.is_empty() {
+            inner
+        } else {
+            Assertion::star(inner, Assertion::Types(self.type_info.clone()))
+        }
     }
 
     fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {

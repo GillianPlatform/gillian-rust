@@ -2,6 +2,6 @@
 
 (library
  (name gillian_rust)
- (libraries gillian gillian.alcotest-runner)
+ (libraries gillian gillian.alcotest-runner gillian.ppx_sat.runtime)
  (preprocess
-  (pps ppx_deriving.std ppx_deriving_yojson)))
+  (pps ppx_deriving.std ppx_deriving_yojson gillian.ppx_sat)))

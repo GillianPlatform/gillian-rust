@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use super::{Expr, Formula, Type};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Assertion {
     Emp,
     Star {

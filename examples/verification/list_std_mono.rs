@@ -61,4 +61,29 @@ impl LinkedList {
             marker: PhantomData,
         }
     }
+
+    /// Adds the given node to the front of the list.
+    #[requires(|vself, vnode, velem, vdata: Seq<u32>, vdll| (self == vself) * (node == vnode) *
+        #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
+        (vdata.len() < usize::MAX) *
+        dll(vdll, vdata))]
+    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    fn push_front_node(&mut self, mut node: Box<Node>) {
+        // This method takes care not to create mutable references to whole nodes,
+        // to maintain validity of aliasing pointers into `element`.
+        unsafe {
+            node.next = self.head;
+            node.prev = None;
+            let node = Some(Box::leak(node).into());
+
+            match self.head {
+                None => self.tail = node,
+                // Not creating new mutable (unique!) references overlapping `element`.
+                Some(head) => (*head.as_ptr()).prev = node,
+            }
+
+            self.head = node;
+            self.len += 1;
+        }
+    }
 }

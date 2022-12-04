@@ -26,6 +26,8 @@ pub(crate) enum Stubs {
     AssertEmp,
     AssertPointsTo,
     FormulaEqual,
+    FormulaLessEq,
+    FormulaLess,
     SeqNil,
     SeqAppend,
     SeqPrepend,
@@ -48,6 +50,10 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
             Some(Stubs::AssertPointsTo)
         } else if tcx.is_diagnostic_item(Symbol::intern("gillian::formula::equal"), did) {
             Some(Stubs::FormulaEqual)
+        } else if tcx.is_diagnostic_item(Symbol::intern("gillian::formula::less_eq"), did) {
+            Some(Stubs::FormulaLessEq)
+        } else if tcx.is_diagnostic_item(Symbol::intern("gillian::formula::less"), did) {
+            Some(Stubs::FormulaLess)
         } else if tcx.is_diagnostic_item(Symbol::intern("gillian::seq::nil"), did)
             || tcx.is_diagnostic_item(Symbol::intern("gillian::seq::empty"), did)
         {

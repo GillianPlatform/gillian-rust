@@ -213,14 +213,95 @@ module TreeBlock = struct
     | Scalar _ | Ref _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
+  let semi_concretize ~tyenv ~variant ty expr =
+    (* FIXME: this assumes the values are initialized? Not entirely sure...
+       I think we `Symbolic` means "initialized and symbolic!" *)
+    Logging.tmi (fun m ->
+        m "semi_concretize %a with ty %a and variant: %a" Expr.pp expr Ty.pp ty
+          (Fmt.Dump.option Fmt.int) variant);
+    let open Formula.Infix in
+    let is_list v = (Expr.typeof v) #== (Expr.type_ ListType) in
+    let has_length i l = (Expr.list_length l) #== (Expr.int i) in
+    match ty with
+    | Ty.Tuple v ->
+        if%sat (is_list expr) #&& (has_length (List.length v) expr) then
+          let values =
+            List.init (List.length v) (fun i -> Expr.list_nth expr i)
+          in
+          let fields =
+            List.map2 (fun ty e -> { content = Symbolic e; ty }) v values
+          in
+          DR.ok { ty; content = Fields fields }
+        else DR.error (Too_symbolic expr)
+          (* FIXME: This is probably not the right error? *)
+    | Array { length; ty = ty' } ->
+        if%sat (is_list expr) #&& (has_length length expr) then
+          let values = List.init length (fun i -> Expr.list_nth expr i) in
+          let fields =
+            List.map (fun e -> { content = Symbolic e; ty = ty' }) values
+          in
+          DR.ok { ty; content = Array fields }
+        else DR.error (Too_symbolic expr)
+    | Adt name -> (
+        match Tyenv.adt_def ~tyenv name with
+        | Struct (_repr, fields) ->
+            let th_values = Expr.list_nth expr 1 in
+            if%sat
+              (is_list expr) #&& (has_length 2 expr)
+              #&& ((Expr.list_nth expr 0) #== (Expr.string name))
+              #&& (is_list th_values)
+              #&& (has_length (List.length fields) th_values)
+            then
+              let values =
+                List.init (List.length fields) (fun i ->
+                    Expr.list_nth th_values i)
+              in
+              let fields =
+                List.map2
+                  (fun (_, ty) e -> { content = Symbolic e; ty })
+                  fields values
+              in
+              DR.ok { ty; content = Fields fields }
+            else DR.error (Too_symbolic expr)
+        | Enum variants ->
+            (* This should only be called with a variant context *)
+            let variant_idx = Option.get variant in
+            let variant = List.nth variants variant_idx in
+            let th_variant = Expr.list_nth expr 1 in
+            let th_variant_idx = Expr.list_nth th_variant 0 in
+            let th_fields = Expr.list_nth th_variant 1 in
+            let number_fields = List.length (snd variant) in
+            if%sat
+              (* Value should have shape:
+                 [ "ADT_NAME", [ idx, [field_0, ..., field_n] ]] *)
+              (is_list expr) #&& (has_length 2 expr)
+              #&& ((Expr.list_nth expr 0) #== (Expr.string name))
+              #&& (is_list th_variant)
+              #&& (th_variant_idx #== (Expr.int variant_idx))
+              #&& (is_list th_fields)
+              #&& (has_length number_fields th_fields)
+            then
+              let values =
+                List.init number_fields (fun i -> Expr.list_nth th_fields i)
+              in
+              let fields =
+                List.map2
+                  (fun ty e -> { content = Symbolic e; ty })
+                  (snd variant) values
+              in
+              DR.ok { ty; content = Enum { discr = variant_idx; fields } }
+            else DR.error (Too_symbolic expr))
+    | Scalar _ | Ref _ ->
+        failwith "I shouldn't ever need to concretize a scalar"
+    | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+
   let rec find_path
       ~tyenv
-      ~update
-      ~(return : t -> ('a, 'b) DR.t)
+      ~return_and_update
       t
-      (path : Partial_layout.access list) : ('a * t, 'b) DR.t =
+      (path : Partial_layout.access list) : ('a * t, S_err.t) DR.t =
     let open DR.Syntax in
-    let rec_call = find_path ~tyenv ~update ~return in
+    let rec_call = find_path ~tyenv ~return_and_update in
     let replace_vec c v =
       match c with
       | Fields _ -> Fields v
@@ -230,8 +311,7 @@ module TreeBlock = struct
     in
     match (path, t) with
     | [], block ->
-        let new_block = update block in
-        let++ ret_value = return block in
+        let++ ret_value, new_block = return_and_update block in
         (ret_value, new_block)
     | { index; index_type = _; against; variant } :: r, { ty; content }
       when Ty.equal against ty -> (
@@ -246,7 +326,10 @@ module TreeBlock = struct
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
-        | _ -> failwith "Invalid node")
+        | Symbolic s, _ ->
+            let** this_block = semi_concretize ~tyenv ~variant ty s in
+            rec_call this_block path
+        | _ -> Fmt.failwith "Invalid node")
     | _ -> failwith "Type mismatch"
 
   let get_forest ~tyenv t proj size ty copy =
@@ -277,14 +360,17 @@ module TreeBlock = struct
             }
         | _ -> failwith "Not an array"
     in
-    let return block =
+    let return_and_update block =
+      let update = update block in
       match block.content with
       | Array vec ->
-          DR.ok
-            (List_utils.sublist_map ~start ~size ~f:(to_rust_value ~tyenv) vec)
+          let ret =
+            List_utils.sublist_map ~start ~size ~f:(to_rust_value ~tyenv) vec
+          in
+          DR.ok (ret, update)
       | _ -> DR.error (Invalid_type (block.ty, ty))
     in
-    find_path ~tyenv ~update ~return t array_accesses
+    find_path ~tyenv ~return_and_update t array_accesses
 
   let set_forest ~tyenv t proj size ty values =
     let open DR.Syntax in
@@ -300,26 +386,27 @@ module TreeBlock = struct
       | { index; _ } :: r -> (index, List.rev r)
       | _ -> failwith "wrong slice pointer"
     in
-    let return _ = DR.ok () in
-    let update block =
+    let return_and_update block =
       match (block.content, block.ty) with
       | Array vec, Ty.Array { ty = ty'; _ } ->
           assert (Ty.equal ty ty');
-          {
-            content =
-              Array
-                (Result.ok_or
-                   (List_utils.override_range_with_list vec ~start
-                      ~f:(of_rust_value ~tyenv ~ty) values)
-                   "Invalid slice range");
-            ty;
-          }
+          DR.ok
+            ( (),
+              {
+                content =
+                  Array
+                    (Result.ok_or
+                       (List_utils.override_range_with_list vec ~start
+                          ~f:(of_rust_value ~tyenv ~ty) values)
+                       "Invalid slice range");
+                ty;
+              } )
       | _ -> failwith "Not an array"
     in
-    let++ _, new_block = find_path ~tyenv ~return ~update t array_accesses in
+    let++ _, new_block = find_path ~tyenv ~return_and_update t array_accesses in
     new_block
 
-  let find_proj ~tyenv ~update ~(return : t -> ('a, 'b) DR.t) ~ty t proj =
+  let find_proj ~tyenv ~return_and_update ~ty t proj =
     let open Partial_layout in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
     let context = context_from_env tyenv in
@@ -331,42 +418,50 @@ module TreeBlock = struct
     let accesses = resolve_address ~tyenv ~context address |> List.rev in
     Logging.normal (fun m ->
         m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
-    find_path ~tyenv ~update ~return t accesses
+    find_path ~tyenv ~return_and_update t accesses
 
   let get_proj ~tyenv t proj ty copy =
     let update block = if copy then block else uninitialized ~tyenv ty in
-    let return t = DR.ok (to_rust_value ~tyenv t) in
-    find_proj ~tyenv ~update ~return ~ty t proj
+    let return_and_update t = DR.ok (to_rust_value ~tyenv t, update t) in
+    find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
     let open DR.Syntax in
-    let return _ = DR.ok () in
-    let update _block = of_rust_value ~tyenv ~ty value in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return ~update t proj in
+    let return_and_update _ = DR.ok ((), of_rust_value ~tyenv ~ty value) in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
   let get_discr ~tyenv t proj enum_typ =
     let open DR.Syntax in
-    let return { content; ty } =
-      match content with
-      | Enum t -> DR.ok t.discr
-      | Symbolic x ->
-          (* For now I'm taking the decision that we need to concretize.
-             In verification this should be easy with unfolding.
-             In the future, I might decide that values get stripped apart
-             into their trees, removing the need for "symb" *)
-          DR.error (Too_symbolic x)
-      | _ -> DR.error (Invalid_type (ty, enum_typ))
+    let return_and_update block =
+      match block.content with
+      | Enum t -> DR.ok (Expr.int t.discr, block)
+      | Symbolic expr ->
+          let name =
+            match enum_typ with
+            | Ty.Adt name -> name
+            | _ -> failwith "Discr for non-enum"
+          in
+          let open Formula.Infix in
+          let th_name = Expr.list_nth expr 0 in
+          let th_variant = Expr.list_nth expr 1 in
+          let th_variant_idx = Expr.list_nth th_variant 0 in
+          if%sat
+            (Expr.typeof expr) #== (Expr.type_ ListType)
+            #&& ((Expr.list_length expr) #== (Expr.int 2))
+            #&& (th_name #== (Expr.string name))
+            #&& ((Expr.typeof th_variant) #== (Expr.type_ ListType))
+          then DR.ok (th_variant_idx, block)
+          else DR.error (Too_symbolic expr)
+      | _ -> DR.error (Invalid_type (block.ty, enum_typ))
     in
-    let update block = block in
-    let++ discr, _ = find_proj ~tyenv ~return ~update ~ty:enum_typ t proj in
+    let++ discr, _ = find_proj ~tyenv ~return_and_update ~ty:enum_typ t proj in
     discr
 
   let deinit ~tyenv t proj ty =
     let open DR.Syntax in
-    let return _ = DR.ok () in
-    let update _block = uninitialized ~tyenv ty in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return ~update t proj in
+    let return_and_update _block = DR.ok ((), uninitialized ~tyenv ty) in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
   let substitution ~tyenv ~subst_expr t =

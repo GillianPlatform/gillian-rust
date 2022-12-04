@@ -14,6 +14,16 @@ pub enum Formula {
         tok: token::EqEq,
         right: Box<Expr>,
     },
+    LessEq {
+        left: Box<Expr>,
+        tok: token::Le,
+        right: Box<Expr>,
+    },
+    Less {
+        left: Box<Expr>,
+        tok: token::Lt,
+        right: Box<Expr>,
+    },
 }
 
 impl TryFrom<Expr> for Formula {
@@ -26,14 +36,23 @@ impl TryFrom<Expr> for Formula {
             _ => return err,
         };
 
-        if let BinOp::Eq(tok) = binary.op {
-            Ok(Formula::Eq {
+        match binary.op {
+            BinOp::Eq(tok) => Ok(Formula::Eq {
                 left: binary.left,
                 tok,
                 right: binary.right,
-            })
-        } else {
-            err
+            }),
+            BinOp::Le(tok) => Ok(Formula::LessEq {
+                left: binary.left,
+                tok,
+                right: binary.right,
+            }),
+            BinOp::Lt(tok) => Ok(Formula::Less {
+                left: binary.left,
+                tok,
+                right: binary.right,
+            }),
+            _ => err,
         }
     }
 }
@@ -45,6 +64,22 @@ impl Debug for Formula {
                 write!(
                     f,
                     "({} == {})",
+                    left.to_token_stream(),
+                    right.to_token_stream()
+                )
+            }
+            Self::LessEq { left, right, .. } => {
+                write!(
+                    f,
+                    "({} <= {})",
+                    left.to_token_stream(),
+                    right.to_token_stream()
+                )
+            }
+            Self::Less { left, right, .. } => {
+                write!(
+                    f,
+                    "({} < {})",
                     left.to_token_stream(),
                     right.to_token_stream()
                 )

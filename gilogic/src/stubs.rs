@@ -26,6 +26,20 @@ pub fn equal<T>(_: T, _: T) -> RustFormula {
     unreachable!()
 }
 
+// less and less_eq should be only for numbers
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::less_eq"]
+pub fn less_eq<T>(_: T, _: T) -> RustFormula {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::less"]
+pub fn less<T>(_: T, _: T) -> RustFormula {
+    unreachable!()
+}
+
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::pure"]
 pub fn pure(_: RustFormula) -> RustAssertion {

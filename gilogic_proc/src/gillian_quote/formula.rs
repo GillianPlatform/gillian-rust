@@ -12,6 +12,18 @@ impl ToTokens for Formula {
                     ::gilogic::__stubs::equal(#left, #right)
                 ))
             }
+            Self::LessEq { left, tok, right } => {
+                let span = tok.span();
+                tokens.extend(quote_spanned!(span=>
+                    ::gilogic::__stubs::less_eq(#left, #right)
+                ))
+            }
+            Self::Less { left, tok, right } => {
+                let span = tok.span();
+                tokens.extend(quote_spanned!(span=>
+                    ::gilogic::__stubs::less(#left, #right)
+                ))
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use super::{Expr, Type};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Formula {
     True,
     False,
@@ -75,6 +75,13 @@ impl Formula {
             }
             Self::ForAll { formula, .. } => formula.subst_pvar(mapping),
             _ => (),
+        }
+    }
+
+    pub fn eq(left: Expr, right: Expr) -> Self {
+        Self::Eq {
+            left: Box::new(left),
+            right: Box::new(right),
         }
     }
 }
