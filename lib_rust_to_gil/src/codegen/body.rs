@@ -59,7 +59,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         // log::debug!("{} : {:#?}", proc_name, mir_body);
         self.log_body();
         if mir_body.is_polymorphic && self.config.mode != ExecMode::Verification {
-            fatal!(self, "Polymorphism is not handled yet.")
+            fatal!(self, "Polymorphism is not handled outside of verification.")
         }
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
