@@ -1,5 +1,6 @@
 use std::{fmt, str::FromStr};
 
+#[derive(PartialEq, Eq)]
 pub enum ExecMode {
     Concrete,
     Symbolic,
@@ -20,12 +21,6 @@ impl FromStr for ExecMode {
     }
 }
 
-impl Default for ExecMode {
-    fn default() -> Self {
-        Self::Verification
-    }
-}
-
 impl fmt::Debug for ExecMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -43,12 +38,15 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn of_args(args: &[String]) -> Self {
+    pub fn of_args(args: &mut Vec<String>) -> Self {
         let mode = args
             .iter()
             .find_map(|x| x.strip_prefix("--gillian-exec-mode="))
             .map(|x| ExecMode::from_str(x).unwrap())
-            .unwrap_or_default();
+            .expect(
+                "Unspecified execution mode. Please add `--gillian-exec-mode=[verif|concrete|symb]",
+            );
+        args.retain(|a| !a.starts_with("--gillian-exec-mode="));
         Config { mode }
     }
 }

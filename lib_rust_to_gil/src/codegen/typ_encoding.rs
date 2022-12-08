@@ -25,7 +25,7 @@ impl From<&str> for EncodedType {
     }
 }
 
-pub trait TypeEncoder<'tcx> {
+pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
     fn add_adt_to_genv(&mut self, ty: Ty<'tcx>);
     fn atd_def_name(&self, def: &AdtDef) -> String;
 
@@ -99,7 +99,11 @@ pub trait TypeEncoder<'tcx> {
                     "ty": self.serialize_type(*ty)
                 }])
             }
-            _ => panic!("Cannot serialize this type to json yet: {}", ty),
+            _ => fatal!(
+                self,
+                "Cannot serialize this type to json yet: {:?}",
+                ty.kind()
+            ),
         }
     }
 

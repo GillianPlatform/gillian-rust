@@ -61,9 +61,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.encoded_adts.insert(ty);
         match ty.kind() {
             TyKind::Adt(def, subst) if def.is_struct() => {
-                if def.is_variant_list_non_exhaustive() {
-                    fatal!(self, "Can't handle #[non_exhaustive] yet");
-                }
                 let name = self.tcx.item_name(def.did()).to_string();
                 let fields: Vec<serde_json::Value> = def
                     .all_fields()

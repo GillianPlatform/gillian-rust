@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{config::ExecMode, prelude::*};
 use rustc_middle::mir::pretty::write_mir_fn;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -58,7 +58,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         // We can then shrink it to size when needed.
         // log::debug!("{} : {:#?}", proc_name, mir_body);
         self.log_body();
-        if mir_body.is_polymorphic {
+        if mir_body.is_polymorphic && self.config.mode != ExecMode::Verification {
             fatal!(self, "Polymorphism is not handled yet.")
         }
         if mir_body.generator_kind().is_some() {

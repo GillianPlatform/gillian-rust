@@ -29,7 +29,7 @@ type tl_ast = unit (* We unfortunately don't have access to the tl ast *)
 let pp_err = Fmt.nop
 let other_imports = []
 let env_var_import_path = Some "GILLIAN_RUST_RUNTIME_PATH"
-let initialize _ = ()
+let initialize exec_mode = R_config.exec_mode := exec_mode
 let resolve_gilogic () = "target/debug/libgilogic.rlib"
 
 let options ~out_dir () =
@@ -43,6 +43,7 @@ let options ~out_dir () =
     "-Zcrate-attr='feature(register_tool)'";
     "-Zcrate-attr='register_tool(gillian)'";
     "-Zcrate-attr='feature(rustc_attrs)'";
+    R_config.exec_mode_arg ();
   ]
 
 module Parsing = Gil_parsing.Make (Annot)

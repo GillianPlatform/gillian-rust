@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::WithOptConstParam;
 
+use crate::config::Config;
 use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
 
-pub struct ProgCtx<'tcx> {
+pub struct ProgCtx<'tcx, 'comp> {
     tcx: TyCtxt<'tcx>,
+    config: &'comp Config,
     prog: gillian::gil::Prog,
     global_env: GlobalEnv<'tcx>,
     pre_tbl: HashMap<Symbol, (Vec<String>, Assertion)>,
@@ -15,14 +17,14 @@ pub struct ProgCtx<'tcx> {
     spec_tbl: HashMap<String, (Symbol, Symbol)>,
 }
 
-impl CanFatal for ProgCtx<'_> {
+impl CanFatal for ProgCtx<'_, '_> {
     fn fatal(&self, str: &str) -> ! {
         self.tcx.sess.fatal(str)
     }
 }
 
-impl<'tcx> ProgCtx<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
+    fn new(tcx: TyCtxt<'tcx>, config: &'comp Config) -> Self {
         Self {
             prog: gillian::gil::Prog::new(runtime::imports()),
             global_env: GlobalEnv::new(tcx),
@@ -30,6 +32,7 @@ impl<'tcx> ProgCtx<'tcx> {
             post_tbl: HashMap::new(),
             spec_tbl: HashMap::new(),
             tcx,
+            config,
         }
     }
 
@@ -67,7 +70,7 @@ impl<'tcx> ProgCtx<'tcx> {
                     .borrow(),
             ),
         };
-        let ctx = GilCtxt::new(did, body, self.tcx, &mut self.global_env);
+        let ctx = GilCtxt::new(did, self.config, body, self.tcx, &mut self.global_env);
         self.prog.add_proc(ctx.push_body());
     }
 
@@ -139,8 +142,8 @@ impl<'tcx> ProgCtx<'tcx> {
         }
     }
 
-    pub(crate) fn compile_prog(tcx: TyCtxt<'tcx>) -> ParsingUnit {
-        let this = Self::new(tcx);
+    pub(crate) fn compile_prog(tcx: TyCtxt<'tcx>, config: &'comp Config) -> ParsingUnit {
+        let this = Self::new(tcx, config);
         this.final_prog()
     }
 }
