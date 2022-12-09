@@ -48,16 +48,16 @@ import "i__binop.gil", "i__lang.gil", "i__std_shims.gil";
 
 
 proc "LinkedList::new"() {
-  bb0:  m_1 := {{ "Option", {{ 0i, {{  }} }} }};
-        m_2 := {{ "Option", {{ 0i, {{  }} }} }};
-        m_3 := {{ "PhantomData", {{  }} }};
+  bb0:  m_1 := {{ 0i, {{  }} }};
+        m_2 := {{ 0i, {{  }} }};
+        m_3 := {{  }};
         g_0 := m_1;
         m_1 := none;
         g_1 := m_2;
         m_2 := none;
         g_2 := m_3;
         m_3 := none;
-        m_0 := {{ "LinkedList", {{ g_0, g_1, 0i, g_2 }} }};
+        m_0 := {{ g_0, g_1, 0i, g_2 }};
         g_3 := m_0;
         m_0 := none;
         ret := g_3;
@@ -65,9 +65,10 @@ proc "LinkedList::new"() {
   rlab: return
 };
 
+
 proc "Node::new"(m_1element) {
-  bb0:  m_2 := {{ "Option", {{ 0i, {{  }} }} }};
-        m_3 := {{ "Option", {{ 0i, {{  }} }} }};
+  bb0:  m_2 := {{ 0i, {{  }} }};
+        m_3 := {{ 0i, {{  }} }};
         m_4 := m_1element;
         g_0 := m_2;
         m_2 := none;
@@ -75,7 +76,7 @@ proc "Node::new"(m_1element) {
         m_3 := none;
         g_2 := m_4;
         m_4 := none;
-        m_0 := {{ "Node", {{ g_0, g_1, g_2 }} }};
+        m_0 := {{ g_0, g_1, g_2 }};
         g_3 := m_0;
         m_0 := none;
         ret := g_3;
@@ -134,41 +135,27 @@ proc "LinkedList::push_front"(m_1self, m_2elt) {
 
 
 
-pred dll_seg(+head, +tail_next, +tail, +head_prev, data):
-      (head == tail_next) * (tail == head_prev) * (data == {{}}),
-      (head  == {{
-                  "Option",
-                    {{ 1i,
-                      {{
-                        {{ "NonNull", {{ {{ #hloc, {{ }} }} }} }}
-                      }}
-                    }}
-                }}) *
-      types(#hloc: Obj) *
-      (<value>(#hloc, {{}}, {{ "adt", "Node" }}; {{ "Node", {{ #head_next, #head_prev, #element }} }})) *
-      dll_seg(#head_next, tail_next, tail, head, #rest) *
-      (data == l+({{ #element }}, #rest));
+pred dll_seg(+head, +tail_next, +tail, +head_prev, data) :
+  (head == tail_next) * (tail == head_prev) * (data == {{  }}),
+  (head == {{ 1i, {{ {{ {{ #hloc, {{  }} }} }} }} }}) *
+  types(#hloc : Obj) *
+  <value>(#hloc, {{  }}, {{ "adt", "Node" }}; {{ #head_next, #head_prev, #element }}) *
+  dll_seg(#head_next, tail_next, tail, head, #rest) *
+  (data == l+ ({{ #element }}, #rest));
 
-pred dll(+linked_list, data):
-      (linked_list == {{ #loc, {{ }} }}) * types(#loc: Obj) *
-      <value>(#loc, {{}}, {{ "adt", "LinkedList" }}; {{ "LinkedList", {{ #head, #tail, #len, {{ "PhantomData", {{ }} }} }} }}) *
-      (#len == l-len(data)) * dll_seg(#head, {{ "Option", {{ 0i, {{ }} }} }}, #tail, {{ "Option", {{ 0i, {{ }} }} }}, data);
+pred dll(+linked_list, data) :
+  (linked_list == {{ #loc, {{ }} }}) * types(#loc : Obj) *
+  <value>(#loc, {{}}, {{ "adt", "LinkedList" }}; {{ #head, #tail, #len, {{  }} }}) *
+  (#len == (l-len data)) * dll_seg(#head, {{ 0i, {{  }} }}, #tail, {{ 0i, {{  }} }}, data);
 
 pred box_new_node(+box, element: Int):
-      (box ==
-      {{ "Box",
-         {{ {{ "Unique", {{ {{ "NonNull", {{ #ref }} }},
-         {{ "PhantomData", {{  }} }} }} }},
-         {{ "Global",{{  }} }} }} }}) *
+      (box == {{ {{ {{ #ref }}, {{ }} }}, {{ }} }}) *
       (#ref == {{ #l, {{}} }}) *
       types(#l: Obj) *
       <value>(#l, {{}}, {{ "adt", "Node" }};
-            {{ "Node", {{
-                  {{ "Option", {{ 0i, {{  }} }} }},
-                  {{ "Option", {{ 0i, {{  }} }} }},
-                  element
-              }}
-            }});
+            {{ {{ 0i, {{  }} }},
+               {{ 0i, {{  }} }},
+               element }});
 
 spec "LinkedList::push_front_node"(m_1self, m_2node)
       [[
@@ -206,18 +193,18 @@ proc "LinkedList::push_front_node"(m_1self, m_2node) {
         g_8 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i), {{ "adt",
                             "Box" }}, true);
         g_7 := l-nth(g_8, 0i);
-        u := [store_value](l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_7, 1i), 0i), 1i), 0i), 1i), 0i), 0i),
-                           l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_7, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
+        u := [store_value](l-nth(l-nth(l-nth(l-nth(g_7, 0i), 0i), 0i), 0i),
+                           l+ (l-nth(l-nth(l-nth(l-nth(g_7, 0i), 0i), 0i), 1i),
                                {{ {{ "f", 0i, {{ "adt", "Node" }} }} }}),
                            {{ "adt", "Option" }}, g_6);
-        m_4 := {{ "Option", {{ 0i, {{  }} }} }};
+        m_4 := {{ 0i, {{  }} }};
         g_9 := m_4;
         m_4 := none;
         g_11 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
                              {{ "adt", "Box" }}, true);
         g_10 := l-nth(g_11, 0i);
-        u := [store_value](l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_10, 1i), 0i), 1i), 0i), 1i), 0i), 0i),
-                           l+ (l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(g_10, 1i), 0i), 1i), 0i), 1i), 0i), 1i),
+        u := [store_value](l-nth(l-nth(l-nth(l-nth(g_10, 0i), 0i), 0i), 0i),
+                           l+ (l-nth(l-nth(l-nth(l-nth(g_10, 0i), 0i), 0i), 1i),
                                {{ {{ "f", 1i, {{ "adt", "Node" }} }} }}),
                            {{ "adt", "Option" }}, g_9);
         g_13 := [load_value](l-nth(m_2node, 0i), l-nth(m_2node, 1i),
@@ -242,7 +229,7 @@ proc "LinkedList::push_front_node"(m_1self, m_2node) {
         goto bb2;
   bb2:  g_20 := m_6;
         m_6 := none;
-        m_5node := {{ "Option", {{ 1i, {{ g_20 }} }} }};
+        m_5node := {{ 1i, {{ g_20 }} }};
         g_22 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i),
                              {{ "ref", true, {{ "adt", "LinkedList" }} }},
                              true);

@@ -52,5 +52,5 @@ pub fn main() -> R8 {
 
     let p = &d.x.x[0] as *const R8;
     unsafe { *(p.add(4)) }
-    // ENDSWITH: {{ "R8", {{ 5i }} }}
+    // ENDSWITH: {{ 5i }}
 }

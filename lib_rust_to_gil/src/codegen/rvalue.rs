@@ -50,14 +50,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         _active_field,
                     ) => {
                         let def = self.tcx.adt_def(adt_did);
-                        let name: Expr = self.atd_def_name(&def).into();
                         match def.adt_kind() {
                             AdtKind::Enum => {
                                 let n: Expr = variant_idx.as_u32().into();
-                                let value: Expr = vec![n, ops].into();
-                                vec![name, value].into()
+                                vec![n, ops].into()
                             }
-                            AdtKind::Struct => vec![name, ops].into(),
+                            AdtKind::Struct => ops,
                             AdtKind::Union => {
                                 fatal!(self, "Union aggregate expressions not handeld yet")
                             }

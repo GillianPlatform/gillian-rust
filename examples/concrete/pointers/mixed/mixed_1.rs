@@ -49,5 +49,5 @@ pub fn main() -> R8 {
 
     let p = &t[0].x as *const R8 as *const A;
     unsafe { *((p.add(1)) as *const R8) }
-    // ENDSWITH: {{ "R8", {{ 3i }} }}
+    // ENDSWITH: {{ 3i }}
 }

@@ -74,5 +74,5 @@ pub fn main() -> C8 {
     };
     let p = &h.y as *const C16;
     unsafe { *(p.add(1) as *const C8) }
-    // ENDSWITH: {{ "C8", {{ 3i }} }}
+    // ENDSWITH: {{ 3i }}
 }

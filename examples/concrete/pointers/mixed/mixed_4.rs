@@ -64,5 +64,5 @@ pub fn main() -> R64 {
 
     let p = &f.x.y as *const R64;
     unsafe { *(p.add(1)) }
-    // ENDSWITH: {{ "R64", {{ 3i }} }}
+    // ENDSWITH: {{ 3i }}
 }

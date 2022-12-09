@@ -43,5 +43,5 @@ pub fn main() -> R8 {
 
     let p = &c.x[0] as *const R8;
     unsafe { *(p.add(2)) } // This breaks stacked borrows technically.
-                           // ENDSWITH: {{ "R8", {{ 3i }} }}
+                           // ENDSWITH: {{ 3i }}
 }

@@ -28,5 +28,5 @@ pub fn main() -> Result {
     let t = greater_than_10(Ok(0));
     let k = greater_than_10(z); // Ok(11)
     add_res(k, t) // Error
-                  // ENDSWITH: {{ "Result", {{ 1i, {{  }} }} }}
+                  // ENDSWITH: {{ 1i, {{  }} }}
 }

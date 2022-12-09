@@ -11,30 +11,30 @@ proc i__slice_from_raw_parts(p, l) {
 };
 
 proc i__nonnull_as_ptr(p) {
-     ret := l-nth(l-nth(p, 1i), 0i);
+     ret := l-nth(p, 0i);
      return
 };
 
 proc i__alloc_box_boxed_new(v, ty) {
-     global := {{ "Global", {{}} }};
+     global := {{}};
      ptr := [alloc](ty);
      u := [store_value](l-nth(ptr, 0i), l-nth(ptr, 1i), ty, v);
-     non_null := {{ "NonNull", {{ ptr }} }};
-     phantom_data := {{ "PhantomData", {{}} }};
-     unique := {{ "Unique", {{ non_null, phantom_data }} }};
-     box := {{ "Box", {{ unique, global }} }};
+     non_null := {{ ptr }};
+     phantom_data := {{}};
+     unique := {{ non_null, phantom_data }};
+     box := {{ unique, global }};
      ret := box;
      return
 };
 
 
 proc i__alloc_box_leak(b) {
-     ret := l-nth(l-nth(l-nth(l-nth(l-nth(l-nth(b, 1i), 0i), 1i), 0i), 1i), 0i);
+     ret := l-nth(l-nth(l-nth(b, 0i), 0i), 0i);
      return
 };
 
 
 proc "<&mut Node as std::convert::Into<std::ptr::NonNull<Node>>>::into"(ref) {
-     ret := {{ "NonNull", {{ ref }} }};
+     ret := {{ ref }};
      return
 };

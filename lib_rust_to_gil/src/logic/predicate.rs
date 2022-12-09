@@ -260,14 +260,12 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     .collect();
                 fields_with_idx.sort_by(|(f1, _), (f2, _)| f1.cmp(f2));
                 let fields: Vec<GExpr> = fields_with_idx.into_iter().map(|(_, e)| e).collect();
-                let adt_name: GExpr = self.tcx.item_name(def.did()).to_string().into();
                 match def.adt_kind() {
                     AdtKind::Enum => {
                         let n: GExpr = variant_index.as_u32().into();
-                        let value = vec![n, fields.into()].into();
-                        vec![adt_name, value].into()
+                        vec![n, fields.into()].into()
                     }
-                    AdtKind::Struct => vec![adt_name, fields.into()].into(),
+                    AdtKind::Struct => fields.into(),
                     AdtKind::Union => {
                         fatal!(self, "Unions are not supported in logic yet")
                     }
@@ -416,15 +414,15 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn make_nonnull(&self, ptr: GExpr) -> GExpr {
-        ["NonNull".into(), [ptr].into()].into()
+        [ptr].into()
     }
 
     fn make_box(&self, ptr: GExpr) -> GExpr {
         let non_null = self.make_nonnull(ptr);
-        let phantom_data = ["PhantomData".into(), [].into()].into();
-        let unique = ["Unique".into(), [non_null, phantom_data].into()].into();
-        let global = ["Global".into(), [].into()].into();
-        ["Box".into(), [unique, global].into()].into()
+        let phantom_data = [].into();
+        let unique = [non_null, phantom_data].into();
+        let global = [].into();
+        [unique, global].into()
     }
 
     fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {

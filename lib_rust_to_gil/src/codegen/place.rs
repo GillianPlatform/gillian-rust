@@ -219,13 +219,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         // and has theoretically the exact same representation as a pointer.
                         // However, it's "value" is a tree with many things,
                         // and we need to access the actual pointer
-                        Expr::PVar(new_base)
-                            .lnth(1)
-                            .lnth(0)
-                            .lnth(1)
-                            .lnth(0)
-                            .lnth(1)
-                            .lnth(0)
+                        Expr::PVar(new_base).lnth(0).lnth(0).lnth(0)
                     } else {
                         Expr::PVar(new_base)
                     };

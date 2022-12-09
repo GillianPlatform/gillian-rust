@@ -8,5 +8,5 @@ struct A {
 pub fn main() -> A {
     let mut x = A { u: 1, v: 2 };
     x.v = 1000;
-    x // ENDSWITH: {{ "A", {{ 1i, 1000i }} }}
+    x // ENDSWITH: {{ 1i, 1000i }}
 }

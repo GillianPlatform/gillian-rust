@@ -12,5 +12,5 @@ fn modify(x: &mut A) {
 pub fn main() -> A {
     let mut x: A = A { u: 1, v: 2 };
     modify(&mut x);
-    x // ENDSWITH: {{ "A", {{ 1i, 1000i }} }}
+    x // ENDSWITH: {{ 1i, 1000i }}
 }

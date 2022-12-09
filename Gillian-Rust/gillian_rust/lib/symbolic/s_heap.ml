@@ -121,13 +121,10 @@ module TreeBlock = struct
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
         let tuple = List.map (to_rust_value ~tyenv) v in
-        if Tyenv.is_struct ~tyenv ty then
-          EList [ Lit (String (Ty.name_exn ty)); EList tuple ]
-        else EList tuple
+        EList tuple
     | Enum { discr; fields } ->
         let fields = List.map (to_rust_value ~tyenv) fields in
-        let data = Expr.EList [ Expr.int discr; EList fields ] in
-        EList [ Lit (String (Ty.name_exn ty)); data ]
+        Expr.EList [ Expr.int discr; EList fields ]
     | ThinPtr (loc, proj) -> EList [ loc; SProjections.to_expr proj ]
     | FatPtr (loc, proj, meta) ->
         EList
@@ -155,7 +152,9 @@ module TreeBlock = struct
         in
         let content = Enum { discr = vidx; fields } in
         { ty; content }
-    | _ -> failwith "Invalid enum value!"
+    | _ ->
+        Fmt.failwith "Invalid enum value for type %a: %a" Ty.pp ty
+          (Fmt.list Expr.pp) data
 
   and of_rust_value ~tyenv ~ty (e : Expr.t) =
     match (ty, e) with
@@ -173,8 +172,7 @@ module TreeBlock = struct
     | Adt _, Lit (LList content) ->
         let content = List.map lift_lit content in
         of_rust_value ~tyenv ~ty (EList content)
-    | Adt name, EList [ Lit (String x); EList data ] when String.equal name x
-      -> (
+    | Adt name, EList data -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~tyenv ~ty ~fields_tys data
@@ -248,16 +246,10 @@ module TreeBlock = struct
     | Adt name -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
-            let th_values = Expr.list_nth expr 1 in
-            if%sat
-              (is_list expr) #&& (has_length 2 expr)
-              #&& ((Expr.list_nth expr 0) #== (Expr.string name))
-              #&& (is_list th_values)
-              #&& (has_length (List.length fields) th_values)
+            if%sat (is_list expr) #&& (has_length (List.length fields) expr)
             then
               let values =
-                List.init (List.length fields) (fun i ->
-                    Expr.list_nth th_values i)
+                List.init (List.length fields) (fun i -> Expr.list_nth expr i)
               in
               let fields =
                 List.map2
@@ -270,16 +262,13 @@ module TreeBlock = struct
             (* This should only be called with a variant context *)
             let variant_idx = Option.get variant in
             let variant = List.nth variants variant_idx in
-            let th_variant = Expr.list_nth expr 1 in
-            let th_variant_idx = Expr.list_nth th_variant 0 in
-            let th_fields = Expr.list_nth th_variant 1 in
+            let th_variant_idx = Expr.list_nth expr 0 in
+            let th_fields = Expr.list_nth expr 1 in
             let number_fields = List.length (snd variant) in
             if%sat
               (* Value should have shape:
-                 [ "ADT_NAME", [ idx, [field_0, ..., field_n] ]] *)
+                 [ idx, [field_0, ..., field_n] ] *)
               (is_list expr) #&& (has_length 2 expr)
-              #&& ((Expr.list_nth expr 0) #== (Expr.string name))
-              #&& (is_list th_variant)
               #&& (th_variant_idx #== (Expr.int variant_idx))
               #&& (is_list th_fields)
               #&& (has_length number_fields th_fields)
@@ -440,21 +429,11 @@ module TreeBlock = struct
       match block.content with
       | Enum t -> DR.ok (Expr.int t.discr, block)
       | Symbolic expr ->
-          let name =
-            match enum_typ with
-            | Ty.Adt name -> name
-            | _ -> failwith "Discr for non-enum"
-          in
           let open Formula.Infix in
-          let th_name = Expr.list_nth expr 0 in
-          let th_variant = Expr.list_nth expr 1 in
-          let th_variant_idx = Expr.list_nth th_variant 0 in
           if%sat
             (Expr.typeof expr) #== (Expr.type_ ListType)
             #&& ((Expr.list_length expr) #== (Expr.int 2))
-            #&& (th_name #== (Expr.string name))
-            #&& ((Expr.typeof th_variant) #== (Expr.type_ ListType))
-          then DR.ok (th_variant_idx, block)
+          then DR.ok (Expr.list_nth expr 0, block)
           else DR.error (Too_symbolic expr)
       | _ -> DR.error (Invalid_type (block.ty, enum_typ))
     in

@@ -74,5 +74,5 @@ pub fn main() -> C16 {
     };
     let p = &h.z as *const C8;
     unsafe { *(p.offset(-2) as *const C16) }
-    // ENDSWITH: {{ "C16", {{ 2i }} }}
+    // ENDSWITH: {{ 2i }}
 }

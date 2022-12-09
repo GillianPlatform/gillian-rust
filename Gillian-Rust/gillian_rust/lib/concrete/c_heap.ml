@@ -41,13 +41,10 @@ module TreeBlock = struct
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
         let tuple = Array.map (to_rust_value ~tyenv) v |> Array.to_list in
-        if Tyenv.is_struct ~tyenv ty then
-          LList [ String (Ty.name_exn ty); LList tuple ]
-        else LList tuple
+        LList tuple
     | Enum { discr; fields } ->
         let fields = Array.map (to_rust_value ~tyenv) fields |> Array.to_list in
-        let data = Literal.LList [ Int (Z.of_int discr); LList fields ] in
-        LList [ String (Ty.name_exn ty); data ]
+        Literal.LList [ Int (Z.of_int discr); LList fields ]
     | ThinPtr (loc, proj) ->
         LList [ Loc loc; LList (Projections.to_lit_list proj) ]
     | FatPtr (loc, proj, meta) ->
@@ -88,7 +85,7 @@ module TreeBlock = struct
         in
         let content = Fields (Array.of_list content) in
         { ty; content }
-    | Adt name, LList [ String x; LList data ] when String.equal name x -> (
+    | Adt name, LList data -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~tyenv ~ty ~fields_tys data
