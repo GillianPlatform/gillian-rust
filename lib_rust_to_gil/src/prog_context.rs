@@ -133,7 +133,6 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
                 self.compile_fn(did);
             }
         }
-        self.global_env.add_all_procs(&mut self.prog);
         self.add_specs();
         let init_data = self.global_env.serialized_adt_declarations();
         ParsingUnit {

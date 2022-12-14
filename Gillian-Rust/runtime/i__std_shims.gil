@@ -1,24 +1,24 @@
-proc i__slice_length(p) {
+proc "core::slice::<impl [T]>::len"(T, p) { (* First param is ignored *)
        goto [(typeOf l-nth(p, 0i)) = List] ctn err;
   ctn: ret := l-nth(p, 1i);
        return;
   err: fail[PTRREPR]("should be a fat pointer", p)
 };
 
-proc i__slice_from_raw_parts(p, l) {
+proc "core::ptr::slice_from_raw_parts"(T, p, l) {
      ret := {{ p, l }};
      return
 };
 
-proc i__nonnull_as_ptr(p) {
+proc "std::ptr::NonNull::<T>::as_ptr"(T, p) {
      ret := l-nth(p, 0i);
      return
 };
 
-proc i__alloc_box_boxed_new(v, ty) {
+proc "std::boxed::Box::<T>::new"(T, v) {
      global := {{}};
-     ptr := [alloc](ty);
-     u := [store_value](l-nth(ptr, 0i), l-nth(ptr, 1i), ty, v);
+     ptr := [alloc](T);
+     u := [store_value](l-nth(ptr, 0i), l-nth(ptr, 1i), T, v);
      non_null := {{ ptr }};
      phantom_data := {{}};
      unique := {{ non_null, phantom_data }};
@@ -28,13 +28,23 @@ proc i__alloc_box_boxed_new(v, ty) {
 };
 
 
-proc i__alloc_box_leak(b) {
+proc "std::boxed::Box::<T, A>::leak"(T, A, b) {
      ret := l-nth(l-nth(l-nth(b, 0i), 0i), 0i);
      return
 };
 
 
-proc "<&mut Node as std::convert::Into<std::ptr::NonNull<Node>>>::into"(ref) {
+proc mut_ref_to_nonnull_ptr(T, U, ref) {
      ret := {{ ref }};
      return
+};
+
+proc "core::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
+    ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
+    return
+};
+
+proc "core::ptr::const_ptr::<impl *const T>::offset"(T, p, i) {
+    ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
+    return
 };

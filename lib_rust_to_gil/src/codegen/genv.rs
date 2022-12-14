@@ -3,17 +3,11 @@ use rustc_middle::ty::{AdtDef, ReprOptions};
 use serde_json::{self, json};
 use std::collections::{HashSet, VecDeque};
 
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub enum CustomRuntime<'tcx> {
-    PtrPlus(Ty<'tcx>, String),
-}
-
 pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
     types_in_queue: VecDeque<Ty<'tcx>>,
     encoded_adts: HashSet<Ty<'tcx>>,
-    runtime_to_encode: HashSet<CustomRuntime<'tcx>>,
 }
 
 impl<'tcx> CanFatal for GlobalEnv<'tcx> {
@@ -38,7 +32,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             tcx,
             types_in_queue: Default::default(),
             encoded_adts: Default::default(),
-            runtime_to_encode: Default::default(),
         }
     }
 
@@ -107,10 +100,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    pub fn add_runtime(&mut self, r: CustomRuntime<'tcx>) {
-        self.runtime_to_encode.insert(r);
-    }
-
     pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
         use serde_json::{Map, Value};
         let mut obj: Map<String, Value> = Map::new();
@@ -131,18 +120,5 @@ impl<'tcx> GlobalEnv<'tcx> {
             }
         }
         Value::Object(obj)
-    }
-
-    fn proc_of_custom_runtime(&mut self, r: CustomRuntime<'tcx>) -> Proc {
-        match r {
-            CustomRuntime::PtrPlus(ty, fname) => self.ptr_plus_impl(ty, fname),
-        }
-    }
-
-    pub fn add_all_procs(&mut self, prog: &mut Prog) {
-        let runtime = self.runtime_to_encode.clone();
-        for r in runtime {
-            prog.add_proc(self.proc_of_custom_runtime(r))
-        }
     }
 }
