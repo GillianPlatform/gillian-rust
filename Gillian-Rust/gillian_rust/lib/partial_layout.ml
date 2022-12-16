@@ -337,7 +337,7 @@ let rec resolve
           else
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
-      | Adt name -> (
+      | Adt (name, _args) -> (
           match Tyenv.adt_def ~tyenv name with
           | Struct _ -> (
               let moving_over_field, next_i, next_ix =
@@ -389,7 +389,7 @@ let rec resolve
                 @@ modify_uplus_eliminating_zero
                 @@ (i - ((n - ix) * size))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))
-      | Adt name -> (
+      | Adt (name, _args) -> (
           match Tyenv.adt_def ~tyenv name with
           | Struct _ -> (
               let moving_over_field, next_ix =
@@ -576,8 +576,8 @@ let offsets_from_tys_and_pls
 
 let rec partial_layout_of
     (tyenv : Tyenv.t)
-    (known : (string, partial_layout) Hashtbl.t) : Ty.t -> partial_layout =
-  function
+    (known : (string * Ty.t list, partial_layout) Hashtbl.t) :
+    Ty.t -> partial_layout = function
   | Ty.Array { length; ty } ->
       let pl_ty = partial_layout_of tyenv known ty in
       {
@@ -613,14 +613,17 @@ let rec partial_layout_of
         (* This is suboptimal, but comes around from the model error. Structs/enums are not types *)
         size = AtLeast 0;
       }
-  | Ty.Adt name -> (
-      match Hashtbl.find_opt known name with
+  | Ty.Adt (name, subst) as this_ty -> (
+      match Hashtbl.find_opt known (name, subst) with
       | Some layout -> layout
       | None ->
           let partial_layout =
             match Tyenv.adt_def ~tyenv name with
             | Ty.Adt_def.Struct (ReprC, fs) ->
-                let ts = Seq.map (fun (_, t) -> t) @@ List.to_seq fs in
+                let ts =
+                  Seq.map (fun (_, t) -> Ty.subst_params ~subst t)
+                  @@ List.to_seq fs
+                in
                 let pls = Seq.map (partial_layout_of tyenv known) ts in
                 let align =
                   Partial_align.maximum @@ Seq.map (fun pl -> pl.align) pls
@@ -647,7 +650,7 @@ let rec partial_layout_of
                 {
                   fields = Arbitrary offsets;
                   variant = Single 0;
-                  align = ToType (Ty.Adt name);
+                  align = ToType this_ty;
                   size = AtLeast 0;
                 }
             | Enum variants ->
@@ -663,6 +666,9 @@ let rec partial_layout_of
                         variants =
                           Array.of_seq
                           @@ Seq.map (fun (_, fs) ->
+                                 let fs =
+                                   List.map (Ty.subst_params ~subst) fs
+                                 in
                                  partial_layout_of tyenv known @@ Ty.Tuple fs)
                           @@ List.to_seq variants;
                       };
@@ -670,7 +676,7 @@ let rec partial_layout_of
                   size = AtLeast 0;
                 }
           in
-          Hashtbl.add known name partial_layout;
+          Hashtbl.add known (name, subst) partial_layout;
           partial_layout)
   | Ty.Ref { mut = _; ty = _ } ->
       (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
@@ -681,13 +687,26 @@ let rec partial_layout_of
         size = AtLeast 1;
       }
   | Ty.Slice _ ->
-      (* Is this a slice or slice reference; assumed slice reference *)
+      (* FIXME: Is this a slice or slice reference; assumed slice reference (Matthew) *)
+      (* This is an actual slice. We have them in memory because our memories are partial,
+         and therefore can contain slices of arrays.
+         I'm suspecting that it therefore shouldn't really be a slice, it's still an array *)
       {
         fields = Primitive;
         variant = Single 0;
         align = AtLeastPow2 0;
         size = AtLeast 2;
       }
+  | Ty.Poly _ ->
+      {
+        fields = Primitive;
+        variant = Single 0;
+        align = AtLeastPow2 0;
+        size = AtLeast 0;
+      }
+  | Ty.Param _ ->
+      failwith
+        "param should have been resolved before getting `partial_layout_of`"
 
 let partial_layouts_from_env (tyenv : Tyenv.t) : Ty.t -> partial_layout =
   let partial_layouts = Hashtbl.create 1024 in
@@ -695,9 +714,12 @@ let partial_layouts_from_env (tyenv : Tyenv.t) : Ty.t -> partial_layout =
 
 let enum_variant_members_from_env (tyenv : Tyenv.t) (ty : Ty.t) (vidx : int) =
   match ty with
-  | Adt name -> (
+  | Adt (name, subst) -> (
       match Tyenv.adt_def ~tyenv name with
-      | Enum variants -> List.nth variants vidx |> snd |> Array.of_list
+      | Enum variants ->
+          List.nth variants vidx |> snd
+          |> List.map (Ty.subst_params ~subst)
+          |> Array.of_list
       | _ -> failwith "enum_variant_members for non-enum")
   | _ -> failwith "enum_variant_members for non-enum"
 
@@ -705,10 +727,12 @@ let members_from_env (tyenv : Tyenv.t) (ty : Ty.t) : Ty.t array =
   match ty with
   | Array { ty; length } -> Array.make length ty
   | Tuple tys -> Array.of_list tys
-  | Adt name -> (
+  | Adt (name, subst) -> (
       match Tyenv.adt_def ~tyenv name with
       | Struct (_, fs) ->
-          fs |> List.to_seq |> Seq.map (fun (_, t) -> t) |> Array.of_seq
+          List.to_seq fs
+          |> Seq.map (fun (_, t) -> Ty.subst_params ~subst t)
+          |> Array.of_seq
       | _ -> [||])
   | _ -> [||]
 (* Consider making 1 t for internal navigation, especially primitives *)

@@ -1,5 +1,6 @@
 use crate::{config::ExecMode, prelude::*};
 use rustc_middle::mir::pretty::write_mir_fn;
+use rustc_middle::ty::ParamTy;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
@@ -48,6 +49,31 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         log::debug!("{}", string)
     }
 
+    fn gather_type_params(&self) -> Vec<String> {
+        let mir = self.mir();
+        // FIXME: Is it right to skip the binder? I think no, this might lead to issues in trait impls.
+
+        let mut all_param_tys: Vec<_> = mir
+            .args_iter()
+            .map(|local| mir.local_decls()[local].ty)
+            .chain(std::iter::once(mir.return_ty()))
+            .filter_map(|x: Ty<'tcx>| {
+                if let TyKind::Param(ParamTy { index, name }) = x.kind() {
+                    Some((index, name))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        log::debug!("{:?}", &all_param_tys);
+        all_param_tys.sort_unstable_by_key(|x| x.0);
+        all_param_tys.dedup_by_key(|x| x.0);
+        all_param_tys
+            .into_iter()
+            .map(|x| Self::param_type_name(*x.0, *x.1))
+            .collect()
+    }
+
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
         let proc_name =
@@ -64,9 +90,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         if mir_body.generator_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
         }
-        let args: Vec<String> = mir_body
-            .args_iter()
-            .map(|local| self.name_from_local(local))
+
+        let args: Vec<String> = self
+            .gather_type_params()
+            .into_iter()
+            .chain(
+                mir_body
+                    .args_iter()
+                    .map(|local| self.name_from_local(local)),
+            )
             .collect();
         self.push_alloc_local_decls(mir_body);
         for (bb, bb_data) in mir_body.basic_blocks.iter_enumerated() {

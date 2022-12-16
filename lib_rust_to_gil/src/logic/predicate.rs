@@ -32,8 +32,8 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
 }
 
 impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
-    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
-        self.global_env.add_adt(ty);
+    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
+        self.global_env.add_adt(def);
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {

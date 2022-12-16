@@ -135,20 +135,29 @@ module TreeBlock = struct
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
 
-  let rec of_rust_struct_value ~tyenv ~ty ~fields_tys (fields : Expr.t list) =
+  let rec of_rust_struct_value
+      ~tyenv
+      ~ty
+      ~subst
+      ~fields_tys
+      (fields : Expr.t list) =
     let content =
-      List.map2 (fun (_, t) v -> of_rust_value ~tyenv ~ty:t v) fields_tys fields
+      List.map2
+        (fun (_, t) v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+        fields_tys fields
     in
     let content = Fields content in
     { ty; content }
 
-  and of_rust_enum_value ~tyenv ~ty ~variants_tys (data : Expr.t list) =
+  and of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys (data : Expr.t list) =
     match data with
     | [ Lit (Int variant_idx); EList fields ] ->
         let vidx = Z.to_int variant_idx in
         let _, tys = List.nth variants_tys vidx in
         let fields =
-          List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) tys fields
+          List.map2
+            (fun t v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+            tys fields
         in
         let content = Enum { discr = vidx; fields } in
         { ty; content }
@@ -172,11 +181,12 @@ module TreeBlock = struct
     | Adt _, Lit (LList content) ->
         let content = List.map lift_lit content in
         of_rust_value ~tyenv ~ty (EList content)
-    | Adt name, EList data -> (
+    | Adt (name, subst), EList data -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields_tys) ->
-            of_rust_struct_value ~tyenv ~ty ~fields_tys data
-        | Enum variants_tys -> of_rust_enum_value ~tyenv ~ty ~variants_tys data)
+            of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
+        | Enum variants_tys ->
+            of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
     | Ref { ty = Slice _; _ }, EList [ EList [ loc; proj ]; Lit (Int i) ] ->
         let proj = concretize_proj proj in
         let content = FatPtr (loc, proj, Z.to_int i) in
@@ -198,11 +208,13 @@ module TreeBlock = struct
     | Ty.Tuple v ->
         let tuple = List.map (uninitialized ~tyenv) v in
         { ty; content = Fields tuple }
-    | Adt name -> (
+    | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
             let tuple =
-              List.map (fun (_, t) -> uninitialized ~tyenv t) fields
+              List.map
+                (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
+                fields
             in
 
             { ty; content = Fields tuple }
@@ -211,8 +223,11 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Poly _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+    | Param _ ->
+        failwith
+          "param should have been resolved before getting `uninitialized`"
 
   let semi_concretize ~tyenv ~variant ty expr =
     (* FIXME: this assumes the values are initialized? Not entirely sure...
@@ -243,7 +258,7 @@ module TreeBlock = struct
           in
           DR.ok { ty; content = Array fields }
         else DR.error (Too_symbolic expr)
-    | Adt name -> (
+    | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
             if%sat (is_list expr) #&& (has_length (List.length fields) expr)
@@ -253,7 +268,8 @@ module TreeBlock = struct
               in
               let fields =
                 List.map2
-                  (fun (_, ty) e -> { content = Symbolic e; ty })
+                  (fun (_, ty) e ->
+                    { content = Symbolic e; ty = Ty.subst_params ~subst ty })
                   fields values
               in
               DR.ok { ty; content = Fields fields }
@@ -278,14 +294,19 @@ module TreeBlock = struct
               in
               let fields =
                 List.map2
-                  (fun ty e -> { content = Symbolic e; ty })
+                  (fun ty e ->
+                    { content = Symbolic e; ty = Ty.subst_params ~subst ty })
                   (snd variant) values
               in
               DR.ok { ty; content = Enum { discr = variant_idx; fields } }
             else DR.error (Too_symbolic expr))
-    | Scalar _ | Ref _ ->
-        failwith "I shouldn't ever need to concretize a scalar"
+    | Scalar _ | Ref _ | Poly _ ->
+        failwith
+          "I shouldn't ever need to concretize a scalar or something opaque"
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+    | Param _ ->
+        failwith
+          "param should have been resolved before getting to `semi_concretize`"
 
   let rec find_path
       ~tyenv

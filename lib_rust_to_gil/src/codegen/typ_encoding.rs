@@ -1,21 +1,15 @@
 use crate::prelude::*;
-use rustc_middle::ty::{AdtDef, Const, ConstKind};
+use rustc_middle::ty::{AdtDef, Const, ConstKind, GenericArg, GenericArgKind};
 use serde_json::json;
 
 /// This type is use to type-check that we're indeed using a
 /// literal obtained from encoding a type
 #[derive(Clone, Debug)]
-pub struct EncodedType(Literal);
-
-impl From<EncodedType> for Literal {
-    fn from(e: EncodedType) -> Self {
-        e.0
-    }
-}
+pub struct EncodedType(Expr);
 
 impl From<EncodedType> for Expr {
     fn from(e: EncodedType) -> Self {
-        Expr::Lit(e.0)
+        e.0
     }
 }
 
@@ -26,13 +20,25 @@ impl From<&str> for EncodedType {
 }
 
 pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
-    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>);
+    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
     fn atd_def_name(&self, def: &AdtDef) -> String;
 
     fn array_size_value(&self, sz: &Const) -> i128 {
         match sz.kind() {
             ConstKind::Value(ValTree::Leaf(x)) => x.to_bits(x.size()).unwrap() as i128,
             _ => panic!("Invalid array size"),
+        }
+    }
+
+    fn serialize_generic_arg(&mut self, arg: GenericArg<'tcx>) -> Option<serde_json::Value> {
+        match arg.unpack() {
+            // We don't make use of Lifetime arguments for now
+            GenericArgKind::Lifetime(..) => None,
+            GenericArgKind::Const(..) => fatal!(
+                self,
+                "unhandled yet: Cannot compile function with const param"
+            ),
+            GenericArgKind::Type(ty) => Some(self.serialize_type(ty)),
         }
     }
 
@@ -82,11 +88,15 @@ pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
                     "ty": self.serialize_type(*ty)
                 }])
             }
-            Adt(def, _) => {
+            Adt(def, subst) => {
                 let name = self.atd_def_name(def);
+                let subst: serde_json::Value = subst
+                    .iter()
+                    .filter_map(|x| self.serialize_generic_arg(x))
+                    .collect();
                 // Adts are encoded by the environment
-                self.add_adt_to_genv(ty);
-                json!(["Adt", name])
+                self.add_adt_to_genv(*def);
+                json!(["Adt", [name, subst]])
             }
             Slice(ty) => json!(["Slice", self.serialize_type(*ty)]),
             Array(ty, sz) => {
@@ -99,12 +109,29 @@ pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
                     "ty": self.serialize_type(*ty)
                 }])
             }
+            Param(ParamTy { index, name: _ }) => json!(["Param", index]),
             _ => fatal!(
                 self,
                 "Cannot serialize this type to json yet: {:?}",
                 ty.kind()
             ),
         }
+    }
+
+    fn encode_generic_arg(&mut self, arg: GenericArg<'tcx>) -> Option<EncodedType> {
+        match arg.unpack() {
+            // We don't make use of Lifetime arguments for now
+            GenericArgKind::Lifetime(..) => None,
+            GenericArgKind::Const(..) => fatal!(
+                self,
+                "unhandled yet: Cannot compile function with const param"
+            ),
+            GenericArgKind::Type(ty) => Some(self.encode_type(ty)),
+        }
+    }
+
+    fn param_type_name(index: u32, name: Symbol) -> String {
+        format!("pty_{}{}", name, index)
     }
 
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
@@ -126,14 +153,17 @@ pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
             Uint(UintTy::U64) => "u64".into(),
             Uint(UintTy::U128) => "u128".into(),
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
-            Tuple(_) => EncodedType(Literal::LList(vec![
-                "tuple".into(),
-                ty.tuple_fields()
-                    .iter()
-                    .map(|x| self.encode_type(x).into())
-                    .collect::<Vec<_>>()
-                    .into(),
-            ])),
+            Tuple(_) => EncodedType(
+                [
+                    "tuple".into(),
+                    ty.tuple_fields()
+                        .iter()
+                        .map(|x| self.encode_type(x).into())
+                        .collect::<Vec<_>>()
+                        .into(),
+                ]
+                .into(),
+            ),
             //   *mut t | &mut t -> ["ref", true, encode(t)]
             // We'll have to change this later when we start
             // caring about the aliasing model,
@@ -147,41 +177,43 @@ pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
                     Mutability::Mut => true,
                     Mutability::Not => false,
                 };
-                EncodedType(Literal::LList(vec![
-                    "ref".into(),
-                    mutability.into(),
-                    self.encode_type(*ty).into(),
-                ]))
-            }
-            Adt(def, _) => {
-                let name = self.atd_def_name(def);
-                // Adts are encoded by the environment
-                self.add_adt_to_genv(ty);
-                EncodedType(Literal::LList(vec!["adt".into(), name.into()]))
-            }
-            Slice(ty) => EncodedType(Literal::LList(vec![
-                "slice".into(),
-                self.encode_type(*ty).into(),
-            ])),
-            Array(ty, sz) => {
-                let sz_i = self.array_size_value(sz);
                 EncodedType(
-                    vec![
-                        "array".into(),
+                    [
+                        "ref".into(),
+                        mutability.into(),
                         self.encode_type(*ty).into(),
-                        Literal::int(sz_i),
                     ]
                     .into(),
                 )
             }
-            _ => panic!("Cannot encode this type yet: {:#?}", ty),
+            Adt(def, subst) => {
+                let name = self.atd_def_name(def);
+                let args: Vec<_> = subst
+                    .iter()
+                    .filter_map(|a| self.encode_generic_arg(a))
+                    .map(|a| a.0)
+                    .collect();
+                // Adts are encoded by the environment
+                self.add_adt_to_genv(*def);
+                EncodedType(["adt".into(), name.into(), args.into()].into())
+            }
+            Slice(ty) => EncodedType(["slice".into(), self.encode_type(*ty).into()].into()),
+            Array(ty, sz) => {
+                let sz_i = self.array_size_value(sz);
+                EncodedType(["array".into(), self.encode_type(*ty).into(), sz_i.into()].into())
+            }
+            // In this case, we use what's expected to be the correct variable name for that type parameter.
+            Param(ParamTy { index, name }) => {
+                EncodedType(Expr::PVar(Self::param_type_name(*index, *name)))
+            }
+            _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }
     }
 }
 
 impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
-    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
-        self.global_env.add_adt(ty);
+    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
+        self.global_env.add_adt(def);
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {

@@ -55,20 +55,24 @@ module TreeBlock = struct
           ]
     | Uninit -> mem_error "Attempting to read uninitialized value"
 
-  let rec of_rust_struct_value ~tyenv ~ty ~fields_tys fields =
+  let rec of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys fields =
     let content =
-      List.map2 (fun (_, t) v -> of_rust_value ~tyenv ~ty:t v) fields_tys fields
+      List.map2
+        (fun (_, t) v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+        fields_tys fields
     in
     let content = Fields (Array.of_list content) in
     { ty; content }
 
-  and of_rust_enum_value ~tyenv ~ty ~variants_tys data =
+  and of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data =
     match data with
     | [ Literal.Int variant_idx; LList fields ] ->
         let vidx = Z.to_int variant_idx in
         let _, tys = List.nth variants_tys vidx in
         let fields =
-          List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) tys fields
+          List.map2
+            (fun t v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+            tys fields
           |> Array.of_list
         in
         let content = Enum { discr = vidx; fields } in
@@ -85,11 +89,12 @@ module TreeBlock = struct
         in
         let content = Fields (Array.of_list content) in
         { ty; content }
-    | Adt name, LList data -> (
+    | Adt (name, subst), LList data -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields_tys) ->
-            of_rust_struct_value ~tyenv ~ty ~fields_tys data
-        | Enum variants_tys -> of_rust_enum_value ~tyenv ~ty ~variants_tys data)
+            of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
+        | Enum variants_tys ->
+            of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
     | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -109,11 +114,13 @@ module TreeBlock = struct
     | Ty.Tuple v ->
         let tuple = List.map (uninitialized ~tyenv) v |> Array.of_list in
         { ty; content = Fields tuple }
-    | Adt name -> (
+    | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
             let tuple =
-              List.map (fun (_, t) -> uninitialized ~tyenv t) fields
+              List.map
+                (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
+                fields
               |> Array.of_list
             in
             { ty; content = Fields tuple }
@@ -122,8 +129,11 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Poly _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+    | Param _ ->
+        failwith
+          "param should have been resolved before getting `uninitialized`"
 
   let rec find_path ~tyenv ~update ~return t (path : Partial_layout.access list)
       =

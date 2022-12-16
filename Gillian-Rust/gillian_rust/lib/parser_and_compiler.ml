@@ -79,9 +79,10 @@ let parse_and_compile_files files =
   let* out_file = compile ~out_dir:temp_dir file in
   let gil_prog = Parsing.parse_eprog_from_file out_file in
   let init_data = Tyenv.of_yojson gil_prog.init_data |> Result.get_ok in
+  let gil_file = Filename.chop_extension file ^ ".gil" in
   Ok
     {
-      gil_progs = [ (file, gil_prog.labeled_prog) ];
+      gil_progs = [ (gil_file, gil_prog.labeled_prog) ];
       source_files;
       tl_ast = ();
       init_data;

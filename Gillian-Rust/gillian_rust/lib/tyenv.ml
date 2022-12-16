@@ -7,7 +7,8 @@ let of_yojson : Yojson.Safe.t -> (t, string) result = function
         (fun (name, json) ->
           match Ty.Adt_def.of_yojson json with
           | Ok def -> Hashtbl.replace tbl name def
-          | Error msg -> failwith msg)
+          | Error msg ->
+              Fmt.failwith "Couldn't parse %a: %s" Yojson.Safe.pp json msg)
         xs;
       Ok tbl
   | _ -> Error "expected an object"
@@ -24,7 +25,7 @@ let adt_def ~tyenv name = Hashtbl.find tyenv name
 let is_struct ~tyenv ty =
   let res =
     match ty with
-    | Ty.Adt name -> (
+    | Ty.Adt (name, _) -> (
         match adt_def ~tyenv name with
         | Ty.Adt_def.Struct _ -> true
         | _ -> false)

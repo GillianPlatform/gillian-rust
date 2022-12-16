@@ -49,12 +49,26 @@ let scalar_ty_to_yojson s = `String (scalar_ty_to_string s)
 type t =
   | Scalar of scalar_ty
   | Tuple of t list
-  | Adt of string
-      (** This will have to be looked up in the global environment *)
+  | Adt of (string * t list)
+      (** This will have to be looked up in the global environment,
+          For example List<u32> is Adt("List", [ u32 ] *)
   | Ref of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
   | Slice of t
+  | Poly of int  (** Something polymorphic: it could be any type *)
+  | Param of int
+      (** A parameter in an ADT def, should be substituted before used *)
 [@@deriving eq, yojson]
+
+let rec subst_params ~subst t =
+  match t with
+  | Param i -> List.nth subst i
+  | Scalar _ | Poly _ -> t
+  | Tuple l -> Tuple (List.map (subst_params ~subst) l)
+  | Array { length; ty } -> Array { length; ty = subst_params ~subst ty }
+  | Slice t -> Slice (subst_params ~subst t)
+  | Ref { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
+  | Adt (name, l) -> Adt (name, List.map (subst_params ~subst) l)
 
 let name_exn = function
   | Adt s -> s
@@ -85,7 +99,9 @@ let rec of_lit = function
         | "char" -> Char
         | _ -> Fmt.failwith "Incorrect scalar type \"%s\"" str_ty)
   | LList [ String "tuple"; LList l ] -> Tuple (List.map of_lit l)
-  | LList [ String "adt"; String name ] -> Adt name
+  | LList [ String "adt"; String name; LList l ] ->
+      let args = List.map of_lit l in
+      Adt (name, args)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
   | LList [ String "array"; ty; Int i ] ->
       Array { length = Z.to_int i; ty = of_lit ty }
@@ -111,11 +127,16 @@ let rec to_lit = function
         | Bool -> "bool"
         | Char -> "char")
   | Tuple fls -> LList [ String "tuple"; LList (List.map to_lit fls) ]
-  | Adt x -> LList [ String "adt"; String x ]
+  | Adt (x, a) ->
+      let args = List.map to_lit a in
+      LList [ String "adt"; String x; LList args ]
   | Ref { mut; ty } -> LList [ String "ref"; Bool mut; to_lit ty ]
   | Array { length; ty } ->
       LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
   | Slice t -> LList [ String "slice"; to_lit t ]
+  | Poly i -> LList [ String "poly"; Int (Z.of_int i) ]
+  | Param _ ->
+      failwith "Param should be substituted before being turned into literal"
 
 let pp_scalar fmt t =
   let str = Fmt.string fmt in
@@ -142,10 +163,12 @@ let rec pp ft t =
   | Tuple t ->
       let pp_tuple = parens (list ~sep:comma pp) in
       pp_tuple ft t
-  | Adt s -> string ft s
+  | Adt (s, args) -> pf ft "%s<%a>" s (list ~sep:comma pp) args
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
+  | Poly i -> Fmt.pf ft "T$%d" i
+  | Param i -> Fmt.pf ft "P?%d" i
 
 module Adt_def = struct
   type repr = ReprC | ReprRust [@@deriving eq]
@@ -163,35 +186,27 @@ module Adt_def = struct
           js
 
   type ty = t [@@deriving yojson]
-  (* Necessary because ppx_deriving_yojson doesn't work for [nonrec] things. *)
 
   type t =
     | Enum of (string * ty list) list
-        (** Each variant has a name and the type of the list of fields.
+        (** Each variant has a name and the type of the list of fields. 
         Maybe I should add the name of each field for each variant? *)
     | Struct of repr * (string * ty) list
   [@@deriving yojson]
-
-  let no_fields_for_downcast ty d =
-    match ty with
-    | Enum l -> (
-        match snd (List.nth l d) with
-        | [] -> true
-        | _ -> false)
-    | _ -> Fmt.failwith "[no_fields_for_downcast] Not an enum!"
 
   let pp ft t =
     let open Fmt in
     match t with
     | Struct (repr, f) ->
         let pp_repr ft = function
-          | ReprC -> pf ft "#[repr(C)] "
-          | ReprRust -> pf ft "#[repr(Rust)] "
+          | ReprC -> pf ft "#[repr(C)]"
+          | ReprRust -> pf ft "#[repr(Rust)]"
         in
         let pp_struct =
           braces (list ~sep:comma (pair ~sep:(Fmt.any ": ") Fmt.string pp))
         in
-        (pair ~sep:nop pp_repr pp_struct) ft (repr, f)
+        pp_repr ft repr;
+        pp_struct ft f
     | Enum v ->
         let pp_variant ftt (name, tys) =
           pf ftt "| %s%a" name (parens (list ~sep:comma pp)) tys

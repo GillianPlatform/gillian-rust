@@ -70,7 +70,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
                     .borrow(),
             ),
         };
-        let ctx = GilCtxt::new(did, self.config, body, self.tcx, &mut self.global_env);
+        let ctx = GilCtxt::new(self.config, body, self.tcx, &mut self.global_env);
         self.prog.add_proc(ctx.push_body());
     }
 

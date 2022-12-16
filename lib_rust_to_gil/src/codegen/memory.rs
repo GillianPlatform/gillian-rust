@@ -81,7 +81,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_action(&mut self, target: String, action: MemoryAction<'tcx>) {
         match action {
             MemoryAction::Alloc(ty) => {
-                let ty = Expr::Lit(self.encode_type(ty).into());
+                let ty = self.encode_type(ty).into();
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::ALLOC.to_string(),
@@ -95,16 +95,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 copy,
             } => {
                 let temp = self.temp_var();
-                let encoded_typ: Literal = self.encode_type(typ).into();
+                let encoded_typ = self.encode_type(typ).into();
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_VALUE.to_string(),
-                    parameters: vec![
-                        location,
-                        projection,
-                        Expr::Lit(encoded_typ),
-                        Expr::bool(copy),
-                    ],
+                    parameters: vec![location, projection, encoded_typ, Expr::bool(copy)],
                 });
                 self.push_cmd(Cmd::Assignment {
                     variable: target,
@@ -121,7 +116,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::STORE_VALUE.to_string(),
-                    parameters: vec![location, projection, Expr::Lit(encoded_typ), value],
+                    parameters: vec![location, projection, encoded_typ, value],
                 })
             }
             MemoryAction::LoadSlice {
@@ -136,13 +131,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_SLICE.to_string(),
-                    parameters: vec![
-                        location,
-                        projection,
-                        size,
-                        Expr::Lit(encoded_typ),
-                        Expr::bool(copy),
-                    ],
+                    parameters: vec![location, projection, size, encoded_typ, Expr::bool(copy)],
                 });
                 self.push_cmd(Cmd::Assignment {
                     variable: target,
@@ -160,7 +149,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::STORE_SLICE.to_string(),
-                    parameters: vec![location, projection, size, Expr::Lit(encoded_typ), value],
+                    parameters: vec![location, projection, size, encoded_typ, value],
                 })
             }
             MemoryAction::Deinit {
@@ -172,7 +161,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::DEINIT.to_string(),
-                    parameters: vec![location, projection, Expr::Lit(encoded_typ)],
+                    parameters: vec![location, projection, encoded_typ],
                 })
             }
             MemoryAction::Free {
@@ -184,7 +173,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: target,
                     action_name: action_names::FREE.to_string(),
-                    parameters: vec![location, projection, Expr::Lit(encoded_typ)],
+                    parameters: vec![location, projection, encoded_typ],
                 })
             }
             MemoryAction::LoadDiscriminant {
@@ -197,7 +186,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Action {
                     variable: temp.clone(),
                     action_name: action_names::LOAD_DISCR.to_string(),
-                    parameters: vec![location, projection, Expr::Lit(encoded_typ)],
+                    parameters: vec![location, projection, encoded_typ],
                 });
                 self.push_cmd(Cmd::Assignment {
                     variable: target,

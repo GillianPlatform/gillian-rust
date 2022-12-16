@@ -9,7 +9,6 @@ use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
     locals_in_memory: HashSet<Local>,
-    did: DefId,
     pub(crate) config: &'body Config,
     pub(crate) tcx: TyCtxt<'tcx>,
     gil_body: ProcBody,
@@ -28,14 +27,12 @@ impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
-        did: DefId,
         config: &'body Config,
         mir: &'body Body<'tcx>,
         ty_ctxt: TyCtxt<'tcx>,
         global_env: &'body mut GlobalEnv<'tcx>,
     ) -> Self {
         GilCtxt {
-            did,
             tcx: ty_ctxt,
             config,
             locals_in_memory: locals_in_memory_for_mir(mir),
@@ -61,7 +58,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn body_did(&self) -> DefId {
-        self.did
+        self.mir().source.def_id()
     }
 
     pub fn mir(&self) -> &'body Body<'tcx> {

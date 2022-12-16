@@ -1,21 +1,9 @@
 use crate::prelude::*;
 use names::bb_label;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{GenericArg, GenericArgKind, List};
+use rustc_middle::ty::{GenericArg, List};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn encode_generic_arg(&mut self, arg: GenericArg<'tcx>) -> Option<EncodedType> {
-        match arg.unpack() {
-            // We don't make use of Lifetime arguments for now
-            GenericArgKind::Lifetime(..) => None,
-            GenericArgKind::Const(..) => fatal!(
-                self,
-                "unhandled yet: Cannot compile function with const param"
-            ),
-            GenericArgKind::Type(ty) => Some(self.encode_type(ty)),
-        }
-    }
-
     fn shim(&mut self, fname: &str, substs: &List<GenericArg>) -> Option<String> {
         // The matching should probably be perfomed on the `def_path`
         // instead of the `def_path_str`.

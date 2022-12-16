@@ -6,8 +6,8 @@ use std::collections::{HashSet, VecDeque};
 pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
-    types_in_queue: VecDeque<Ty<'tcx>>,
-    encoded_adts: HashSet<Ty<'tcx>>,
+    types_in_queue: VecDeque<AdtDef<'tcx>>,
+    encoded_adts: HashSet<AdtDef<'tcx>>,
 }
 
 impl<'tcx> CanFatal for GlobalEnv<'tcx> {
@@ -17,8 +17,8 @@ impl<'tcx> CanFatal for GlobalEnv<'tcx> {
 }
 
 impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
-    fn add_adt_to_genv(&mut self, ty: Ty<'tcx>) {
-        self.add_adt(ty);
+    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
+        self.add_adt(def);
     }
 
     fn atd_def_name(&self, def: &AdtDef) -> String {
@@ -50,53 +50,52 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     // Panics if not called with an ADT
-    fn serialize_adt_decl(&mut self, ty: Ty<'tcx>) -> (String, serde_json::Value) {
-        self.encoded_adts.insert(ty);
-        match ty.kind() {
-            TyKind::Adt(def, subst) if def.is_struct() => {
-                let name = self.tcx.item_name(def.did()).to_string();
-                let fields: Vec<serde_json::Value> = def
-                    .all_fields()
-                    .map(|field| {
-                        let field_name = self.tcx.item_name(field.did).to_string();
-                        let typ = self.serialize_type(field.ty(self.tcx, subst));
-                        json!([field_name, typ])
-                    })
-                    .collect();
-                let decl = json!(["Struct", self.serialize_repr(&def.repr()), fields]);
-                (name, decl)
+    fn serialize_adt_decl(&mut self, def: AdtDef<'tcx>) -> (String, serde_json::Value) {
+        self.encoded_adts.insert(def);
+        if def.is_struct() {
+            let name = self.tcx.item_name(def.did()).to_string();
+            let fields: Vec<serde_json::Value> = def
+                .all_fields()
+                .map(|field| {
+                    let field_name = self.tcx.item_name(field.did).to_string();
+                    let typ = self.tcx.type_of(field.did);
+                    let typ = self.serialize_type(typ);
+                    json!([field_name, typ])
+                })
+                .collect();
+            let decl = json!(["Struct", self.serialize_repr(&def.repr()), fields]);
+            (name, decl)
+        } else if def.is_enum() {
+            if def.is_variant_list_non_exhaustive() {
+                fatal!(self, "Can't handle #[non_exhaustive] yet");
             }
-            TyKind::Adt(def, subst) if def.is_enum() => {
-                if def.is_variant_list_non_exhaustive() {
-                    fatal!(self, "Can't handle #[non_exhaustive] yet");
-                }
-                let name = self.tcx.item_name(def.did()).to_string();
-                let variants: Vec<serde_json::Value> = def
-                    .variants()
-                    .iter()
-                    .map(|variant| {
-                        let fields: Vec<serde_json::Value> = variant
-                            .fields
-                            .iter()
-                            .map(|field| self.serialize_type(field.ty(self.tcx, subst)))
-                            .collect();
-                        let name = self.tcx.item_name(variant.def_id).to_string();
-                        json!([name, fields])
-                    })
-                    .collect();
-                let decl = json!(["Enum", variants]);
-                (name, decl)
-            }
-            _ => panic!(
-                "This function should never be called with this type {:#?}",
-                ty
-            ),
+            let name = self.tcx.item_name(def.did()).to_string();
+            let variants: Vec<serde_json::Value> = def
+                .variants()
+                .iter()
+                .map(|variant| {
+                    let fields: Vec<serde_json::Value> = variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let typ = self.tcx.type_of(field.did);
+                            self.serialize_type(typ)
+                        })
+                        .collect();
+                    let name = self.tcx.item_name(variant.def_id).to_string();
+                    json!([name, fields])
+                })
+                .collect();
+            let decl = json!(["Enum", variants]);
+            (name, decl)
+        } else {
+            fatal!(self, "Unions not handled yet, can't encode: {:#?}", def)
         }
     }
 
-    pub fn add_adt(&mut self, ty: Ty<'tcx>) {
-        if !(self.encoded_adts.contains(&ty) || self.types_in_queue.contains(&ty)) {
-            self.types_in_queue.push_back(ty);
+    pub fn add_adt(&mut self, def: AdtDef<'tcx>) {
+        if !(self.encoded_adts.contains(&def) || self.types_in_queue.contains(&def)) {
+            self.types_in_queue.push_back(def);
         }
     }
 
