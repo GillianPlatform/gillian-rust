@@ -1,4 +1,4 @@
-open S_err
+open Err
 
 let set_nth lst idx value =
   let rec aux lst idx =

@@ -40,3 +40,5 @@ let of_declaration_list decls : t =
   let tyenv = Hashtbl.create 10 in
   List.iter (fun (name, decl) -> Hashtbl.replace tyenv name decl) decls;
   tyenv
+
+let leak t = t

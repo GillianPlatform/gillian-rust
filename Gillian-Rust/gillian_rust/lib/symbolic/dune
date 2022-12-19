@@ -1,0 +1,6 @@
+(library
+ (name symbolic)
+ (libraries gillian gillian.ppx_sat.runtime common rutils)
+ (flags -open Rutils -open Common)
+ (preprocess
+  (pps ppx_deriving.std ppx_deriving_yojson gillian.ppx_sat)))

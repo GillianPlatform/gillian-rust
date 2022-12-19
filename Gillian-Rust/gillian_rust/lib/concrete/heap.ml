@@ -129,7 +129,7 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Poly _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
     | Param _ ->
         failwith

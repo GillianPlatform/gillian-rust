@@ -1,0 +1,5 @@
+(library
+ (name common)
+ (libraries gillian)
+ (preprocess
+  (pps ppx_deriving_yojson ppx_deriving.std)))

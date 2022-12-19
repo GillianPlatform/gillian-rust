@@ -697,13 +697,6 @@ let rec partial_layout_of
         align = AtLeastPow2 0;
         size = AtLeast 2;
       }
-  | Ty.Poly _ ->
-      {
-        fields = Primitive;
-        variant = Single 0;
-        align = AtLeastPow2 0;
-        size = AtLeast 0;
-      }
   | Ty.Param _ ->
       failwith
         "param should have been resolved before getting `partial_layout_of`"

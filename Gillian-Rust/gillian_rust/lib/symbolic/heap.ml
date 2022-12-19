@@ -1,7 +1,7 @@
 open Gillian.Gil_syntax
 open List_utils.Infix
 open Gillian.Monadic
-open S_err
+open Err
 module DR = Delayed_result
 
 exception NotConcrete of string
@@ -223,7 +223,7 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Poly _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
     | Param _ ->
         failwith
@@ -300,7 +300,7 @@ module TreeBlock = struct
               in
               DR.ok { ty; content = Enum { discr = variant_idx; fields } }
             else DR.error (Too_symbolic expr))
-    | Scalar _ | Ref _ | Poly _ ->
+    | Scalar _ | Ref _ ->
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
@@ -312,7 +312,7 @@ module TreeBlock = struct
       ~tyenv
       ~return_and_update
       t
-      (path : Partial_layout.access list) : ('a * t, S_err.t) DR.t =
+      (path : Partial_layout.access list) : ('a * t, Err.t) DR.t =
     let open DR.Syntax in
     let rec_call = find_path ~tyenv ~return_and_update in
     let replace_vec c v =
@@ -517,7 +517,7 @@ let find_not_freed loc mem =
   | Freed -> DR.error (Use_after_free loc)
 
 let to_yojson _ = `Null
-let of_yojson _ = Error "S_heap.of_yojson: Not implemented"
+let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
 let alloc ~tyenv (heap : t) ty =
   let loc = ALoc.alloc () in

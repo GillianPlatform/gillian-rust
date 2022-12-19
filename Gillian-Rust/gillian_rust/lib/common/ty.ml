@@ -55,7 +55,6 @@ type t =
   | Ref of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
   | Slice of t
-  | Poly of int  (** Something polymorphic: it could be any type *)
   | Param of int
       (** A parameter in an ADT def, should be substituted before used *)
 [@@deriving eq, yojson]
@@ -63,7 +62,7 @@ type t =
 let rec subst_params ~subst t =
   match t with
   | Param i -> List.nth subst i
-  | Scalar _ | Poly _ -> t
+  | Scalar _ -> t
   | Tuple l -> Tuple (List.map (subst_params ~subst) l)
   | Array { length; ty } -> Array { length; ty = subst_params ~subst ty }
   | Slice t -> Slice (subst_params ~subst t)
@@ -73,11 +72,6 @@ let rec subst_params ~subst t =
 let name_exn = function
   | Adt s -> s
   | _ -> raise (Invalid_argument "Not a valid name!")
-
-let is_slice_of a b =
-  match (a, b) with
-  | Slice t1, Array { ty = t2; _ } -> equal t1 t2
-  | _ -> false
 
 let rec of_lit = function
   | Literal.String str_ty ->
@@ -134,7 +128,6 @@ let rec to_lit = function
   | Array { length; ty } ->
       LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
   | Slice t -> LList [ String "slice"; to_lit t ]
-  | Poly i -> LList [ String "poly"; Int (Z.of_int i) ]
   | Param _ ->
       failwith "Param should be substituted before being turned into literal"
 
@@ -167,7 +160,6 @@ let rec pp ft t =
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
-  | Poly i -> Fmt.pf ft "T$%d" i
   | Param i -> Fmt.pf ft "P?%d" i
 
 module Adt_def = struct
