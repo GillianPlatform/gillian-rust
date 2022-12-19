@@ -1,10 +1,12 @@
-pub trait CanFatal {
-    fn fatal(&self, str: &str) -> !;
+pub(crate) use rustc_middle::ty::TyCtxt;
+
+pub trait CanFatal<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx>;
 }
 
 macro_rules! fatal {
   ($e: expr, $($tts:tt)*) => {
-      $e.fatal(&format!($($tts)*))
+      $e.tcx().sess.fatal(&format!($($tts)*))
   };
 }
 

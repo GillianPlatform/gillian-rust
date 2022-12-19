@@ -10,9 +10,9 @@ pub struct GlobalEnv<'tcx> {
     encoded_adts: HashSet<AdtDef<'tcx>>,
 }
 
-impl<'tcx> CanFatal for GlobalEnv<'tcx> {
-    fn fatal(&self, str: &str) -> ! {
-        self.tcx.sess.fatal(str)
+impl<'tcx> CanFatal<'tcx> for GlobalEnv<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 

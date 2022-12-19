@@ -19,9 +19,9 @@ pub struct GilCtxt<'tcx, 'body> {
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
-impl<'tcx, 'body> CanFatal for GilCtxt<'tcx, 'body> {
-    fn fatal(&self, str: &str) -> ! {
-        self.tcx.sess.fatal(str)
+impl<'tcx, 'body> CanFatal<'tcx> for GilCtxt<'tcx, 'body> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 

@@ -17,9 +17,9 @@ pub struct ProgCtx<'tcx, 'comp> {
     spec_tbl: HashMap<String, (Symbol, Symbol)>,
 }
 
-impl CanFatal for ProgCtx<'_, '_> {
-    fn fatal(&self, str: &str) -> ! {
-        self.tcx.sess.fatal(str)
+impl<'tcx> CanFatal<'tcx> for ProgCtx<'tcx, '_> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 

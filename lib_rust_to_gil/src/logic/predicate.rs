@@ -40,9 +40,9 @@ impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
         self.tcx.item_name(def.did()).to_string()
     }
 }
-impl CanFatal for PredCtx<'_, '_> {
-    fn fatal(&self, str: &str) -> ! {
-        self.tcx.sess.fatal(str)
+impl<'tcx> CanFatal<'tcx> for PredCtx<'tcx, '_> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 

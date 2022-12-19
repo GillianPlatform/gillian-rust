@@ -19,7 +19,7 @@ impl From<&str> for EncodedType {
     }
 }
 
-pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal {
+pub trait TypeEncoder<'tcx>: crate::utils::fatal::CanFatal<'tcx> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
     fn atd_def_name(&self, def: &AdtDef) -> String;
 
