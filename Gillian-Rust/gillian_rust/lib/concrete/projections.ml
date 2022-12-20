@@ -64,12 +64,3 @@ let lit_of_elem : op -> Literal.t =
 
 let to_lit_list t : Literal.t list = List.map lit_of_elem t
 let pp = Fmt.Dump.list pp_elem
-
-(** Takes a projection, and returns the index at the start of the slice,
-    as well as the modified projection without the indexing done  *)
-let rec slice_start = function
-  | [] -> failwith "invalid slice pointer"
-  | [ Index (i, _, _) ] -> (i, [])
-  | x :: r ->
-      let i, r = slice_start r in
-      (i, x :: r)

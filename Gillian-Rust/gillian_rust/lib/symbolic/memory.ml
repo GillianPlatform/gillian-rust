@@ -2,13 +2,14 @@ open Gillian.Symbolic
 open Gillian.Monadic
 open Gillian.Gil_syntax
 module DR = Delayed_result
+module Actions = Common.Actions
 
-type init_data = Tyenv.t
+type init_data = Common.Tyenv.t
 type vt = Values.t
 type st = Subst.t
 type c_fix_t = unit
 type err_t = Err.t [@@deriving yojson, show]
-type t = { tyenv : Tyenv.t; mem : Heap.t } [@@deriving yojson]
+type t = { tyenv : Common.Tyenv.t; mem : Heap.t } [@@deriving yojson]
 type action_ret = Success of (t * vt list) | Failure of err_t
 
 let rec concretize_expr expr =

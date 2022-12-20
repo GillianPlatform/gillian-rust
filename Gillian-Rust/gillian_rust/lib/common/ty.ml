@@ -69,10 +69,6 @@ let rec subst_params ~subst t =
   | Ref { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
   | Adt (name, l) -> Adt (name, List.map (subst_params ~subst) l)
 
-let name_exn = function
-  | Adt s -> s
-  | _ -> raise (Invalid_argument "Not a valid name!")
-
 let rec of_lit = function
   | Literal.String str_ty ->
       Scalar

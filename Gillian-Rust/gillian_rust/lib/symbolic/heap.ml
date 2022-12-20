@@ -3,6 +3,8 @@ open List_utils.Infix
 open Gillian.Monadic
 open Err
 module DR = Delayed_result
+module Tyenv = Common.Tyenv
+module Actions = Common.Actions
 
 exception NotConcrete of string
 
@@ -59,11 +61,11 @@ module SProjections = struct
     Logging.verbose (fun m -> m "sproj of_expr: %a -> %a" Expr.pp expr pp res);
     res
 
-  let to_expr = function
-    | Concrete p -> Expr.Lit (LList (Projections.to_lit_list p))
+  let to_expr : t -> Expr.t = function
+    | Concrete p -> EList (Projections.to_expr_list p)
     | Semi_symbolic (e, []) -> e
     | Semi_symbolic (e, p) ->
-        Expr.list_cat e (Expr.Lit (LList (Projections.to_lit_list p)))
+        Expr.list_cat e (EList (Projections.to_expr_list p))
 
   let substitution ~subst_expr sproj =
     let res =
@@ -129,8 +131,7 @@ module TreeBlock = struct
     | FatPtr (loc, proj, meta) ->
         EList
           [
-            EList [ loc; Lit (LList (Projections.to_lit_list proj)) ];
-            Expr.int meta;
+            EList [ loc; EList (Projections.to_expr_list proj) ]; Expr.int meta;
           ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
@@ -223,11 +224,8 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Unresolved _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
-    | Param _ ->
-        failwith
-          "param should have been resolved before getting `uninitialized`"
 
   let semi_concretize ~tyenv ~variant ty expr =
     (* FIXME: this assumes the values are initialized? Not entirely sure...
@@ -304,9 +302,9 @@ module TreeBlock = struct
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
-    | Param _ ->
-        failwith
-          "param should have been resolved before getting to `semi_concretize`"
+    | Unresolved e ->
+        Fmt.failwith
+          "Unresolved should have been resolved before getting to `semi_concretize`: %a" Expr.pp e
 
   let rec find_path
       ~tyenv
@@ -603,7 +601,7 @@ let assertions ~tyenv (mem : t) =
     match block with
     | T block ->
         let cp = Actions.cp_to_name Value in
-        let ty = Expr.Lit (Ty.to_lit block.TreeBlock.ty) in
+        let ty = (Ty.to_expr block.TreeBlock.ty) in
         let value = TreeBlock.to_rust_value ~tyenv block in
         Asrt.GA
           (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])

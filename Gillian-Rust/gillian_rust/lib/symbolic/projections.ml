@@ -1,7 +1,7 @@
 open Gillian.Gil_syntax
 (* module Partial_layout = Partial_layout *)
 
-type arith_kind = Wrap | Overflow [@@deriving show, eq]
+type arith_kind = Wrap | Overflow [@@deriving show]
 
 type op =
   | VField of int * Ty.t * int
@@ -11,7 +11,7 @@ type op =
   | Cast of Ty.t * Ty.t
   | Plus of arith_kind * int * Ty.t
   | UPlus of arith_kind * int
-[@@deriving show, eq]
+[@@deriving show]
 
 let pp_elem fmt =
   let str_ak = function
@@ -40,36 +40,59 @@ let op_of_lit : Literal.t -> op = function
       Cast (Ty.of_lit ty_from, Ty.of_lit ty_into)
   | LList [ String "+"; Bool b; Int i; ty ] ->
       Plus ((if b then Wrap else Overflow), Z.to_int i, Ty.of_lit ty)
-  | l -> Fmt.failwith "invalid projection element %a" Literal.pp l
+  | l -> Fmt.failwith "invalid projection literal element %a" Literal.pp l
+
+let op_of_expr : Expr.t -> op = function
+  | Lit lit -> op_of_lit lit
+  | EList [ Lit (String "f"); Lit (Int i); ty ] ->
+      Field (Z.to_int i, Ty.of_expr ty)
+  | EList [ Lit (String "vf"); Lit (Int i); ty; Lit (Int idx) ] ->
+      VField (Z.to_int i, Ty.of_expr ty, Z.to_int idx)
+  | EList [ Lit (String "d"); Lit (Int i); ty ] ->
+      Downcast (Z.to_int i, Ty.of_expr ty)
+  | EList [ Lit (String "i"); Lit (Int i); ty; Lit (Int sz) ] ->
+      Index (Z.to_int i, Ty.of_expr ty, Z.to_int sz)
+  | EList [ Lit (String "c"); ty_from; ty_into ] ->
+      Cast (Ty.of_expr ty_from, Ty.of_expr ty_into)
+  | EList [ Lit (String "+"); Lit (Bool b); Lit (Int i); ty ] ->
+      Plus ((if b then Wrap else Overflow), Z.to_int i, Ty.of_expr ty)
+  | e -> Fmt.failwith "invalid projection expression element %a" Expr.pp e
 
 let of_lit_list lst : t = List.map op_of_lit lst
 
-let lit_of_elem : op -> Literal.t =
+let expr_of_elem : op -> Expr.t =
   let is_wrap = function
-    | Wrap -> Literal.Bool true
-    | Overflow -> Bool false
+    | Wrap -> Expr.Lit (Bool true)
+    | Overflow -> Expr.Lit (Bool false)
   in
   function
-  | Field (i, ty) -> LList [ String "f"; Int (Z.of_int i); Ty.to_lit ty ]
+  | Field (i, ty) ->
+      EList [ Lit (String "f"); Lit (Int (Z.of_int i)); Ty.to_expr ty ]
   | VField (i, ty, idx) ->
-      LList [ String "vf"; Int (Z.of_int i); Ty.to_lit ty; Int (Z.of_int idx) ]
-  | Downcast (i, ty) -> LList [ String "d"; Int (Z.of_int i); Ty.to_lit ty ]
-  | Cast (from_ty, into_ty) ->
-      LList [ String "c"; Ty.to_lit from_ty; Ty.to_lit into_ty ]
+      EList
+        [
+          Lit (String "vf");
+          Lit (Int (Z.of_int i));
+          Ty.to_expr ty;
+          Lit (Int (Z.of_int idx));
+        ]
+  | Downcast (i, ty) ->
+      EList [ Lit (String "d"); Lit (Int (Z.of_int i)); Ty.to_expr ty ]
   | Index (i, ty, sz) ->
-      LList [ String "i"; Int (Z.of_int i); Ty.to_lit ty; Int (Z.of_int sz) ]
+      EList
+        [
+          Lit (String "i");
+          Lit (Int (Z.of_int i));
+          Ty.to_expr ty;
+          Lit (Int (Z.of_int sz));
+        ]
+  | Cast (from_ty, into_ty) ->
+      EList [ Lit (String "c"); Ty.to_expr from_ty; Ty.to_expr into_ty ]
   | Plus (k, i, ty) ->
-      LList [ String "+"; is_wrap k; Int (Z.of_int i); Ty.to_lit ty ]
-  | UPlus (k, i) -> LList [ String "u+"; is_wrap k; Int (Z.of_int i) ]
+      EList
+        [ Lit (String "+"); is_wrap k; Lit (Int (Z.of_int i)); Ty.to_expr ty ]
+  | UPlus (k, i) ->
+      EList [ Lit (String "u+"); is_wrap k; Lit (Int (Z.of_int i)) ]
 
-let to_lit_list t : Literal.t list = List.map lit_of_elem t
+let to_expr_list t : Expr.t list = List.map expr_of_elem t
 let pp = Fmt.Dump.list pp_elem
-
-(** Takes a projection, and returns the index at the start of the slice,
-    as well as the modified projection without the indexing done  *)
-let rec slice_start = function
-  | [] -> failwith "invalid slice pointer"
-  | [ Index (i, _, _) ] -> (i, [])
-  | x :: r ->
-      let i, r = slice_start r in
-      (i, x :: r)

@@ -1,3 +1,5 @@
+module Tyenv = Common.Tyenv
+module Adt_def = Common.Ty.Adt_def
 open Projections
 
 type variant_idx = int [@@deriving eq, show]
@@ -619,7 +621,7 @@ let rec partial_layout_of
       | None ->
           let partial_layout =
             match Tyenv.adt_def ~tyenv name with
-            | Ty.Adt_def.Struct (ReprC, fs) ->
+            | Adt_def.Struct (ReprC, fs) ->
                 let ts =
                   Seq.map (fun (_, t) -> Ty.subst_params ~subst t)
                   @@ List.to_seq fs
@@ -697,9 +699,15 @@ let rec partial_layout_of
         align = AtLeastPow2 0;
         size = AtLeast 2;
       }
-  | Ty.Param _ ->
-      failwith
-        "param should have been resolved before getting `partial_layout_of`"
+  | Ty.Unresolved _ ->
+      (* FIXME: This should really be attempting to resolve the type.
+         As of right now, it is NOT unsound, but it IS over-approximating *)
+      {
+        fields = Primitive;
+        variant = Single 0;
+        align = AtLeastPow2 0;
+        size = AtLeast 0;
+      }
 
 let partial_layouts_from_env (tyenv : Tyenv.t) : Ty.t -> partial_layout =
   let partial_layouts = Hashtbl.create 1024 in
