@@ -104,4 +104,10 @@ impl<T> LinkedList<T> {
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }
+
+    #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * #(vself -> vdll) * dll(vdll, vdata) )]
+    #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  #(vself -> vdll) * (ret == vdata.len()) * dll(vdll, vdata))]
+    pub fn len(&self) -> usize {
+        self.len
+    }
 }
