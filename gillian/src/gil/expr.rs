@@ -248,11 +248,11 @@ impl Expr {
         Self::Lit(Literal::Undefined)
     }
 
-    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         match self {
             Self::PVar(s) => {
                 if let Some(e) = mapping.get(s) {
-                    *s = e.clone();
+                    *self = e.clone();
                 }
             }
             Self::BinOp {

@@ -1,7 +1,12 @@
+use rustc_hir::def_id::DefId;
 pub(crate) use rustc_middle::ty::TyCtxt;
 
-pub trait CanFatal<'tcx> {
+pub trait HasTyCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
+}
+
+pub trait HasDefId {
+    fn did(&self) -> DefId;
 }
 
 macro_rules! fatal {

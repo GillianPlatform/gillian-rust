@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use gillian::gil::Pred;
 
 use crate::prelude::*;
 use crate::utils::attrs::*;
+use crate::utils::polymorphism::HasGenericArguments;
 
 mod builtins;
 mod core_preds;
@@ -26,7 +29,9 @@ pub fn compile_logic<'tcx, 'genv>(
         let pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
         LogicItem::Pred(pred)
     } else if is_precondition(did, tcx) {
-        let mut pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
+        let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
+        let ty_amount = pred_ctx.generic_types().len();
+        let mut pred = pred_ctx.compile();
         assert!(
             pred.definitions.len() == 1,
             "precondition must have exactly one definition"
@@ -34,22 +39,38 @@ pub fn compile_logic<'tcx, 'genv>(
         let id = tcx
             .get_diagnostic_name(did)
             .expect("All preconditions should be diagnostic items");
+        let mut definition = pred.definitions.pop().unwrap();
+        for (name, _) in pred.params.iter().take(ty_amount) {
+            let lvar_name = format!("#{}", name.clone());
+            definition = Assertion::star(
+                Assertion::Pure(Formula::eq(Expr::PVar(name.clone()), Expr::LVar(lvar_name))),
+                definition,
+            )
+        }
         let args = std::mem::take(&mut pred.params)
             .into_iter()
             .map(|p| p.0)
             .collect();
-        LogicItem::Precondition(id, args, pred.definitions.pop().unwrap())
+        LogicItem::Precondition(id, args, definition)
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
-        let mut pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
+        let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
+        let ty_amount = pred_ctx.generic_types().len();
+        let mut pred = pred_ctx.compile();
+        let mut map = HashMap::new();
+        for (name, _) in pred.params.iter().take(ty_amount) {
+            map.insert(name.clone(), Expr::LVar(format!("#{}", &name)));
+        }
         assert!(
             pred.definitions.len() == 1,
             "postconditions must have exactly one definition"
         );
+        let mut assertion = pred.definitions.pop().unwrap();
+        assertion.subst_pvar(&map);
         let id = tcx
             .get_diagnostic_name(did)
             .expect("All postcondition should be diagnostic items");
-        LogicItem::Postcondition(id, pred.definitions.pop().unwrap())
+        LogicItem::Postcondition(id, assertion)
         // Has to b safe, because we know there is exactly one definition
     } else {
         unreachable!()

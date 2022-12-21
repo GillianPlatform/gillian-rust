@@ -95,4 +95,28 @@ let expr_of_elem : op -> Expr.t =
       EList [ Lit (String "u+"); is_wrap k; Lit (Int (Z.of_int i)) ]
 
 let to_expr_list t : Expr.t list = List.map expr_of_elem t
+
+let substitution_in_op ~subst_expr (op : op) =
+  match op with
+  | Field (i, ty) -> Field (i, Ty.substitution ~subst_expr ty)
+  | VField (i, ty, idx) -> VField (i, Ty.substitution ~subst_expr ty, idx)
+  | Downcast (i, ty) -> Downcast (i, Ty.substitution ~subst_expr ty)
+  | Index (i, ty, sz) -> Index (i, Ty.substitution ~subst_expr ty, sz)
+  | Cast (from_ty, into_ty) ->
+      Cast
+        ( Ty.substitution ~subst_expr from_ty,
+          Ty.substitution ~subst_expr into_ty )
+  | Plus (k, i, ty) -> Plus (k, i, Ty.substitution ~subst_expr ty)
+  | UPlus (k, i) -> UPlus (k, i)
+
+let substitution ~subst_expr proj =
+  List.map (substitution_in_op ~subst_expr) proj
+
+let to_expr t = Expr.EList (List.map expr_of_elem t)
+
+let of_expr : Expr.t -> t = function
+  | EList l -> List.map op_of_expr l
+  | Lit (LList l) -> List.map op_of_lit l
+  | e -> Fmt.failwith "invalid projection expression (for now) %a" Expr.pp e
+
 let pp = Fmt.Dump.list pp_elem

@@ -10,7 +10,7 @@ pub struct GlobalEnv<'tcx> {
     encoded_adts: HashSet<AdtDef<'tcx>>,
 }
 
-impl<'tcx> CanFatal<'tcx> for GlobalEnv<'tcx> {
+impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

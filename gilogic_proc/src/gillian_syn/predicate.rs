@@ -4,7 +4,7 @@ use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, Block, Error, FnArg, GenericArgument,
-    Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
+    Generics, Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
 };
 
 #[derive(Debug)]
@@ -126,10 +126,12 @@ pub(crate) enum Predicate {
     Abstract {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
+        generics: Generics,
     },
     Concrete {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
+        generics: Generics,
         body: Block,
     },
 }
@@ -182,13 +184,23 @@ impl Parse for Predicate {
             })
             .collect();
         let args = args?;
+        let generics = sig.generics;
         if lookeahead.peek(Token![;]) {
             let _: Token![;] = input.parse().unwrap();
-            let result = Predicate::Abstract { name, args };
+            let result = Predicate::Abstract {
+                name,
+                generics,
+                args,
+            };
             Ok(result)
         } else {
             let body: Block = input.parse()?;
-            let result = Predicate::Concrete { name, args, body };
+            let result = Predicate::Concrete {
+                name,
+                generics,
+                args,
+                body,
+            };
             Ok(result)
         }
     }

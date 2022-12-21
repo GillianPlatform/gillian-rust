@@ -19,9 +19,15 @@ pub struct GilCtxt<'tcx, 'body> {
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
-impl<'tcx, 'body> CanFatal<'tcx> for GilCtxt<'tcx, 'body> {
+impl<'tcx, 'body> HasTyCtxt<'tcx> for GilCtxt<'tcx, 'body> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+}
+
+impl<'tcx, 'body> HasDefId for GilCtxt<'tcx, 'body> {
+    fn did(&self) -> DefId {
+        self.mir.source.def_id()
     }
 }
 
@@ -55,10 +61,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         } else {
             None
         }
-    }
-
-    pub fn body_did(&self) -> DefId {
-        self.mir().source.def_id()
     }
 
     pub fn mir(&self) -> &'body Body<'tcx> {

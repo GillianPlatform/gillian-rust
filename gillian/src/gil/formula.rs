@@ -55,7 +55,7 @@ pub enum Formula {
 }
 
 impl Formula {
-    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         match self {
             Self::Not(f) => f.subst_pvar(mapping),
             Self::And { left, right } | Self::Or { left, right } => {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::builtins::Stubs;
-use crate::prelude::*;
+use crate::{prelude::*, utils::polymorphism::HasGenericArguments};
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
@@ -31,6 +31,8 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     temp_idx: u32,
 }
 
+impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
+
 impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
         self.global_env.add_adt(def);
@@ -40,9 +42,15 @@ impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
         self.tcx.item_name(def.did()).to_string()
     }
 }
-impl<'tcx> CanFatal<'tcx> for PredCtx<'tcx, '_> {
+impl<'tcx> HasTyCtxt<'tcx> for PredCtx<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+}
+
+impl HasDefId for PredCtx<'_, '_> {
+    fn did(&self) -> DefId {
+        self.did
     }
 }
 
@@ -165,14 +173,32 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn sig(&mut self) -> PredSig {
-        let ins = self.get_ins();
+        let generic_types = self.generic_types();
+        let mut ins = self.get_ins();
+        let generic_types_amount = generic_types.len();
+        if generic_types_amount > 0 {
+            // Ins known info is only about non-type params.
+            // If there are generic types args,
+            // we need to add the type params as ins, and offset known ins,
+            // since type params are added in front.
+            for i in &mut ins {
+                *i += generic_types_amount;
+            }
+            for i in 0..generic_types_amount {
+                ins.push(i)
+            }
+            ins.sort();
+        }
         get_thir!(thir, _expr, self);
-        let params = thir
-            .params
-            .iter()
-            .map(|p| self.extract_param(p))
-            .map(|(name, _ty)| (name, None))
-            .collect::<Vec<_>>();
+        let params: Vec<_> = self
+            .generic_types()
+            .into_iter()
+            .map(|x| (Self::param_type_name(x.0, x.1), None))
+            .chain(thir.params.iter().map(|p| {
+                let (name, _ty) = self.extract_param(p);
+                (name, None)
+            }))
+            .collect();
         PredSig {
             name: self.pred_name(),
             params,
@@ -499,14 +525,17 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 }
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
                 _ => {
-                    let name = match ty.kind() {
-                        TyKind::FnDef(def_id, _) => self.tcx.def_path_str(*def_id),
+                    let (name, substs) = match ty.kind() {
+                        TyKind::FnDef(def_id, substs) => (self.tcx.def_path_str(*def_id), substs),
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
-                    let params = args
-                        .iter()
-                        .map(|e| self.compile_expression(*e, thir))
-                        .collect();
+                    let mut params = Vec::with_capacity(args.len() + substs.len());
+                    for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
+                        params.push(tyarg.into())
+                    }
+                    for arg in args.iter() {
+                        params.push(self.compile_expression(*arg, thir));
+                    }
                     Assertion::Pred { name, params }
                 }
             },

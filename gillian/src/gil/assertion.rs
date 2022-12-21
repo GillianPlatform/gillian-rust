@@ -24,7 +24,7 @@ pub enum Assertion {
 }
 
 impl Assertion {
-    pub fn subst_pvar(&mut self, mapping: &HashMap<String, String>) {
+    pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         match self {
             Self::Star { left, right } => {
                 left.subst_pvar(mapping);
@@ -45,8 +45,8 @@ impl Assertion {
         }
     }
 
-    pub fn star(left: Self, right: Self) -> Self {
-        match (left, right) {
+    pub fn star(self, right: Self) -> Self {
+        match (self, right) {
             (Assertion::Emp, x) => x,
             (x, Assertion::Emp) => x,
             (x, y) => Assertion::Star {

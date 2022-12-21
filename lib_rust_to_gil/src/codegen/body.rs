@@ -1,52 +1,7 @@
-use std::collections::HashSet;
-use std::ops::ControlFlow;
-
-use crate::{config::ExecMode, prelude::*};
+use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
 use rustc_middle::mir::pretty::write_mir_fn;
-use rustc_middle::ty::{GenericArgKind, ParamTy, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
-struct ParamTyExtractor<'tcx>(TyCtxt<'tcx>, HashSet<(u32, Symbol)>);
-
-impl<'tcx> CanFatal<'tcx> for ParamTyExtractor<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.0
-    }
-}
-
-impl<'tcx> ParamTyExtractor<'tcx> {
-    fn new(ctx: TyCtxt<'tcx>) -> Self {
-        Self(ctx, HashSet::new())
-    }
-
-    fn into_set(self) -> HashSet<(u32, Symbol)> {
-        self.1
-    }
-}
-
-impl<'tcx> TypeVisitor<'tcx> for ParamTyExtractor<'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match t.kind() {
-            TyKind::Param(ParamTy { index, name }) => {
-                self.1.insert((*index, *name));
-                ControlFlow::Continue(())
-            }
-            TyKind::Adt(_, subst)
-            | TyKind::FnDef(_, subst)
-            | TyKind::Closure(_, subst)
-            | TyKind::Generator(_, subst, _) => {
-                for gen_arg in *subst {
-                    match gen_arg.unpack() {
-                        GenericArgKind::Const(..) => fatal!(self, "Can't handle generic const yet"),
-                        GenericArgKind::Lifetime(..) => (),
-                        GenericArgKind::Type(ty) => ty.super_visit_with(self)?,
-                    }
-                }
-                ControlFlow::Continue(())
-            }
-            _ => t.super_visit_with(self),
-        }
-    }
-}
+impl<'tcx> HasGenericArguments<'tcx> for GilCtxt<'tcx, '_> {}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
@@ -95,28 +50,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         log::debug!("{}", string)
     }
 
-    fn gather_type_params(&self) -> Vec<String> {
-        let mir = self.mir();
-        // FIXME: Is it right to skip the binder? I think no, this might lead to issues in trait impls.
-        let mut extractor = ParamTyExtractor::new(self.tcx);
-        for local in mir.args_iter() {
-            mir.local_decls()[local].ty.visit_with(&mut extractor);
-        }
-        mir.return_ty().visit_with(&mut extractor);
-        let mut all_param_tys: Vec<_> = extractor.into_set().into_iter().collect();
-
-        all_param_tys.sort_unstable_by_key(|x| x.0);
-        all_param_tys.dedup_by_key(|x| x.0);
-        all_param_tys
-            .into_iter()
-            .map(|x| Self::param_type_name(x.0, x.1))
-            .collect()
-    }
-
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
         let proc_name =
-            rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(self.body_did()));
+            rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(self.did()));
 
         log::debug!("Compiling {}", proc_name);
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
@@ -131,8 +68,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
 
         let args: Vec<String> = self
-            .gather_type_params()
+            .generic_types()
             .into_iter()
+            .map(|x| Self::param_type_name(x.0, x.1))
             .chain(
                 mir_body
                     .args_iter()

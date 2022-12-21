@@ -129,7 +129,18 @@ let rec pp ft t =
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
-  | Unresolved e -> Fmt.pf ft "?%a?" Expr.pp e
+  | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
+
+let rec substitution ~subst_expr t =
+  let rec_call = substitution ~subst_expr in
+  match t with
+  | Scalar _ -> t
+  | Tuple t -> Tuple (List.map rec_call t)
+  | Adt (name, l) -> Adt (name, List.map rec_call l)
+  | Ref { mut; ty } -> Ref { mut; ty = rec_call ty }
+  | Array { length; ty } -> Array { length; ty = rec_call ty }
+  | Slice t -> Slice (rec_call t)
+  | Unresolved e -> Unresolved (subst_expr e)
 
 let slice_elements = function
   | Slice t -> t

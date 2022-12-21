@@ -31,14 +31,23 @@ impl ToTokens for Predicate {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let ins = gather_ins(self.args());
         match self {
-            Self::Abstract { name, args } => tokens.extend(quote! {
+            Self::Abstract {
+                name,
+                args,
+                generics,
+            } => tokens.extend(quote! {
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
-              fn #name(#args) {
+              fn #name #generics (#args) {
                 unreachable!()
               }
             }),
-            Self::Concrete { name, args, body } => {
+            Self::Concrete {
+                name,
+                generics,
+                args,
+                body,
+            } => {
                 let stmts: Vec<_> = body
                     .stmts
                     .iter()
@@ -51,7 +60,7 @@ impl ToTokens for Predicate {
                 tokens.extend(quote! {
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
-                  fn #name(#args) -> ::gilogic::RustAssertion
+                  fn #name #generics (#args) -> ::gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {
                     tokens.extend(quote!(::gilogic::__stubs::defs([#(#stmts),*])));

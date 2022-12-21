@@ -51,11 +51,12 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     };
     let name_string = name.to_string();
     let inputs = &item.sig.inputs;
+    let generics = &item.sig.generics;
     let result = quote! {
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::precondition]
         #[gillian::decl::pred_ins=""]
-        fn #name(#inputs) -> ::gilogic::RustAssertion {
+        fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
            ::gilogic::__stubs::defs([#assertion])
         }
 
@@ -83,11 +84,12 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         ReturnType::Default => quote! { () },
         ReturnType::Type(_token, ty) => quote! { #ty },
     };
+    let generics = &item.sig.generics;
     let result = quote! {
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::postcondition]
         #[gillian::decl::pred_ins=#ins]
-        fn #name(ret: #ret_ty) -> ::gilogic::RustAssertion {
+        fn #name #generics (ret: #ret_ty) -> ::gilogic::RustAssertion {
            ::gilogic::__stubs::defs([#assertion])
         }
 

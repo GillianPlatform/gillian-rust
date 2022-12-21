@@ -17,7 +17,7 @@ pub struct ProgCtx<'tcx, 'comp> {
     spec_tbl: HashMap<String, (Symbol, Symbol)>,
 }
 
-impl<'tcx> CanFatal<'tcx> for ProgCtx<'tcx, '_> {
+impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -93,11 +93,14 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
                 .get(&key)
                 .expect("proc not found")
                 .params
-                .clone();
+                .clone()
+                .into_iter()
+                .map(Expr::PVar);
             if pre_args.len() != proc_args.len() {
                 fatal!(
                     self,
-                    "MIR fonction has more arguments that its THIR, can't handle that?"
+                    "MIR ({:?}) function has more arguments that its THIR, can't handle that?\nPRE: {:?}\nFN:  {:?}", key,
+                    pre_args, proc_args
                 )
             }
             let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();

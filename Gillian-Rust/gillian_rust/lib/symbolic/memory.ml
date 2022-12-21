@@ -12,23 +12,6 @@ type err_t = Err.t [@@deriving yojson, show]
 type t = { tyenv : Common.Tyenv.t; mem : Heap.t } [@@deriving yojson]
 type action_ret = Success of (t * vt list) | Failure of err_t
 
-let rec concretize_expr expr =
-  match expr with
-  | Expr.Lit lit -> lit
-  | EList l -> LList (List.map concretize_expr l)
-  | BinOp (((EList _ | Lit (LList _)) as l), LstNth, Lit (Int i)) ->
-      let i = Z.to_int i in
-      concretize_expr (Expr.list_nth l i)
-  | _ -> Fmt.failwith "concretize: %a" Expr.pp expr
-
-let concretize_proj expr =
-  let lit_list =
-    match concretize_expr expr with
-    | LList l -> l
-    | _ -> Fmt.failwith "concretize_proj, not a list: %a" Expr.pp expr
-  in
-  Projections.of_lit_list lit_list
-
 let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
   let open Delayed.Syntax in
   let* loc_name = Delayed.resolve_loc lvar_loc in
@@ -44,6 +27,13 @@ let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
       Logging.verbose (fun fmt -> fmt "Resolved %a as %s" Expr.pp lvar_loc l);
       Delayed.return l
 
+let projections_of_expr (e : Expr.t) : Projections.t Delayed.t =
+  let open Delayed.Syntax in
+  Logging.verbose (fun m -> m "Resolving projections %a@?" Expr.pp e);
+  let+ e = Delayed.reduce e in
+  Logging.verbose (fun m -> m "Reduced projections to %a@?" Expr.pp e);
+  Projections.of_expr e
+
 let resolve_loc_result loc =
   Delayed_result.of_do ~none:(Err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
@@ -54,7 +44,7 @@ let make_branch ~tyenv ~mem ?(rets = []) () = ({ mem; tyenv }, rets)
 let execute_alloc ~tyenv mem args =
   match args with
   | [ ty ] ->
-      let ty = Ty.of_lit (concretize_expr ty) in
+      let ty = Ty.of_expr ty in
       let loc, new_mem = Heap.alloc ~tyenv mem ty in
       DR.ok
         (make_branch ~tyenv ~mem:new_mem ~rets:[ Expr.ALoc loc; EList [] ] ())
@@ -62,10 +52,11 @@ let execute_alloc ~tyenv mem args =
 
 let execute_store ~tyenv mem args =
   let open DR.Syntax in
+  let open Delayed.Syntax in
   match args with
   | [ loc; proj; ty; value ] ->
-      let ty = Ty.of_lit (concretize_expr ty) in
-      let proj = concretize_proj proj in
+      let ty = Ty.of_expr ty in
+      let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
       let++ new_mem = Heap.store ~tyenv mem loc proj ty value in
       make_branch ~tyenv ~mem:new_mem ()
@@ -73,10 +64,11 @@ let execute_store ~tyenv mem args =
 
 let execute_load ~tyenv mem args =
   let open DR.Syntax in
+  let open Delayed.Syntax in
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
-      let ty = Ty.of_lit (concretize_expr ty) in
-      let proj = concretize_proj proj in
+      let ty = Ty.of_expr ty in
+      let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
       let++ value, new_mem = Heap.load ~tyenv mem loc proj ty copy in
       make_branch ~tyenv ~mem:new_mem ~rets:[ value ] ()
@@ -84,10 +76,11 @@ let execute_load ~tyenv mem args =
 
 let execute_load_discr ~tyenv mem args =
   let open DR.Syntax in
+  let open Delayed.Syntax in
   match args with
   | [ loc; proj; enum_typ ] ->
-      let enum_typ = Ty.of_lit (concretize_expr enum_typ) in
-      let proj = concretize_proj proj in
+      let enum_typ = Ty.of_expr enum_typ in
+      let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
       let++ discr = Heap.load_discr ~tyenv mem loc proj enum_typ in
       make_branch ~tyenv ~mem ~rets:[ discr ] ()
@@ -95,6 +88,7 @@ let execute_load_discr ~tyenv mem args =
 
 let execute_free ~tyenv mem args =
   let open DR.Syntax in
+  let open Delayed.Syntax in
   match args with
   | [ loc; proj; ty ] ->
       let** () =
@@ -104,18 +98,19 @@ let execute_free ~tyenv mem args =
           ~else_:(fun () -> DR.error (Err.Invalid_free_pointer (loc, proj)))
       in
       let** loc = resolve_loc_result loc in
-      let ty = Ty.of_lit (concretize_expr ty) in
+      let ty = Ty.of_expr ty in
       let++ new_mem = Heap.free mem loc ty in
       make_branch ~tyenv ~mem:new_mem ()
   | _ -> Fmt.failwith "Invalid arguments for free"
 
 let execute_get_value ~tyenv mem args =
   let open DR.Syntax in
+  let open Delayed.Syntax in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
-      let ty = Ty.of_lit (concretize_expr ty_exp) in
+      let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
-      let proj = concretize_proj proj_exp in
+      let* proj = projections_of_expr proj_exp in
       let++ value = Heap.get_value ~tyenv mem loc_name proj ty in
       make_branch ~tyenv ~mem
         ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
@@ -127,9 +122,9 @@ let execute_set_value ~tyenv mem args =
   let open Delayed.Syntax in
   match args with
   | [ loc; proj; ty; value ] ->
-      let ty = Ty.of_lit (concretize_expr ty) in
+      let ty = Ty.of_expr ty in
       let* loc_name = resolve_or_create_loc_name loc in
-      let proj = concretize_proj proj in
+      let* proj = projections_of_expr proj in
       let++ new_mem = Heap.set_value ~tyenv mem loc_name proj ty value in
       make_branch ~tyenv ~mem:new_mem ()
   | _ -> Fmt.failwith "Invalid arguments for set_value"

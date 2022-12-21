@@ -38,51 +38,6 @@ exception MemoryError of string
 
 let mem_error p = Fmt.kstr (fun s -> raise (MemoryError s)) p
 
-module SProjections = struct
-  (** I would like a soundness invariant saying that "worst case scenario,
-      we're too symbolic, but too symbolic is never unsound"
-      I.e. A semi-symboli list which could be concretized further is still sound.
-      However, that very probably means I am not exact at all. *)
-  type t = Concrete of Projections.t | Semi_symbolic of Expr.t * Projections.t
-
-  let pp ft t =
-    match t with
-    | Concrete p -> Projections.pp ft p
-    | Semi_symbolic (e, p) -> Fmt.pf ft "%a @ %a" Expr.pp e Projections.pp p
-
-  let of_expr expr =
-    let res =
-      match concretiz_proj_opt expr with
-      | Some proj -> Concrete proj
-      | None ->
-          let symb, conc = (expr, []) in
-          Semi_symbolic (symb, conc)
-    in
-    Logging.verbose (fun m -> m "sproj of_expr: %a -> %a" Expr.pp expr pp res);
-    res
-
-  let to_expr : t -> Expr.t = function
-    | Concrete p -> EList (Projections.to_expr_list p)
-    | Semi_symbolic (e, []) -> e
-    | Semi_symbolic (e, p) ->
-        Expr.list_cat e (EList (Projections.to_expr_list p))
-
-  let substitution ~subst_expr sproj =
-    let res =
-      match sproj with
-      | Concrete _ -> sproj
-      | Semi_symbolic (symb, conc) -> (
-          let symb' = subst_expr symb in
-          if symb' == symb then sproj
-          else
-            match of_expr symb' with
-            | Concrete c -> Concrete (c @ conc)
-            | Semi_symbolic (e, c) -> Semi_symbolic (e, c @ conc))
-    in
-    Logging.verbose (fun m -> m "sproj substitution: %a -> %a" pp sproj pp res);
-    res
-end
-
 module TreeBlock = struct
   type t = { ty : Ty.t; content : tree_content }
 
@@ -92,7 +47,7 @@ module TreeBlock = struct
     | Fields of t list
     | Array of t list
     | Enum of { discr : int; fields : t list }
-    | ThinPtr of Expr.t * SProjections.t
+    | ThinPtr of Expr.t * Projections.t
     | FatPtr of Expr.t * Projections.t * int
     | Uninit
 
@@ -106,8 +61,7 @@ module TreeBlock = struct
     | Fields v -> (parens (Fmt.list ~sep:Fmt.comma pp)) ft v
     | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Fmt.list ~sep:comma pp) fields
-    | ThinPtr (loc, proj) ->
-        pf ft "Ptr(%a, %a)" Expr.pp loc SProjections.pp proj
+    | ThinPtr (loc, proj) -> pf ft "Ptr(%a, %a)" Expr.pp loc Projections.pp proj
     | FatPtr (loc, proj, meta) ->
         pf ft "FatPtr(%a, %a | %d)" Expr.pp loc Projections.pp proj meta
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
@@ -127,7 +81,7 @@ module TreeBlock = struct
     | Enum { discr; fields } ->
         let fields = List.map (to_rust_value ~tyenv) fields in
         Expr.EList [ Expr.int discr; EList fields ]
-    | ThinPtr (loc, proj) -> EList [ loc; SProjections.to_expr proj ]
+    | ThinPtr (loc, proj) -> EList [ loc; Projections.to_expr proj ]
     | FatPtr (loc, proj, meta) ->
         EList
           [
@@ -195,7 +149,7 @@ module TreeBlock = struct
     | Ref _, e ->
         let loc = Expr.list_nth e 0 in
         let proj = Expr.list_nth e 1 in
-        let proj = SProjections.of_expr proj in
+        let proj = Projections.of_expr proj in
         let content = ThinPtr (loc, proj) in
         { ty; content }
     | Array { length; ty = ty' }, EList l
@@ -304,7 +258,9 @@ module TreeBlock = struct
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
     | Unresolved e ->
         Fmt.failwith
-          "Unresolved should have been resolved before getting to `semi_concretize`: %a" Expr.pp e
+          "Unresolved should have been resolved before getting to \
+           `semi_concretize`: %a"
+          Expr.pp e
 
   let rec find_path
       ~tyenv
@@ -482,10 +438,12 @@ module TreeBlock = struct
           if changed then Enum { fields = new_fields; discr } else t
       | ThinPtr (e, proj) ->
           let new_e = subst_expr e in
-          if new_e == e then t else ThinPtr (new_e, proj)
+          let new_proj = Projections.substitution ~subst_expr proj in
+          if new_e == e && new_proj == proj then t else ThinPtr (new_e, proj)
       | FatPtr (e, proj, i) ->
           let new_e = subst_expr e in
-          if new_e == e then t else FatPtr (new_e, proj, i)
+          let new_proj = Projections.substitution ~subst_expr proj in
+          if new_e == e && new_proj == proj then t else FatPtr (new_e, proj, i)
       | Symbolic s ->
           let new_s = subst_expr s in
           if new_s == s then t else (of_rust_value ~tyenv ~ty new_s).content
@@ -601,7 +559,7 @@ let assertions ~tyenv (mem : t) =
     match block with
     | T block ->
         let cp = Actions.cp_to_name Value in
-        let ty = (Ty.to_expr block.TreeBlock.ty) in
+        let ty = Ty.to_expr block.TreeBlock.ty in
         let value = TreeBlock.to_rust_value ~tyenv block in
         Asrt.GA
           (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])
