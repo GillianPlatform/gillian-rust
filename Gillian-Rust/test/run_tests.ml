@@ -1,4 +1,6 @@
 open Gillian_rust
+open Concrete
+open Common
 
 let check_ops =
   Alcotest.(check (list (testable Projections.pp_op Projections.equal_op)))
@@ -15,23 +17,23 @@ let check_accesses =
 (* Can't find binding equal_partial_layout? *)
 
 module Type_names = struct
-  let tA = Ty.Adt "A"
-  let tB = Ty.Adt "B"
-  let tC = Ty.Adt "C"
-  let tD = Ty.Adt "D"
-  let tE = Ty.Adt "E"
-  let tF = Ty.Adt "F"
-  let tG = Ty.Adt "G"
-  let tGFail = Ty.Adt "GFail"
-  let tH = Ty.Adt "H"
+  let tA = Ty.Adt ("A", [])
+  let tB = Ty.Adt ("B", [])
+  let tC = Ty.Adt ("C", [])
+  let tD = Ty.Adt ("D", [])
+  let tE = Ty.Adt ("E", [])
+  let tF = Ty.Adt ("F", [])
+  let tG = Ty.Adt ("G", [])
+  let tGFail = Ty.Adt ("GFail", [])
+  let tH = Ty.Adt ("H", [])
   let u8 = Ty.of_lit @@ Gil_syntax.Literal.String "u8"
   let u16 = Ty.of_lit @@ Gil_syntax.Literal.String "u16"
   let u32 = Ty.of_lit @@ Gil_syntax.Literal.String "u32"
   let u64 = Ty.of_lit @@ Gil_syntax.Literal.String "u64"
-  let tR8 = Ty.Adt "R8"
-  let tR64 = Ty.Adt "R64"
-  let tC8 = Ty.Adt "C8"
-  let tC16 = Ty.Adt "C16"
+  let tR8 = Ty.Adt ("R8", [])
+  let tR64 = Ty.Adt ("R64", [])
+  let tC8 = Ty.Adt ("C8", [])
+  let tC16 = Ty.Adt ("C16", [])
 end
 
 module Repr_C_context = struct
