@@ -35,6 +35,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "creusillian_proc"
+version = "0.1.0"
+
+[[package]]
 name = "env_logger"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -71,6 +75,7 @@ name = "gilogic"
 version = "0.1.0"
 dependencies = [
  "gilogic_proc",
+ "gilogic_proc_dummy",
 ]
 
 [[package]]
@@ -89,6 +94,10 @@ dependencies = [
  "syn",
  "uuid",
 ]
+
+[[package]]
+name = "gilogic_proc_dummy"
+version = "0.1.0"
 
 [[package]]
 name = "hermit-abi"

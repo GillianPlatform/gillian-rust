@@ -5,54 +5,26 @@
 
 mod tys;
 
-use std::marker::PhantomData;
-
 pub use tys::RustAssertion;
 
 pub mod macros {
+
+    #[cfg(feature = "gillian_contracts")]
     pub use gilogic_proc::{assertion, ensures, predicate, requires};
-}
 
-pub struct Seq<T>(PhantomData<T>);
+    #[cfg(not(feature = "gillian_contracts"))]
+    pub use gilogic_proc_dummy::{assertion, ensures, predicate, requires};
 
-impl<T> Seq<T> {
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::nil"]
-    pub fn nil() -> Self {
-        unreachable!()
-    }
-
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::empty"]
-    pub fn empty() -> Self {
-        unreachable!()
-    }
-
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::prepend"]
-    pub fn prepend(self, _: T) -> Self {
-        unreachable!()
-    }
-
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::append"]
-    pub fn append(self, _: T) -> Self {
-        unreachable!()
-    }
-
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::concat"]
-    pub fn concat(self, _: Self) -> Self {
-        unreachable!()
-    }
-
-    #[allow(clippy::len_without_is_empty)]
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::seq::len"]
-    pub fn len(self) -> usize {
-        unreachable!()
+    #[cfg(not(any(feature = "gillian_contracts", feature = "creusot_contracts")))]
+    pub mod creusillian {
+        pub use gilogic_proc_dummy::creusillian_ensures as ensures;
+        pub use gilogic_proc_dummy::creusillian_requires as requires;
+        pub use gilogic_proc_dummy::representation;
     }
 }
+
+mod seq;
+pub use seq::Seq;
 
 #[path = "stubs.rs"]
 pub mod __stubs;

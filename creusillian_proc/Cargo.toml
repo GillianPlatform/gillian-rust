@@ -1,13 +1,8 @@
 [package]
-name = "gilogic"
+name = "creusillian_proc"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gilogic_proc = { path = "../gilogic_proc" }
-gilogic_proc_dummy = { path = "../gilogic_proc_dummy" }
-
-[features]
-gillian_contracts = []

@@ -55,7 +55,10 @@ let compile ~out_dir file =
   let no_ext = Filename.chop_extension (Filename.basename file) in
   let pp_opts = Fmt.(list ~sep:(any " ") string) in
   let options = options ~out_dir () in
-  let command = Fmt.str "cargo run -- %s %a" file pp_opts options in
+  let command =
+    Fmt.str "cargo run --features=\"gillian_contracts\" -- %s %a" file pp_opts
+      options
+  in
   Logging.normal (fun m -> m "%s" command);
   let exit_code = R_config.in_compiler_root (fun () -> Sys.command command) in
   let* () =
