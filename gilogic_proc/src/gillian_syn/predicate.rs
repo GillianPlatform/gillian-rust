@@ -13,14 +13,19 @@ pub(crate) enum ParamMode {
     Out,
 }
 
-pub(crate) struct PredParam {
+pub(crate) struct PredParamS {
     pub name: Ident,
     pub colon_token: Token![:],
     pub ty: Type,
     pub mode: ParamMode,
 }
 
-impl Debug for PredParam {
+pub(crate) enum PredParam {
+    S(PredParamS),
+    Receiver(Token![self]),
+}
+
+impl Debug for PredParamS {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:#}: ", self.name)?;
         if let ParamMode::In = self.mode {
@@ -80,6 +85,16 @@ impl PredParam {
         }
         Ok(patident.ident.clone())
     }
+
+    pub fn is_in(&self) -> bool {
+        match self {
+            PredParam::S(s) => match s.mode {
+                ParamMode::In => true,
+                ParamMode::Out => false,
+            },
+            PredParam::Receiver(_) => true,
+        }
+    }
 }
 
 impl TryFrom<FnArg> for PredParam {
@@ -87,7 +102,22 @@ impl TryFrom<FnArg> for PredParam {
 
     fn try_from(arg: FnArg) -> syn::Result<Self> {
         match arg {
-            FnArg::Receiver(..) => Err(Error::new(arg.span(), "receiver parameter for predicate")),
+            FnArg::Receiver(receiver) => {
+                if receiver.reference.is_some() || receiver.mutability.is_some() {
+                    return Err(Error::new(
+                        receiver.span(),
+                        "receiver is only allowed to be `self` for predicates",
+                    ));
+                }
+                if !receiver.attrs.is_empty() {
+                    return Err(Error::new(
+                        receiver.attrs[0].span(),
+                        "attributes unsupported for predicate arguments",
+                    ));
+                }
+
+                Ok(PredParam::Receiver(receiver.self_token))
+            }
             FnArg::Typed(PatType {
                 attrs,
                 pat,
@@ -111,12 +141,12 @@ impl TryFrom<FnArg> for PredParam {
                     _ => ((*ty).clone(), ParamMode::Out),
                 };
                 let name = Self::ident_pat(&pat)?;
-                Ok(PredParam {
+                Ok(PredParam::S(PredParamS {
                     name,
                     ty,
                     mode,
                     colon_token,
-                })
+                }))
             }
         }
     }

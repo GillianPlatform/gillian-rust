@@ -1,14 +1,7 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+extern crate proc_macro;
+use proc_macro::TokenStream as TokenStream_;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// #[proc_macro_derive(ShallowModel)]
+// pub fn derive_shallow_model(input: TokenStream_) -> TokenStream_ {
+//     let input = syn::parse_macro_input!(input as syn::ItemImpl);
+// }

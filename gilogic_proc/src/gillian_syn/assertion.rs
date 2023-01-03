@@ -9,7 +9,7 @@ use syn::{
     spanned::Spanned,
     token,
     token::Token,
-    Error, Expr, ExprCall, Ident, Token, Type,
+    Error, Expr, ExprCall, ExprMethodCall, Ident, Token, Type,
 };
 
 use crate::formula::Formula;
@@ -19,6 +19,7 @@ pub enum SimpleAssertion {
     Pure(Box<Formula>),
     PointsTo(Ident, Token![-], Token![>], Box<Expr>),
     PredCall(ExprCall),
+    PredMethodCall(ExprMethodCall),
 }
 
 impl Debug for SimpleAssertion {
@@ -30,38 +31,31 @@ impl Debug for SimpleAssertion {
                 write!(f, "({} -> {})", id, exp.to_token_stream())
             }
             SimpleAssertion::PredCall(call) => write!(f, "{}", call.to_token_stream()),
+            SimpleAssertion::PredMethodCall(call) => write!(f, "{}", call.to_token_stream()),
         }
     }
 }
 
 impl SimpleAssertion {
-    fn expr_is_simple_identifier(expr: &Expr) -> bool {
-        match expr {
-            Expr::Path(path) => {
-                path.path.segments.len() == 1
-                    && path.attrs.is_empty()
-                    && path.qself.is_none()
-                    && path.path.leading_colon.is_none()
-            }
-            _ => false,
-        }
-    }
-
     fn parse_pred_call(input: ParseStream) -> syn::Result<Self> {
         // This is clearly suboptimal since we already parse the input as an expression,
         // when trying for Formula, but let's keep it simple for now.
         let e: Expr = input.parse()?;
         let err = Err(Error::new(e.span(), "Expr is not a predicate call"));
-        if let Expr::Call(call) = e {
-            if !call.attrs.is_empty() {
-                return err;
+        match e {
+            Expr::Call(call) => {
+                if !call.attrs.is_empty() {
+                    return err;
+                }
+                Ok(SimpleAssertion::PredCall(call))
             }
-            if !Self::expr_is_simple_identifier(&call.func) {
-                return err;
+            Expr::MethodCall(call) => {
+                if !call.attrs.is_empty() {
+                    return err;
+                }
+                Ok(SimpleAssertion::PredMethodCall(call))
             }
-            Ok(SimpleAssertion::PredCall(call))
-        } else {
-            err
+            _ => err,
         }
     }
 

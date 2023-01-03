@@ -1,9 +1,9 @@
 use quote::{quote, ToTokens};
 use syn::Stmt;
 
-use crate::gillian_syn::predicate::{ParamMode, PredParam, Predicate};
+use crate::gillian_syn::predicate::{PredParam, PredParamS, Predicate};
 
-impl ToTokens for PredParam {
+impl ToTokens for PredParamS {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let name = &self.name;
         let ty = &self.ty;
@@ -12,17 +12,20 @@ impl ToTokens for PredParam {
     }
 }
 
+impl ToTokens for PredParam {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            Self::Receiver(self_token) => self_token.to_tokens(tokens),
+            Self::S(s) => s.to_tokens(tokens),
+        }
+    }
+}
+
 fn gather_ins(args: &syn::punctuated::Punctuated<PredParam, syn::token::Comma>) -> String {
     let v: Vec<String> = args
         .iter()
         .enumerate()
-        .filter_map(|(i, p)| {
-            if let ParamMode::In = p.mode {
-                Some(i.to_string())
-            } else {
-                None
-            }
-        })
+        .filter_map(|(i, p)| if p.is_in() { Some(i.to_string()) } else { None })
         .collect();
     v.join(",")
 }

@@ -1,6 +1,5 @@
 #![feature(rustc_attrs)]
 #![feature(register_tool)]
-#![feature(extend_one)]
 #![register_tool(gillian)]
 
 extern crate proc_macro;

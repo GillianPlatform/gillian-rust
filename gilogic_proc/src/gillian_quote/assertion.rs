@@ -25,6 +25,7 @@ impl ToTokens for SimpleAssertion {
                 )
             }
             Self::PredCall(call) => call.to_tokens(tokens),
+            Self::PredMethodCall(call) => call.to_tokens(tokens),
         }
     }
 }

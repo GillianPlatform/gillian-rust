@@ -26,5 +26,8 @@ pub mod macros {
 mod seq;
 pub use seq::Seq;
 
+mod repr;
+pub use repr::ShallowRepresentation;
+
 #[path = "stubs.rs"]
 pub mod __stubs;
