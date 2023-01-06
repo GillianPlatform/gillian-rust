@@ -8,6 +8,3 @@ edition = "2021"
 [dependencies]
 gilogic_proc = { path = "../gilogic_proc" }
 gilogic_proc_dummy = { path = "../gilogic_proc_dummy" }
-
-[features]
-gillian_contracts = []

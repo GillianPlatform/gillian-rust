@@ -51,7 +51,7 @@ impl<T> ShallowRepresentation for LinkedList<T> {
     type ShallowModelTy = Seq<T>;
 
     #[predicate]
-    fn shallow_repr(self, model: Seq<T>) {
+    fn shallow_repr(self, model: Self::ShallowModelTy) {
         assertion!(|head, tail, len| (self
             == LinkedList {
                 head,

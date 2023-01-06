@@ -61,6 +61,7 @@ impl ToTokens for Predicate {
                     .collect();
                 let brace_token = body.brace_token;
                 tokens.extend(quote! {
+                  #[cfg(gillian)]
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
                   fn #name #generics (#args) -> ::gilogic::RustAssertion

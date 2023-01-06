@@ -21,20 +21,3 @@ pub fn assertion(_: TS1) -> TS1 {
 pub fn predicate(_: TS1, _: TS1) -> TS1 {
     TS1::new()
 }
-
-// Things for interop with Creusot
-
-#[proc_macro_attribute]
-pub fn creusillian_requires(_: TS1, tokens: TS1) -> TS1 {
-    tokens
-}
-
-#[proc_macro_attribute]
-pub fn creusillian_ensures(_: TS1, tokens: TS1) -> TS1 {
-    tokens
-}
-
-#[proc_macro_attribute]
-pub fn representation(_: TS1, tokens: TS1) -> TS1 {
-    tokens
-}

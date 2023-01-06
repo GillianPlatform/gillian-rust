@@ -53,6 +53,7 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     let inputs = &item.sig.inputs;
     let generics = &item.sig.generics;
     let result = quote! {
+        #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::precondition]
         #[gillian::decl::pred_ins=""]
@@ -86,6 +87,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     };
     let generics = &item.sig.generics;
     let result = quote! {
+        #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::postcondition]
         #[gillian::decl::pred_ins=#ins]
