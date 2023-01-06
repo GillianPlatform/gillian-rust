@@ -38,6 +38,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "creusillian"
 version = "0.1.0"
 dependencies = [
+ "pearlite-syn",
  "proc-macro2",
  "quote",
  "syn",
@@ -184,6 +185,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "pearlite-syn"
+version = "0.2.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

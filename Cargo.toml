@@ -8,5 +8,5 @@ members = [
   "gilogic_proc_dummy",
   "gilogic_internal",
   "gilogic",
-  "creusillian_proc"
+  "creusillian"
 ]
