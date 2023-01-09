@@ -33,6 +33,7 @@ pub(crate) enum Stubs {
     SeqPrepend,
     SeqConcat,
     SeqLen,
+    ShallowRepr,
 }
 
 pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
@@ -66,6 +67,8 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
             Some(Stubs::SeqConcat)
         } else if tcx.is_diagnostic_item(Symbol::intern("gillian::seq::len"), did) {
             Some(Stubs::SeqLen)
+        } else if tcx.is_diagnostic_item(Symbol::intern("gillian::repr::shallow_repr"), did) {
+            Some(Stubs::ShallowRepr)
         } else {
             None
         }

@@ -14,6 +14,7 @@ pub fn imports() -> Vec<Import> {
         import!("i__binop.gil"),
         import!("i__lang.gil"),
         import!("i__std_shims.gil"),
+        import!("i__repr.gil"),
     ]
 }
 

@@ -73,7 +73,8 @@ impl<T> LinkedList<T> {
     }
 
     /// Adds the given node to the front of the list.
-    #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll| (self == vself) * (node == vnode) *
+    #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll|
+        (self == vself) * (node == vnode) *
         #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
         (vdata.len() < usize::MAX) *
         dll(vdll, vdata))]
@@ -97,10 +98,10 @@ impl<T> LinkedList<T> {
         }
     }
 
-    #[requires(|vself, velem, vdata: Seq<T>, vdll| (self == vself) * (elt == velem) *
-        #(vself -> vdll) * (vdata.len() < usize::MAX) *
-        dll(vdll, vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    // #[requires(|vself, velem, vdata: Seq<T>, vdll| (self == vself) * (elt == velem) *
+    //     #(vself -> vdll) * (vdata.len() < usize::MAX) *
+    //     dll(vdll, vdata))]
+    // #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }

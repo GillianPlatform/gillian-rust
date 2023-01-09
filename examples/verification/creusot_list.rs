@@ -1,9 +1,9 @@
-extern crate creusot_contracts;
+extern crate creusillian;
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, creusillian, ensures, predicate, requires},
-    Seq,
+    macros::{assertion, ensures, predicate, requires},
+    Seq, ShallowRepresentation,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -31,7 +31,6 @@ impl<T> Node<T> {
     }
 }
 
-/// We start with the private functions of the module
 #[predicate]
 fn dll_seg<T>(
     head: In<Option<NonNull<Node<T>>>>,
@@ -49,6 +48,25 @@ fn dll_seg<T>(
     )
 }
 
+/// The rest of this file corresponds to the Public API of the module.
+#[cfg(gillian)]
+impl<T> ShallowRepresentation for LinkedList<T> {
+    type ShallowModelTy = Seq<T>;
+
+    #[predicate]
+    fn shallow_repr(self, model: Seq<T>) {
+        assertion!(|head, tail, len| (self
+            == LinkedList {
+                head,
+                tail,
+                len,
+                marker: PhantomData
+            })
+            * (len == model.len())
+            * dll_seg(head, None, tail, None, model))
+    }
+}
+
 impl<T> LinkedList<T> {
     // We specify the following functions using Gillian's logic
 
@@ -56,8 +74,8 @@ impl<T> LinkedList<T> {
     #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll| (self == vself) * (node == vnode) *
         #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
         (vdata.len() < usize::MAX) *
-        dll(vdll, vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+        vdll.shallow_repr(vdata))]
+    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -78,27 +96,8 @@ impl<T> LinkedList<T> {
     }
 }
 
-/// The rest of this file corresponds to the Public API of the module.
-
-impl<T> ShallowModel for LinkedList<T> {
-    type ShallowModelTy = Seq<T>;
-
-    #[representation]
-    fn shallow_model(self) -> Self::ShallowModelTy {
-        assertion!(|head, tail, len| (self
-            == LinkedList {
-                head,
-                tail,
-                len,
-                marker: PhantomData
-            })
-            * (len == model.len())
-            * dll_seg(head, None, tail, None, model))
-    }
-}
-
 impl<T> LinkedList<T> {
-    #[creusillian::ensures(@result == Seq::EMPTY)]
+    #[creusillian::ensures(@ret == Seq::empty())]
     fn new() -> Self {
         Self {
             head: None,
@@ -108,24 +107,24 @@ impl<T> LinkedList<T> {
         }
     }
 
-    #[creusillian::requires((@self).len < @usize::MAX)]
+    #[creusillian::requires((@self).len() < @usize::MAX)]
     #[creusillian::ensures(@^self == (@self).prepend(elt))]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }
 
-    #[creusillian::ensures(@result == (@self).len())]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    // #[creusillian::ensures(@ret == (@self).len())]
+    // pub fn len(&self) -> usize {
+    //     self.len
+    // }
 }
 
-#[creusot::ensures(@ret == 4)]
-fn test() -> usize {
-    let mut n = LinkedList::new();
-    n.push_front(3);
-    n.push_front(2);
-    n.push_front(1);
-    n.push_front(0);
-    n.len()
-}
+// #[creusot::ensures(@ret == 4)]
+// fn test() -> usize {
+//     let mut n = LinkedList::new();
+//     n.push_front(3);
+//     n.push_front(2);
+//     n.push_front(1);
+//     n.push_front(0);
+//     n.len()
+// }

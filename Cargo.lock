@@ -81,7 +81,6 @@ name = "gilogic"
 version = "0.1.0"
 dependencies = [
  "gilogic_proc",
- "gilogic_proc_dummy",
 ]
 
 [[package]]
@@ -100,10 +99,6 @@ dependencies = [
  "syn",
  "uuid",
 ]
-
-[[package]]
-name = "gilogic_proc_dummy"
-version = "0.1.0"
 
 [[package]]
 name = "hermit-abi"

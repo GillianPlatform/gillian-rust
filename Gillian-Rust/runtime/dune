@@ -1,4 +1,15 @@
+(executable
+ (name i__repr))
+
+(rule
+ (deps i__repr.exe)
+ (target i__repr.gil)
+ (action
+  (with-stdout-to
+   %{target}
+   (run ./i__repr.exe))))
+
 (install
  (section share)
- (files i__binop.gil i__lang.gil i__std_shims.gil)
+ (files i__binop.gil i__lang.gil i__std_shims.gil i__repr.gil)
  (package gillian-rust))

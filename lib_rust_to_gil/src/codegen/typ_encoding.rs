@@ -19,6 +19,10 @@ impl From<&str> for EncodedType {
     }
 }
 
+pub fn param_type_name(index: u32, name: Symbol) -> String {
+    format!("pty_{}{}", name, index)
+}
+
 pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
     fn atd_def_name(&self, def: &AdtDef) -> String;
@@ -130,10 +134,6 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
         }
     }
 
-    fn param_type_name(index: u32, name: Symbol) -> String {
-        format!("pty_{}{}", name, index)
-    }
-
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
         use rustc_middle::ty::*;
         match ty.kind() {
@@ -204,7 +204,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             Param(ParamTy { index, name }) => {
-                EncodedType(Expr::PVar(Self::param_type_name(*index, *name)))
+                EncodedType(Expr::PVar(param_type_name(*index, *name)))
             }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }

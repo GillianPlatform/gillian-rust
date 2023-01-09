@@ -8,7 +8,9 @@ use crate::utils::polymorphism::HasGenericArguments;
 
 mod builtins;
 mod core_preds;
+mod dummy_pre;
 mod predicate;
+mod traits;
 
 #[derive(Debug)]
 pub enum LogicItem {
@@ -75,4 +77,8 @@ pub fn compile_logic<'tcx, 'genv>(
     } else {
         unreachable!()
     }
+}
+
+pub fn dummy_pre(tcx: TyCtxt, did: DefId) -> gillian::gil::Assertion {
+    dummy_pre::DummyPre::new(did, tcx).into()
 }

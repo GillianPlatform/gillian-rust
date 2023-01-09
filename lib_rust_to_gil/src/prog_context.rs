@@ -50,17 +50,9 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
     }
 
     fn compile_fn(&mut self, did: DefId) {
-        if let Some(pre_id) = crate::utils::attrs::get_pre_id(did, self.tcx) {
-            let proc_name =
-                rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(did));
-            let post_id = crate::utils::attrs::get_post_id(did, self.tcx).unwrap_or_else(|| {
-                self.tcx.sess.fatal(format!(
-                    "Precondition without postcondition for {}",
-                    proc_name
-                ))
-            });
-            self.spec_tbl.insert(proc_name, (pre_id, post_id));
-        }
+        let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx);
+        let post_id = crate::utils::attrs::get_post_id(did, self.tcx);
+        let proc_name = rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(did));
         let body = match self.tcx.def_kind(did) {
             DefKind::Ctor(..) => self.tcx.optimized_mir(did),
             _ => std::cell::Ref::leak(
@@ -71,6 +63,23 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
             ),
         };
         let ctx = GilCtxt::new(self.config, body, self.tcx, &mut self.global_env);
+        match (pre_id, post_id) {
+            (Some(pre_id), Some(post_id)) => {
+                self.spec_tbl.insert(proc_name, (pre_id, post_id));
+            }
+            (None, Some(post_id)) => {
+                let pre_id = Symbol::intern(&format!("{}_pre____", proc_name));
+                let assertion = crate::logic::dummy_pre(self.tcx, did);
+                self.pre_tbl.insert(pre_id, (ctx.args(), assertion));
+                self.spec_tbl.insert(proc_name, (pre_id, post_id));
+            }
+            (Some(_), None) => fatal!(
+                self,
+                "Pre-condition without post-condition for {}",
+                proc_name
+            ),
+            (None, None) => (),
+        }
         self.prog.add_proc(ctx.push_body());
     }
 
@@ -78,15 +87,6 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
     fn add_specs(&mut self) {
         let spec_tbl = std::mem::take(&mut self.spec_tbl);
         for (key, (pre_id, post_id)) in spec_tbl {
-            log::debug!("adding spec for {}", &key);
-            let (pre_args, mut pre) = self
-                .pre_tbl
-                .remove(&pre_id)
-                .unwrap_or_else(|| fatal!(self, "Precondition {} not found for {}", pre_id, key));
-            let mut post = self
-                .post_tbl
-                .remove(&post_id)
-                .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
             let proc_args = self
                 .prog
                 .procs
@@ -96,16 +96,27 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
                 .clone()
                 .into_iter()
                 .map(Expr::PVar);
-            if pre_args.len() != proc_args.len() {
-                fatal!(
+            log::debug!("adding spec for {}", &key);
+            let pre = {
+                let (pre_args, mut pre) = self.pre_tbl.remove(&pre_id).unwrap_or_else(|| {
+                    fatal!(self, "Precondition {} not found for {}", pre_id, key)
+                });
+                if pre_args.len() != proc_args.len() {
+                    fatal!(
                     self,
                     "MIR ({:?}) function has more arguments that its THIR, can't handle that?\nPRE: {:?}\nFN:  {:?}", key,
                     pre_args, proc_args
                 )
-            }
-            let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();
-            pre.subst_pvar(&mapping);
-            post.subst_pvar(&mapping);
+                }
+                let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();
+                pre.subst_pvar(&mapping);
+                pre
+            };
+            let post = self
+                .post_tbl
+                .remove(&post_id)
+                .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
+
             let sspec = gillian::gil::SingleSpec {
                 pre,
                 posts: vec![post],

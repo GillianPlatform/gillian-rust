@@ -1,3 +1,4 @@
+use crate::codegen::typ_encoding::param_type_name;
 use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
 use rustc_middle::mir::pretty::write_mir_fn;
 
@@ -50,6 +51,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         log::debug!("{}", string)
     }
 
+    pub fn args(&self) -> Vec<String> {
+        self.generic_types()
+            .into_iter()
+            .map(|x| param_type_name(x.0, x.1))
+            .chain(
+                self.mir()
+                    .args_iter()
+                    .map(|local| self.name_from_local(local)),
+            )
+            .collect()
+    }
+
     pub fn push_body(mut self) -> Proc {
         let mir_body = self.mir();
         let proc_name =
@@ -67,16 +80,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             fatal!(self, "Generators are not handled yet.")
         }
 
-        let args: Vec<String> = self
-            .generic_types()
-            .into_iter()
-            .map(|x| Self::param_type_name(x.0, x.1))
-            .chain(
-                mir_body
-                    .args_iter()
-                    .map(|local| self.name_from_local(local)),
-            )
-            .collect();
+        let args: Vec<String> = self.args();
         self.push_alloc_local_decls(mir_body);
         for (bb, bb_data) in mir_body.basic_blocks.iter_enumerated() {
             if !bb_data.is_cleanup {

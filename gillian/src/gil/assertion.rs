@@ -47,13 +47,18 @@ impl Assertion {
 
     pub fn star(self, right: Self) -> Self {
         match (self, right) {
-            (Assertion::Emp, x) => x,
-            (x, Assertion::Emp) => x,
+            (Assertion::Emp, x) | (x, Assertion::Emp) => x,
             (x, y) => Assertion::Star {
                 left: Box::new(x),
                 right: Box::new(y),
             },
         }
+    }
+}
+
+impl FromIterator<Assertion> for Assertion {
+    fn from_iter<I: IntoIterator<Item = Assertion>>(iter: I) -> Self {
+        iter.into_iter().fold(Assertion::Emp, Self::star)
     }
 }
 

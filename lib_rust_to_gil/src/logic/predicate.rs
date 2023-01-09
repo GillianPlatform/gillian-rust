@@ -1,22 +1,20 @@
 use std::collections::HashMap;
 
 use super::builtins::Stubs;
-use crate::{prelude::*, utils::polymorphism::HasGenericArguments};
+use crate::{
+    codegen::typ_encoding::param_type_name, prelude::*, utils::polymorphism::HasGenericArguments,
+};
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
-use rustc_infer::{
-    infer::{DefiningAnchor, TyCtxtInferExt},
-    traits::{ImplSource, Obligation, ObligationCause, SelectionError::Unimplemented, TraitEngine},
-};
+
 use rustc_middle::{
     mir::{
         interpret::{ConstValue, Scalar},
         BinOp, Field,
     },
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtDef, AdtKind, Binder, TraitRef, WithOptConstParam},
+    ty::{AdtDef, AdtKind, WithOptConstParam},
 };
-use rustc_trait_selection::traits::{translate_substs, SelectionContext, TraitEngineExt};
 
 struct PredSig {
     name: String,
@@ -157,10 +155,6 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 if subpattern.is_some() {
                     fatal!(self, "Predicate parameters cannot have subpatterns");
                 }
-                if ty.is_any_ptr() {
-                    // FIXME: It's not necessarily a block pointer but we don't
-                    // handle otherwise for now.
-                }
                 self.var_map.insert(*var, GExpr::PVar(name.clone()));
                 if ty.is_any_ptr() {
                     // FIXME: It shouldn't necessarily be a block pointer at all!
@@ -198,7 +192,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let params: Vec<_> = self
             .generic_types()
             .into_iter()
-            .map(|x| (Self::param_type_name(x.0, x.1), None))
+            .map(|x| (param_type_name(x.0, x.1), None))
             .chain(thir.params.iter().map(|p| {
                 let (name, _ty) = self.extract_param(p);
                 (name, None)
@@ -373,7 +367,12 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 }
                 _ => fatal!(self, "{:?} unsupported call expression in assertion", expr),
             },
-            _ => fatal!(self, "{:?} unsupported Thir expression in assertion", expr),
+            _ => fatal!(
+                self,
+                "{:?} unsupported Thir expression in assertion while compiling {:?}",
+                expr,
+                self.did()
+            ),
         }
     }
 
@@ -531,88 +530,9 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
                 _ => {
                     let (def_id, substs) = match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => match self.tcx.trait_of_item(*def_id) {
-                            None => (*def_id, *substs),
-                            Some(trait_id) => {
-                                // FIXME:
-                                // The following is extremely disgusting and will be cleaned up and factored out as soon as possible.
-                                // But right now it works and I have priorities.
-                                let param_env = self.tcx.param_env(*def_id);
-                                let assoc = self.tcx.associated_item(*def_id);
-                                let trait_ref = Binder::dummy(TraitRef::from_method(
-                                    self.tcx, trait_id, substs,
-                                ));
-                                // Not sure what's happening below for now...
-                                let infer_ctx = self
-                                    .tcx
-                                    .infer_ctxt()
-                                    .ignoring_regions()
-                                    .with_opaque_type_inference(DefiningAnchor::Bubble)
-                                    .build();
-
-                                let mut select_ctx = SelectionContext::new(&infer_ctx);
-                                let cause = ObligationCause::dummy();
-                                let obligation = Obligation::new(
-                                    cause,
-                                    param_env,
-                                    trait_ref.to_poly_trait_predicate(),
-                                );
-                                let selection = match select_ctx.select(&obligation) {
-                                    Ok(Some(selection)) => selection,
-                                    Ok(None) => panic!("Ambiguous!"),
-                                    Err(Unimplemented) => panic!("Unimplemented!"),
-                                    Err(e) => panic!("Error: {:?}", e),
-                                };
-                                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infer_ctx.tcx);
-                                let impl_source = selection.map(|predicate| {
-                                    // debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
-                                    fulfill_cx.register_predicate_obligation(&infer_ctx, predicate);
-                                });
-                                let impl_source = infer_ctx.resolve_vars_if_possible(impl_source);
-                                let impl_source = infer_ctx.tcx.erase_regions(impl_source);
-                                match impl_source {
-                                    ImplSource::UserDefined(impl_data) => {
-                                        let trait_def_id = self
-                                            .tcx
-                                            .trait_id_of_impl(impl_data.impl_def_id)
-                                            .unwrap();
-                                        let trait_def = self.tcx.trait_def(trait_def_id);
-                                        let leaf_def = trait_def
-                                            .ancestors(self.tcx, impl_data.impl_def_id)
-                                            .unwrap()
-                                            .leaf_def(self.tcx, assoc.def_id)
-                                            .unwrap_or_else(|| {
-                                                panic!(
-                                                    "{:?} not found in {:?}",
-                                                    assoc, impl_data.impl_def_id
-                                                );
-                                            });
-                                        let infer_ctx = self.tcx.infer_ctxt().build();
-
-                                        let param_env =
-                                            param_env.with_reveal_all_normalized(self.tcx);
-                                        let substs = substs.rebase_onto(
-                                            self.tcx,
-                                            trait_def_id,
-                                            impl_data.substs,
-                                        );
-                                        let substs = translate_substs(
-                                            &infer_ctx,
-                                            param_env,
-                                            impl_data.impl_def_id,
-                                            substs,
-                                            leaf_def.defining_node,
-                                        );
-                                        let leaf_substs = infer_ctx.tcx.erase_regions(substs);
-                                        (leaf_def.item.def_id, leaf_substs)
-                                    }
-                                    _ => unimplemented!(),
-                                }
-                            }
-                        },
+                        TyKind::FnDef(def_id, substs) => self.resolve_candidate(*def_id, substs),
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
-                    dbg!(substs);
                     let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
                         .tcx
                         .def_path_str(def_id));

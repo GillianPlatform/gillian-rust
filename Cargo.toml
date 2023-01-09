@@ -5,7 +5,6 @@ members = [
   "gillian",
   "rust_to_gil",
   "gilogic_proc",
-  "gilogic_proc_dummy",
   "gilogic_internal",
   "gilogic",
   "creusillian"
