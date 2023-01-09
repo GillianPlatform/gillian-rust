@@ -185,6 +185,7 @@ dependencies = [
 [[package]]
 name = "pearlite-syn"
 version = "0.2.0"
+source = "git+https://github.com/xldenis/creusot#de082e619a55400e9b29c70a3959a6cfc60ef29c"
 dependencies = [
  "proc-macro2",
  "quote",
