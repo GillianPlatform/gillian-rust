@@ -8,19 +8,19 @@ use syn::{
 };
 
 #[derive(Debug)]
-pub(crate) enum ParamMode {
+pub enum ParamMode {
     In,
     Out,
 }
 
-pub(crate) struct PredParamS {
+pub struct PredParamS {
     pub name: Ident,
     pub colon_token: Token![:],
     pub ty: Type,
     pub mode: ParamMode,
 }
 
-pub(crate) enum PredParam {
+pub enum PredParam {
     S(PredParamS),
     Receiver(Token![self]),
 }
@@ -152,7 +152,7 @@ impl TryFrom<FnArg> for PredParam {
     }
 }
 
-pub(crate) enum Predicate {
+pub enum Predicate {
     Abstract {
         name: Ident,
         args: Punctuated<PredParam, Token![,]>,
@@ -167,7 +167,7 @@ pub(crate) enum Predicate {
 }
 
 impl Predicate {
-    pub(crate) fn args(&self) -> &Punctuated<PredParam, Token![,]> {
+    pub fn args(&self) -> &Punctuated<PredParam, Token![,]> {
         match self {
             Predicate::Abstract { args, .. } => args,
             Predicate::Concrete { args, .. } => args,

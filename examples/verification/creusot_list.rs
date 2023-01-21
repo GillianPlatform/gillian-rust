@@ -71,7 +71,8 @@ impl<T> LinkedList<T> {
     // We specify the following functions using Gillian's logic
 
     /// Adds the given node to the front of the list.
-    #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll| (self == vself) * (node == vnode) *
+    #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll|
+        (self == vself) * (node == vnode) *
         #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
         (vdata.len() < usize::MAX) *
         vdll.shallow_repr(vdata))]

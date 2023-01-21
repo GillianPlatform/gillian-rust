@@ -84,13 +84,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gilogic_internal"
-version = "0.1.0"
-dependencies = [
- "gilogic",
-]
-
-[[package]]
 name = "gilogic_proc"
 version = "0.1.0"
 dependencies = [
@@ -185,7 +178,7 @@ dependencies = [
 [[package]]
 name = "pearlite-syn"
 version = "0.2.0"
-source = "git+https://github.com/xldenis/creusot#de082e619a55400e9b29c70a3959a6cfc60ef29c"
+source = "git+https://github.com/xldenis/creusot?rev=639bc912ddc793b9cd56255c47158533b3c33c56#639bc912ddc793b9cd56255c47158533b3c33c56"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -41,7 +41,7 @@ fn dll_seg<T>(
     assertion!((head == tail_next) * (tail == head_prev) * (data == Seq::nil()));
     assertion!(|hptr, head_next, head_prev, element, rest: Seq<T>|
         (head == Some(hptr)) *
-        #(hptr -> Node { next: head_next, prev: head_prev, element }) *
+        (hptr -> Node { next: head_next, prev: head_prev, element }) *
         (data == rest.prepend(element)) *
         dll_seg(head_next, tail_next, tail, head, rest)
     )
@@ -75,10 +75,10 @@ impl<T> LinkedList<T> {
     /// Adds the given node to the front of the list.
     #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll|
         (self == vself) * (node == vnode) *
-        #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
+        (vself -> vdll) * (vnode -> Node { next: None, prev: None, element: velem}) *
         (vdata.len() < usize::MAX) *
         dll(vdll, vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| (vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -98,16 +98,16 @@ impl<T> LinkedList<T> {
         }
     }
 
-    // #[requires(|vself, velem, vdata: Seq<T>, vdll| (self == vself) * (elt == velem) *
-    //     #(vself -> vdll) * (vdata.len() < usize::MAX) *
-    //     dll(vdll, vdata))]
-    // #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    #[requires(|vself, velem, vdata: Seq<T>, vdll| (self == vself) * (elt == velem) *
+        (vself -> vdll) * (vdata.len() < usize::MAX) *
+        dll(vdll, vdata))]
+    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| (vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }
 
-    #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * #(vself -> vdll) * dll(vdll, vdata) )]
-    #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  #(vself -> vdll) * (ret == vdata.len()) * dll(vdll, vdata))]
+    #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * dll(vdll, vdata) )]
+    #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * dll(vdll, vdata))]
     pub fn len(&self) -> usize {
         self.len
     }

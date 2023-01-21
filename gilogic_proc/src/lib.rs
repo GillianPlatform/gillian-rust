@@ -3,17 +3,15 @@
 #![register_tool(gillian)]
 
 extern crate proc_macro;
+use ::quote::ToTokens;
 use proc_macro::TokenStream as TokenStream_;
-use quote::ToTokens;
 use syn::parse_macro_input;
 
-mod gillian_quote;
-mod gillian_syn;
+mod gilogic_syn;
+mod quote;
+mod spec;
 
-use gillian_syn::*;
-
-use assertion::Assertion;
-use predicate::Predicate;
+use gilogic_syn::*;
 
 #[proc_macro_attribute]
 pub fn predicate(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
@@ -33,7 +31,14 @@ pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 
 #[proc_macro]
 pub fn assertion(input: TokenStream_) -> TokenStream_ {
-    parse_macro_input!(input as Assertion)
-        .to_token_stream()
-        .into()
+    match parse_macro_input!(input as Assertion).encode() {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn assertion_test(input: TokenStream_) -> TokenStream_ {
+    dbg!(parse_macro_input!(input as Assertion));
+    panic!("bite");
 }

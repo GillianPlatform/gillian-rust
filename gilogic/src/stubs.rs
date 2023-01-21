@@ -3,6 +3,12 @@ use core::ptr::NonNull;
 use super::tys::{RustAssertion, RustFormula};
 
 #[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::lang::lvar"]
+pub fn lvar<T>(_name: &'static str) -> T {
+    unreachable!()
+}
+
+#[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::emp"]
 pub fn emp() -> RustAssertion {
     unreachable!()
