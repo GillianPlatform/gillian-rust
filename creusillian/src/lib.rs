@@ -1,5 +1,5 @@
 extern crate proc_macro;
-use pearlite_syn::{Term, TermBinary, TermCall, TermMethodCall, TermParen};
+use pearlite_syn::{Term, TermBinary, TermCall, TermFinal, TermMethodCall, TermParen};
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -125,6 +125,14 @@ impl Ctx {
                 Ok(quote!(
                     #receiver #dot_token #method #turbofish #args
                 ))
+            }
+            Term::Final(TermFinal {
+                final_token: _,
+                term,
+            }) =>
+            // This is obviously wrong for now but we're ignoring lifetime logics and all
+            {
+                self.translate_expression(*term)
             }
             Term::Path(_) | Term::Lit(_) => Ok(term.to_token_stream()),
             _ => Err(Error::new(

@@ -42,7 +42,7 @@ fn dll_seg<T>(
     assertion!((head == tail_next) * (tail == head_prev) * (data == Seq::nil()));
     assertion!(|hptr, head_next, head_prev, element, rest: Seq<T>|
         (head == Some(hptr)) *
-        #(hptr -> Node { next: head_next, prev: head_prev, element }) *
+        (hptr -> Node { next: head_next, prev: head_prev, element }) *
         (data == rest.prepend(element)) *
         dll_seg(head_next, tail_next, tail, head, rest)
     )
@@ -73,10 +73,10 @@ impl<T> LinkedList<T> {
     /// Adds the given node to the front of the list.
     #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll|
         (self == vself) * (node == vnode) *
-        #(vself -> vdll) * #(vnode -> Node { next: None, prev: None, element: velem}) *
+        (vself -> vdll) * (vnode -> Node { next: None, prev: None, element: velem}) *
         (vdata.len() < usize::MAX) *
         vdll.shallow_repr(vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| #(vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
+    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| (vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
