@@ -12,9 +12,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             | Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.push_encode_binop(binop, left, right)
             }
-            &Rvalue::Ref(_, _, place) | &Rvalue::AddressOf(_, place) => {
+            &Rvalue::Ref(_region, _, place) => {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
+                // Polonius will come into the game here.
+                let gil_place = self.push_get_gil_place(place);
+                gil_place.into_expr_ptr()
+            }
+            &Rvalue::AddressOf(_, place) => {
                 let gil_place = self.push_get_gil_place(place);
                 gil_place.into_expr_ptr()
             }
