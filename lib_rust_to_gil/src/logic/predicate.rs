@@ -395,7 +395,6 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(Stubs::FormulaEqual) => {
-                        // FIXME: This doesn't match because equal is polymorphic and it gets monomorphized here.
                         assert!(args.len() == 2, "Equal call must have one argument");
                         let left = Box::new(self.compile_expression(args[0], thir));
                         let right = Box::new(self.compile_expression(args[1], thir));
