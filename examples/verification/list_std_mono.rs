@@ -2,7 +2,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{assertion, ensures, predicate, requires},
-    Seq,
+    Seq, ShallowRepresentation,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -47,22 +47,26 @@ fn dll_seg(
     )
 }
 
-#[predicate]
-fn dll(linked_list: In<LinkedList>, data: Seq<u32>) {
-    assertion!(|head, tail, len| (linked_list
-        == LinkedList {
-            head,
-            tail,
-            len,
-            marker: PhantomData
-        })
-        * (len == data.len())
-        * dll_seg(head, None, tail, None, data))
+impl ShallowRepresentation for LinkedList {
+    type ShallowModelTy = Seq<u32>;
+
+    #[predicate]
+    fn shallow_repr(self, model: Self::ShallowModelTy) {
+        assertion!(|head, tail, len| (self
+            == LinkedList {
+                head,
+                tail,
+                len,
+                marker: PhantomData
+            })
+            * (len == model.len())
+            * dll_seg(head, None, tail, None, model))
+    }
 }
 
 impl LinkedList {
     #[requires(emp)]
-    #[ensures(dll(ret, Seq::nil()))]
+    #[ensures(ret.shallow_repr(Seq::nil()))]
     fn new() -> Self {
         Self {
             head: None,
@@ -75,9 +79,9 @@ impl LinkedList {
     /// Adds the given node to the front of the list.
     #[requires(|vself, vnode, velem, vdata, vdll| (self == vself) * (node == vnode) *
         (vself -> vdll) * (vnode -> Node { next: None, prev: None, element: velem}) *
-        dll(vdll, vdata) *
+        vdll.shallow_repr(vdata) *
         (vdata.len() < usize::MAX))]
-    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| (vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| (vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
     fn push_front_node(&mut self, mut node: Box<Node>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -100,9 +104,13 @@ impl LinkedList {
     #[requires(|vself, velem, vdata: Seq<u32>, vdll| (self == vself) * (elt == velem) *
         (vself -> vdll) * (vdata.len() < usize::MAX) *
         (u32::MIN <= elt) * (elt <= u32::MAX) *
-        dll(vdll, vdata))]
-    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| (vself -> new_vdll) * dll(new_vdll, vdata.prepend(velem)))]
+        vdll.shallow_repr(vdata))]
+    #[ensures(|vself: &mut LinkedList, new_vdll, velem, vdata: Seq<u32>| (vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
     pub fn push_front(&mut self, elt: u32) {
         self.push_front_node(Box::new(Node::new(elt)));
     }
+
+    // pub fn front_mut(&mut self) -> Option<&mut u32> {
+    //     unsafe { self.head.as_mut().map(|node| &mut node.as_mut().element) }
+    // }
 }
