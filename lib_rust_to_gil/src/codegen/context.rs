@@ -150,7 +150,6 @@ impl<'tcx> Visitor<'tcx> for ReferencedLocalsVisitor {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, location: Location) {
-        // I don't know how to perform downcasting on values in store
         if !place.projection.is_empty() {
             self.0.insert(place.local);
         }

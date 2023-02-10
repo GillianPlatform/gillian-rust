@@ -6,7 +6,6 @@ type arith_kind = Wrap | Overflow [@@deriving show]
 type op =
   | VField of int * Ty.t * int
   | Field of int * Ty.t
-  | Downcast of int * Ty.t
   | Index of int * Ty.t * int
   | Cast of Ty.t * Ty.t
   | Plus of arith_kind * int * Ty.t
@@ -21,7 +20,6 @@ let pp_elem fmt =
   function
   | Field (i, ty) -> Fmt.pf fmt ".%d<%a>" i Ty.pp ty
   | VField (i, ty, vidx) -> Fmt.pf fmt ".%d<%a.%d>" i Ty.pp ty vidx
-  | Downcast (i, ty) -> Fmt.pf fmt "<%a>as_v(%d)" Ty.pp ty i
   | Index (i, ty, sz) -> Fmt.pf fmt "[%d]<[%a; %d]>" i Ty.pp ty sz
   | Cast (from_ty, into_ty) -> Fmt.pf fmt "%a>%a" Ty.pp from_ty Ty.pp into_ty
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%d)<%a>" (str_ak k) i Ty.pp ty
@@ -33,7 +31,6 @@ let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
   | LList [ String "vf"; Int i; ty; Int idx ] ->
       VField (Z.to_int i, Ty.of_lit ty, Z.to_int idx)
-  | LList [ String "d"; Int i; ty ] -> Downcast (Z.to_int i, Ty.of_lit ty)
   | LList [ String "i"; Int i; ty; Int sz ] ->
       Index (Z.to_int i, Ty.of_lit ty, Z.to_int sz)
   | LList [ String "c"; ty_from; ty_into ] ->
@@ -48,8 +45,6 @@ let op_of_expr : Expr.t -> op = function
       Field (Z.to_int i, Ty.of_expr ty)
   | EList [ Lit (String "vf"); Lit (Int i); ty; Lit (Int idx) ] ->
       VField (Z.to_int i, Ty.of_expr ty, Z.to_int idx)
-  | EList [ Lit (String "d"); Lit (Int i); ty ] ->
-      Downcast (Z.to_int i, Ty.of_expr ty)
   | EList [ Lit (String "i"); Lit (Int i); ty; Lit (Int sz) ] ->
       Index (Z.to_int i, Ty.of_expr ty, Z.to_int sz)
   | EList [ Lit (String "c"); ty_from; ty_into ] ->
@@ -76,8 +71,6 @@ let expr_of_elem : op -> Expr.t =
           Ty.to_expr ty;
           Lit (Int (Z.of_int idx));
         ]
-  | Downcast (i, ty) ->
-      EList [ Lit (String "d"); Lit (Int (Z.of_int i)); Ty.to_expr ty ]
   | Index (i, ty, sz) ->
       EList
         [
@@ -100,7 +93,6 @@ let substitution_in_op ~subst_expr (op : op) =
   match op with
   | Field (i, ty) -> Field (i, Ty.substitution ~subst_expr ty)
   | VField (i, ty, idx) -> VField (i, Ty.substitution ~subst_expr ty, idx)
-  | Downcast (i, ty) -> Downcast (i, Ty.substitution ~subst_expr ty)
   | Index (i, ty, sz) -> Index (i, Ty.substitution ~subst_expr ty, sz)
   | Cast (from_ty, into_ty) ->
       Cast

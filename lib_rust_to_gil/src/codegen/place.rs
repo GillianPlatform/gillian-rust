@@ -21,7 +21,6 @@ impl ArithKind {
 pub enum GilProj {
     Field(u32, EncodedType),
     VField(u32, EncodedType, u32),
-    Downcast(u32, EncodedType),
     ArrayIndex(Expr, EncodedType, i128),
     SliceIndex(Expr, EncodedType), // The EncodedType is the type of elements in the slice
     Plus(ArithKind, Expr, EncodedType),
@@ -39,7 +38,6 @@ impl GilProj {
                 Expr::int(idx as i128),
             ]
             .into(),
-            Self::Downcast(u, ty) => vec!["d".into(), Expr::int(u as i128), ty.into()].into(),
             Self::ArrayIndex(e, ty, sz) => vec!["i".into(), e, ty.into(), sz.into()].into(),
             Self::Cast(from_ty, into_ty) => vec!["c".into(), from_ty.into(), into_ty.into()].into(),
             Self::Plus(ak, e, ty) => vec!["+".into(), ak.is_wrapping().into(), e, ty.into()].into(),
@@ -250,10 +248,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         _ => panic!("Indexing something that is neither an array nor a slice"),
                     }
                 }
-                // Place pointer should contain their types? But so far, I think this has no effect.
-                ProjectionElem::Downcast(_, u) => cur_gil_place
-                    .proj
-                    .push(GilProj::Downcast(u.as_u32(), self.encode_type(curr_typ.ty))),
+                // Ignored because I now have VField aggregating things.
+                ProjectionElem::Downcast(_, _) => (),
                 _ => fatal!(self, "Invalid projection element: {:#?}", proj),
             }
         }

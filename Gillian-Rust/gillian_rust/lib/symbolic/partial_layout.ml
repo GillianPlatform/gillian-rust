@@ -317,10 +317,9 @@ let rec resolve
   | Index (i, t, n) :: rs', Some ix
     when i < n && Ty.equal (Array { length = n; ty = t }) ty ->
       resolve accesses ty rs' (Some (i + ix))
-  | Downcast (i, t) :: VField (j, t', idx) :: rs', None
-    when i = idx && Ty.(equal t ty && equal t' ty) ->
+  | VField (j, t, idx) :: rs', None when Ty.equal t ty ->
       (* print_string "(context.members t).(i) 253;\n"; *)
-      let t' = (context.variant_members t i).(j) in
+      let t' = (context.variant_members t idx).(j) in
       resolve (accesses' ~variant:idx j t') t rs' None
   | Cast (_, _) :: rs', ix -> resolve accesses ty rs' ix
   | Plus (_, 0, _) :: _, _ ->
