@@ -105,6 +105,9 @@ let execute_load_discr mem args =
       ASucc (mem, [ Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
+(* I should have some kind of concrete lifetimes?? *)
+let execute_noop mem args = ASucc (mem, [])
+
 let protect f mem args = try f mem args with Heap.MemoryError s -> AFail [ s ]
   [@@inline]
 
@@ -118,8 +121,19 @@ let execute_action act_name mem args =
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Load_discr -> protect execute_load_discr mem args
-  | Get_value | Set_value | Rem_value | Get_freed | Set_freed | Rem_freed ->
-      failwith "Core Predicates used in concrete execution"
+  | New_lft | End_lft -> execute_noop mem args
+  | Get_value
+  | Set_value
+  | Rem_value
+  | Get_pcy_value
+  | Set_pcy_value
+  | Rem_pcy_value
+  | Get_freed
+  | Set_freed
+  | Rem_freed
+  | Get_alive_lft
+  | Set_alive_lft
+  | Rem_alive_lft -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)
