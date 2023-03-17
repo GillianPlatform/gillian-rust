@@ -39,7 +39,7 @@ exception MemoryError of string
 let mem_error p = Fmt.kstr (fun s -> raise (MemoryError s)) p
 
 module TreeBlock = struct
-  type t = { ty : Ty.t; content : tree_content }
+  type t = { ty : Ty.t; content : tree_content; frozen_until : Lft.t list }
 
   and tree_content =
     | Symbolic of Expr.t
@@ -50,6 +50,21 @@ module TreeBlock = struct
     | ThinPtr of Expr.t * Projections.t
     | FatPtr of Expr.t * Projections.t * int
     | Uninit
+
+  let fresh_symbolic ty =
+    let lv = LVar.alloc () in
+    { ty; content = Symbolic (LVar lv); frozen_until = [] }
+
+  let rec freeze_until lft t =
+    let content =
+      match t.content with
+      | Symbolic _ | Scalar _ | FatPtr _ | ThinPtr _ | Uninit -> t.content
+      | Fields fs -> Fields (List.map (freeze_until lft) fs)
+      | Array fs -> Array (List.map (freeze_until lft) fs)
+      | Enum { discr; fields } ->
+          Enum { discr; fields = List.map (freeze_until lft) fields }
+    in
+    { t with content; frozen_until = lft :: t.frozen_until }
 
   let rec pp fmt { ty; content } =
     Fmt.pf fmt "%a :@ %a" pp_content content Ty.pp ty
@@ -102,7 +117,7 @@ module TreeBlock = struct
         fields_tys fields
     in
     let content = Fields content in
-    { ty; content }
+    { ty; content; frozen_until = [] }
 
   and of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys (data : Expr.t list) =
     match data with
@@ -115,15 +130,15 @@ module TreeBlock = struct
             tys fields
         in
         let content = Enum { discr = vidx; fields } in
-        { ty; content }
+        { ty; content; frozen_until = [] }
     | _ ->
         Fmt.failwith "Invalid enum value for type %a: %a" Ty.pp ty
           (Fmt.list Expr.pp) data
 
   and of_rust_value ~tyenv ~ty (e : Expr.t) =
+    let mk content = { ty; content; frozen_until = [] } in
     match (ty, e) with
-    | Ty.Scalar (Uint _ | Int _), e -> { ty; content = Scalar e }
-    | Ty.Scalar Bool, e -> { ty; content = Scalar e }
+    | Ty.Scalar (Uint _ | Int _ | Bool), e -> mk (Scalar e)
     | Tuple _, Lit (LList data) ->
         let content = List.map lift_lit data in
         of_rust_value ~tyenv ~ty (EList content)
@@ -131,8 +146,7 @@ module TreeBlock = struct
         let content =
           List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) ts tup
         in
-        let content = Fields content in
-        { ty; content }
+        mk (Fields content)
     | Adt _, Lit (LList content) ->
         let content = List.map lift_lit content in
         of_rust_value ~tyenv ~ty (EList content)
@@ -145,24 +159,25 @@ module TreeBlock = struct
     | Ref { ty = Slice _; _ }, EList [ EList [ loc; proj ]; Lit (Int i) ] ->
         let proj = concretize_proj proj in
         let content = FatPtr (loc, proj, Z.to_int i) in
-        { ty; content }
+        mk content
     | Ref _, e ->
         let loc = Expr.list_nth e 0 in
         let proj = Expr.list_nth e 1 in
         let proj = Projections.of_expr proj in
         let content = ThinPtr (loc, proj) in
-        { ty; content }
+        mk content
     | Array { length; ty = ty' }, EList l
       when List.compare_length_with l length == 0 ->
         let mem_array = List.map (of_rust_value ~tyenv ~ty:ty') l in
-        { ty; content = Array mem_array }
-    | _, s -> { ty; content = Symbolic s }
+        mk (Array mem_array)
+    | _, s -> mk (Symbolic s)
 
   let rec uninitialized ~tyenv ty =
+    let mk content = { ty; content; frozen_until = [] } in
     match ty with
     | Ty.Tuple v ->
         let tuple = List.map (uninitialized ~tyenv) v in
-        { ty; content = Fields tuple }
+        mk (Fields tuple)
     | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
@@ -171,14 +186,13 @@ module TreeBlock = struct
                 (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
                 fields
             in
-
-            { ty; content = Fields tuple }
-        | Enum _ -> { ty; content = Uninit })
+            mk (Fields tuple)
+        | Enum _ -> mk Uninit)
     | Array { length; ty = ty' } ->
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
-        { ty; content = Array content }
-    | Scalar _ | Ref _ | Unresolved _ -> { ty; content = Uninit }
+        mk (Array content)
+    | Scalar _ | Ref _ | Unresolved _ -> mk Uninit
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let semi_concretize ~tyenv ~variant ty expr =
@@ -197,18 +211,22 @@ module TreeBlock = struct
             List.init (List.length v) (fun i -> Expr.list_nth expr i)
           in
           let fields =
-            List.map2 (fun ty e -> { content = Symbolic e; ty }) v values
+            List.map2
+              (fun ty e -> { content = Symbolic e; ty; frozen_until = [] })
+              v values
           in
-          DR.ok { ty; content = Fields fields }
+          DR.ok { ty; content = Fields fields; frozen_until = [] }
         else DR.error (Too_symbolic expr)
           (* FIXME: This is probably not the right error? *)
     | Array { length; ty = ty' } ->
         if%sat (is_list expr) #&& (has_length length expr) then
           let values = List.init length (fun i -> Expr.list_nth expr i) in
           let fields =
-            List.map (fun e -> { content = Symbolic e; ty = ty' }) values
+            List.map
+              (fun e -> { content = Symbolic e; ty = ty'; frozen_until = [] })
+              values
           in
-          DR.ok { ty; content = Array fields }
+          DR.ok { ty; content = Array fields; frozen_until = [] }
         else DR.error (Too_symbolic expr)
     | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
@@ -221,10 +239,14 @@ module TreeBlock = struct
               let fields =
                 List.map2
                   (fun (_, ty) e ->
-                    { content = Symbolic e; ty = Ty.subst_params ~subst ty })
+                    {
+                      content = Symbolic e;
+                      ty = Ty.subst_params ~subst ty;
+                      frozen_until = [];
+                    })
                   fields values
               in
-              DR.ok { ty; content = Fields fields }
+              DR.ok { ty; content = Fields fields; frozen_until = [] }
             else DR.error (Too_symbolic expr)
         | Enum variants ->
             (* This should only be called with a variant context *)
@@ -247,10 +269,19 @@ module TreeBlock = struct
               let fields =
                 List.map2
                   (fun ty e ->
-                    { content = Symbolic e; ty = Ty.subst_params ~subst ty })
+                    {
+                      content = Symbolic e;
+                      ty = Ty.subst_params ~subst ty;
+                      frozen_until = [];
+                    })
                   (snd variant) values
               in
-              DR.ok { ty; content = Enum { discr = variant_idx; fields } }
+              DR.ok
+                {
+                  ty;
+                  content = Enum { discr = variant_idx; fields };
+                  frozen_until = [];
+                }
             else DR.error (Too_symbolic expr))
     | Scalar _ | Ref _ ->
         failwith
@@ -287,12 +318,16 @@ module TreeBlock = struct
             let e = Result.ok_or vec.%[index] "Index out of bounds" in
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
-            (v, { ty; content = replace_vec content new_block })
+            ( v,
+              { ty; content = replace_vec content new_block; frozen_until = [] }
+            )
         | Enum { fields = vec; discr }, Some discr' when discr = discr' ->
             let** e = Delayed.return vec.%[index] in
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
-            (v, { ty; content = replace_vec content new_block })
+            ( v,
+              { ty; content = replace_vec content new_block; frozen_until = [] }
+            )
         | Symbolic s, _ ->
             let** this_block = semi_concretize ~tyenv ~variant ty s in
             rec_call this_block path
@@ -324,6 +359,7 @@ module TreeBlock = struct
                           uninitialized ~tyenv ty))
                      "Invalid slice range");
               ty;
+              frozen_until = [];
             }
         | _ -> failwith "Not an array"
     in
@@ -367,6 +403,7 @@ module TreeBlock = struct
                           ~f:(of_rust_value ~tyenv ~ty) values)
                        "Invalid slice range");
                 ty;
+                frozen_until = [];
               } )
       | _ -> failwith "Not an array"
     in
@@ -421,6 +458,16 @@ module TreeBlock = struct
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
+  (* Will replace the target with a fresh symbolic value,
+     and return what the current block. *)
+  let prophecize ~tyenv t proj ty =
+    let open DR.Syntax in
+    let return_and_update block =
+      let prophecy = fresh_symbolic ty in
+      DR.ok ((block, prophecy), prophecy)
+    in
+    find_proj ~tyenv ~ty ~return_and_update t proj
+
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
@@ -465,75 +512,65 @@ module HeapMap = Map.Make (String)
 
 module TimedTree = struct
   type t =
-    | Owned of { tree : TreeBlock.t; dead_until : Lft.t option }
+    | Owned of TreeBlock.t
     | Borrowed of {
         current : TreeBlock.t;
         prophecy : TreeBlock.t;
         alive_while : Lft.t;
-        dead_until : Lft.t option;
       }
 
+  (*
+     let pp_dead_until =
+       Fmt.option (fun ft lft -> Fmt.pf ft "[†%a] " Lft.pp lft)
+     in *)
+
   let pp ft t =
-    let pp_dead_until =
-      Fmt.option (fun ft lft -> Fmt.pf ft "[†%a] " Lft.pp lft)
-    in
     match t with
-    | Owned { tree; dead_until } ->
-        Fmt.pf ft "%a%a" pp_dead_until dead_until TreeBlock.pp tree
-    | Borrowed { current; prophecy; alive_while; dead_until } ->
-        Fmt.pf ft "%a<%a> { %a ==> %a }" pp_dead_until dead_until Lft.pp
-          alive_while TreeBlock.pp current TreeBlock.pp prophecy
+    | Owned tree -> TreeBlock.pp ft tree
+    | Borrowed { current; prophecy; alive_while } ->
+        Fmt.pf ft "<%a> @[<1>{%a ==> %a}@]" Lft.pp alive_while TreeBlock.pp
+          current TreeBlock.pp prophecy
 
-  let owned_uninitialize ~tyenv ty =
-    Owned { tree = TreeBlock.uninitialized ~tyenv ty; dead_until = None }
-
-  let accessible ~lfts t =
-    match t with
-    | Owned { dead_until; _ } -> Option.is_none dead_until
-    | Borrowed { alive_while; dead_until; _ } ->
-        let is_alive = Lft_ctx.check_alive lfts alive_while |> Result.is_ok in
-        let is_not_dead = Option.is_none dead_until in
-        is_alive && is_not_dead
+  let owned_uninitialize ~tyenv ty = Owned (TreeBlock.uninitialized ~tyenv ty)
 
   let update_current ~f t =
     let open DR.Syntax in
     match t with
-    | Owned { tree; dead_until } ->
+    | Owned tree ->
         let++ v, new_tree = f tree in
-        (v, Owned { tree = new_tree; dead_until })
-    | Borrowed { current; prophecy; alive_while; dead_until } ->
+        (v, Owned tree)
+    | Borrowed { current; prophecy; alive_while } ->
         let++ v, new_tree = f current in
-        (v, Borrowed { current = new_tree; prophecy; alive_while; dead_until })
+        (v, Borrowed { current = new_tree; prophecy; alive_while })
 
   let read_current ~f t =
     match t with
-    | Owned { tree; _ } -> f tree
+    | Owned tree -> f tree
     | Borrowed { current; _ } -> f current
+
+  (* let borrow ~tyenv ~lft t proj =
+     let open DR.Syntax in
+     match t with
+     | Owned tree ->
+       let** (current, prophecy), old_tree = TreeBlock.borrow ~tyenv ~lft tree proj tree.ty in
+       Borrowed {  } *)
 
   (* This function will either drop a borrow, learning equality, or free if its owned and it can *)
   let free_or_learn ~tyenv ~ty t =
     match t with
     | Borrowed _ -> failwith "free_or_learn.borrow Not handled for now"
-    | Owned { tree; dead_until } ->
-        if Option.is_none dead_until then
-          if Ty.equal tree.ty ty then DR.ok ()
-          else DR.error (Invalid_type (ty, tree.ty))
-        else DR.error (Cannot_access "aaaaa")
+    | Owned tree ->
+        if Ty.equal tree.ty ty then DR.ok ()
+        else DR.error (Invalid_type (ty, tree.ty))
 
   let substitution ~tyenv ~subst_expr t =
     match t with
-    | Owned { tree; dead_until } ->
-        Owned
-          {
-            tree = TreeBlock.substitution ~tyenv ~subst_expr tree;
-            dead_until = Option.map (Lft.substitution ~subst_expr) dead_until;
-          }
-    | Borrowed { current; prophecy; dead_until; alive_while } ->
+    | Owned tree -> Owned (TreeBlock.substitution ~tyenv ~subst_expr tree)
+    | Borrowed { current; prophecy; alive_while } ->
         Borrowed
           {
             current = TreeBlock.substitution ~tyenv ~subst_expr current;
             prophecy = TreeBlock.substitution ~tyenv ~subst_expr prophecy;
-            dead_until = Option.map (Lft.substitution ~subst_expr) dead_until;
             alive_while = Lft.substitution ~subst_expr alive_while;
           }
 end
@@ -546,20 +583,16 @@ let update_not_freed ~lfts loc heap f =
   let block = HeapMap.find loc heap in
   match block with
   | T (t :: ts) ->
-      if TimedTree.accessible ~lfts t then
-        let++ v, new_t = TimedTree.update_current ~f t in
-        let new_heap = HeapMap.add loc (T (new_t :: ts)) heap in
-        (v, new_heap)
-      else DR.error (Cannot_access loc)
+      let++ v, new_t = TimedTree.update_current ~f t in
+      let new_heap = HeapMap.add loc (T (new_t :: ts)) heap in
+      (v, new_heap)
   | T [] -> failwith "empty blocks, cannot happen"
   | Freed -> DR.error (Use_after_free loc)
 
 let read_not_freed ~lfts loc heap f =
   let block = HeapMap.find loc heap in
   match block with
-  | T (t :: ts) ->
-      if TimedTree.accessible ~lfts t then TimedTree.read_current ~f t
-      else DR.error (Cannot_access loc)
+  | T (t :: ts) -> TimedTree.read_current ~f t
   | T [] -> failwith "empty blocks, cannot happen"
   | Freed -> DR.error (Use_after_free loc)
 
@@ -595,14 +628,6 @@ let store_slice ~tyenv ~lfts (heap : t) loc proj size ty values =
         TreeBlock.set_forest ~tyenv block proj size ty values)
   in
   new_heap
-
-(* let borrow ~tyenv ~lfts (heap: t) loc proj lft =
-   let open DR.Syntax in
-   let block = HeapMap.find loc heap in
-   match block with
-   | T (t::ts) ->
-     if TimedTree.accessible ~lfts t then
-       let++ new_borrow, frozen = TimedTree.borrow ~tyenv ~lfts t proj lft in *)
 
 let get_value ~tyenv (heap : t) loc proj ty =
   failwith "consumers and producers are not working"

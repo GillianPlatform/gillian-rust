@@ -181,15 +181,35 @@ proc "WP::<T>::new"(pty_T0, m_1x, m_2y) {
         return
 };
 
+(* TODO: Can be put directly in the memory model !!!! *)
+abstract pred "$POLYMORPHIC::own"(+pty, +self, model);
 
-(* spec "WP::<T>::first_mut"(pty_T0, m_1self)
-  [[ (m_1self == #self) * 
-    <pcy_value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}) *
-  ]]
-  [[ ]]
-  normal *)
+abstract pred "$POLYMORPHIC::full"(+lft: Set, +pty_T0, +vx, model, prophecy);
 
-proc "WP::<T>::first_mut"(pty_T0, m_1self) {
+pred "WP::<T>::own"(+pty_T0, +self, model):
+  (self == {{ #x, #y }}) *
+  <value>(l-nth(#x, 0i), l-nth(#x, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #vx, #y }}) *
+  <value>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #vy, #x }}) *
+  (model == {{ #vx, #vy }}) *
+  "$POLYMORPHIC::own"(pty_T0, #vx, #vx_model) * "$POLYMORPHIC::own"(pty_T0, #vy, #vy_model);
+  
+pred "WP::<T>::full"(+lft: Set, +pty_T0, +self, current, prophecy):
+  (self == {{ #x, #y }}) *
+  <value_pcy>(l-nth(#x, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vx, #y }}, {{ #vx2, #y2 }}) *
+  <value_pcy>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vy, #x }}, {{ #vy2, #x2 }}) *
+  (current == {{ #vx, #vy }}) *
+  (prophecy == {{ #vx2, #vy2 }}) *
+  "$POLYMORPHIC::full"(lft, pty_T0, #vx, #vx_model, #vx_prophecy) * "$POLYMORPHIC::full"(lft, pty_T0, #vy, #vy_model, #vy_prophecy);
+
+spec "WP::<T>::first_mut"(lft, pty_T0, m_1self)
+  [[ (m_1self == #self) * (lft == #lft) * (pty_T0 == #pty_T0) * types(#lft: Set) *
+    <pcy_value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "WP", {{ #pty_T0 }} }}, #lft; #w, #wf) *
+    "WP::<T>::full"(#lft, #pty_T0, #w, {{ #x, #y }}, {{ #xf, #yf }}) ]]
+  [[ <pcy_value>(l-nth(#ret, 0i), l-nth(#ret, 1i), #pty_T0, #lft; #x, #xf) *
+     "$POLYMORPHIC::full"(#lft, #pty_T0, #x, #_m, #_mf) * (#y == #yf) ]]
+  normal
+
+proc "WP::<T>::first_mut"(lft, pty_T0, m_1self) {
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref",
