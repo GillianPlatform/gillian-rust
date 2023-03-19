@@ -187,25 +187,25 @@ abstract pred "$POLYMORPHIC::own"(+pty, +self, model);
 abstract pred "$POLYMORPHIC::full"(+lft: Set, +pty_T0, +vx, model, prophecy);
 
 pred "WP::<T>::own"(+pty_T0, +self, model):
-  (self == {{ #x, #y }}) *
-  <value>(l-nth(#x, 0i), l-nth(#x, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #vx, #y }}) *
-  <value>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #vy, #x }}) *
+  (self == {{ {{ #x_loc, {{ }} }}, {{ #y_loc, {{ }} }} }}) *
+  <value>(#x_loc, {{ }}, {{ "adt", "N", {{ pty_T0 }} }}; {{ #vx, {{ #y_loc, {{ }} }} }}) *
+  <value>(#y_loc, {{ }}, {{ "adt", "N", {{ pty_T0 }} }}; {{ #vy, {{ #x_loc, {{ }} }} }}) *
   (model == {{ #vx, #vy }}) *
   "$POLYMORPHIC::own"(pty_T0, #vx, #vx_model) * "$POLYMORPHIC::own"(pty_T0, #vy, #vy_model);
   
 pred "WP::<T>::full"(+lft: Set, +pty_T0, +self, current, prophecy):
-  (self == {{ #x, #y }}) *
-  <value_pcy>(l-nth(#x, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vx, #y }}, {{ #vx2, #y2 }}) *
-  <value_pcy>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vy, #x }}, {{ #vy2, #x2 }}) *
+  (self == {{ {{ #x_loc, {{ }} }}, {{ #y_loc, {{ }} }} }}) *
+  <pcy_value>(#x_loc, {{ }}, {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vx, {{ #y_loc, {{ }} }} }}, {{ #vx2, {{ #y2_loc, {{ }} }} }}) *
+  <pcy_value>(#y_loc, {{ }}, {{ "adt", "N", {{ pty_T0 }} }}, lft; {{ #vy, {{ #x_loc, {{ }} }} }}, {{ #vy2, {{ #x2_loc, {{ }} }} }}) *
   (current == {{ #vx, #vy }}) *
   (prophecy == {{ #vx2, #vy2 }}) *
   "$POLYMORPHIC::full"(lft, pty_T0, #vx, #vx_model, #vx_prophecy) * "$POLYMORPHIC::full"(lft, pty_T0, #vy, #vy_model, #vy_prophecy);
 
 spec "WP::<T>::first_mut"(lft, pty_T0, m_1self)
-  [[ (m_1self == #self) * (lft == #lft) * (pty_T0 == #pty_T0) * types(#lft: Set) *
-    <pcy_value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "WP", {{ #pty_T0 }} }}, #lft; #w, #wf) *
+  [[ (m_1self == {{ #self_loc, {{ }} }} ) * (lft == #lft) * (pty_T0 == #pty_T0) * types(#lft: Set) * <alive_lft>(#lft;) *
+    <pcy_value>(#self_loc, {{ }}, {{ "adt", "WP", {{ #pty_T0 }} }}, #lft; #w, #wf) *
     "WP::<T>::full"(#lft, #pty_T0, #w, {{ #x, #y }}, {{ #xf, #yf }}) ]]
-  [[ <pcy_value>(l-nth(#ret, 0i), l-nth(#ret, 1i), #pty_T0, #lft; #x, #xf) *
+  [[ <pcy_value>(l-nth(ret, 0i), l-nth(ret, 1i), #pty_T0, #lft; #x, #xf) *
      "$POLYMORPHIC::full"(#lft, #pty_T0, #x, #_m, #_mf) * (#y == #yf) ]]
   normal
 
@@ -226,6 +226,8 @@ proc "WP::<T>::first_mut"(lft, pty_T0, m_1self) {
                             {{ "ref", true, {{ "adt", "N",
                             {{ pty_T0 }} }} }}, true);
         g_3 := l-nth(g_4, 0i);
+        (* u := [borrow](l-nth(g_3, 0i), l+ (l-nth(g_3, 1i), {{ {{ "f", 0i, {{ "adt", "N",
+                               {{ pty_T0 }} }} }} }}), lft); *)
         u := [store_value](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "ref", true,
                            pty_T0 }}, {{ l-nth(g_3, 0i),
                            l+ (l-nth(g_3, 1i), {{ {{ "f", 0i, {{ "adt", "N",
@@ -247,6 +249,7 @@ proc "WP::<T>::first_mut"(lft, pty_T0, m_1self) {
         g_11 := m_0;
         m_0 := none;
         ret := g_11;
+        u := [drop_borrows](l-nth(g_3, 0i), l-nth(g_3, 1i), {{ "adt", "WP", {{ pty_T0 }} }});
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true,
                     {{ "adt", "WP", {{ pty_T0 }} }} }});

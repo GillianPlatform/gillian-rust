@@ -28,4 +28,12 @@ impl<T> WP<T> {
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut (*self.x).v }
     }
+
+    // A good example of a function that shouldn't be verifiable:
+    /*
+        fn both_mut<'a>(&'a mut self) -> (&'a mut T, &'a mut T) {
+        unsafe {
+            (&mut (*self.x).v, &mut(*self.x).v) <- mistake, it should be x and y, not twice x.
+        }
+    } */
 }

@@ -50,10 +50,13 @@ module TreeBlock = struct
     | ThinPtr of Expr.t * Projections.t
     | FatPtr of Expr.t * Projections.t * int
     | Uninit
+    | NotOwned
 
   let fresh_symbolic ty =
     let lv = LVar.alloc () in
     { ty; content = Symbolic (LVar lv); frozen_until = [] }
+
+  let drop t = { t with frozen_until = []; content = NotOwned }
 
   let rec freeze_until lft t =
     let content =
@@ -63,6 +66,7 @@ module TreeBlock = struct
       | Array fs -> Array (List.map (freeze_until lft) fs)
       | Enum { discr; fields } ->
           Enum { discr; fields = List.map (freeze_until lft) fields }
+      | NotOwned -> failwith "Missing Resource"
     in
     { t with content; frozen_until = lft :: t.frozen_until }
 
@@ -82,6 +86,7 @@ module TreeBlock = struct
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
     | Symbolic s -> Expr.pp ft s
     | Uninit -> Fmt.string ft "UNINIT"
+    | NotOwned -> Fmt.string ft "NOT OWNED"
 
   let rec to_rust_value ~tyenv ({ content; ty } as t) =
     match content with
@@ -104,6 +109,7 @@ module TreeBlock = struct
           ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
+    | NotOwned -> mem_error "Not owned"
 
   let rec of_rust_struct_value
       ~tyenv
@@ -495,6 +501,7 @@ module TreeBlock = struct
           let new_s = subst_expr s in
           if new_s == s then t else (of_rust_value ~tyenv ~ty new_s).content
       | Uninit -> t
+      | NotOwned -> NotOwned
     and substitution t =
       let new_content = substitute_content ~ty:t.ty t.content in
       if new_content == t.content then t else { t with content = new_content }
@@ -519,6 +526,34 @@ module TimedTree = struct
         alive_while : Lft.t;
       }
 
+  let assertion ~tyenv ~loc t =
+    match t with
+    | Owned tree ->
+        let cp = Actions.cp_to_name Value in
+        let ty = Ty.to_expr tree.ty in
+        let value = TreeBlock.to_rust_value ~tyenv tree in
+        Asrt.GA
+          (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])
+    | Borrowed { current; prophecy; alive_while } ->
+        let cp = Actions.cp_to_name Pcy_value in
+        let ty = Ty.to_expr current.ty in
+        let value = TreeBlock.to_rust_value ~tyenv current in
+        let pcy = TreeBlock.to_rust_value ~tyenv prophecy in
+        Asrt.GA
+          ( cp,
+            [
+              Expr.loc_from_loc_name loc;
+              Expr.EList [];
+              ty;
+              Lft.to_expr alive_while;
+            ],
+            [ value; pcy ] )
+
+  let alive_while t =
+    match t with
+    | Owned _ -> None
+    | Borrowed { alive_while; _ } -> Some alive_while
+
   (*
      let pp_dead_until =
        Fmt.option (fun ft lft -> Fmt.pf ft "[†%a] " Lft.pp lft)
@@ -533,20 +568,29 @@ module TimedTree = struct
 
   let owned_uninitialize ~tyenv ty = Owned (TreeBlock.uninitialized ~tyenv ty)
 
-  let update_current ~f t =
+  let update_current ~lfts ~f t =
     let open DR.Syntax in
     match t with
     | Owned tree ->
         let++ v, new_tree = f tree in
-        (v, Owned tree)
+        (v, Owned new_tree)
     | Borrowed { current; prophecy; alive_while } ->
+        let** () = Delayed.return @@ Lft_ctx.check_alive lfts alive_while in
         let++ v, new_tree = f current in
         (v, Borrowed { current = new_tree; prophecy; alive_while })
 
-  let read_current ~f t =
+  let read_current ~lfts ~f t =
+    let open DR.Syntax in
     match t with
     | Owned tree -> f tree
-    | Borrowed { current; _ } -> f current
+    | Borrowed { current; alive_while } ->
+        let** () = Delayed.return @@ Lft_ctx.check_alive lfts alive_while in
+        f current
+
+  let borrowed ~tyenv ty lft value pcy =
+    let current = TreeBlock.of_rust_value ~tyenv ~ty value in
+    let prophecy = TreeBlock.of_rust_value ~tyenv ~ty pcy in
+    Borrowed { current; prophecy; alive_while = lft }
 
   (* let borrow ~tyenv ~lft t proj =
      let open DR.Syntax in
@@ -583,7 +627,7 @@ let update_not_freed ~lfts loc heap f =
   let block = HeapMap.find loc heap in
   match block with
   | T (t :: ts) ->
-      let++ v, new_t = TimedTree.update_current ~f t in
+      let++ v, new_t = TimedTree.update_current ~lfts ~f t in
       let new_heap = HeapMap.add loc (T (new_t :: ts)) heap in
       (v, new_heap)
   | T [] -> failwith "empty blocks, cannot happen"
@@ -592,7 +636,7 @@ let update_not_freed ~lfts loc heap f =
 let read_not_freed ~lfts loc heap f =
   let block = HeapMap.find loc heap in
   match block with
-  | T (t :: ts) -> TimedTree.read_current ~f t
+  | T (t :: ts) -> TimedTree.read_current ~lfts ~f t
   | T [] -> failwith "empty blocks, cannot happen"
   | Freed -> DR.error (Use_after_free loc)
 
@@ -659,6 +703,67 @@ let rem_value (heap : t) loc =
      Therefore we don't need to check anything, we just remove. *)
   HeapMap.remove loc heap
 
+let drop_borrows ~tyenv (heap : t) loc proj ty =
+  let open DR.Syntax in
+  match HeapMap.find_opt loc heap with
+  | None -> DR.ok heap
+  | Some Freed -> DR.error (Use_after_free loc)
+  | Some (T trees) ->
+      let rec drop_borrows trees =
+        match trees with
+        | [] -> DR.ok []
+        | TimedTree.Borrowed { current; prophecy; alive_while } :: r ->
+            let return_and_update tb =
+              DR.ok (TreeBlock.to_rust_value ~tyenv tb, TreeBlock.drop tb)
+            in
+            let** current_expr, current =
+              TreeBlock.find_proj ~tyenv ~return_and_update ~ty current proj
+            in
+            let** prophecy_expr, prophecy =
+              TreeBlock.find_proj ~tyenv ~return_and_update ~ty prophecy proj
+            in
+            let** () =
+              DR.ok ~learned:[ Formula.Eq (current_expr, prophecy_expr) ] ()
+            in
+            let++ r = drop_borrows r in
+            TimedTree.Borrowed { current; prophecy; alive_while } :: r
+        | owned :: r ->
+            let++ r = drop_borrows r in
+            owned :: r
+      in
+      let++ new_trees = drop_borrows trees in
+      HeapMap.add loc (T new_trees) heap
+
+let set_pcy_value ~tyenv (heap : t) loc proj ty lft value pcy =
+  let open DR.Syntax in
+  let open Delayed.Syntax in
+  let** trees =
+    match HeapMap.find_opt loc heap with
+    | None -> DR.ok []
+    | Some (T trees) -> DR.ok trees
+    | Some Freed -> DR.error (Use_after_free loc)
+  in
+  if proj <> [] then failwith "cannot set partially for now";
+  let new_tree = TimedTree.borrowed ~tyenv ty lft value pcy in
+  let rec update_or_add passed trees =
+    match trees with
+    | [] -> Delayed.return @@ List.rev_append passed [ new_tree ]
+    | t :: ts ->
+        let lft_less_than_next =
+          match TimedTree.alive_while t with
+          | None -> Formula.True
+          | Some lft_next ->
+              if Lft.equal lft lft_next then
+                failwith "cannot set partially for now"
+              else Lft.( <=% ) lft lft_next
+        in
+        if%sat lft_less_than_next then
+          Delayed.return @@ List.rev_append passed (new_tree :: trees)
+        else update_or_add (t :: passed) ts
+  in
+  let+ new_trees = update_or_add [] trees in
+  Ok (HeapMap.add loc (T new_trees) heap)
+
 let deinit ~tyenv ~lfts (heap : t) loc proj ty =
   let open DR.Syntax in
   let++ (), new_heap =
@@ -688,23 +793,6 @@ let load_discr ~tyenv ~lfts (heap : t) loc proj enum_typ =
   read_not_freed ~lfts loc heap (fun block ->
       TreeBlock.get_discr ~tyenv block proj enum_typ)
 
-let assertions ~tyenv (heap : t) = failwith "to_assertion is not working"
-(* let value (loc, block) =
-     match block with
-     | T block ->
-         let cp = Actions.cp_to_name Value in
-         let ty = Ty.to_expr block.TreeBlock.ty in
-         let value = TreeBlock.to_rust_value ~tyenv block in
-         Asrt.GA
-           (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])
-     | Freed ->
-         let cp = Actions.cp_to_name Freed in
-         Asrt.GA (cp, [ Expr.loc_from_loc_name loc ], [])
-   in
-   HeapMap.to_seq heap |> Seq.map value |> List.of_seq *)
-
-let empty : t = HeapMap.empty
-
 let pp : t Fmt.t =
   let open Fmt in
   let pp_block ft = function
@@ -713,6 +801,18 @@ let pp : t Fmt.t =
   in
   iter_bindings ~sep:(any "@\n") HeapMap.iter
     (parens (pair ~sep:(any "-> ") string pp_block))
+
+let assertions ~tyenv (heap : t) =
+  let value (loc, block) =
+    match block with
+    | T block -> List.to_seq block |> Seq.map (TimedTree.assertion ~tyenv ~loc)
+    | Freed ->
+        let cp = Actions.cp_to_name Freed in
+        Seq.return @@ Asrt.GA (cp, [ Expr.loc_from_loc_name loc ], [])
+  in
+  HeapMap.to_seq heap |> Seq.concat_map value |> List.of_seq
+
+let empty : t = HeapMap.empty
 
 let substitution ~tyenv heap subst =
   let open Gillian.Symbolic in

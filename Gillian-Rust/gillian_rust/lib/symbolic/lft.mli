@@ -1,6 +1,6 @@
 open Gil_syntax
 
-type t [@@deriving yojson, ord]
+type t [@@deriving yojson, ord, eq]
 
 val pp : Format.formatter -> t -> unit
 val of_expr : Expr.t -> t

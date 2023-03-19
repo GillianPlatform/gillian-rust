@@ -7,6 +7,8 @@ type t =
   | Deinit
   | Free
   | Load_discr
+  | Borrow
+  | Drop_borrows
   | New_lft
   | End_lft
   (* Core predicate manipulation *)
@@ -52,6 +54,8 @@ let of_name = function
   | "deinit" -> Deinit
   | "free" -> Free
   | "load_discr" -> Load_discr
+  | "borrow" -> Borrow
+  | "drop_borrows" -> Drop_borrows
   | "new_lft" -> New_lft
   | "end_lft" -> End_lft
   | "get_value" -> Get_value
@@ -77,6 +81,8 @@ let to_name = function
   | Deinit -> "deinit"
   | Free -> "free"
   | Load_discr -> "load_discr"
+  | Borrow -> "borrow"
+  | Drop_borrows -> "drop_borrows"
   | New_lft -> "new_lft"
   | End_lft -> "end_lft"
   | Get_value -> "get_value"

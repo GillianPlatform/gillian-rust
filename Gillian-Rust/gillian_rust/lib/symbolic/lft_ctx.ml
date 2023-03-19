@@ -21,3 +21,11 @@ let check_alive t loc = check_status ~expected:true t loc
 let check_dead t loc = check_status ~expected:false t loc
 let remove t loc = LftMap.remove loc t
 let empty = LftMap.empty
+
+let assertions t =
+  let asrt (lft, status) =
+    let alive_cp = Common.Actions.cp_to_name Alive_lft in
+    if status then Gil_syntax.Asrt.GA (alive_cp, [ Lft.to_expr lft ], [])
+    else failwith "not implemented: dead lfts"
+  in
+  LftMap.to_seq t |> Seq.map asrt |> List.of_seq

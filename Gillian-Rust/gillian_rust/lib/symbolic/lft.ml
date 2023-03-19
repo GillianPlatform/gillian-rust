@@ -2,6 +2,7 @@ open Gil_syntax
 
 type t = Expr.t [@@deriving yojson]
 
+let equal = Expr.equal
 let pp = Expr.pp
 let compare = compare
 let of_expr t = t

@@ -155,6 +155,35 @@ let execute_rem_value mem args =
       DR.ok (make_branch ~mem:{ mem with heap = new_heap } ())
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
+let execute_set_pcy_value mem args =
+  let open DR.Syntax in
+  let open Delayed.Syntax in
+  let { heap; tyenv; lfts } = mem in
+  match args with
+  | [ loc; proj; ty; lft; value; pcy ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = projections_of_expr proj in
+      let lft = Lft.of_expr lft in
+      let++ new_heap =
+        Heap.set_pcy_value ~tyenv heap loc_name proj ty lft value pcy
+      in
+      make_branch ~mem:{ mem with heap = new_heap } ()
+  | _ -> Fmt.failwith "Invalid arguments for set_pcy_value"
+
+let execute_drop_borrows mem args =
+  let open DR.Syntax in
+  let open Delayed.Syntax in
+  let { heap; tyenv; lfts } = mem in
+  match args with
+  | [ loc; proj; ty ] ->
+      let ty = Ty.of_expr ty in
+      let** loc_name = resolve_loc_result loc in
+      let* proj = projections_of_expr proj in
+      let++ new_heap = Heap.drop_borrows ~tyenv heap loc_name proj ty in
+      make_branch ~mem:{ mem with heap = new_heap } ()
+  | _ -> Fmt.failwith "Invalid arguments for drop_borrows"
+
 let execute_new_lifetime mem args =
   match args with
   | [ lft ] ->
@@ -210,7 +239,9 @@ let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
 let lvars _ = failwith "lvars: Not yet implemented"
 let alocs _ = failwith "alocs: Not yet implemented"
-let assertions ?to_keep:_ { heap; tyenv } = Heap.assertions ~tyenv heap
+
+let assertions ?to_keep:_ { heap; tyenv; lfts } =
+  Lft_ctx.assertions lfts @ Heap.assertions ~tyenv heap
 
 let mem_constraints _ =
   Logging.normal (fun m -> m "WARNING: MEM_CONSTRAINTS\n@?");
@@ -257,8 +288,11 @@ let execute_action ~action_name mem args =
     | Get_value -> execute_get_value mem args
     | Set_value -> execute_set_value mem args
     | Rem_value -> execute_rem_value mem args
+    | Set_pcy_value -> execute_set_pcy_value mem args
+    | Set_alive_lft -> execute_set_alive_lft mem args
     | New_lft -> execute_new_lifetime mem args
     | End_lft -> execute_end_lifetime mem args
+    | Drop_borrows -> execute_drop_borrows mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   lift_dr_and_log a_ret
