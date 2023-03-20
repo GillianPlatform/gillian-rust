@@ -14,20 +14,26 @@ type t =
   | Get_freed
   | Set_freed
   | Rem_freed
+  | Get_lft
+  | Set_lft
+  | Rem_lft
 
-type core_predicate = Value | Freed
+type core_predicate = Value | Freed | Lft
 
 let ga_to_getter = function
   | Value -> Get_value
   | Freed -> Get_freed
+  | Lft -> Get_lft
 
 let ga_to_setter = function
   | Value -> Set_value
   | Freed -> Set_freed
+  | Lft -> Set_lft
 
 let ga_to_deleter = function
   | Value -> Rem_value
   | Freed -> Rem_freed
+  | Lft -> Rem_lft
 
 let of_name = function
   | "alloc" -> Alloc
@@ -44,6 +50,9 @@ let of_name = function
   | "get_freed" -> Get_freed
   | "set_freed" -> Set_freed
   | "rem_freed" -> Rem_freed
+  | "get_lft" -> Get_lft
+  | "set_lft" -> Set_lft
+  | "rem_lft" -> Rem_lft
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
@@ -61,14 +70,19 @@ let to_name = function
   | Get_freed -> "get_freed"
   | Set_freed -> "set_freed"
   | Rem_freed -> "rem_freed"
+  | Get_lft -> "get_lft"
+  | Set_lft -> "set_lft"
+  | Rem_lft -> "rem_lft"
 
 let cp_to_name = function
   | Value -> "value"
   | Freed -> "freed"
+  | Lft -> "lft"
 
 let cp_of_name = function
   | "value" -> Value
   | "freed" -> Freed
+  | "lft" -> Lft
   | _ -> failwith "incorrect compilation: unknown core predicate"
 
 let ga_to_getter_str str = str |> cp_of_name |> ga_to_getter |> to_name

@@ -8,6 +8,9 @@ module Actions = Common.Actions
 
 exception NotConcrete of string
 
+let too_symbolic e =
+  Delayed.map (Delayed.reduce e) (fun e -> Error (Too_symbolic e))
+
 let not_concrete msgf = Fmt.kstr (fun s -> raise (NotConcrete s)) msgf
 
 let rec lift_lit = function
@@ -200,7 +203,7 @@ module TreeBlock = struct
             List.map2 (fun ty e -> { content = Symbolic e; ty }) v values
           in
           DR.ok { ty; content = Fields fields }
-        else DR.error (Too_symbolic expr)
+        else too_symbolic expr
           (* FIXME: This is probably not the right error? *)
     | Array { length; ty = ty' } ->
         if%sat (is_list expr) #&& (has_length length expr) then
@@ -209,7 +212,7 @@ module TreeBlock = struct
             List.map (fun e -> { content = Symbolic e; ty = ty' }) values
           in
           DR.ok { ty; content = Array fields }
-        else DR.error (Too_symbolic expr)
+        else too_symbolic expr
     | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
@@ -225,7 +228,7 @@ module TreeBlock = struct
                   fields values
               in
               DR.ok { ty; content = Fields fields }
-            else DR.error (Too_symbolic expr)
+            else too_symbolic expr
         | Enum variants ->
             (* This should only be called with a variant context *)
             let variant_idx = Option.get variant in
@@ -251,7 +254,7 @@ module TreeBlock = struct
                   (snd variant) values
               in
               DR.ok { ty; content = Enum { discr = variant_idx; fields } }
-            else DR.error (Too_symbolic expr))
+            else too_symbolic expr)
     | Scalar _ | Ref _ ->
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
@@ -409,7 +412,7 @@ module TreeBlock = struct
             (Expr.typeof expr) #== (Expr.type_ ListType)
             #&& ((Expr.list_length expr) #== (Expr.int 2))
           then DR.ok (Expr.list_nth expr 0, block)
-          else DR.error (Too_symbolic expr)
+          else too_symbolic expr
       | _ -> DR.error (Invalid_type (block.ty, enum_typ))
     in
     let++ discr, _ = find_proj ~tyenv ~return_and_update ~ty:enum_typ t proj in

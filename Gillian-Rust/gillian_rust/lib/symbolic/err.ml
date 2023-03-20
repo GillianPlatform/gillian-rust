@@ -9,10 +9,15 @@ type t =
   | Invalid_free_pointer of Expr.t * Expr.t
   | Unhandled of string
   | MissingBlock of string
+  | Missing_lifetime of Lft.t
+  | Double_kill_lifetime of Lft.t
+  | Wrong_lifetime_status of Lft.t
 [@@deriving yojson, show]
 
 let recovery_vals = function
   | Too_symbolic e | Invalid_loc e -> [ e ]
+  | Missing_lifetime e | Double_kill_lifetime e | Wrong_lifetime_status e ->
+      [ Lft.to_expr e ]
   | Use_after_free l | MissingBlock l -> [ Expr.loc_from_loc_name l ]
   | Invalid_free_pointer (loc, proj) -> [ loc; proj ]
   | Invalid_type _ | Invalid_list_op | Unhandled _ -> []
@@ -29,4 +34,7 @@ let pp ft =
   | Invalid_loc e -> pf ft "Invalid location: %a" Expr.pp e
   | Invalid_free_pointer (loc, proj) ->
       pf ft "Invalid free pointer: (%a, %a)" Expr.pp loc Expr.pp proj
+  | Missing_lifetime e -> pf ft "Missing lifetime: %a" Lft.pp e
+  | Double_kill_lifetime e -> pf ft "Double kill lifetime: %a" Lft.pp e
+  | Wrong_lifetime_status e -> pf ft "Wrong lifetime status: %a" Lft.pp e
   | Unhandled s -> pf ft "Unhandled: %s" s

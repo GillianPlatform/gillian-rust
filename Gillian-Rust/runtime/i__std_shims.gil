@@ -48,3 +48,8 @@ proc "core::ptr::const_ptr::<impl *const T>::offset"(T, p, i) {
     ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
     return
 };
+
+proc "std::ptr::null_mut"(T) {
+     ret := {{ $l_null, {{ }} }};
+     return
+};
