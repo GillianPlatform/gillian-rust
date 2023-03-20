@@ -1,5 +1,5 @@
-(executable
- (name i__repr))
+(executables
+ (names i__repr i__ownable))
 
 (rule
  (deps i__repr.exe)
@@ -9,7 +9,15 @@
    %{target}
    (run ./i__repr.exe))))
 
+(rule
+ (deps i__ownable.exe)
+ (target i__ownable.gil)
+ (action
+  (with-stdout-to
+   %{target}
+   (run ./i__ownable.exe))))
+
 (install
  (section share)
- (files i__binop.gil i__lang.gil i__std_shims.gil i__repr.gil)
+ (files i__binop.gil i__lang.gil i__std_shims.gil i__repr.gil i__ownable.gil)
  (package gillian-rust))

@@ -118,8 +118,15 @@ let execute_action act_name mem args =
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Load_discr -> protect execute_load_discr mem args
-  | Get_value | Set_value | Rem_value | Get_freed | Set_freed | Rem_freed ->
-      failwith "Core Predicates used in concrete execution"
+  | Get_value
+  | Set_value
+  | Rem_value
+  | Get_freed
+  | Set_freed
+  | Rem_freed
+  | Get_lft
+  | Set_lft
+  | Rem_lft -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

@@ -60,8 +60,6 @@ module Parsing = Gil_parsing.Make (Annot)
 
 let compile ~out_dir file =
   let ( let* ) = Result.bind in
-  let gilogic = resolve_gilogic () in
-  let () = Fmt.pr "\n\nRESOLVED GILOGIC AT: %s\n@?" gilogic in
   let no_ext = Filename.chop_extension (Filename.basename file) in
   let pp_opts = Fmt.(list ~sep:(any " ") string) in
   let options = options ~out_dir () in

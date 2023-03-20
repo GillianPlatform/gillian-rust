@@ -14,6 +14,8 @@ pub mod macros {
 mod seq;
 pub use seq::Seq;
 
+mod ownable;
+pub use ownable::Ownable;
 mod repr;
 pub use repr::ShallowRepresentation;
 
