@@ -127,25 +127,25 @@ fn gather_ins(args: &syn::punctuated::Punctuated<PredParam, syn::token::Comma>) 
 
 impl ToTokens for Predicate {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let ins = gather_ins(self.args());
-        match self {
-            Self::Abstract {
-                name,
-                args,
-                generics,
-            } => tokens.extend(quote! {
+        let ins = gather_ins(&self.args);
+        let Predicate {
+            name,
+            body,
+            generics,
+            args,
+            attributes,
+        } = &self;
+        match body {
+            None => tokens.extend(quote! {
+              #[cfg(gillian)]
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
+              #(#attributes)*
               fn #name #generics (#args) {
                 unreachable!()
               }
             }),
-            Self::Concrete {
-                name,
-                generics,
-                args,
-                body,
-            } => {
+            Some(body) => {
                 let stmts: Vec<_> = body
                     .stmts
                     .iter()
@@ -159,6 +159,7 @@ impl ToTokens for Predicate {
                   #[cfg(gillian)]
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
+                  #(#attributes)*
                   fn #name #generics (#args) -> ::gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {

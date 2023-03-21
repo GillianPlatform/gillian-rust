@@ -500,7 +500,6 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         if !self.is_assertion_ty(expr.ty) {
             fatal!(self, "{:?} is not the assertion type", expr.ty)
         }
-
         match &expr.kind {
             ExprKind::Scope {
                 region_scope: _,
@@ -527,6 +526,24 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
+                Some(Stubs::OwnPred)
+                    if matches!(thir.exprs[args[0]].ty.kind(), TyKind::Param(_)) =>
+                {
+                    let name = crate::codegen::runtime::POLY_OWN_PRED.to_string();
+                    let mut params = Vec::with_capacity(args.len() + 1);
+                    params.push(self.encode_type(thir.exprs[args[0]].ty).into());
+                    for arg in args.iter() {
+                        params.push(self.compile_expression(*arg, thir));
+                    }
+                    Assertion::Pred { name, params }
+                }
+                // Some(Stubs::OwnPred)
+                //     if matches!(
+                //         thir.exprs[args[0]].ty.kind(),
+                //         TyKind::Ref(_, ty, Mutability::Mut)
+                //     ) => {
+
+                //     }
                 _ => {
                     let (def_id, substs) = match ty.kind() {
                         TyKind::FnDef(def_id, substs) => self.resolve_candidate(*def_id, substs),
@@ -673,6 +690,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             facts,
         } = self.sig();
         get_thir!(thir, ret_expr, self);
+        log::debug!("Compiling concrete predicate: {}\n{:?}", name, thir);
         // FIXME: Use the list of statements of the main block expr
         let definitions = self
             .resolve_definitions(ret_expr, &thir)

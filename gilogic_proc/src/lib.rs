@@ -7,6 +7,7 @@ use ::quote::ToTokens;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
+mod borrows;
 mod gilogic_syn;
 mod quote;
 mod spec;
@@ -29,6 +30,16 @@ pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     spec::ensures(args, input)
 }
 
+#[proc_macro_attribute]
+pub fn show_safety(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    spec::show_safety(args, input)
+}
+
+#[proc_macro_attribute]
+pub fn borrow(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    borrows::borrow(args, input)
+}
+
 #[proc_macro]
 pub fn assertion(input: TokenStream_) -> TokenStream_ {
     match parse_macro_input!(input as Assertion).encode() {
@@ -40,5 +51,5 @@ pub fn assertion(input: TokenStream_) -> TokenStream_ {
 #[proc_macro]
 pub fn assertion_test(input: TokenStream_) -> TokenStream_ {
     dbg!(parse_macro_input!(input as Assertion));
-    panic!("bite");
+    panic!("stop");
 }

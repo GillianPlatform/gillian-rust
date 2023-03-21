@@ -1,7 +1,9 @@
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, ImplItemMethod, ReturnType};
+use syn::{
+    parse_macro_input, punctuated::Punctuated, FnArg, ImplItemMethod, PatType, ReturnType, Token,
+};
 use uuid::Uuid;
 
 use super::gilogic_syn::Assertion;
@@ -71,6 +73,25 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         }
 
         #[gillian::spec::postcondition=#name_string]
+        #item
+    };
+    result.into()
+}
+
+pub(crate) fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    let item = parse_macro_input!(input as ImplItemMethod);
+    let args_own: Punctuated<TokenStream, Token![*]> = item
+        .sig
+        .inputs
+        .iter()
+        .map(|arg| match arg {
+            FnArg::Receiver(_receiver) => quote!(self.own()),
+            FnArg::Typed(PatType { pat, .. }) => quote!(#pat.own()),
+        })
+        .collect();
+    let result = quote! {
+        #[::gilogic::macros::requires(#args_own)]
+        #[::gilogic::macros::ensures(ret.own())]
         #item
     };
     result.into()

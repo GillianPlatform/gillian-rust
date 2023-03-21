@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
-    parse::Parse, punctuated::Punctuated, spanned::Spanned, Block, Error, FnArg, GenericArgument,
-    Generics, Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
+    parse::Parse, punctuated::Punctuated, spanned::Spanned, Attribute, Block, Error, FnArg,
+    GenericArgument, Generics, Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
 };
 
 #[derive(Debug)]
@@ -152,27 +152,12 @@ impl TryFrom<FnArg> for PredParam {
     }
 }
 
-pub enum Predicate {
-    Abstract {
-        name: Ident,
-        args: Punctuated<PredParam, Token![,]>,
-        generics: Generics,
-    },
-    Concrete {
-        name: Ident,
-        args: Punctuated<PredParam, Token![,]>,
-        generics: Generics,
-        body: Block,
-    },
-}
-
-impl Predicate {
-    pub fn args(&self) -> &Punctuated<PredParam, Token![,]> {
-        match self {
-            Predicate::Abstract { args, .. } => args,
-            Predicate::Concrete { args, .. } => args,
-        }
-    }
+pub struct Predicate {
+    pub(crate) attributes: Vec<Attribute>,
+    pub(crate) name: Ident,
+    pub(crate) generics: Generics,
+    pub(crate) args: Punctuated<PredParam, Token![,]>,
+    pub(crate) body: Option<Block>,
 }
 
 fn validate_sig(sig: &Signature) -> syn::Result<()> {
@@ -200,6 +185,7 @@ fn validate_sig(sig: &Signature) -> syn::Result<()> {
 
 impl Parse for Predicate {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let attributes = input.call(Attribute::parse_outer)?;
         let sig: Signature = input.parse()?;
         validate_sig(&sig)?;
         let lookeahead = input.lookahead1();
@@ -215,23 +201,18 @@ impl Parse for Predicate {
             .collect();
         let args = args?;
         let generics = sig.generics;
-        if lookeahead.peek(Token![;]) {
+        let body = if lookeahead.peek(Token![;]) {
             let _: Token![;] = input.parse().unwrap();
-            let result = Predicate::Abstract {
-                name,
-                generics,
-                args,
-            };
-            Ok(result)
+            None
         } else {
-            let body: Block = input.parse()?;
-            let result = Predicate::Concrete {
-                name,
-                generics,
-                args,
-                body,
-            };
-            Ok(result)
-        }
+            Some(input.parse()?)
+        };
+        Ok(Predicate {
+            name,
+            generics,
+            args,
+            body,
+            attributes,
+        })
     }
 }

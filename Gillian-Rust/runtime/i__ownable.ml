@@ -21,4 +21,5 @@ let () =
       "i64";
       "i128";
       "isize";
-    |]
+    |];
+  Printf.printf {|abstract pred "$POLYMORPHIC::own"(+pty, +self);|}

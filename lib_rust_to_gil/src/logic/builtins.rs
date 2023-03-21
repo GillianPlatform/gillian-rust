@@ -34,6 +34,7 @@ pub(crate) enum Stubs {
     SeqConcat,
     SeqLen,
     ShallowRepr,
+    OwnPred,
 }
 
 pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
@@ -69,6 +70,8 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
             Some(Stubs::SeqLen)
         } else if tcx.is_diagnostic_item(Symbol::intern("gillian::repr::shallow_repr"), did) {
             Some(Stubs::ShallowRepr)
+        } else if tcx.is_diagnostic_item(Symbol::intern("gillian::ownable::own"), did) {
+            Some(Stubs::OwnPred)
         } else {
             None
         }

@@ -18,6 +18,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         match tcx.trait_of_item(def_id) {
             None => (def_id, substs),
             Some(trait_id) => {
+                log::debug!("Resolving candidate for trait {:?}", trait_id);
                 // FIXME:
                 // The following is extremely disgusting and will be cleaned up and factored out as soon as possible.
                 // But right now it works and I have priorities.
@@ -73,7 +74,10 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                         let leaf_substs = infer_ctx.tcx.erase_regions(substs);
                         (leaf_def.item.def_id, leaf_substs)
                     }
-                    _ => unimplemented!(),
+                    _ => {
+                        log::debug!("Unhandled Implementation source {:?}", impl_source);
+                        unimplemented!()
+                    }
                 }
             }
         }
