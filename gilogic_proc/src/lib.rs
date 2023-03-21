@@ -31,6 +31,11 @@ pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro_attribute]
+pub fn lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    parse_macro_input!(input as Lemma).to_token_stream().into()
+}
+
+#[proc_macro_attribute]
 pub fn show_safety(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     spec::show_safety(args, input)
 }

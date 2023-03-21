@@ -14,7 +14,7 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     // so I'm expecting this to work in any context.
     let item = parse_macro_input!(input as ImplItemMethod);
     let assertion: TokenStream = match parse_macro_input!(args as Assertion).encode() {
-        Ok(stream) => stream.into(),
+        Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
     let id = Uuid::new_v4().to_string();
@@ -47,7 +47,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // so I'm expecting this to work in any context.
     let item = parse_macro_input!(input as ImplItemMethod);
     let assertion: TokenStream = match parse_macro_input!(args as Assertion).encode() {
-        Ok(stream) => stream.into(),
+        Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
     let id = Uuid::new_v4().to_string();

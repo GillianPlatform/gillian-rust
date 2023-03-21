@@ -40,6 +40,26 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
         let logic_item = compile_logic(did, self.tcx, &mut self.global_env);
         match logic_item {
             LogicItem::Pred(pred) => self.prog.add_pred(pred),
+            LogicItem::Lemma(lemma) => {
+                let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx);
+                let post_id = crate::utils::attrs::get_post_id(did, self.tcx);
+                let name =
+                    rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(did));
+                match (pre_id, post_id) {
+                    (Some(pre_id), Some(post_id)) => {
+                        self.spec_tbl.insert(name, (pre_id, post_id));
+                    }
+                    (Some(_), None) | (None, Some(_)) => {
+                        fatal!(
+                            self,
+                            "Missing precondition or postcondition for lemma: {:?}",
+                            did
+                        )
+                    }
+                    (None, None) => (),
+                }
+                self.prog.add_lemma(lemma)
+            }
             LogicItem::Precondition(symbol, args, asrt) => {
                 self.pre_tbl.insert(symbol, (args, asrt));
             }
@@ -83,57 +103,84 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
         self.prog.add_proc(ctx.push_body());
     }
 
-    /// Careful, after calling add_specs, the spec table is emptied
-    fn add_specs(&mut self) {
-        let spec_tbl = std::mem::take(&mut self.spec_tbl);
-        for (key, (pre_id, post_id)) in spec_tbl {
-            let proc_args = self
-                .prog
-                .procs
-                .get(&key)
-                .expect("proc not found")
-                .params
-                .clone()
-                .into_iter()
-                .map(Expr::PVar);
-            log::debug!("adding spec for {}", &key);
-            let pre = {
-                let (pre_args, mut pre) = self.pre_tbl.remove(&pre_id).unwrap_or_else(|| {
-                    fatal!(self, "Precondition {} not found for {}", pre_id, key)
-                });
-                if pre_args.len() != proc_args.len() {
-                    fatal!(
+    fn add_spec_to_proc(&mut self, key: String, pre_id: Symbol, post_id: Symbol) {
+        let proc_args = self
+            .prog
+            .procs
+            .get(&key)
+            .expect("proc not found")
+            .params
+            .clone()
+            .into_iter()
+            .map(Expr::PVar);
+        let pre = {
+            let (pre_args, mut pre) = self
+                .pre_tbl
+                .remove(&pre_id)
+                .unwrap_or_else(|| fatal!(self, "Precondition {} not found for {}", pre_id, key));
+            if pre_args.len() != proc_args.len() {
+                fatal!(
                     self,
                     "MIR ({:?}) function has more arguments that its THIR, can't handle that?\nPRE: {:?}\nFN:  {:?}", key,
                     pre_args, proc_args
                 )
-                }
-                let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();
-                pre.subst_pvar(&mapping);
-                pre
-            };
-            let post = self
-                .post_tbl
-                .remove(&post_id)
-                .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
+            }
+            let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();
+            pre.subst_pvar(&mapping);
+            pre
+        };
+        let post = self
+            .post_tbl
+            .remove(&post_id)
+            .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
 
-            let sspec = gillian::gil::SingleSpec {
-                pre,
-                posts: vec![post],
-                flag: gillian::gil::Flag::Normal,
-                to_verify: true,
-            };
-            let proc = self.prog.procs.get_mut(&key).unwrap();
-            match &mut proc.spec {
-                Some(spec) => spec.sspecs.push(sspec),
-                None => {
-                    proc.spec = Some(Spec {
-                        name: proc.name.clone(),
-                        params: proc.params.clone(),
-                        sspecs: vec![sspec],
-                        to_verify: true,
-                    })
-                }
+        let sspec = gillian::gil::SingleSpec {
+            pre,
+            posts: vec![post],
+            flag: gillian::gil::Flag::Normal,
+            to_verify: true,
+        };
+        let proc = self.prog.procs.get_mut(&key).unwrap();
+        match &mut proc.spec {
+            Some(spec) => spec.sspecs.push(sspec),
+            None => {
+                proc.spec = Some(Spec {
+                    name: proc.name.clone(),
+                    params: proc.params.clone(),
+                    sspecs: vec![sspec],
+                    to_verify: true,
+                })
+            }
+        }
+    }
+
+    fn add_spec_to_lemma(&mut self, key: String, pre_id: Symbol, post_id: Symbol) {
+        // While for procs we need safe-guards in case MIR has changed things compared to THIR,
+        // Lemmas come from THIR and therefore should be safe to handle.
+        let pre = self
+            .pre_tbl
+            .remove(&pre_id)
+            .unwrap_or_else(|| fatal!(self, "Precondition {} not found for {}", pre_id, key))
+            .1;
+        let post = self
+            .post_tbl
+            .remove(&post_id)
+            .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
+
+        let lemma = self.prog.lemmas.get_mut(&key).unwrap();
+        lemma.hyp = pre;
+        lemma.concs = vec![post];
+    }
+
+    /// Careful, after calling add_specs, the spec table is emptied
+    fn add_specs(&mut self) {
+        let spec_tbl = std::mem::take(&mut self.spec_tbl);
+        for (key, (pre_id, post_id)) in spec_tbl {
+            log::debug!("adding spec for {}", &key);
+            if self.prog.procs.contains_key(&key) {
+                self.add_spec_to_proc(key, pre_id, post_id)
+            } else {
+                self.add_spec_to_lemma(key, pre_id, post_id)
             }
         }
     }

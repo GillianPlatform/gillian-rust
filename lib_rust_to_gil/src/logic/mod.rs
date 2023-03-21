@@ -9,12 +9,15 @@ use crate::utils::polymorphism::HasGenericArguments;
 mod builtins;
 mod core_preds;
 mod dummy_pre;
+mod lemma;
 mod predicate;
 mod traits;
+mod utils;
 
 #[derive(Debug)]
 pub enum LogicItem {
     Pred(Pred),
+    Lemma(Lemma),
     Precondition(Symbol, Vec<String>, Assertion),
     Postcondition(Symbol, Assertion),
 }
@@ -30,7 +33,12 @@ pub fn compile_logic<'tcx, 'genv>(
     } else if is_predicate(did, tcx) {
         let pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
         LogicItem::Pred(pred)
+    } else if is_lemma(did, tcx) {
+        let lemma =
+            lemma::LemmaCtx::new(tcx, global_env, did, is_trusted_lemma(did, tcx)).compile();
+        LogicItem::Lemma(lemma)
     } else if is_precondition(did, tcx) {
+        log::debug!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
         let ty_amount = pred_ctx.generic_types().len();
         let mut pred = pred_ctx.compile();

@@ -188,7 +188,6 @@ impl Parse for Predicate {
         let attributes = input.call(Attribute::parse_outer)?;
         let sig: Signature = input.parse()?;
         validate_sig(&sig)?;
-        let lookeahead = input.lookahead1();
         let name = sig.ident;
         let args: syn::Result<Punctuated<PredParam, Token![,]>> = sig
             .inputs
@@ -201,7 +200,7 @@ impl Parse for Predicate {
             .collect();
         let args = args?;
         let generics = sig.generics;
-        let body = if lookeahead.peek(Token![;]) {
+        let body = if input.lookahead1().peek(Token![;]) {
             let _: Token![;] = input.parse().unwrap();
             None
         } else {

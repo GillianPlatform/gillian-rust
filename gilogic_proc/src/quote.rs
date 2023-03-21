@@ -169,3 +169,31 @@ impl ToTokens for Predicate {
         }
     }
 }
+
+impl ToTokens for Lemma {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Lemma {
+            attributes,
+            sig,
+            body,
+        } = self;
+        match body {
+            None => tokens.extend(quote! {
+                #[cfg(gillian)]
+                #[gillian::decl::lemma]
+                #[gillian::lemma::trusted]
+                #(#attributes)*
+                #sig {
+                    unreachable!()
+                }
+            }),
+            Some(body) => tokens.extend(quote! {
+                #[cfg(gillian)]
+                #[gillian::decl::lemma]
+                #[gillian::lemma::trusted]
+                #(#attributes)*
+                #sig #body
+            }),
+        }
+    }
+}

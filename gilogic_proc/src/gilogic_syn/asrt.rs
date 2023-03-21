@@ -555,10 +555,7 @@ ast_struct! {
 
 pub(crate) fn requires_terminator(expr: &Term) -> bool {
     // see https://github.com/rust-lang/rust/blob/2679c38fc/src/librustc_ast/util/classify.rs#L7-L25
-    match *expr {
-        Term::Block(..) | Term::If(..) | Term::Match(..) => false,
-        _ => true,
-    }
+    matches!(expr, Term::Block(..) | Term::If(..) | Term::Match(..))
 }
 
 pub(crate) mod parsing {
@@ -647,7 +644,7 @@ pub(crate) mod parsing {
 
             Err(Error::new(
                 input.cursor().span(),
-                format!("Unexpected token in Assertion: {}", input.to_string()),
+                format!("Unexpected token in Assertion: {}", input),
             ))
         }
     }

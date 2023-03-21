@@ -1,7 +1,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, borrow, predicate, show_safety},
+    macros::{assertion, borrow, ensures, lemma, predicate, requires, show_safety},
     Ownable,
 };
 

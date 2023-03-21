@@ -50,6 +50,10 @@ impl Prog {
     pub fn add_pred(&mut self, pred: Pred) {
         self.preds.insert(pred.name.clone(), pred);
     }
+
+    pub fn add_lemma(&mut self, lemma: Lemma) {
+        self.lemmas.insert(lemma.name.clone(), lemma);
+    }
 }
 
 impl Display for Prog {
@@ -62,6 +66,10 @@ impl Display for Prog {
         f.write_str(";\n\n")?;
         for pred in self.preds.values() {
             pred.fmt(f)?;
+            f.write_str("\n\n")?;
+        }
+        for lemma in self.lemmas.values() {
+            lemma.fmt(f)?;
             f.write_str("\n\n")?;
         }
         for proc in self.procs.values() {

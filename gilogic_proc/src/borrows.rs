@@ -1,5 +1,4 @@
 use proc_macro::TokenStream as TokenStream_;
-use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ImplItemMethod};
 use uuid::Uuid;

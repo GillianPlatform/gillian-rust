@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::builtins::Stubs;
+use super::utils::get_thir;
 use crate::{
     codegen::typ_encoding::param_type_name, prelude::*, utils::polymorphism::HasGenericArguments,
 };
@@ -55,19 +56,6 @@ impl HasDefId for PredCtx<'_, '_> {
     fn did(&self) -> DefId {
         self.did
     }
-}
-
-macro_rules! get_thir {
-    ($thir:pat, $expr:pat, $s:expr) => {
-        let ___thir = $s.tcx.thir_body(WithOptConstParam::unknown(
-            $s.did.as_local().expect("non-local predicate"),
-        ));
-        let ($thir, $expr) = if let Ok((___thir, ___expr)) = ___thir {
-            (___thir.borrow(), ___expr)
-        } else {
-            fatal!($s, "Predicate body failed to typecheck")
-        };
-    };
 }
 
 // FIXME: this code isn't very elegant, there should be also a "LocalLogCtx" with a reference to the thir body,
@@ -189,8 +177,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             ins.sort();
         }
         get_thir!(thir, _expr, self);
-        let params: Vec<_> = self
-            .generic_types()
+        let params: Vec<_> = generic_types
             .into_iter()
             .map(|x| (param_type_name(x.0, x.1), None))
             .chain(thir.params.iter().map(|p| {
@@ -690,7 +677,6 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             facts,
         } = self.sig();
         get_thir!(thir, ret_expr, self);
-        log::debug!("Compiling concrete predicate: {}\n{:?}", name, thir);
         // FIXME: Use the list of statements of the main block expr
         let definitions = self
             .resolve_definitions(ret_expr, &thir)
