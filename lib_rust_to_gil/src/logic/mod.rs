@@ -4,7 +4,7 @@ use gillian::gil::Pred;
 
 use crate::prelude::*;
 use crate::utils::attrs::*;
-use crate::utils::polymorphism::HasGenericArguments;
+use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
 
 mod builtins;
 mod core_preds;
@@ -40,7 +40,7 @@ pub fn compile_logic<'tcx, 'genv>(
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
-        let ty_amount = pred_ctx.generic_types().len();
+        let generic_amounts = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile();
         assert!(
             pred.definitions.len() == 1,
@@ -50,7 +50,7 @@ pub fn compile_logic<'tcx, 'genv>(
             .get_diagnostic_name(did)
             .expect("All preconditions should be diagnostic items");
         let mut definition = pred.definitions.pop().unwrap();
-        for (name, _) in pred.params.iter().take(ty_amount) {
+        for (name, _) in pred.params.iter().take(generic_amounts) {
             let lvar_name = format!("#{}", name.clone());
             definition = Assertion::star(
                 Assertion::Pure(Formula::eq(Expr::PVar(name.clone()), Expr::LVar(lvar_name))),

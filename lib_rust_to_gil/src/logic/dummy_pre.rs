@@ -31,7 +31,7 @@ impl<'tcx> From<DummyPre<'tcx>> for gillian::gil::Assertion {
             .generic_types()
             .into_iter()
             .map(|ty| {
-                let name = typ_encoding::param_type_name(ty.0, ty.1);
+                let name = typ_encoding::type_param_name(ty.0, ty.1);
                 let lvar_name = format!("#{}", name);
                 Assertion::Pure(Formula::eq(Expr::PVar(name), Expr::LVar(lvar_name)))
             })

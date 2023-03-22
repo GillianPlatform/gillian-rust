@@ -19,8 +19,12 @@ impl From<&str> for EncodedType {
     }
 }
 
-pub fn param_type_name(index: u32, name: Symbol) -> String {
+pub fn type_param_name(index: u32, name: Symbol) -> String {
     format!("pty_{}{}", name, index)
+}
+
+pub fn lifetime_param_name(name: &String) -> String {
+    format!("pLft_{}", name)
 }
 
 pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
@@ -204,7 +208,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             Param(ParamTy { index, name }) => {
-                EncodedType(Expr::PVar(param_type_name(*index, *name)))
+                EncodedType(Expr::PVar(type_param_name(*index, *name)))
             }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }

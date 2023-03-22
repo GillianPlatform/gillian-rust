@@ -6,8 +6,10 @@ use rustc_middle::ty::{AdtDef, TyCtxt, WithOptConstParam};
 
 use gillian::gil::Assertion;
 
+use crate::codegen::typ_encoding::lifetime_param_name;
+use crate::utils::polymorphism::HasGenericLifetimes;
 use crate::{
-    codegen::typ_encoding::param_type_name,
+    codegen::typ_encoding::type_param_name,
     codegen::{genv::GlobalEnv, typ_encoding::TypeEncoder},
     prelude::{fatal, HasDefId, HasTyCtxt},
     utils::polymorphism::HasGenericArguments,
@@ -38,6 +40,7 @@ impl HasDefId for LemmaCtx<'_, '_> {
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
+impl<'tcx> HasGenericLifetimes<'tcx> for LemmaCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> TypeEncoder<'tcx> for LemmaCtx<'tcx, 'genv> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
@@ -97,12 +100,16 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn sig(&self) -> LemmaSig {
         get_thir!(thir, _expr, self);
-        let params: Vec<_> = self
+        let lft_params = self
+            .generic_lifetimes()
+            .into_iter()
+            .map(|x| lifetime_param_name(&x));
+        let type_params = self
             .generic_types()
             .into_iter()
-            .map(|x| param_type_name(x.0, x.1))
-            .chain(thir.params.iter().map(|p| self.extract_param(p)))
-            .collect();
+            .map(|x| type_param_name(x.0, x.1));
+        let args = thir.params.iter().map(|p| self.extract_param(p));
+        let params = lft_params.chain(type_params).chain(args).collect();
         LemmaSig {
             name: self.lemma_name(),
             params,

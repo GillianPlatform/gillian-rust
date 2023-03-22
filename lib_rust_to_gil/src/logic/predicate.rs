@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use super::builtins::Stubs;
 use super::utils::get_thir;
 use crate::{
-    codegen::typ_encoding::param_type_name, prelude::*, utils::polymorphism::HasGenericArguments,
+    codegen::typ_encoding::{lifetime_param_name, type_param_name},
+    prelude::*,
+    utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
@@ -36,6 +38,7 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
+impl<'tcx> HasGenericLifetimes<'tcx> for PredCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
@@ -160,30 +163,37 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn sig(&mut self) -> PredSig {
+        let generic_lifetimes = self.generic_lifetimes();
         let generic_types = self.generic_types();
         let mut ins = self.get_ins();
-        let generic_types_amount = generic_types.len();
-        if generic_types_amount > 0 {
+        let generics_amount = generic_types.len() + generic_lifetimes.len();
+        if generics_amount > 0 {
             // Ins known info is only about non-type params.
             // If there are generic types args,
             // we need to add the type params as ins, and offset known ins,
             // since type params are added in front.
             for i in &mut ins {
-                *i += generic_types_amount;
+                *i += generics_amount;
             }
-            for i in 0..generic_types_amount {
+            for i in 0..generics_amount {
                 ins.push(i)
             }
             ins.sort();
         }
         get_thir!(thir, _expr, self);
-        let params: Vec<_> = generic_types
+        let generic_lft_params = generic_lifetimes
             .into_iter()
-            .map(|x| (param_type_name(x.0, x.1), None))
-            .chain(thir.params.iter().map(|p| {
-                let (name, _ty) = self.extract_param(p);
-                (name, None)
-            }))
+            .map(|x| (lifetime_param_name(&x), None));
+        let generic_type_params = generic_types
+            .into_iter()
+            .map(|x| (type_param_name(x.0, x.1), None));
+        let arguments = thir.params.iter().map(|p| {
+            let (name, _ty) = self.extract_param(p);
+            (name, None)
+        });
+        let params: Vec<_> = generic_lft_params
+            .chain(generic_type_params)
+            .chain(arguments)
             .collect();
         PredSig {
             name: self.pred_name(),
@@ -622,11 +632,31 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 
-        if self.type_info.is_empty() {
+        let with_equalities = if self.type_info.is_empty() {
             inner
         } else {
             Assertion::star(inner, Assertion::Types(self.type_info.clone()))
-        }
+        };
+
+        let generic_lifetimes = self.generic_lifetimes();
+        let with_lifetime_token = if generic_lifetimes.is_empty() {
+            with_equalities
+        } else {
+            if generic_lifetimes.len() > 1 {
+                fatal!(
+                    self,
+                    "Multiple generic lifetimes not supported yet in specs"
+                )
+            };
+            generic_lifetimes.iter().fold(with_equalities, |acc, lft| {
+                let lft_name = lifetime_param_name(lft);
+                Assertion::star(
+                    acc,
+                    super::core_preds::alive_lft(Expr::LVar(format!("#{lft_name}"))),
+                )
+            })
+        };
+        with_lifetime_token
     }
 
     fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {

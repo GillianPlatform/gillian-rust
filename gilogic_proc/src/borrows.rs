@@ -171,16 +171,16 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
       #[::gilogic::macros::predicate]
       #close_token;
 
-      #[gillian::lemma::kills_lifetime_token]
       #[::gilogic::macros::lemma]
       #[::gilogic::macros::requires(#pipe1  #lvars #pipe2 #equalities * #token_pred_call)]
       #[::gilogic::macros::ensures(#pipe1 #lvars #pipe2 #def * #close_token_pred_call)]
+      #[gillian::lemma::consumes_lifetime_token]
       #open_lemma_sig;
 
-      #[gillian::lemma::creates_lifetime_token]
       #[::gilogic::macros::lemma]
       #[::gilogic::macros::requires(#pipe1 #lvars #pipe2 #equalities * #def * #close_token_pred_call)]
       #[::gilogic::macros::ensures(#pipe1 #lvars #pipe2 #token_pred_call)]
+      #[gillian::lemma::produces_lifetime_token]
       #close_lemma_sig;
 
     };

@@ -1,8 +1,12 @@
-use crate::codegen::typ_encoding::param_type_name;
+use crate::codegen::typ_encoding::type_param_name;
+use crate::utils::polymorphism::HasGenericLifetimes;
 use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
 use rustc_middle::mir::pretty::write_mir_fn;
 
+use super::typ_encoding::lifetime_param_name;
+
 impl<'tcx> HasGenericArguments<'tcx> for GilCtxt<'tcx, '_> {}
+impl<'tcx> HasGenericLifetimes<'tcx> for GilCtxt<'tcx, '_> {}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
@@ -52,15 +56,19 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn args(&self) -> Vec<String> {
-        self.generic_types()
+        let lfts = self
+            .generic_lifetimes()
             .into_iter()
-            .map(|x| param_type_name(x.0, x.1))
-            .chain(
-                self.mir()
-                    .args_iter()
-                    .map(|local| self.name_from_local(local)),
-            )
-            .collect()
+            .map(|x| lifetime_param_name(&x));
+        let types = self
+            .generic_types()
+            .into_iter()
+            .map(|x| type_param_name(x.0, x.1));
+        let args = self
+            .mir()
+            .args_iter()
+            .map(|local| self.name_from_local(local));
+        lfts.chain(types).chain(args).collect()
     }
 
     pub fn push_body(mut self) -> Proc {

@@ -121,7 +121,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
             if pre_args.len() != proc_args.len() {
                 fatal!(
                     self,
-                    "MIR ({:?}) function has more arguments that its THIR, can't handle that?\nPRE: {:?}\nFN:  {:?}", key,
+                    "MIR ({:?}) function has more arguments than its THIR, can't handle that?\nPRE: {:?}\nFN:  {:?}", key,
                     pre_args, proc_args
                 )
             }
