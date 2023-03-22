@@ -25,7 +25,7 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-// This should create:
+// This creates:
 // 1) An abstract predicate called `borrowed_wp_xy` which can be opened.
 // 2) An abstract predicate called `borrowed_wp_xy$close_token`.
 // 3) A lemma `borrowed_wp_xy$access` which exchanges `borrowed_wp_xy` and a token for `'a` for
@@ -33,12 +33,32 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 //      b) a `borrowed_wp_xy$close_token`
 // 4) A lemma `borrowed_wp_xy$close` which exchanges the close_token and the assertion against the `borrowed_wp_xy`.
 #[borrow]
-fn borrowed_wp_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+fn wp_ref_mut_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     assertion!(|v_x: T, v_y: T|
         (p -> WP { x, y }) *
         wp(WP { x, y }, x, y)
     )
 }
+
+#[borrow]
+fn wp_ref_mut<'a, T: Ownable>(p: In<&'a mut WP<T>>) {
+    assertion!(|w: WP<T>| (p -> w) * w.own())
+}
+
+#[borrow]
+fn T_ref_mut<'a, T: Ownable>(p: In<&'a T>) {
+    assertion!(|v: T| (p -> v) * v.own())
+}
+
+#[lemma]
+#[requires(|pp| (p == pp) * wp_ref_mut(pp))]
+#[ensures(|pp, x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(pp, x, y))]
+fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
+
+#[lemma]
+#[requires(|pp, x, y| (p == pp) * wp_ref_mut_xy(pp, x, y))]
+#[ensures(|x: &mut T| T_ref_mut(x))]
+fn split_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 impl<T: Ownable> Ownable for WP<T> {
     #[predicate]
@@ -73,7 +93,8 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    // #[show_safety]
+    #[requires(wp_ref_mut(self))]
+    #[ensures(T_ref_mut(ret))]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut (*self.x).v }
     }

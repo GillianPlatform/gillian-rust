@@ -32,9 +32,7 @@ let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
 
 let projections_of_expr (e : Expr.t) : Projections.t Delayed.t =
   let open Delayed.Syntax in
-  Logging.verbose (fun m -> m "Resolving projections %a@?" Expr.pp e);
   let+ e = Delayed.reduce e in
-  Logging.verbose (fun m -> m "Reduced projections to %a@?" Expr.pp e);
   Projections.of_expr e
 
 let resolve_loc_result loc =

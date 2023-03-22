@@ -54,6 +54,8 @@ module TreeBlock = struct
     | FatPtr of Expr.t * Projections.t * int
     | Uninit
 
+  type outer = { offset : Expr.t option; root : t }
+
   let rec pp fmt { ty; content } =
     Fmt.pf fmt "%a :@ %a" pp_content content Ty.pp ty
 
@@ -71,6 +73,11 @@ module TreeBlock = struct
     | Symbolic s -> Expr.pp ft s
     | Uninit -> Fmt.string ft "UNINIT"
 
+  let pp_outer ft t =
+    let open Fmt in
+    pf ft "@[<v 2>AFTER OFFSET: %a %a @]" (Fmt.Dump.option Expr.pp) t.offset pp
+      t.root
+
   let rec to_rust_value ~tyenv ({ content; ty } as t) =
     match content with
     | Scalar s -> (
@@ -86,12 +93,20 @@ module TreeBlock = struct
         Expr.EList [ Expr.int discr; EList fields ]
     | ThinPtr (loc, proj) -> EList [ loc; Projections.to_expr proj ]
     | FatPtr (loc, proj, meta) ->
-        EList
-          [
-            EList [ loc; EList (Projections.to_expr_list proj) ]; Expr.int meta;
-          ]
+        EList [ EList [ loc; Projections.to_expr proj ]; Expr.int meta ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
+
+  let outer_assertion ~loc ~tyenv block =
+    let offset =
+      match block.offset with
+      | None -> Expr.EList []
+      | Some o -> o
+    in
+    let cp = Actions.cp_to_name Value in
+    let ty = Ty.to_expr block.root.ty in
+    let value = to_rust_value ~tyenv block.root in
+    Asrt.GA (cp, [ loc; offset; ty ], [ value ])
 
   let rec of_rust_struct_value
       ~tyenv
@@ -161,6 +176,9 @@ module TreeBlock = struct
         { ty; content = Array mem_array }
     | _, s -> { ty; content = Symbolic s }
 
+  let outer_of_rust_value ~offset ~tyenv ~ty (e : Expr.t) =
+    { offset; root = of_rust_value ~tyenv ~ty e }
+
   let rec uninitialized ~tyenv ty =
     match ty with
     | Ty.Tuple v ->
@@ -183,6 +201,10 @@ module TreeBlock = struct
         { ty; content = Array content }
     | Scalar _ | Ref _ | Unresolved _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+
+  let uninitialized_outer ~tyenv ty =
+    let root = uninitialized ~tyenv ty in
+    { offset = None; root }
 
   let semi_concretize ~tyenv ~variant ty expr =
     (* FIXME: this assumes the values are initialized? Not entirely sure...
@@ -302,10 +324,22 @@ module TreeBlock = struct
         | _ -> Fmt.failwith "Invalid node")
     | _ -> failwith "Type mismatch"
 
-  let get_forest ~tyenv t proj size ty copy =
+  let get_forest ~tyenv outer (proj : Projections.t) size ty copy =
     let open Partial_layout in
+    let base_equals =
+      match (proj.base, outer.offset) with
+      | None, None -> true
+      | Some x, Some y -> Expr.equal x y
+      | _ -> false
+    in
+    if not base_equals then failwith "Tree needs to be extended?";
+    let t = outer.root in
     let start_address =
-      { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
+      {
+        block_type = t.ty;
+        route = proj.from_base;
+        address_type = Ty.slice_elements ty;
+      }
     in
     let context = context_from_env tyenv in
     let start_accesses = resolve_address ~tyenv ~context start_address in
@@ -340,14 +374,28 @@ module TreeBlock = struct
           DR.ok (ret, update)
       | _ -> DR.error (Invalid_type (block.ty, ty))
     in
-    find_path ~tyenv ~return_and_update t array_accesses
-
-  let set_forest ~tyenv t proj size ty values =
     let open DR.Syntax in
-    assert (List.length values = size);
+    let++ ret, root = find_path ~tyenv ~return_and_update t array_accesses in
+    (ret, { outer with root })
+
+  let set_forest ~tyenv outer (proj : Projections.t) size ty values =
+    let open DR.Syntax in
     let open Partial_layout in
+    let base_equals =
+      match (proj.base, outer.offset) with
+      | None, None -> true
+      | Some x, Some y -> Expr.equal x y
+      | _ -> false
+    in
+    if not base_equals then failwith "Tree needs to be extended?";
+    let t = outer.root in
+    assert (List.length values = size);
     let start_address =
-      { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
+      {
+        block_type = t.ty;
+        route = proj.from_base;
+        address_type = Ty.slice_elements ty;
+      }
     in
     let context = context_from_env tyenv in
     let start_accesses = resolve_address ~tyenv ~context start_address in
@@ -374,10 +422,25 @@ module TreeBlock = struct
       | _ -> failwith "Not an array"
     in
     let++ _, new_block = find_path ~tyenv ~return_and_update t array_accesses in
-    new_block
+    { outer with root = new_block }
 
-  let find_proj ~tyenv ~return_and_update ~ty t proj =
+  let find_proj
+      ~tyenv
+      ~return_and_update
+      ~ty
+      (outer : outer)
+      (proj : Projections.t) =
+    let open DR.Syntax in
     let open Partial_layout in
+    let base_equals =
+      match (proj.base, outer.offset) with
+      | None, None -> true
+      | Some x, Some y -> Expr.equal x y
+      | _ -> false
+    in
+    if not base_equals then failwith "Tree needs to be extended?";
+    let t = outer.root in
+    let proj = proj.from_base in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
     let context = context_from_env tyenv in
     Logging.normal (fun m ->
@@ -388,7 +451,8 @@ module TreeBlock = struct
     let accesses = resolve_address ~tyenv ~context address |> List.rev in
     Logging.normal (fun m ->
         m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
-    find_path ~tyenv ~return_and_update t accesses
+    let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
+    (ret, { outer with root })
 
   let get_proj ~tyenv t proj ty copy =
     let update block = if copy then block else uninitialized ~tyenv ty in
@@ -462,11 +526,17 @@ module TreeBlock = struct
         false lst
     in
     substitution t
+
+  let outer_substitution ~tyenv ~subst_expr t =
+    {
+      root = substitution ~tyenv ~subst_expr t.root;
+      offset = Option.map subst_expr t.offset;
+    }
 end
 
 module MemMap = Map.Make (String)
 
-type block = T of TreeBlock.t | Freed
+type block = T of TreeBlock.outer | Freed
 type t = block MemMap.t
 
 let find_not_freed loc mem =
@@ -480,7 +550,7 @@ let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
 let alloc ~tyenv (heap : t) ty =
   let loc = ALoc.alloc () in
-  let new_block = TreeBlock.uninitialized ~tyenv ty in
+  let new_block = TreeBlock.uninitialized_outer ~tyenv ty in
   let new_heap = MemMap.add loc (T new_block) heap in
   (loc, new_heap)
 
@@ -516,23 +586,25 @@ let get_value ~tyenv (mem : t) loc proj ty =
   let open DR.Syntax in
   let** () =
     match proj with
-    | [] -> DR.ok ()
+    | Projections.{ base = None; from_base = [] } -> DR.ok ()
     | _ -> DR.error (Unhandled "can't handle projections on cps yet")
   in
   let** block = find_not_freed loc mem in
-  let++ value, _ = TreeBlock.get_proj ~tyenv block [] ty false in
+  let++ value, _ = TreeBlock.get_proj ~tyenv block Projections.root ty false in
   value
 
-let set_value ~tyenv (mem : t) loc proj ty value =
+let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
   let open DR.Syntax in
   let++ () =
     match (proj, MemMap.find_opt loc mem) with
-    | [], None -> DR.ok ()
+    | { base = None; from_base = [] }, None -> DR.ok ()
     | _ ->
         DR.error
           (Unhandled "can't handle projections or setting with frame yet")
   in
-  let new_block = T (TreeBlock.of_rust_value ~tyenv ~ty value) in
+  let new_block =
+    T (TreeBlock.outer_of_rust_value ~offset:None ~tyenv ~ty value)
+  in
   MemMap.add loc new_block mem
 
 let rem_value (mem : t) loc =
@@ -549,8 +621,10 @@ let deinit ~tyenv (mem : t) loc proj ty =
 let free (mem : t) loc ty =
   let open DR.Syntax in
   let** block = find_not_freed loc mem in
-  if Ty.equal block.ty ty then DR.ok (MemMap.add loc Freed mem)
-  else DR.error (Invalid_type (ty, block.ty))
+  if Option.is_some block.offset then DR.error (MissingBlock loc)
+  else if not (Ty.equal block.root.ty ty) then
+    DR.error (Invalid_type (ty, block.root.ty))
+  else DR.ok (MemMap.add loc Freed mem)
 
 let load_discr ~tyenv (mem : t) loc proj enum_typ =
   let open DR.Syntax in
@@ -559,16 +633,12 @@ let load_discr ~tyenv (mem : t) loc proj enum_typ =
 
 let assertions ~tyenv (mem : t) =
   let value (loc, block) =
+    let loc = Expr.loc_from_loc_name loc in
     match block with
-    | T block ->
-        let cp = Actions.cp_to_name Value in
-        let ty = Ty.to_expr block.TreeBlock.ty in
-        let value = TreeBlock.to_rust_value ~tyenv block in
-        Asrt.GA
-          (cp, [ Expr.loc_from_loc_name loc; Expr.EList []; ty ], [ value ])
+    | T block -> TreeBlock.outer_assertion ~loc ~tyenv block
     | Freed ->
         let cp = Actions.cp_to_name Freed in
-        Asrt.GA (cp, [ Expr.loc_from_loc_name loc ], [])
+        Asrt.GA (cp, [ loc ], [])
   in
   MemMap.to_seq mem |> Seq.map value |> List.of_seq
 
@@ -578,7 +648,7 @@ let pp : t Fmt.t =
   let open Fmt in
   let pp_block ft = function
     | Freed -> pf ft "FREED"
-    | T t -> TreeBlock.pp ft t
+    | T t -> TreeBlock.pp_outer ft t
   in
   iter_bindings ~sep:(any "@\n") MemMap.iter
     (parens (pair ~sep:(any "-> ") string pp_block))
@@ -597,5 +667,5 @@ let substitution ~tyenv mem subst =
   MemMap.map
     (function
       | Freed -> Freed
-      | T block -> T (TreeBlock.substitution ~tyenv ~subst_expr block))
+      | T block -> T (TreeBlock.outer_substitution ~tyenv ~subst_expr block))
     mem

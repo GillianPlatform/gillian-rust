@@ -212,7 +212,7 @@ let () =
         let open Fmt in
         Some
           (str "AccessError(%a, %a, %a, %a, %s)" (Dump.list pp_access) accesses
-             Projections.pp ops Ty.pp ty (Dump.option int) idx msg)
+             Projections.pp_from_base ops Ty.pp ty (Dump.option int) idx msg)
     | _ -> None)
 
 module UpTreeDirection = struct

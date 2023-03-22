@@ -25,7 +25,9 @@ let pp_elem fmt =
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%d)<%a>" (str_ak k) i Ty.pp ty
   | UPlus (k, i) -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
 
-type t = op list
+type t = { base : Expr.t option; from_base : op list }
+
+let root = { base = None; from_base = [] }
 
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
@@ -53,7 +55,7 @@ let op_of_expr : Expr.t -> op = function
       Plus ((if b then Wrap else Overflow), Z.to_int i, Ty.of_expr ty)
   | e -> Fmt.failwith "invalid projection expression element %a" Expr.pp e
 
-let of_lit_list lst : t = List.map op_of_lit lst
+let of_lit_list lst : t = { base = None; from_base = List.map op_of_lit lst }
 
 let expr_of_elem : op -> Expr.t =
   let is_wrap = function
@@ -101,14 +103,35 @@ let substitution_in_op ~subst_expr (op : op) =
   | Plus (k, i, ty) -> Plus (k, i, Ty.substitution ~subst_expr ty)
   | UPlus (k, i) -> UPlus (k, i)
 
-let substitution ~subst_expr proj =
-  List.map (substitution_in_op ~subst_expr) proj
+let substitution ~subst_expr { base; from_base } =
+  {
+    base = Option.map subst_expr base;
+    from_base = List.map (substitution_in_op ~subst_expr) from_base;
+  }
 
-let to_expr t = Expr.EList (List.map expr_of_elem t)
+let to_expr { base; from_base } =
+  let from_base = Expr.EList (List.map expr_of_elem from_base) in
+  match base with
+  | None -> from_base
+  | Some b -> Expr.list_cat b from_base
 
-let of_expr : Expr.t -> t = function
-  | EList l -> List.map op_of_expr l
-  | Lit (LList l) -> List.map op_of_lit l
-  | e -> Fmt.failwith "invalid projection expression (for now) %a" Expr.pp e
+let of_expr (expr : Expr.t) : t =
+  match expr with
+  | EList l -> { base = None; from_base = List.map op_of_expr l }
+  | Lit (LList l) -> { base = None; from_base = List.map op_of_lit l }
+  | e ->
+      Logging.verbose (fun m ->
+          m "of_expr is assigning everything to base %a" Expr.pp e);
+      { base = Some e; from_base = [] }
 
-let pp = Fmt.Dump.list pp_elem
+let pp_from_base ft from_base = (Fmt.Dump.list pp_elem) ft from_base
+
+let pp ft t =
+  let pp_base ft = function
+    | None -> ()
+    | Some b ->
+        Expr.pp ft b;
+        Fmt.string ft " ++ "
+  in
+  pp_base ft t.base;
+  pp_from_base ft t.from_base
