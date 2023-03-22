@@ -33,8 +33,8 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 //      b) a `borrowed_wp_xy$close_token`
 // 4) A lemma `borrowed_wp_xy$close` which exchanges the close_token and the assertion against the `borrowed_wp_xy`.
 #[borrow]
-fn borrowed_wp_xy<'a, T>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
-    assertion!(|p, v_x, v_y|
+fn borrowed_wp_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+    assertion!(|v_x: T, v_y: T|
         (p -> WP { x, y }) *
         wp(WP { x, y }, x, y)
     )

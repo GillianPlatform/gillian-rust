@@ -1,6 +1,7 @@
 #![feature(rustc_attrs)]
 #![feature(register_tool)]
 #![register_tool(gillian)]
+#![feature(box_patterns)]
 
 extern crate proc_macro;
 use ::quote::ToTokens;

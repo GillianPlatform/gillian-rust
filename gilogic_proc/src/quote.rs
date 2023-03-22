@@ -141,7 +141,7 @@ impl ToTokens for Predicate {
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
               #(#attributes)*
-              fn #name #generics (#args) {
+              fn #name #generics (#args) -> ::gilogic::RustAssertion {
                 unreachable!()
               }
             }),

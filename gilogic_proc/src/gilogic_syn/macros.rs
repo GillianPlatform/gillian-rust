@@ -63,6 +63,13 @@ macro_rules! ast_enum_of_structs_impl {
             $name { $($variant $($($member)::+)*,)* }
         }
 
+        generate_subst_impl! {
+            $($remaining)*
+            ()
+            subst
+            $name { $($variant $($($member)::+)*,)* }
+        }
+
         generate_debug!  {
             $($remaining)*
             ()
@@ -80,6 +87,32 @@ macro_rules! ast_enum_from_struct {
         impl From<$member> for $name {
             fn from(e: $member) -> $name {
                 $name::$variant(e)
+            }
+        }
+    };
+}
+
+macro_rules! generate_subst_impl {
+    (($($arms:tt)*) $subst:ident $name:ident { $variant:ident, $($next:tt)*}) => {
+        generate_subst_impl!(
+            ($($arms)* $name::$variant => {})
+            $subst $name { $($next)* }
+        );
+    };
+
+    (($($arms:tt)*) $subst:ident $name:ident { $variant:ident $member:ident, $($next:tt)*}) => {
+        generate_subst_impl!(
+            ($($arms)* $name::$variant(_e) => _e.subst($subst),)
+            $subst $name { $($next)* }
+        );
+    };
+
+    (($($arms:tt)*) $subst:ident $name:ident {}) => {
+        impl VarSubst for $name {
+            fn subst(&mut self, $subst: &HashMap<String, Ident>) {
+                match self {
+                    $($arms)*
+                }
             }
         }
     };

@@ -1,8 +1,11 @@
 use syn::{punctuated::Punctuated, token::Paren, *};
 
+use super::subst::VarSubst;
+
 use proc_macro2::{Span, TokenStream};
 
 use quote::IdentFragment;
+use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -23,6 +26,15 @@ pub struct Assertion {
 pub struct LvarDecl {
     pub ident: Ident,
     pub ty_opt: Option<(Token![:], Type)>,
+}
+
+impl LvarDecl {
+    pub(crate) fn new(ident: Ident, ty_opt: Option<Type>) -> Self {
+        Self {
+            ident,
+            ty_opt: ty_opt.map(|ty| (Token![:](Span::call_site()), ty)),
+        }
+    }
 }
 
 ast_enum_of_structs! {
@@ -173,19 +185,19 @@ ast_enum_of_structs! {
         Closure(TermClosure),
 
         /// A logical variable #x
-        LogVar(TermLogVar),
+        // LogVar(TermLogVar),
 
         #[doc(hidden)]
         __Nonexhaustive,
     }
 }
 
-ast_struct! {
-    pub struct TermLogVar {
-        pub hash_token: Token![#],
-        pub ident: Ident,
-    }
-}
+// ast_struct! {
+//     pub struct TermLogVar {
+//         pub hash_token: Token![#],
+//         pub ident: Ident,
+//     }
+// }
 
 ast_struct! {
     /// A braced block containing Pearlite statements.
@@ -1717,6 +1729,27 @@ pub(crate) mod printing {
         }
     }
 
+    impl ToTokens for Assertion {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.pipe1.to_tokens(tokens);
+            self.lvars.to_tokens(tokens);
+            self.pipe2.to_tokens(tokens);
+            self.def.to_tokens(tokens);
+        }
+    }
+
+    // impl ToTokens for AsrtFragment {
+    //     fn to_tokens(&self, tokens: &mut TokenStream) {
+    //         match self {
+    //             Self::Emp(emp) => emp.to_tokens(tokens),
+    //             Self::PointsTo(pt) => pt.to_tokens(tokens),
+    //             Self::PredCall(pc) => pc.to_tokens(tokens),
+    //             Self::Pure(f) => f.to_tokens(tokens),
+    //             Self::__Nonexhaustive => todo!(),
+    //         }
+    //     }
+    // }
+
     impl ToTokens for LvarDecl {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -1902,12 +1935,12 @@ pub(crate) mod printing {
         }
     }
 
-    impl ToTokens for TermLogVar {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.hash_token.to_tokens(tokens);
-            self.ident.to_tokens(tokens);
-        }
-    }
+    // impl ToTokens for TermLogVar {
+    //     fn to_tokens(&self, tokens: &mut TokenStream) {
+    //         self.hash_token.to_tokens(tokens);
+    //         self.ident.to_tokens(tokens);
+    //     }
+    // }
 
     fn maybe_wrap_else(tokens: &mut TokenStream, else_: &Option<(Token![else], Box<Term>)>) {
         if let Some((else_token, else_)) = else_ {

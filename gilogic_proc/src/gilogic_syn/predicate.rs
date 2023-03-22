@@ -138,7 +138,7 @@ impl TryFrom<FnArg> for PredParam {
                             Some(ty) => (ty, ParamMode::In),
                         }
                     }
-                    _ => ((*ty).clone(), ParamMode::Out),
+                    _ => ((*ty).clone(), ParamMode::In),
                 };
                 let name = Self::ident_pat(&pat)?;
                 Ok(PredParam::S(PredParamS {

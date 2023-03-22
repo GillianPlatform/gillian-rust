@@ -11,7 +11,7 @@ use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::{
     mir::{
         interpret::{ConstValue, Scalar},
-        BinOp, Field,
+        BinOp, BorrowKind, Field,
     },
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
     ty::{AdtDef, AdtKind, WithOptConstParam},
@@ -318,6 +318,17 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                         }
                     }
                     _ => fatal!(self, "Unsupported binary operator {:?}", op),
+                }
+            }
+            ExprKind::Borrow {
+                borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
+                arg,
+            } => {
+                // We ignore reborrows, there is no temporality in expressions.
+                let arg = &thir[*arg];
+                match arg.kind {
+                    ExprKind::Deref { arg: e } => self.compile_expression(e, thir),
+                    _ => fatal!(self, "Unsupported borrow in assertion"),
                 }
             }
             ExprKind::Call {
