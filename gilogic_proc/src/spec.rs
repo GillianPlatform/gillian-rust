@@ -136,7 +136,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     ) {
         None
     } else {
-        Some(quote!(#[gillian::parameters::lifetime_params=#gen_lft_str]))
+        Some(quote!(#[gillian::parameters::lifetimes=#gen_lft_str]))
     };
     let result = quote! {
         #[cfg(gillian)]

@@ -58,3 +58,5 @@ pub trait HasGenericLifetimes<'tcx>: HasDefId + HasTyCtxt<'tcx> {
         }
     }
 }
+
+impl<'tcx> HasGenericLifetimes<'tcx> for (DefId, TyCtxt<'tcx>) {}

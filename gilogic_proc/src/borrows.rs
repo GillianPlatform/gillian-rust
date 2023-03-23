@@ -6,12 +6,13 @@ use syn::{
     parse_macro_input, punctuated::Punctuated, Block, Expr, ExprMacro, FnArg, GenericArgument,
     ImplItemMethod, Pat, PatIdent, PatType, PathArguments, Signature, Stmt, Token, Type, TypePath,
 };
-use uuid::Uuid;
 
 use crate::gilogic_syn::{subst::VarSubst, Assertion, LvarDecl};
 
-fn strip_ins(sig: &mut Signature) {
-    for arg in sig.inputs.iter_mut() {
+// Modifies the signature in place, but returns the list of indexes of the `In` arguments.
+fn strip_ins(sig: &mut Signature) -> Vec<usize> {
+    let mut ret = vec![];
+    for (idx, arg) in sig.inputs.iter_mut().enumerate() {
         if let FnArg::Typed(PatType { ty, .. }) = arg {
             if let Type::Path(TypePath { path, .. }) = &**ty {
                 let segment = path.segments.last().unwrap();
@@ -27,7 +28,10 @@ fn strip_ins(sig: &mut Signature) {
                             }
                             let first = abga.args.first().unwrap();
                             match first {
-                                GenericArgument::Type(inner_ty) => *ty = Box::new(inner_ty.clone()),
+                                GenericArgument::Type(inner_ty) => {
+                                    *ty = Box::new(inner_ty.clone());
+                                    ret.push(idx)
+                                }
                                 _ => {
                                     panic!("Invalid argument for `In`, it should be a single type")
                                 }
@@ -38,6 +42,7 @@ fn strip_ins(sig: &mut Signature) {
             }
         }
     }
+    ret
 }
 
 fn error() -> ! {
@@ -87,8 +92,6 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // The name of the borrow predicate
     let name = item.sig.ident.clone();
 
-    let borrow_id = Uuid::new_v4().to_string();
-    let close_token_diag = format!("close_token_{borrow_id}");
     let borrow_token = item.sig.clone();
 
     // The closing token signature
@@ -96,64 +99,96 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     let close_token_ident = format_ident!("___{}__close_token", &name);
     close_token.ident = close_token_ident.clone();
 
-    // The opening lemma signature
+    let (sig_without_in_annot, ins_indexes) = {
+        let mut sig = item.sig.clone();
+        let ins_indexes = strip_ins(&mut sig);
+        (sig, ins_indexes)
+    };
+
+    let sig_with_only_ins = {
+        let mut sig = sig_without_in_annot.clone();
+        let new_inputs = sig
+            .inputs
+            .iter()
+            .cloned()
+            .enumerate()
+            .filter_map(|(idx, arg)| {
+                if ins_indexes.contains(&idx) {
+                    Some(arg)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        sig.inputs = new_inputs;
+        sig
+    };
+
+    // The opening lemma signature, it is not the same as the tokens, because it only requires the ins.
     let open_lemma_ident = format_ident!("{}_____open", &name);
-    let mut open_lemma_sig = item.sig.clone();
-    strip_ins(&mut open_lemma_sig);
+    let mut open_lemma_sig = sig_with_only_ins.clone();
     open_lemma_sig.ident = open_lemma_ident;
 
     // The closing lemma signature
     let close_lemma_ident = format_ident!("{}_____close", &name);
-    let mut close_lemma_sig = open_lemma_sig.clone();
+    let mut close_lemma_sig = sig_with_only_ins;
     close_lemma_sig.ident = close_lemma_ident;
 
     // The borrow assertion:
-    // 1) We extract from the body of the function
-    // 2) We parse it
-    // 3) We add create existential for each argument
-    // 4) We add the existentials to the assertion's existentials
-    // 5) We substitute the program variables for the logical variables created
-    // 6) We add the equalities (pvar == lvar)
-    // 7) We put everything back together.
+    // 1) We extract from the body of the function and parse it
+    // 2) We add create existential for each argument
+    // 3) We add the existentials to the assertion's existentials
+    // 4) We substitute the program variables for the logical variables created
+    // 5) We add the equalities (pvar == lvar) only for variables that are not ins
+    // 6) We put everything back together.
 
     // Step 1
     let borrow_asrt = extract_assertion(&item.block).clone().into();
-    // Step 2
     let mut borrow_asrt = parse_macro_input!(borrow_asrt as super::gilogic_syn::Assertion);
     // Step 3
-    let args: Vec<_> = item.sig.inputs.iter().map(extract_arg_name).collect();
-    let param_lvars: Vec<_> = args.iter().map(|s| format_ident!("{}___lvar", s)).collect();
+    let all_arg_names: Vec<_> = sig_without_in_annot
+        .inputs
+        .iter()
+        .map(extract_arg_name)
+        .collect();
+    let all_lvar_names: Vec<_> = all_arg_names
+        .iter()
+        .map(|s| format_ident!("{}___lvar", s))
+        .collect();
 
     // Step 4
-    let lvar_decls_to_add =
-        param_lvars
-            .iter()
-            .zip(open_lemma_sig.inputs.iter())
-            .map(|(name, arg)| {
-                let name = format_ident!("{}", name);
-                match arg {
-                    FnArg::Receiver(_) => LvarDecl::new(name, None),
-                    FnArg::Typed(PatType { ty, .. }) => LvarDecl::new(name, Some(*ty.clone())),
-                }
-            });
+    let lvar_decls_to_add = all_lvar_names
+        .iter()
+        .zip(sig_without_in_annot.inputs.iter())
+        .map(|(name, arg)| {
+            let name = format_ident!("{}", name);
+            match arg {
+                FnArg::Receiver(_) => LvarDecl::new(name, None),
+                FnArg::Typed(PatType { ty, .. }) => LvarDecl::new(name, Some(*ty.clone())),
+            }
+        });
     borrow_asrt.lvars.extend(lvar_decls_to_add);
 
     // Step 5
-    let zip = args.iter().zip(param_lvars.iter());
+    let zip = all_arg_names.iter().zip(all_lvar_names.iter());
     let subst: &HashMap<_, _> = &zip.clone().map(|(x, y)| (x.clone(), y.clone())).collect();
-
     borrow_asrt.def.iter_mut().for_each(|d| d.subst(subst));
 
     // Step 6
     let equalities: Punctuated<TokenStream, Token![*]> = zip
-        .map(|(x, y)| {
-            let x = format_ident!("{}", x);
-            quote! {(#x == #y)}
+        .enumerate()
+        .filter_map(|(idx, (x, y))| {
+            if ins_indexes.contains(&idx) {
+                let x = format_ident!("{}", x);
+                Some(quote! {(#x == #y)})
+            } else {
+                None
+            }
         })
         .collect();
 
-    let token_pred_call = quote!(#name(#(#param_lvars),*));
-    let close_token_pred_call = quote!(#close_token_ident(#(#param_lvars),*));
+    let token_pred_call = quote!(#name(#(#all_lvar_names),*));
+    let close_token_pred_call = quote!(#close_token_ident(#(#all_lvar_names),*));
 
     let Assertion {
         pipe1,
@@ -163,11 +198,9 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     } = borrow_asrt;
 
     let res: TokenStream = quote! {
-      #[gillian::close_token = #close_token_diag]
       #[::gilogic::macros::predicate]
       #borrow_token;
 
-      #[rustc_diagnostic_item = #close_token_diag]
       #[::gilogic::macros::predicate]
       #close_token;
 

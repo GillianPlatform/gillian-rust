@@ -1,7 +1,10 @@
 use crate::prelude::*;
+use crate::utils::polymorphism::HasGenericLifetimes;
 use names::bb_label;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArg, List};
+
+use super::typ_encoding::lifetime_param_name;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn shim(&mut self, fname: &str, substs: &List<GenericArg>) -> Option<String> {
@@ -42,25 +45,51 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let fname = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
         let fname = self.shim(&fname, substs).unwrap_or(fname);
         let mut gil_args = Vec::with_capacity(args.len() + substs.len());
+
+        // Big hack, to handle lifetimes. I need to figure out the proper mapping.
+        // That's where Polonius should help.
+        // For now, we only handle the case where the callee has 1 or 0 lifetimes, and the caller has 1 or 0 lifetimes,
+        // We assume they are the same (which is not true)
+
+        let self_lifetimes = self.generic_lifetimes();
+        let callee_lifetimes = (def_id, self.tcx()).generic_lifetimes();
+        if self_lifetimes.len() == 1 && callee_lifetimes.len() == 1 {
+            gil_args.push(Expr::PVar(lifetime_param_name(&self_lifetimes[0])));
+        } else if callee_lifetimes.is_empty() {
+            // Do nothing
+        } else {
+            fatal!(self, "Cannot handle lifetimes in function call properly")
+        }
+
         for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
             gil_args.push(tyarg.into())
         }
         for arg in args {
             gil_args.push(self.push_encode_operand(arg));
         }
-        let ivar = self.temp_var();
-        let call = Cmd::Call {
-            variable: ivar.clone(),
-            proc_ident: fname.into(),
-            parameters: gil_args,
-            error_lab: None,
-            bindings: None,
-        };
-        self.push_cmd(call);
-        let call_ret_ty = self.place_ty(destination).ty;
-        self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
-        if let Some(bb) = target {
-            self.push_cmd(Cmd::Goto(bb_label(bb)));
+
+        if !crate::utils::attrs::is_lemma(def_id, self.tcx()) {
+            let ivar = self.temp_var();
+            let call = Cmd::Call {
+                variable: ivar.clone(),
+                proc_ident: fname.into(),
+                parameters: gil_args,
+                error_lab: None,
+                bindings: None,
+            };
+            self.push_cmd(call);
+            let call_ret_ty = self.place_ty(destination).ty;
+            self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
+            if let Some(bb) = target {
+                self.push_cmd(Cmd::Goto(bb_label(bb)));
+            }
+        } else {
+            let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
+                lemma_name: fname,
+                parameters: gil_args,
+                existentials: vec![],
+            }));
+            self.push_cmd(call);
         }
     }
 }

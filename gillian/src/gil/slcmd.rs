@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::{Assertion, Expr};
 
 #[derive(Debug)]
@@ -33,4 +35,28 @@ pub enum SLCmd {
         assertion: Assertion,
         existentials: Vec<String>,
     },
+}
+
+impl Display for SLCmd {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let display_binders = |f: &mut std::fmt::Formatter<'_>, b| {
+            write!(f, "[bind: ")?;
+            super::print_utils::separated_display(b, ",", f)?;
+            write!(f, "]")
+        };
+        use SLCmd::*;
+        match self {
+            ApplyLem {
+                lemma_name,
+                parameters,
+                existentials,
+            } => {
+                write!(f, "apply {}(", lemma_name)?;
+                super::print_utils::separated_display(parameters, ",", f)?;
+                write!(f, ")")?;
+                display_binders(f, existentials)
+            }
+            _ => panic!("Can't write slcmd yet: {:#?}", self),
+        }
+    }
 }

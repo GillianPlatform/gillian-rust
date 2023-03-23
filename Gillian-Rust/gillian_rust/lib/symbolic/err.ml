@@ -7,6 +7,7 @@ type t =
   | Invalid_list_op
   | Invalid_loc of Expr.t
   | Invalid_free_pointer of Expr.t * Expr.t
+  | Invalid_value of Ty.t * Expr.t
   | Unhandled of string
   | MissingBlock of string
   | Missing_lifetime of Lft.t
@@ -19,6 +20,7 @@ let recovery_vals = function
   | Missing_lifetime e | Double_kill_lifetime e | Wrong_lifetime_status e ->
       [ Lft.to_expr e ]
   | Use_after_free l | MissingBlock l -> [ Expr.loc_from_loc_name l ]
+  | Invalid_value (_, e) -> [ e ]
   | Invalid_free_pointer (loc, proj) -> [ loc; proj ]
   | Invalid_type _ | Invalid_list_op | Unhandled _ -> []
 
@@ -38,3 +40,5 @@ let pp ft =
   | Double_kill_lifetime e -> pf ft "Double kill lifetime: %a" Lft.pp e
   | Wrong_lifetime_status e -> pf ft "Wrong lifetime status: %a" Lft.pp e
   | Unhandled s -> pf ft "Unhandled: %s" s
+  | Invalid_value (t, e) ->
+      pf ft "Invalid value for type %a: %a" Ty.pp t Expr.pp e

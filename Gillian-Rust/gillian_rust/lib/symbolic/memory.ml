@@ -167,12 +167,11 @@ let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
 
 let substitution_in_place s mem =
-  Delayed.return
-  @@ {
-       mem with
-       heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s;
-       lfts = Lft_ctx.substitution s mem.lfts;
-     }
+  let open Delayed.Syntax in
+  let+ heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s in
+  match heap with
+  | Ok heap -> { mem with heap; lfts = Lft_ctx.substitution s mem.lfts }
+  | Error _ -> failwith "a path in subst failed"
 
 let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
@@ -195,31 +194,6 @@ let get_failing_constraint _ =
 let get_fixes ?simple_fix:_ _ _ _ = failwith "get_fixes: Not yet implemented"
 let apply_fix _ _ _ _ = failwith "apply_fix: Not yet implemented"
 let get_recovery_vals _ e = Err.recovery_vals e
-
-let lift_res res =
-  match res with
-  | Ok a -> Success a
-  | Error e -> Failure e
-
-let pp_branch fmt branch =
-  let _, values = branch in
-  Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
-
-let lift_dr_and_log res =
-  let pp_res = Fmt.Dump.result ~ok:pp_branch ~error:pp_err in
-  Delayed.map res (fun res ->
-      Logging.verbose (fun fmt -> fmt "Resulting in: %a" pp_res res);
-      lift_res res)
-
-let filter_errors dr =
-  Delayed.bind dr (fun res ->
-      match res with
-      | Ok _ ->
-          Logging.tmi (fun m -> m "Ok branch");
-          Delayed.return res
-      | Error _ ->
-          Logging.tmi (fun m -> m "Error branch");
-          Delayed.return ~learned:[ False ] res)
 
 let execute_get_lft mem args =
   let open Gillian.Utils.Syntaxes.Result in
@@ -253,6 +227,31 @@ let execute_rem_lft mem args =
       DR.ok (make_branch ~mem:{ mem with lfts = new_lfts } ())
   | _ -> Fmt.failwith "Invalid arguments for rem_alive_lft"
 
+let lift_res res =
+  match res with
+  | Ok a -> Success a
+  | Error e -> Failure e
+
+let pp_branch fmt branch =
+  let _, values = branch in
+  Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
+
+let lift_dr_and_log res =
+  let pp_res = Fmt.Dump.result ~ok:pp_branch ~error:pp_err in
+  Delayed.map res (fun res ->
+      Logging.verbose (fun fmt -> fmt "Resulting in: %a" pp_res res);
+      lift_res res)
+
+let filter_errors dr =
+  Delayed.bind dr (fun res ->
+      match res with
+      | Ok _ ->
+          Logging.tmi (fun m -> m "Ok branch");
+          Delayed.return res
+      | Error _ ->
+          Logging.tmi (fun m -> m "Error branch");
+          Delayed.return ~learned:[ False ] res)
+
 let execute_action ~action_name mem args =
   Logging.verbose (fun fmt ->
       fmt "Executing action %s with params %a" action_name
@@ -272,7 +271,7 @@ let execute_action ~action_name mem args =
         execute_set_value mem args |> filter_errors
     | Rem_value -> execute_rem_value mem args
     | Get_lft -> execute_get_lft mem args
-    | Set_lft -> execute_set_lft mem args
+    | Set_lft -> execute_set_lft mem args |> filter_errors
     | Rem_lft -> execute_rem_lft mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in

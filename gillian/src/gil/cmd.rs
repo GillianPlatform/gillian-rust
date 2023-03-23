@@ -100,6 +100,7 @@ impl fmt::Display for Cmd {
                 separated_display(parameters, ", ", f)?;
                 f.write_str(")")
             }
+            Logic(lcmd) => lcmd.fmt(f),
             _ => panic!("Cannot write following command yet: {:#?}", self),
         }
     }

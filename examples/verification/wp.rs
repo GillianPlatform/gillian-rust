@@ -1,8 +1,11 @@
+#![feature(concat_idents)]
+
 extern crate gilogic;
 
 use gilogic::{
+    close_borrow,
     macros::{assertion, borrow, ensures, lemma, predicate, requires, show_safety},
-    Ownable,
+    open_borrow, Ownable,
 };
 
 struct WP<T> {
@@ -96,7 +99,15 @@ impl<T: Ownable> WP<T> {
     #[requires(wp_ref_mut(self))]
     #[ensures(T_ref_mut(ret))]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
-        unsafe { &mut (*self.x).v }
+        let ptr = self as *mut WP<T>;
+        unsafe {
+            wp_ref_mut_pull_xy(self);
+            open_borrow!(wp_ref_mut_xy(self));
+            let ret = &mut (*self.x).v;
+            close_borrow!(wp_ref_mut_xy(self));
+
+            ret
+        }
     }
 
     // A good example of a function that shouldn't be verifiable:

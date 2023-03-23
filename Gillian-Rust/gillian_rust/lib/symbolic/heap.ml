@@ -3,8 +3,10 @@ open List_utils.Infix
 open Gillian.Monadic
 open Err
 module DR = Delayed_result
+open DR.Syntax
 module Tyenv = Common.Tyenv
 module Actions = Common.Actions
+open Delayed_utils
 
 exception NotConcrete of string
 
@@ -114,8 +116,8 @@ module TreeBlock = struct
       ~subst
       ~fields_tys
       (fields : Expr.t list) =
-    let content =
-      List.map2
+    let++ content =
+      DR_list.map2
         (fun (_, t) v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
         fields_tys fields
     in
@@ -127,8 +129,8 @@ module TreeBlock = struct
     | [ Lit (Int variant_idx); EList fields ] ->
         let vidx = Z.to_int variant_idx in
         let _, tys = List.nth variants_tys vidx in
-        let fields =
-          List.map2
+        let++ fields =
+          DR_list.map2
             (fun t v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
             tys fields
         in
@@ -138,16 +140,16 @@ module TreeBlock = struct
         Fmt.failwith "Invalid enum value for type %a: %a" Ty.pp ty
           (Fmt.list Expr.pp) data
 
-  and of_rust_value ~tyenv ~ty (e : Expr.t) =
+  and of_rust_value ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
     match (ty, e) with
-    | Ty.Scalar (Uint _ | Int _), e -> { ty; content = Scalar e }
-    | Ty.Scalar Bool, e -> { ty; content = Scalar e }
+    | Ty.Scalar (Uint _ | Int _), e -> DR.ok { ty; content = Scalar e }
+    | Ty.Scalar Bool, e -> DR.ok { ty; content = Scalar e }
     | Tuple _, Lit (LList data) ->
         let content = List.map lift_lit data in
         of_rust_value ~tyenv ~ty (EList content)
     | Tuple ts, EList tup ->
-        let content =
-          List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) ts tup
+        let++ content =
+          DR_list.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) ts tup
         in
         let content = Fields content in
         { ty; content }
@@ -163,21 +165,30 @@ module TreeBlock = struct
     | Ref { ty = Slice _; _ }, EList [ EList [ loc; proj ]; Lit (Int i) ] ->
         let proj = concretize_proj proj in
         let content = FatPtr (loc, proj, Z.to_int i) in
-        { ty; content }
+        DR.ok { ty; content }
     | Ref _, e ->
-        let loc = Expr.list_nth e 0 in
-        let proj = Expr.list_nth e 1 in
-        let proj = Projections.of_expr proj in
-        let content = ThinPtr (loc, proj) in
-        { ty; content }
+        let valid_ref_cond =
+          let open Formula.Infix in
+          (Expr.list_length e) #== (Expr.int 2)
+          #&& ((Expr.typeof (Expr.list_nth e 0)) #== (Expr.type_ ObjectType))
+          #&& ((Expr.typeof (Expr.list_nth e 1)) #== (Expr.type_ ListType))
+        in
+        if%sat valid_ref_cond then
+          let loc = Expr.list_nth e 0 in
+          let proj = Expr.list_nth e 1 in
+          let proj = Projections.of_expr proj in
+          let content = ThinPtr (loc, proj) in
+          DR.ok { ty; content }
+        else DR.error (Invalid_value (ty, e))
     | Array { length; ty = ty' }, EList l
       when List.compare_length_with l length == 0 ->
-        let mem_array = List.map (of_rust_value ~tyenv ~ty:ty') l in
+        let++ mem_array = DR_list.map (of_rust_value ~tyenv ~ty:ty') l in
         { ty; content = Array mem_array }
-    | _, s -> { ty; content = Symbolic s }
+    | _, s -> DR.ok { ty; content = Symbolic s }
 
   let outer_of_rust_value ~offset ~tyenv ~ty (e : Expr.t) =
-    { offset; root = of_rust_value ~tyenv ~ty e }
+    let++ root = of_rust_value ~tyenv ~ty e in
+    { offset; root }
 
   let rec uninitialized ~tyenv ty =
     match ty with
@@ -292,7 +303,6 @@ module TreeBlock = struct
       ~return_and_update
       t
       (path : Partial_layout.access list) : ('a * t, Err.t) DR.t =
-    let open DR.Syntax in
     let rec_call = find_path ~tyenv ~return_and_update in
     let replace_vec c v =
       match c with
@@ -374,12 +384,10 @@ module TreeBlock = struct
           DR.ok (ret, update)
       | _ -> DR.error (Invalid_type (block.ty, ty))
     in
-    let open DR.Syntax in
     let++ ret, root = find_path ~tyenv ~return_and_update t array_accesses in
     (ret, { outer with root })
 
   let set_forest ~tyenv outer (proj : Projections.t) size ty values =
-    let open DR.Syntax in
     let open Partial_layout in
     let base_equals =
       match (proj.base, outer.offset) with
@@ -408,17 +416,11 @@ module TreeBlock = struct
       match (block.content, block.ty) with
       | Array vec, Ty.Array { ty = ty'; _ } ->
           assert (Ty.equal ty ty');
-          DR.ok
-            ( (),
-              {
-                content =
-                  Array
-                    (Result.ok_or
-                       (List_utils.override_range_with_list vec ~start
-                          ~f:(of_rust_value ~tyenv ~ty) values)
-                       "Invalid slice range");
-                ty;
-              } )
+          let++ overriden =
+            DR_list.override_range_with_list vec ~start
+              ~f:(of_rust_value ~tyenv ~ty) values
+          in
+          ((), { content = Array overriden; ty })
       | _ -> failwith "Not an array"
     in
     let++ _, new_block = find_path ~tyenv ~return_and_update t array_accesses in
@@ -430,7 +432,6 @@ module TreeBlock = struct
       ~ty
       (outer : outer)
       (proj : Projections.t) =
-    let open DR.Syntax in
     let open Partial_layout in
     let base_equals =
       match (proj.base, outer.offset) with
@@ -460,13 +461,14 @@ module TreeBlock = struct
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
-    let open DR.Syntax in
-    let return_and_update _ = DR.ok ((), of_rust_value ~tyenv ~ty value) in
+    let return_and_update _ =
+      let++ value = of_rust_value ~tyenv ~ty value in
+      ((), value)
+    in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
   let get_discr ~tyenv t proj enum_typ =
-    let open DR.Syntax in
     let return_and_update block =
       match block.content with
       | Enum t -> DR.ok (Expr.int t.discr, block)
@@ -483,7 +485,6 @@ module TreeBlock = struct
     discr
 
   let deinit ~tyenv t proj ty =
-    let open DR.Syntax in
     let return_and_update _block = DR.ok ((), uninitialized ~tyenv ty) in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
@@ -491,47 +492,40 @@ module TreeBlock = struct
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
-      | Scalar e ->
-          let new_e = subst_expr e in
-          if new_e == e then t else Scalar new_e
+      | Scalar e -> DR.ok @@ Scalar (subst_expr e)
       | Array lst ->
-          let changed, new_list = substitute_list lst in
-          if changed then Array new_list else t
+          let++ lst = DR_list.map substitution lst in
+          Array lst
       | Fields lst ->
-          let changed, new_list = substitute_list lst in
-          if changed then Fields new_list else t
+          let++ lst = DR_list.map substitution lst in
+          Fields lst
       | Enum { fields; discr } ->
-          let changed, new_fields = substitute_list fields in
-          if changed then Enum { fields = new_fields; discr } else t
+          let++ fields = DR_list.map substitution fields in
+          Enum { fields; discr }
       | ThinPtr (e, proj) ->
           let new_e = subst_expr e in
           let new_proj = Projections.substitution ~subst_expr proj in
-          if new_e == e && new_proj == proj then t else ThinPtr (new_e, proj)
+          DR.ok @@ ThinPtr (new_e, new_proj)
       | FatPtr (e, proj, i) ->
           let new_e = subst_expr e in
           let new_proj = Projections.substitution ~subst_expr proj in
-          if new_e == e && new_proj == proj then t else FatPtr (new_e, proj, i)
+          DR.ok @@ FatPtr (new_e, new_proj, i)
       | Symbolic s ->
           let new_s = subst_expr s in
-          if new_s == s then t else (of_rust_value ~tyenv ~ty new_s).content
-      | Uninit -> t
+          if new_s == s then DR.ok t
+          else
+            let++ value = of_rust_value ~tyenv ~ty new_s in
+            value.content
+      | Uninit -> DR.ok t
     and substitution t =
-      let new_content = substitute_content ~ty:t.ty t.content in
-      if new_content == t.content then t else { t with content = new_content }
-    and substitute_list lst =
-      List.fold_left_map
-        (fun changed t ->
-          let new_t = substitution t in
-          (changed || new_t != t, new_t))
-        false lst
+      let++ content = substitute_content ~ty:t.ty t.content in
+      { t with content }
     in
     substitution t
 
   let outer_substitution ~tyenv ~subst_expr t =
-    {
-      root = substitution ~tyenv ~subst_expr t.root;
-      offset = Option.map subst_expr t.offset;
-    }
+    let++ root = substitution ~tyenv ~subst_expr t.root in
+    { offset = Option.map subst_expr t.offset; root }
 end
 
 module MemMap = Map.Make (String)
@@ -555,7 +549,6 @@ let alloc ~tyenv (heap : t) ty =
   (loc, new_heap)
 
 let load ~tyenv (mem : t) loc proj ty copy =
-  let open DR.Syntax in
   Logging.tmi (fun m -> m "Found block: %s" loc);
   let** block = find_not_freed loc mem in
   let++ v, new_block = TreeBlock.get_proj ~tyenv block proj ty copy in
@@ -563,27 +556,23 @@ let load ~tyenv (mem : t) loc proj ty copy =
   (v, new_mem)
 
 let load_slice ~tyenv (mem : t) loc proj size ty copy =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   let++ vs, new_block = TreeBlock.get_forest ~tyenv block proj size ty copy in
   let new_mem = MemMap.add loc (T new_block) mem in
   (vs, new_mem)
 
 let store_slice ~tyenv (mem : t) loc proj size ty values =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   let++ new_block = TreeBlock.set_forest ~tyenv block proj size ty values in
   let new_mem = MemMap.add loc (T new_block) mem in
   new_mem
 
 let store ~tyenv (mem : t) loc proj ty value =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   let++ new_block = TreeBlock.set_proj ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
 let get_value ~tyenv (mem : t) loc proj ty =
-  let open DR.Syntax in
   let** () =
     match proj with
     | Projections.{ base = None; from_base = [] } -> DR.ok ()
@@ -594,18 +583,17 @@ let get_value ~tyenv (mem : t) loc proj ty =
   value
 
 let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
-  let open DR.Syntax in
-  let++ () =
+  let** () =
     match (proj, MemMap.find_opt loc mem) with
     | { base = None; from_base = [] }, None -> DR.ok ()
     | _ ->
         DR.error
           (Unhandled "can't handle projections or setting with frame yet")
   in
-  let new_block =
-    T (TreeBlock.outer_of_rust_value ~offset:None ~tyenv ~ty value)
+  let++ new_block =
+    TreeBlock.outer_of_rust_value ~offset:None ~tyenv ~ty value
   in
-  MemMap.add loc new_block mem
+  MemMap.add loc (T new_block) mem
 
 let rem_value (mem : t) loc =
   (* We assume that rem is *always* called after get.
@@ -613,13 +601,11 @@ let rem_value (mem : t) loc =
   MemMap.remove loc mem
 
 let deinit ~tyenv (mem : t) loc proj ty =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   let++ new_block = TreeBlock.deinit ~tyenv block proj ty in
   MemMap.add loc (T new_block) mem
 
 let free (mem : t) loc ty =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   if Option.is_some block.offset then DR.error (MissingBlock loc)
   else if not (Ty.equal block.root.ty ty) then
@@ -627,7 +613,6 @@ let free (mem : t) loc ty =
   else DR.ok (MemMap.add loc Freed mem)
 
 let load_discr ~tyenv (mem : t) loc proj enum_typ =
-  let open DR.Syntax in
   let** block = find_not_freed loc mem in
   TreeBlock.get_discr ~tyenv block proj enum_typ
 
@@ -653,7 +638,8 @@ let pp : t Fmt.t =
   iter_bindings ~sep:(any "@\n") MemMap.iter
     (parens (pair ~sep:(any "-> ") string pp_block))
 
-let substitution ~tyenv mem subst =
+let substitution ~tyenv heap subst =
+  Logging.verbose (fun m -> m "CALLING SUBSTITUTION ON RUST");
   let open Gillian.Symbolic in
   let non_loc = function
     | Expr.ALoc _ | Lit (Loc _) -> false
@@ -664,8 +650,18 @@ let substitution ~tyenv mem subst =
       Fmt.pr "WARNING: SUBSTITUTION WITH LOCATIONS NO HANDLED\n@?"
   in
   let subst_expr = Subst.subst_in_expr subst ~partial:true in
-  MemMap.map
-    (function
-      | Freed -> Freed
-      | T block -> T (TreeBlock.outer_substitution ~tyenv ~subst_expr block))
-    mem
+  let++ new_mapping =
+    MemMap.to_seq heap |> List.of_seq
+    |> DR_list.map (fun (loc, block) ->
+           let++ block =
+             match block with
+             | Freed -> DR.ok Freed
+             | T block ->
+                 let++ block =
+                   TreeBlock.outer_substitution ~tyenv ~subst_expr block
+                 in
+                 T block
+           in
+           (loc, block))
+  in
+  List.to_seq new_mapping |> MemMap.of_seq
