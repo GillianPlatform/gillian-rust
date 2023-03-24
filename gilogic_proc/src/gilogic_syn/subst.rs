@@ -155,6 +155,12 @@ impl VarSubst for Path {
     }
 }
 
+impl VarSubst for TermReference {
+    fn subst(&mut self, subst: &HashMap<String, Ident>) {
+        self.term.subst(subst);
+    }
+}
+
 impl VarSubst for TermStruct {
     fn subst(&mut self, subst: &HashMap<String, Ident>) {
         self.fields.iter_mut().for_each(|tfv| {

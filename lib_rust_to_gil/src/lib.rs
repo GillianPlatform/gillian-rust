@@ -35,6 +35,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::{Ty, TyCtxt, TyKind, ValTree};
     pub(crate) use rustc_span::{def_id::DefId, Symbol};
 }
+mod temp_gen;
 
 mod codegen;
 mod logic;

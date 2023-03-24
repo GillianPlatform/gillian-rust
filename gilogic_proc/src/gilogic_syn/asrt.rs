@@ -157,6 +157,8 @@ ast_enum_of_structs! {
         /// A range term: `1..2`, `1..`, `..2`, `1..=2`, `..=2`.
         Range(TermRange),
 
+        Reference(TermReference),
+
         /// An array literal constructed from one repeated element: `[0u8; N]`.
         Repeat(TermRepeat),
 
@@ -401,6 +403,15 @@ ast_struct! {
         pub from: Option<Box<Term>>,
         pub limits: RangeLimits,
         pub to: Option<Box<Term>>,
+    }
+}
+
+ast_struct! {
+    pub struct TermReference {
+        // pub attrs: Vec<Attribute>,
+        pub and_token: Token![&],
+        pub mutability: Option<Token![mut]>,
+        pub term: Box<Term>,
     }
 }
 
@@ -1036,7 +1047,30 @@ pub(crate) mod parsing {
     }
 
     fn unary_term(input: ParseStream, allow_struct: AllowStruct) -> Result<Term> {
-        if input.peek(Token![*]) || input.peek(Token![!]) || input.peek(Token![-]) {
+        if input.peek(Token![&]) {
+            let and_token: Token![&] = input.parse()?;
+            // TODO: Do I need raw addreses?
+            // let raw: Option<raw> =
+            //     if input.peek(raw) && (input.peek2(Token![mut]) || input.peek2(Token![const])) {
+            //         Some(input.parse()?)
+            //     } else {
+            //         None
+            //     };
+            let mutability: Option<Token![mut]> = input.parse()?;
+            // if raw.is_some() && mutability.is_none() {
+            //     input.parse::<Token![const]>()?;
+            // }
+            let term = Box::new(unary_term(input, allow_struct)?);
+            // if raw.is_some() {
+            //     Ok(Expr::Verbatim(verbatim::between(begin, input)))
+            // } else {
+            Ok(Term::Reference(TermReference {
+                and_token,
+                mutability,
+                term,
+            }))
+            // }
+        } else if input.peek(Token![*]) || input.peek(Token![!]) || input.peek(Token![-]) {
             // <UnOp> <trailer>
             Ok(Term::Unary(TermUnary {
                 op: input.parse()?,
@@ -2070,6 +2104,14 @@ pub(crate) mod printing {
                 self.semi_token.to_tokens(tokens);
                 self.len.to_tokens(tokens);
             })
+        }
+    }
+
+    impl ToTokens for TermReference {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.and_token.to_tokens(tokens);
+            self.mutability.to_tokens(tokens);
+            self.term.to_tokens(tokens);
         }
     }
 

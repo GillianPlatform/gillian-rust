@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::WithOptConstParam;
 
+use super::temp_gen::TempGenerator;
 use crate::config::Config;
 use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
@@ -15,6 +16,7 @@ pub struct ProgCtx<'tcx, 'comp> {
     pre_tbl: HashMap<Symbol, (Vec<String>, Assertion)>,
     post_tbl: HashMap<Symbol, Assertion>,
     spec_tbl: HashMap<String, (Symbol, Symbol)>,
+    temp_gen: TempGenerator,
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx, '_> {
@@ -28,6 +30,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
         Self {
             prog: gillian::gil::Prog::new(runtime::imports()),
             global_env: GlobalEnv::new(tcx),
+            temp_gen: TempGenerator::new(),
             pre_tbl: HashMap::new(),
             post_tbl: HashMap::new(),
             spec_tbl: HashMap::new(),
@@ -37,7 +40,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
     }
 
     fn compile_logic(&mut self, did: DefId) {
-        let logic_item = compile_logic(did, self.tcx, &mut self.global_env);
+        let logic_item = compile_logic(did, self.tcx, &mut self.global_env, &mut self.temp_gen);
         match logic_item {
             LogicItem::Pred(pred) => self.prog.add_pred(pred),
             LogicItem::Lemma(lemma) => {

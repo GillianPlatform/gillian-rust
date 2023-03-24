@@ -53,14 +53,16 @@ fn T_ref_mut<'a, T: Ownable>(p: In<&'a T>) {
     assertion!(|v: T| (p -> v) * v.own())
 }
 
+// FIXME: pull lemmas shouldn't require lifetime tokens at all.
 #[lemma]
 #[requires(|pp| (p == pp) * wp_ref_mut(pp))]
 #[ensures(|pp, x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(pp, x, y))]
 fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
 
+// FIXME: split lemmas shouldn't require lifetime tokens at all
 #[lemma]
 #[requires(|pp, x, y| (p == pp) * wp_ref_mut_xy(pp, x, y))]
-#[ensures(|x: &mut T| T_ref_mut(x))]
+#[ensures(|x: *mut N<T>| T_ref_mut(&mut (*x).v))]
 fn split_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 impl<T: Ownable> Ownable for WP<T> {
@@ -99,13 +101,12 @@ impl<T: Ownable> WP<T> {
     #[requires(wp_ref_mut(self))]
     #[ensures(T_ref_mut(ret))]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
-        let ptr = self as *mut WP<T>;
         unsafe {
             wp_ref_mut_pull_xy(self);
             open_borrow!(wp_ref_mut_xy(self));
             let ret = &mut (*self.x).v;
             close_borrow!(wp_ref_mut_xy(self));
-
+            split_x(self);
             ret
         }
     }

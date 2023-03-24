@@ -4,11 +4,20 @@ open Gillian.Monadic
 open Err
 module DR = Delayed_result
 open DR.Syntax
+open Delayed.Syntax
 module Tyenv = Common.Tyenv
 module Actions = Common.Actions
 open Delayed_utils
 
 exception NotConcrete of string
+
+module TypePreds = struct
+  let valid_ptr e =
+    let open Formula.Infix in
+    (Expr.list_length e) #== (Expr.int 2)
+    #&& ((Expr.typeof (Expr.list_nth e 0)) #== (Expr.type_ ObjectType))
+    #&& ((Expr.typeof (Expr.list_nth e 1)) #== (Expr.type_ ListType))
+end
 
 let too_symbolic e =
   Delayed.map (Delayed.reduce e) (fun e -> Error (Too_symbolic e))
@@ -52,7 +61,7 @@ module TreeBlock = struct
     | Fields of t list
     | Array of t list
     | Enum of { discr : int; fields : t list }
-    | ThinPtr of Expr.t * Projections.t
+    | ThinPtr of Expr.t (* Should probably go with scalars *)
     | FatPtr of Expr.t * Projections.t * int
     | Uninit
 
@@ -68,7 +77,7 @@ module TreeBlock = struct
     | Fields v -> (parens (Fmt.list ~sep:Fmt.comma pp)) ft v
     | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Fmt.list ~sep:comma pp) fields
-    | ThinPtr (loc, proj) -> pf ft "Ptr(%a, %a)" Expr.pp loc Projections.pp proj
+    | ThinPtr ptr -> pf ft "Ptr(%a)" Expr.pp ptr
     | FatPtr (loc, proj, meta) ->
         pf ft "FatPtr(%a, %a | %d)" Expr.pp loc Projections.pp proj meta
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
@@ -84,8 +93,7 @@ module TreeBlock = struct
     match content with
     | Scalar s -> (
         match (ty, s) with
-        | Scalar (Uint _ | Int _ | Char), _ -> s
-        | Scalar Bool, e -> e
+        | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
         let tuple = List.map (to_rust_value ~tyenv) v in
@@ -93,7 +101,7 @@ module TreeBlock = struct
     | Enum { discr; fields } ->
         let fields = List.map (to_rust_value ~tyenv) fields in
         Expr.EList [ Expr.int discr; EList fields ]
-    | ThinPtr (loc, proj) -> EList [ loc; Projections.to_expr proj ]
+    | ThinPtr ptr -> ptr
     | FatPtr (loc, proj, meta) ->
         EList [ EList [ loc; Projections.to_expr proj ]; Expr.int meta ]
     | Symbolic s -> s
@@ -167,17 +175,8 @@ module TreeBlock = struct
         let content = FatPtr (loc, proj, Z.to_int i) in
         DR.ok { ty; content }
     | Ref _, e ->
-        let valid_ref_cond =
-          let open Formula.Infix in
-          (Expr.list_length e) #== (Expr.int 2)
-          #&& ((Expr.typeof (Expr.list_nth e 0)) #== (Expr.type_ ObjectType))
-          #&& ((Expr.typeof (Expr.list_nth e 1)) #== (Expr.type_ ListType))
-        in
-        if%sat valid_ref_cond then
-          let loc = Expr.list_nth e 0 in
-          let proj = Expr.list_nth e 1 in
-          let proj = Projections.of_expr proj in
-          let content = ThinPtr (loc, proj) in
+        if%sat TypePreds.valid_ptr e then
+          let content = ThinPtr e in
           DR.ok { ty; content }
         else DR.error (Invalid_value (ty, e))
     | Array { length; ty = ty' }, EList l
@@ -187,8 +186,12 @@ module TreeBlock = struct
     | _, s -> DR.ok { ty; content = Symbolic s }
 
   let outer_of_rust_value ~offset ~tyenv ~ty (e : Expr.t) =
-    let++ root = of_rust_value ~tyenv ~ty e in
-    { offset; root }
+    let** root = of_rust_value ~tyenv ~ty e in
+    match offset with
+    | None -> DR.ok { offset; root }
+    | Some offset ->
+        let+ offset = Delayed.reduce offset in
+        Ok { offset = Some offset; root }
 
   let rec uninitialized ~tyenv ty =
     match ty with
@@ -502,10 +505,9 @@ module TreeBlock = struct
       | Enum { fields; discr } ->
           let++ fields = DR_list.map substitution fields in
           Enum { fields; discr }
-      | ThinPtr (e, proj) ->
-          let new_e = subst_expr e in
-          let new_proj = Projections.substitution ~subst_expr proj in
-          DR.ok @@ ThinPtr (new_e, new_proj)
+      | ThinPtr ptr ->
+          let ptr = subst_expr ptr in
+          DR.ok ~learned:[ TypePreds.valid_ptr ptr ] (ThinPtr ptr)
       | FatPtr (e, proj, i) ->
           let new_e = subst_expr e in
           let new_proj = Projections.substitution ~subst_expr proj in
@@ -524,8 +526,12 @@ module TreeBlock = struct
     substitution t
 
   let outer_substitution ~tyenv ~subst_expr t =
-    let++ root = substitution ~tyenv ~subst_expr t.root in
-    { offset = Option.map subst_expr t.offset; root }
+    let** root = substitution ~tyenv ~subst_expr t.root in
+    match t.offset with
+    | None -> DR.ok { t with root }
+    | Some offset ->
+        let+ offset = Delayed.reduce (subst_expr offset) in
+        Ok { offset = Some offset; root }
 end
 
 module MemMap = Map.Make (String)
@@ -573,25 +579,21 @@ let store ~tyenv (mem : t) loc proj ty value =
   MemMap.add loc (T new_block) mem
 
 let get_value ~tyenv (mem : t) loc proj ty =
-  let** () =
-    match proj with
-    | Projections.{ base = None; from_base = [] } -> DR.ok ()
-    | _ -> DR.error (Unhandled "can't handle projections on cps yet")
-  in
   let** block = find_not_freed loc mem in
-  let++ value, _ = TreeBlock.get_proj ~tyenv block Projections.root ty false in
+  let++ value, _ = TreeBlock.get_proj ~tyenv block proj ty false in
   value
 
 let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
   let** () =
-    match (proj, MemMap.find_opt loc mem) with
-    | { base = None; from_base = [] }, None -> DR.ok ()
+    match proj.from_base with
+    | [] -> DR.ok ()
     | _ ->
         DR.error
-          (Unhandled "can't handle projections or setting with frame yet")
+          (Unhandled
+             "set_value: from_base not empty, can't handle partial trees yet")
   in
   let++ new_block =
-    TreeBlock.outer_of_rust_value ~offset:None ~tyenv ~ty value
+    TreeBlock.outer_of_rust_value ~offset:proj.base ~tyenv ~ty value
   in
   MemMap.add loc (T new_block) mem
 

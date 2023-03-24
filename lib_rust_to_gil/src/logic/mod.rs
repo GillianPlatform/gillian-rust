@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use gillian::gil::Pred;
 
 use crate::prelude::*;
+use crate::temp_gen::TempGenerator;
 use crate::utils::attrs::*;
 use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
 
@@ -26,12 +27,13 @@ pub fn compile_logic<'tcx, 'genv>(
     did: DefId,
     tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
+    temp_gen: &'genv mut TempGenerator,
 ) -> LogicItem {
     if is_abstract_predicate(did, tcx) {
-        let pred = predicate::PredCtx::new(tcx, global_env, did, true).compile();
+        let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, true).compile();
         LogicItem::Pred(pred)
     } else if is_predicate(did, tcx) {
-        let pred = predicate::PredCtx::new(tcx, global_env, did, false).compile();
+        let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false).compile();
         LogicItem::Pred(pred)
     } else if is_lemma(did, tcx) {
         let lemma =
@@ -39,7 +41,7 @@ pub fn compile_logic<'tcx, 'genv>(
         LogicItem::Lemma(lemma)
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
-        let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
+        let pred_ctx = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false);
         let generic_amounts = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile();
         assert!(
@@ -64,11 +66,11 @@ pub fn compile_logic<'tcx, 'genv>(
         LogicItem::Precondition(id, args, definition)
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
-        let pred_ctx = predicate::PredCtx::new(tcx, global_env, did, false);
-        let ty_amount = pred_ctx.generic_types().len();
+        let pred_ctx = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false);
+        let generics_amount = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile();
         let mut map = HashMap::new();
-        for (name, _) in pred.params.iter().take(ty_amount) {
+        for (name, _) in pred.params.iter().take(generics_amount) {
             map.insert(name.clone(), Expr::LVar(format!("#{}", &name)));
         }
         assert!(

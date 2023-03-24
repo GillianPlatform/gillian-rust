@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use super::builtins::Stubs;
 use super::utils::get_thir;
 use crate::{
-    codegen::typ_encoding::{lifetime_param_name, type_param_name},
+    codegen::{
+        place::{GilPlace, GilProj},
+        typ_encoding::{lifetime_param_name, type_param_name},
+    },
     prelude::*,
+    temp_gen::TempGenerator,
     utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
@@ -29,12 +33,12 @@ struct PredSig {
 pub(crate) struct PredCtx<'tcx, 'genv> {
     tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
+    temp_gen: &'genv mut TempGenerator,
     did: DefId,
     abstract_: bool,
     var_map: HashMap<LocalVarId, GExpr>,
-    toplevel_equalities: Vec<Assertion>,
+    type_knowledge: Vec<Assertion>,
     type_info: Vec<(Expr, Type)>,
-    temp_idx: u32,
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
@@ -63,29 +67,28 @@ impl HasDefId for PredCtx<'_, '_> {
 
 // FIXME: this code isn't very elegant, there should be also a "LocalLogCtx" with a reference to the thir body,
 //        that would allow to not resolve everything every time. Also, it would be reused for other logic items.
-impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
+impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         global_env: &'genv mut GlobalEnv<'tcx>,
+        temp_gen: &'genv mut TempGenerator,
         did: DefId,
         abstract_: bool,
     ) -> Self {
         PredCtx {
+            temp_gen,
             global_env,
             tcx,
             did,
             abstract_,
             var_map: HashMap::new(),
             type_info: Vec::new(),
-            toplevel_equalities: Vec::new(),
-            temp_idx: 0,
+            type_knowledge: Vec::new(),
         }
     }
 
     fn new_temp(&mut self) -> String {
-        let temp = format!("#lvar_{}", self.temp_idx);
-        self.temp_idx += 1;
-        temp
+        self.temp_gen.fresh_lvar()
     }
 
     fn get_ins(&self) -> Vec<usize> {
@@ -122,6 +125,16 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         self.tcx.def_path_str(self.did)
     }
 
+    fn make_is_ptr_asrt(e: GExpr) -> Assertion {
+        let is_list = Assertion::Types(vec![(e.clone(), Type::ListType)]);
+        let size_2 = Assertion::Pure(Formula::eq(Expr::lst_len(e.clone()), Expr::int(2)));
+        let inner_types = Assertion::Types(vec![
+            (Expr::lnth(e.clone(), 0), Type::ObjectType),
+            (Expr::lnth(e, 1), Type::ListType),
+        ]);
+        is_list.star(size_2).star(inner_types)
+    }
+
     fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
         match &param.pat {
             Some(box Pat {
@@ -149,12 +162,12 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 self.var_map.insert(*var, GExpr::PVar(name.clone()));
                 if ty.is_any_ptr() {
                     // FIXME: It shouldn't necessarily be a block pointer at all!
-                    let loc = Expr::LVar(self.new_temp());
-                    self.type_info.push((loc.clone(), Type::ObjectType));
-                    let ptr: GExpr = [loc, [].into()].into();
-                    self.var_map.insert(*var, ptr.clone());
-                    self.toplevel_equalities
-                        .push(Assertion::Pure(Formula::eq(Expr::PVar(name.clone()), ptr)));
+                    let lvar = Expr::LVar(self.new_temp());
+                    self.var_map.insert(*var, lvar.clone());
+                    let var_eq =
+                        Assertion::Pure(Formula::eq(lvar.clone(), GExpr::PVar(name.clone())));
+                    self.type_knowledge
+                        .push(Self::make_is_ptr_asrt(lvar).star(var_eq));
                 }
                 (name, ty)
             }
@@ -253,7 +266,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_expression(&self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
+    fn compile_expression(&mut self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
@@ -335,10 +348,40 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                 arg,
             } => {
                 // We ignore reborrows, there is no temporality in expressions.
-                let arg = &thir[*arg];
+                let arg = Self::resolve(*arg, thir);
+                let arg = &thir[arg];
                 match arg.kind {
                     ExprKind::Deref { arg: e } => self.compile_expression(e, thir),
-                    _ => fatal!(self, "Unsupported borrow in assertion"),
+                    ExprKind::Field {
+                        lhs,
+                        variant_index: _,
+                        name,
+                    } => {
+                        let lhs = Self::resolve(lhs, thir);
+                        let lhs = &thir[lhs];
+                        match lhs.kind {
+                            ExprKind::Deref { arg: derefed } => {
+                                // Expression is of the form `& (*derefed).field`
+                                // Derefed should be a pointer, and we offset it by the field, adding the right projection.
+                                let gil_derefed = self.compile_expression(derefed, thir);
+                                let ty = lhs.ty;
+                                let mut place = GilPlace::base(gil_derefed, ty);
+                                if ty.is_enum() {
+                                    panic!("enum field, need to handle")
+                                }
+                                place
+                                    .proj
+                                    .push(GilProj::Field(name.as_u32(), self.encode_type(ty)));
+                                place.into_expr_ptr()
+                            }
+                            _ => fatal!(self, "Cannot deref this: {:?}", lhs),
+                        }
+                    }
+                    _ => fatal!(
+                        self,
+                        "Unsupported borrow in assertion, borrowing: {:?}",
+                        arg
+                    ),
                 }
             }
             ExprKind::Call {
@@ -384,7 +427,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_formula(&self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
+    fn compile_formula(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
         let expr = &thir.exprs[e];
         if !self.is_formula_ty(expr.ty) {
             fatal!(self, "{:?} is not the formula type", expr.ty)
@@ -628,7 +671,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
         let inner = self.compile_assertion(expr, thir);
         let inner = self
-            .toplevel_equalities
+            .type_knowledge
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 
@@ -657,6 +700,19 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             })
         };
         with_lifetime_token
+    }
+
+    fn resolve(e: ExprId, thir: &Thir<'tcx>) -> ExprId {
+        let expr = &thir.exprs[e];
+        match &expr.kind {
+            ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => Self::resolve(*value, thir),
+            ExprKind::Use { source } => Self::resolve(*source, thir),
+            _ => e,
+        }
     }
 
     fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {

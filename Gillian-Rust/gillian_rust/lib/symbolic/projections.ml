@@ -119,6 +119,8 @@ let of_expr (expr : Expr.t) : t =
   match expr with
   | EList l -> { base = None; from_base = List.map op_of_expr l }
   | Lit (LList l) -> { base = None; from_base = List.map op_of_lit l }
+  | NOp (LstCat, [ b; EList l ]) ->
+      { base = Some b; from_base = List.map op_of_expr l }
   | e ->
       Logging.verbose (fun m ->
           m "of_expr is assigning everything to base %a" Expr.pp e);
