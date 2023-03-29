@@ -6,7 +6,7 @@ type vt = Values.t
 type st = Subst.t
 type err_t = string [@@deriving show]
 type t = { tyenv : Tyenv.t; heap : Heap.t }
-type action_ret = ASucc of (t * vt list) | AFail of err_t list
+type action_ret = (t * vt list, err_t list) result
 
 (* Utils *)
 
@@ -25,7 +25,7 @@ let execute_alloc mem args =
       let rust_ty = Ty.of_lit ty in
       let new_loc, new_heap = Heap.alloc ~tyenv:mem.tyenv mem.heap rust_ty in
       let ret = [ Literal.Loc new_loc; Literal.LList [] ] in
-      ASucc ({ mem with heap = new_heap }, ret)
+      Ok ({ mem with heap = new_heap }, ret)
   | _ -> wrong_args "alloc" args
 
 let execute_load_value mem args =
@@ -36,7 +36,7 @@ let execute_load_value mem args =
       let ret, new_heap =
         Heap.load ~tyenv:mem.tyenv mem.heap loc proj rust_ty copy
       in
-      ASucc ({ mem with heap = new_heap }, [ ret ])
+      Ok ({ mem with heap = new_heap }, [ ret ])
   | _ -> wrong_args "load_value" args
 
 let execute_load_slice mem args =
@@ -48,7 +48,7 @@ let execute_load_slice mem args =
       let ret, new_heap =
         Heap.load_slice ~tyenv:mem.tyenv mem.heap loc proj size rust_ty copy
       in
-      ASucc ({ mem with heap = new_heap }, [ LList ret ])
+      Ok ({ mem with heap = new_heap }, [ Literal.LList ret ])
   | _ -> wrong_args "load_slice" args
 
 let execute_store_value mem args =
@@ -59,7 +59,7 @@ let execute_store_value mem args =
       let new_heap =
         Heap.store ~tyenv:mem.tyenv mem.heap loc proj rust_ty value
       in
-      ASucc ({ mem with heap = new_heap }, [])
+      Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_value" args
 
 let execute_store_slice mem args =
@@ -71,7 +71,7 @@ let execute_store_slice mem args =
       let new_heap =
         Heap.store_slice ~tyenv:mem.tyenv mem.heap loc proj size rust_ty values
       in
-      ASucc ({ mem with heap = new_heap }, [])
+      Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_slice" args
 
 let execute_deinit mem args =
@@ -80,7 +80,7 @@ let execute_deinit mem args =
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
       let new_heap = Heap.deinit ~tyenv:mem.tyenv mem.heap loc proj rust_ty in
-      ASucc ({ mem with heap = new_heap }, [])
+      Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "execute_deinit" args
 
 let execute_free mem args =
@@ -93,7 +93,7 @@ let execute_free mem args =
       in
       let rust_ty = Ty.of_lit ty in
       let new_heap = Heap.free mem.heap loc rust_ty in
-      ASucc ({ mem with heap = new_heap }, [])
+      Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "free" args
 
 let execute_load_discr mem args =
@@ -102,10 +102,10 @@ let execute_load_discr mem args =
       let enum_typ = Ty.of_lit enum_typ in
       let proj = Projections.of_lit_list proj in
       let discr = Heap.load_discr ~tyenv:mem.tyenv mem.heap loc proj enum_typ in
-      ASucc (mem, [ Int (Z.of_int discr) ])
+      Ok (mem, [ Literal.Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
-let protect f mem args = try f mem args with Heap.MemoryError s -> AFail [ s ]
+let protect f mem args = try f mem args with Heap.MemoryError s -> Error [ s ]
   [@@inline]
 
 let execute_action act_name mem args =
@@ -126,7 +126,13 @@ let execute_action act_name mem args =
   | Rem_freed
   | Get_lft
   | Set_lft
-  | Rem_lft -> failwith "Core Predicates used in concrete execution"
+  | Rem_lft
+  | Get_value_observer
+  | Set_value_observer
+  | Rem_value_observer
+  | Get_pcy_controller
+  | Set_pcy_controller
+  | Rem_pcy_controller -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

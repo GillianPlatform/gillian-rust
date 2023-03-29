@@ -44,3 +44,11 @@ module DR_list = struct
     try find_start_and_override [] lst start
     with Invalid_argument _ -> DR.error Err.Invalid_list_op
 end
+
+module DR_option = struct
+  let map f = function
+    | None -> DR.ok None
+    | Some x ->
+        let++ x = f x in
+        Some x
+end

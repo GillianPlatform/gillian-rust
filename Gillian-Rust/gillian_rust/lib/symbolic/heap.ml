@@ -492,6 +492,11 @@ module TreeBlock = struct
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
+  let equality_constraint ~tyenv t1 t2 =
+    if not (Ty.equal t1.ty t2.ty) then
+      failwith "Cannot learn equality of two blocks of different types";
+    Formula.Infix.( #== ) (to_rust_value ~tyenv t1) (to_rust_value ~tyenv t2)
+
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
@@ -532,6 +537,11 @@ module TreeBlock = struct
     | Some offset ->
         let+ offset = Delayed.reduce (subst_expr offset) in
         Ok { offset = Some offset; root }
+
+  let outer_equality_constraint ~tyenv (o1 : outer) (o2 : outer) =
+    if not ((Option.equal Expr.equal) o1.offset o2.offset) then
+      failwith "Cannot learn equality of two blocks of different offsets";
+    equality_constraint ~tyenv o1.root o2.root
 end
 
 module MemMap = Map.Make (String)
@@ -641,7 +651,6 @@ let pp : t Fmt.t =
     (parens (pair ~sep:(any "-> ") string pp_block))
 
 let substitution ~tyenv heap subst =
-  Logging.verbose (fun m -> m "CALLING SUBSTITUTION ON RUST");
   let open Gillian.Symbolic in
   let non_loc = function
     | Expr.ALoc _ | Lit (Loc _) -> false

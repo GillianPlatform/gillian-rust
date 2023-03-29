@@ -343,6 +343,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     _ => fatal!(self, "Unsupported binary operator {:?}", op),
                 }
             }
+            ExprKind::Tuple { fields } => {
+                let fields: Vec<GExpr> = fields
+                    .iter()
+                    .map(|f| self.compile_expression(*f, thir))
+                    .collect();
+                fields.into()
+            }
             ExprKind::Borrow {
                 borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
                 arg,
@@ -446,13 +453,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(Stubs::FormulaEqual) => {
-                        assert!(args.len() == 2, "Equal call must have one argument");
+                        assert!(args.len() == 2, "Equal call must have two arguments");
                         let left = Box::new(self.compile_expression(args[0], thir));
                         let right = Box::new(self.compile_expression(args[1], thir));
                         Formula::Eq { left, right }
                     }
                     Some(Stubs::FormulaLessEq) => {
-                        assert!(args.len() == 2, "LessEq call must have one argument");
+                        assert!(args.len() == 2, "LessEq call must have two arguments");
                         let ty = thir.exprs[args[0]].ty;
                         if thir.exprs[args[0]].ty.is_integral() {
                             let left = Box::new(self.compile_expression(args[0], thir));
@@ -463,7 +470,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         }
                     }
                     Some(Stubs::FormulaLess) => {
-                        assert!(args.len() == 2, "Less call must have one argument");
+                        assert!(args.len() == 2, "Less call must have two arguments");
                         let ty = thir.exprs[args[0]].ty;
                         if thir.exprs[args[0]].ty.is_integral() {
                             let left = Box::new(self.compile_expression(args[0], thir));

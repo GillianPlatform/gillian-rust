@@ -10,7 +10,7 @@ module Suite = struct
   include Bulk.Suite.ByFolder (struct
     let max_depth = 5
     let cmd_name = "bulk-exec"
-    let exec_mode = Gillian.Utils.ExecMode.Concrete
+    let exec_mode = Gillian.Utils.Exec_mode.Concrete
   end)
 
   let filter_source s = String.equal (Filename.extension s) ".rs"

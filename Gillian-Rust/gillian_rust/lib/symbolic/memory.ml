@@ -3,6 +3,8 @@ open Gillian.Monadic
 open Gillian.Gil_syntax
 module DR = Delayed_result
 module Actions = Common.Actions
+open DR.Syntax
+open Delayed.Syntax
 
 type init_data = Common.Tyenv.t
 type vt = Values.t
@@ -10,13 +12,17 @@ type st = Subst.t
 type c_fix_t = unit
 type err_t = Err.t [@@deriving yojson, show]
 
-type t = { tyenv : Common.Tyenv.t; heap : Heap.t; lfts : Lft_ctx.t }
+type t = {
+  tyenv : Common.Tyenv.t;
+  pcies : Prophecies.t;
+  heap : Heap.t;
+  lfts : Lft_ctx.t;
+}
 [@@deriving yojson]
 
-type action_ret = Success of (t * vt list) | Failure of err_t
+type action_ret = (t * vt list, err_t) result
 
 let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
-  let open Delayed.Syntax in
   let* loc_name = Delayed.resolve_loc lvar_loc in
   match loc_name with
   | None ->
@@ -31,14 +37,15 @@ let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
       Delayed.return l
 
 let projections_of_expr (e : Expr.t) : Projections.t Delayed.t =
-  let open Delayed.Syntax in
   let+ e = Delayed.reduce e in
   Projections.of_expr e
 
 let resolve_loc_result loc =
   Delayed_result.of_do ~none:(Err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
-let init tyenv = { tyenv; heap = Heap.empty; lfts = Lft_ctx.empty }
+let init tyenv =
+  { tyenv; heap = Heap.empty; lfts = Lft_ctx.empty; pcies = Prophecies.empty }
+
 let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)
 
@@ -56,8 +63,6 @@ let execute_alloc mem args =
   | _ -> Fmt.failwith "Invalid arguments for alloc"
 
 let execute_store mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   let { heap; tyenv; lfts } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
@@ -69,8 +74,6 @@ let execute_store mem args =
   | _ -> Fmt.failwith "Invalid arguments for store"
 
 let execute_load mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   let { heap; tyenv; lfts } = mem in
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
@@ -82,8 +85,6 @@ let execute_load mem args =
   | _ -> Fmt.failwith "Invalid arguments for load"
 
 let execute_load_discr mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   match args with
   | [ loc; proj; enum_typ ] ->
       let enum_typ = Ty.of_expr enum_typ in
@@ -96,8 +97,6 @@ let execute_load_discr mem args =
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_free mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   let { heap; tyenv; lfts } = mem in
   match args with
   | [ loc; proj; ty ] ->
@@ -114,8 +113,6 @@ let execute_free mem args =
   | _ -> Fmt.failwith "Invalid arguments for free"
 
 let execute_get_value mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   let { heap; tyenv; lfts } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
@@ -129,8 +126,6 @@ let execute_get_value mem args =
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_set_value mem args =
-  let open DR.Syntax in
-  let open Delayed.Syntax in
   let { heap; tyenv; lfts } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
@@ -160,18 +155,23 @@ let is_overlapping_asrt _ = false
 let copy t = t
 
 let pp ft t =
-  Fmt.pf ft "@[<v 2>Heap:@,%a@]@ @[<v 2>Lifetimes:@,%a@]" Heap.pp t.heap
-    Lft_ctx.pp t.lfts
+  Fmt.pf ft "@[<v 2>Heap:@,%a@]@ @[<v 2>Lifetimes:@,%a@]@ %a" Heap.pp t.heap
+    Lft_ctx.pp t.lfts Prophecies.pp t.pcies
 
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
 
 let substitution_in_place s mem =
-  let open Delayed.Syntax in
-  let+ heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s in
-  match heap with
-  | Ok heap -> { mem with heap; lfts = Lft_ctx.substitution s mem.lfts }
-  | Error _ -> failwith "a path in subst failed"
+  let* heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s in
+  let heap =
+    match heap with
+    | Ok heap -> heap
+    | Error _ -> failwith "a path in heap subst failed"
+  in
+  let+ pcies = Prophecies.substitution ~tyenv:mem.tyenv mem.pcies s in
+  match pcies with
+  | Ok pcies -> { mem with heap; pcies; lfts = Lft_ctx.substitution s mem.lfts }
+  | Error _ -> failwith "a path in pcies subst failed"
 
 let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
@@ -227,30 +227,97 @@ let execute_rem_lft mem args =
       DR.ok (make_branch ~mem:{ mem with lfts = new_lfts } ())
   | _ -> Fmt.failwith "Invalid arguments for rem_alive_lft"
 
-let lift_res res =
-  match res with
-  | Ok a -> Success a
-  | Error e -> Failure e
+let execute_get_value_observer mem args =
+  let { heap; pcies; tyenv; lfts } = mem in
+  match args with
+  | [ loc; proj_exp; ty_exp ] ->
+      let ty = Ty.of_expr ty_exp in
+      let** loc_name = resolve_loc_result loc in
+      let* proj = projections_of_expr proj_exp in
+      let++ value = Prophecies.get_value_obs ~tyenv pcies loc_name proj ty in
+      make_branch ~mem
+        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
+        ()
+  | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
+
+let execute_set_value_observer mem args =
+  let { pcies; tyenv } = mem in
+  match args with
+  | [ loc; proj; ty; value ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = projections_of_expr proj in
+      let++ new_pcies =
+        Prophecies.set_value_obs ~tyenv pcies loc_name proj ty value
+      in
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
+  | _ -> Fmt.failwith "Invalid arguments for set_value_observer"
+
+let execute_rem_value_observer mem args =
+  match args with
+  | [ loc; _proj_exp; _ty_exp ] ->
+      let loc_name =
+        match loc with
+        | Expr.ALoc loc | Lit (Loc loc) -> loc
+        | _ -> failwith "unreachable"
+      in
+      let new_pcies =
+        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies loc_name
+      in
+      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+  | _ -> Fmt.failwith "Invalid arguments for get_value"
+
+let execute_get_pcy_controller mem args =
+  let { heap; pcies; tyenv; lfts } = mem in
+  match args with
+  | [ loc; proj_exp; ty_exp ] ->
+      let ty = Ty.of_expr ty_exp in
+      let** loc_name = resolve_loc_result loc in
+      let* proj = projections_of_expr proj_exp in
+      let++ value = Prophecies.get_controller ~tyenv pcies loc_name proj ty in
+      make_branch ~mem
+        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
+        ()
+  | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
+
+let execute_set_pcy_controller mem args =
+  let { pcies; tyenv } = mem in
+  match args with
+  | [ loc; proj; ty; value ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = projections_of_expr proj in
+      let++ new_pcies =
+        Prophecies.set_controller ~tyenv pcies loc_name proj ty value
+      in
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
+  | _ -> Fmt.failwith "Invalid arguments for set_pcy_controller"
+
+let execute_rem_pcy_controller mem args =
+  match args with
+  | [ loc; _proj_exp; _ty_exp ] ->
+      let loc_name =
+        match loc with
+        | Expr.ALoc loc | Lit (Loc loc) -> loc
+        | _ -> failwith "unreachable"
+      in
+      let new_pcies =
+        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies loc_name
+      in
+      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+  | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let pp_branch fmt branch =
   let _, values = branch in
   Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
 
-let lift_dr_and_log res =
-  let pp_res = Fmt.Dump.result ~ok:pp_branch ~error:pp_err in
-  Delayed.map res (fun res ->
-      Logging.verbose (fun fmt -> fmt "Resulting in: %a" pp_res res);
-      lift_res res)
-
 let filter_errors dr =
   Delayed.bind dr (fun res ->
       match res with
-      | Ok _ ->
-          Logging.tmi (fun m -> m "Ok branch");
-          Delayed.return res
-      | Error _ ->
-          Logging.tmi (fun m -> m "Error branch");
-          Delayed.return ~learned:[ False ] res)
+      | Ok _ -> Delayed.return res
+      | Error err ->
+          Logging.tmi (fun m -> m "Filtering error branch: %a" Err.pp err);
+          Delayed.vanish ())
 
 let execute_action ~action_name mem args =
   Logging.verbose (fun fmt ->
@@ -258,7 +325,7 @@ let execute_action ~action_name mem args =
         (Fmt.Dump.list Expr.pp) args);
   Logging.tmi (fun fmt -> fmt "Current heap : %a" pp mem);
   let action = Actions.of_name action_name in
-  let a_ret =
+  let+ res =
     match action with
     | Alloc -> execute_alloc mem args
     | Load_value -> execute_load mem args
@@ -273,6 +340,14 @@ let execute_action ~action_name mem args =
     | Get_lft -> execute_get_lft mem args
     | Set_lft -> execute_set_lft mem args |> filter_errors
     | Rem_lft -> execute_rem_lft mem args
+    | Get_value_observer -> execute_get_value_observer mem args
+    | Set_value_observer -> execute_set_value_observer mem args
+    | Rem_value_observer -> execute_rem_value_observer mem args
+    | Get_pcy_controller -> execute_get_pcy_controller mem args
+    | Set_pcy_controller -> execute_set_pcy_controller mem args
+    | Rem_pcy_controller -> execute_rem_pcy_controller mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
-  lift_dr_and_log a_ret
+  Logging.verbose (fun fmt ->
+      fmt "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:pp_err) res);
+  res

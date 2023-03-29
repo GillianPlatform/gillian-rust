@@ -7,7 +7,7 @@ let in_compiler_root (work : unit -> 'a) : 'a =
   Fun.protect ~finally:(fun () -> Sys.chdir dir_before) work
 
 let expand_and_stop = ref false
-let exec_mode = ref Gillian.Utils.ExecMode.Verification
+let exec_mode = ref Gillian.Utils.Exec_mode.Verification
 
 let exec_mode_arg () =
   let arg_header = "--gillian-exec-mode=" in

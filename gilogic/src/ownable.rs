@@ -43,6 +43,6 @@ own_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     fn own(self) -> RustAssertion {
-        super::__stubs::defs([super::__stubs::star(self.0.own(), self.1.own())])
+        super::__stubs::defs([{ super::__stubs::star(self.0.own(), self.1.own()) }])
     }
 }

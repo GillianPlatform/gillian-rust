@@ -151,7 +151,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             | CastKind::FloatToInt
             | CastKind::IntToFloat => fatal!(
                 self,
-                "Cannot encode PonterExposeAddress and PointerFromExposedAddress yet"
+                "Cannot encode PointerExposeAddress and PointerFromExposedAddress yet"
             ),
         }
     }
