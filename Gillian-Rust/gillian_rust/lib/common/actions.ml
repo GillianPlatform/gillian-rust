@@ -7,6 +7,8 @@ type t =
   | Deinit
   | Free
   | Load_discr
+  (* Prophecies *)
+  | Pcy_resolve
   (* Core predicate manipulation *)
   | Get_value
   | Set_value
@@ -56,6 +58,7 @@ let of_name = function
   | "deinit" -> Deinit
   | "free" -> Free
   | "load_discr" -> Load_discr
+  | "pcy_resolve" -> Pcy_resolve
   | "get_value" -> Get_value
   | "set_value" -> Set_value
   | "rem_value" -> Rem_value
@@ -82,6 +85,7 @@ let to_name = function
   | Deinit -> "deinit"
   | Free -> "free"
   | Load_discr -> "load_discr"
+  | Pcy_resolve -> "pcy_resolve"
   | Get_value -> "get_value"
   | Set_value -> "set_value"
   | Rem_value -> "rem_value"

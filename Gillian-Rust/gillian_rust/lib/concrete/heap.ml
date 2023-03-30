@@ -95,10 +95,10 @@ module TreeBlock = struct
             of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
         | Enum variants_tys ->
             of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
-    | Ref { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
+    | Ptr { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
-    | Ref _, LList [ Loc loc; LList proj ] ->
+    | Ptr _, LList [ Loc loc; LList proj ] ->
         let content = ThinPtr (loc, Projections.of_lit_list proj) in
         { ty; content }
     | Array { length; ty = ty' }, LList l
@@ -129,7 +129,7 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Ptr _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
     | Param _ ->
         failwith

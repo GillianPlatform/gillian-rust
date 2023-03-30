@@ -677,7 +677,7 @@ let rec partial_layout_of
           in
           Hashtbl.add known (name, subst) partial_layout;
           partial_layout)
-  | Ty.Ref { mut = _; ty = _ } ->
+  | Ty.Ref _ | Ty.Ptr _ ->
       (* We could gain more information if we deduced it was an unsized type, however, this is fine without it since we use bounds not exact sizes *)
       {
         fields = Primitive;

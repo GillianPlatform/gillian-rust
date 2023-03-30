@@ -12,11 +12,42 @@ open Delayed_utils
 exception NotConcrete of string
 
 module TypePreds = struct
-  let valid_ptr e =
+  let ( .%[] ) e idx = Expr.list_nth e idx
+
+  let ( >- ) e ty =
+    let open Formula.Infix in
+    (Expr.typeof e) #== (Expr.type_ ty)
+
+  let valid_thin_ptr e =
     let open Formula.Infix in
     (Expr.list_length e) #== (Expr.int 2)
-    #&& ((Expr.typeof (Expr.list_nth e 0)) #== (Expr.type_ ObjectType))
-    #&& ((Expr.typeof (Expr.list_nth e 1)) #== (Expr.type_ ListType))
+    #&& (e.%[0] >- ObjectType)
+    #&& (e.%[1] >- ListType)
+
+  let valid_fat_ptr e =
+    let open Formula.Infix in
+    (Expr.list_length e) #== (Expr.int 2)
+    #&& (valid_thin_ptr e.%[0])
+    #&& (e.%[1] >- IntType)
+
+  let valid_thin_ref e =
+    let open Formula.Infix in
+    (Expr.list_length e) #== (Expr.int 2) #&& (valid_thin_ptr e.%[0])
+
+  let valid_fat_ref e =
+    let open Formula.Infix in
+    (Expr.list_length e) #== (Expr.int 2) #&& (valid_fat_ptr e.%[0])
+
+  let valid scalar_ty e =
+    match scalar_ty with
+    | Ty.Scalar (Uint _ | Int _) -> e >- IntType
+    | Scalar Bool -> e >- BooleanType
+    | Ref { ty = Slice _; _ } -> valid_fat_ref e
+    | Ref _ -> valid_thin_ref e
+    | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
+    | Ptr _ -> valid_thin_ptr e
+    | Scalar Char -> True
+    | _ -> failwith "Not a leaf type, can't express validity"
 end
 
 let too_symbolic e =
@@ -57,13 +88,12 @@ module TreeBlock = struct
 
   and tree_content =
     | Symbolic of Expr.t
-    | Scalar of Expr.t
+    | Leaf of Expr.t
     | Fields of t list
     | Array of t list
     | Enum of { discr : int; fields : t list }
-    | ThinPtr of Expr.t (* Should probably go with scalars *)
-    | FatPtr of Expr.t * Projections.t * int
     | Uninit
+    | Missing
 
   type outer = { offset : Expr.t option; root : t }
 
@@ -73,16 +103,14 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Scalar e -> Expr.pp ft e
+    | Leaf e -> Expr.pp ft e
     | Fields v -> (parens (Fmt.list ~sep:Fmt.comma pp)) ft v
     | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Fmt.list ~sep:comma pp) fields
-    | ThinPtr ptr -> pf ft "Ptr(%a)" Expr.pp ptr
-    | FatPtr (loc, proj, meta) ->
-        pf ft "FatPtr(%a, %a | %d)" Expr.pp loc Projections.pp proj meta
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
     | Symbolic s -> Expr.pp ft s
     | Uninit -> Fmt.string ft "UNINIT"
+    | Missing -> Fmt.string ft "MISSING"
 
   let pp_outer ft t =
     let open Fmt in
@@ -91,9 +119,9 @@ module TreeBlock = struct
 
   let rec to_rust_value ~tyenv ({ content; ty } as t) =
     match content with
-    | Scalar s -> (
-        match (ty, s) with
-        | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
+    | Leaf s -> (
+        match ty with
+        | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
         let tuple = List.map (to_rust_value ~tyenv) v in
@@ -101,11 +129,9 @@ module TreeBlock = struct
     | Enum { discr; fields } ->
         let fields = List.map (to_rust_value ~tyenv) fields in
         Expr.EList [ Expr.int discr; EList fields ]
-    | ThinPtr ptr -> ptr
-    | FatPtr (loc, proj, meta) ->
-        EList [ EList [ loc; Projections.to_expr proj ]; Expr.int meta ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
+    | Missing -> mem_error "Attempting to read missing value"
 
   let outer_assertion ~loc ~tyenv block =
     let offset =
@@ -150,8 +176,10 @@ module TreeBlock = struct
 
   and of_rust_value ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
     match (ty, e) with
-    | Ty.Scalar (Uint _ | Int _), e -> DR.ok { ty; content = Scalar e }
-    | Ty.Scalar Bool, e -> DR.ok { ty; content = Scalar e }
+    | (Ty.Scalar (Uint _ | Int _ | Bool) | Ptr _ | Ref _), e ->
+        Logging.tmi (fun m -> m "valid: %a for %a" Expr.pp e Ty.pp ty);
+        if%sat TypePreds.valid ty e then DR.ok { ty; content = Leaf e }
+        else DR.error (Err.Invalid_value (ty, e))
     | Tuple _, Lit (LList data) ->
         let content = List.map lift_lit data in
         of_rust_value ~tyenv ~ty (EList content)
@@ -170,15 +198,6 @@ module TreeBlock = struct
             of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
         | Enum variants_tys ->
             of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
-    | Ref { ty = Slice _; _ }, EList [ EList [ loc; proj ]; Lit (Int i) ] ->
-        let proj = concretize_proj proj in
-        let content = FatPtr (loc, proj, Z.to_int i) in
-        DR.ok { ty; content }
-    | Ref _, e ->
-        if%sat TypePreds.valid_ptr e then
-          let content = ThinPtr e in
-          DR.ok { ty; content }
-        else DR.error (Invalid_value (ty, e))
     | Array { length; ty = ty' }, EList l
       when List.compare_length_with l length == 0 ->
         let++ mem_array = DR_list.map (of_rust_value ~tyenv ~ty:ty') l in
@@ -213,7 +232,7 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Unresolved _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let uninitialized_outer ~tyenv ty =
@@ -291,7 +310,7 @@ module TreeBlock = struct
               in
               DR.ok { ty; content = Enum { discr = variant_idx; fields } }
             else too_symbolic expr)
-    | Scalar _ | Ref _ ->
+    | Scalar _ | Ref _ | Ptr _ ->
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
@@ -500,7 +519,9 @@ module TreeBlock = struct
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
-      | Scalar e -> DR.ok @@ Scalar (subst_expr e)
+      | Leaf e ->
+          let e = subst_expr e in
+          DR.ok ~learned:[ TypePreds.valid ty e ] (Leaf e)
       | Array lst ->
           let++ lst = DR_list.map substitution lst in
           Array lst
@@ -510,20 +531,13 @@ module TreeBlock = struct
       | Enum { fields; discr } ->
           let++ fields = DR_list.map substitution fields in
           Enum { fields; discr }
-      | ThinPtr ptr ->
-          let ptr = subst_expr ptr in
-          DR.ok ~learned:[ TypePreds.valid_ptr ptr ] (ThinPtr ptr)
-      | FatPtr (e, proj, i) ->
-          let new_e = subst_expr e in
-          let new_proj = Projections.substitution ~subst_expr proj in
-          DR.ok @@ FatPtr (new_e, new_proj, i)
       | Symbolic s ->
           let new_s = subst_expr s in
           if new_s == s then DR.ok t
           else
             let++ value = of_rust_value ~tyenv ~ty new_s in
             value.content
-      | Uninit -> DR.ok t
+      | Uninit | Missing -> DR.ok t
     and substitution t =
       let++ content = substitute_content ~ty:t.ty t.content in
       { t with content }

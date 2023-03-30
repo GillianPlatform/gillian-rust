@@ -53,6 +53,7 @@ type t =
       (** This will have to be looked up in the global environment,
           For example List<u32> is Adt("List", [ u32 ] *)
   | Ref of { mut : bool; ty : t }
+  | Ptr of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
   | Slice of t
   | Param of int
@@ -67,6 +68,7 @@ let rec subst_params ~subst t =
   | Array { length; ty } -> Array { length; ty = subst_params ~subst ty }
   | Slice t -> Slice (subst_params ~subst t)
   | Ref { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
+  | Ptr { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
   | Adt (name, l) -> Adt (name, List.map (subst_params ~subst) l)
 
 let rec of_lit = function
@@ -93,6 +95,7 @@ let rec of_lit = function
       let args = List.map of_lit l in
       Adt (name, args)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
+  | LList [ String "ptr"; Bool mut; ty ] -> Ptr { mut; ty = of_lit ty }
   | LList [ String "array"; ty; Int i ] ->
       Array { length = Z.to_int i; ty = of_lit ty }
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
@@ -121,6 +124,7 @@ let rec to_lit = function
       let args = List.map to_lit a in
       LList [ String "adt"; String x; LList args ]
   | Ref { mut; ty } -> LList [ String "ref"; Bool mut; to_lit ty ]
+  | Ptr { mut; ty } -> LList [ String "ptr"; Bool mut; to_lit ty ]
   | Array { length; ty } ->
       LList [ String "array"; to_lit ty; Int (Z.of_int length) ]
   | Slice t -> LList [ String "slice"; to_lit t ]
@@ -154,6 +158,7 @@ let rec pp ft t =
       pp_tuple ft t
   | Adt (s, args) -> pf ft "%s<%a>" s (list ~sep:comma pp) args
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
+  | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
   | Param i -> Fmt.pf ft "P?%d" i

@@ -218,6 +218,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         // However, it's "value" is a tree with many things,
                         // and we need to access the actual pointer
                         Expr::PVar(new_base).lnth(0).lnth(0).lnth(0)
+                    } else if curr_typ.ty.is_ref() {
+                        Expr::PVar(new_base).lnth(0)
                     } else {
                         Expr::PVar(new_base)
                     };

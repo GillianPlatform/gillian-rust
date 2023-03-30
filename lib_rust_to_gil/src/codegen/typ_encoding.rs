@@ -85,8 +85,17 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
-            })
-            | Ref(_, ty, mutability) => {
+            }) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                json!([ "Ptr", {
+                    "mut": mutability,
+                    "ty": self.serialize_type(*ty)
+                }])
+            }
+            Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
@@ -175,8 +184,21 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
-            })
-            | Ref(_, ty, mutability) => {
+            }) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                EncodedType(
+                    [
+                        "ptr".into(),
+                        mutability.into(),
+                        self.encode_type(*ty).into(),
+                    ]
+                    .into(),
+                )
+            }
+            Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
