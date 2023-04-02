@@ -29,6 +29,18 @@ type t = { base : Expr.t option; from_base : op list }
 
 let root = { base = None; from_base = [] }
 
+(** Returns the type at the base, if possible to find *)
+let base_ty ~(leaf_ty : Ty.t) (proj : t) =
+  match proj.from_base with
+  | [] -> leaf_ty
+  | ( Field (_, ty)
+    | VField (_, ty, _)
+    | Index (_, ty, _)
+    | Cast (ty, _)
+    | Plus (_, _, ty) )
+    :: _ -> ty
+  | UPlus _ :: _ -> failwith "reduced to uplus too early"
+
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
   | LList [ String "vf"; Int i; ty; Int idx ] ->

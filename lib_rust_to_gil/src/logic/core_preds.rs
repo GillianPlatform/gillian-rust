@@ -5,6 +5,8 @@ use crate::codegen::typ_encoding::EncodedType;
 mod pred_names {
     pub(crate) const VALUE: &str = "value";
     pub(crate) const LFT: &str = "lft";
+    pub(crate) const OBSERVER: &str = "value_observer";
+    pub(crate) const CONTROLLER: &str = "pcy_controller";
 }
 
 pub(crate) fn value(pointer: Expr, typ: EncodedType, pointee: Expr) -> Assertion {
@@ -22,5 +24,25 @@ pub(crate) fn alive_lft(lft: Expr) -> Assertion {
         name: pred_names::LFT.to_string(),
         ins: vec![lft],
         outs: vec![Expr::bool(true)],
+    }
+}
+
+pub(crate) fn observer(prophecy: Expr, typ: EncodedType, model: Expr) -> Assertion {
+    let pcy_var = prophecy.clone().lnth(0);
+    let proj = prophecy.lnth(1);
+    Assertion::GA {
+        name: pred_names::OBSERVER.to_string(),
+        ins: vec![pcy_var, proj, typ.into()],
+        outs: vec![model],
+    }
+}
+
+pub(crate) fn controller(prophecy: Expr, typ: EncodedType, model: Expr) -> Assertion {
+    let pcy_var = prophecy.clone().lnth(0);
+    let proj = prophecy.lnth(1);
+    Assertion::GA {
+        name: pred_names::CONTROLLER.to_string(),
+        ins: vec![pcy_var, proj, typ.into()],
+        outs: vec![model],
     }
 }

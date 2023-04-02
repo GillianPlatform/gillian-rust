@@ -259,12 +259,14 @@ let execute_set_value_observer mem args =
 
 let execute_rem_value_observer mem args =
   match args with
-  | [ pcy_var; _proj_exp; _ty_exp ] ->
+  | [ pcy_var; proj_exp; ty_exp ] ->
       let** pcy_var = resolve_pcy_var pcy_var in
-      let new_pcies =
-        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies pcy_var
+      let* proj = projections_of_expr proj_exp in
+      let ty = Ty.of_expr ty_exp in
+      let++ new_pcies =
+        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies pcy_var proj ty
       in
-      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_get_pcy_controller mem args =
@@ -293,12 +295,14 @@ let execute_set_pcy_controller mem args =
 
 let execute_rem_pcy_controller mem args =
   match args with
-  | [ pcy_var; _proj_exp; _ty_exp ] ->
+  | [ pcy_var; proj_exp; ty_exp ] ->
       let** pcy_var = resolve_pcy_var pcy_var in
-      let new_pcies =
-        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies pcy_var
+      let* proj = projections_of_expr proj_exp in
+      let ty = Ty.of_expr ty_exp in
+      let++ new_pcies =
+        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies pcy_var proj ty
       in
-      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_pcy_resolve mem args =

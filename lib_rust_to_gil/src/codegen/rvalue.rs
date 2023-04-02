@@ -17,7 +17,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
                 let gil_place = self.push_get_gil_place(place);
-                log::debug!("AAAAAAAAAAAAAAAAA");
+                log::debug!("THIS HAS TO BE CHANGED, IT'S NOT CORRECT");
                 [gil_place.into_expr_ptr(), Expr::null()].into()
             }
             &Rvalue::AddressOf(_, place) => {

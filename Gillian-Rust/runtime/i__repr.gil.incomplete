@@ -1,0 +1,8 @@
+abstract pred "$POLYMORPHIC::shallow_repr_inner"(+pty, +self, +pcy);
+
+pred "<&mut T as gilogic::Ownable>::own"(+pty, +x):
+  "<&mut T as gilogic::ShallowRepresentation>::shallow_repr"(pty, x, #model);
+  
+pred "<&mut T as gilogic::ShallowRepresentation>::shallow_repr"(+pty, +x, model):
+  (x == {{ #ptr, {{ #pcy, {{ }} }} }}) * "$POLYMORPHIC::shallow_repr_inner"(pty, #ptr, {{ #pcy, {{ }} }}) *
+    <value_observer>(#pcy, {{ }}, -{ "T::Model", pty }-; model);

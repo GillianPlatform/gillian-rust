@@ -62,6 +62,12 @@ impl FromIterator<Assertion> for Assertion {
     }
 }
 
+impl From<Formula> for Assertion {
+    fn from(value: Formula) -> Self {
+        Assertion::Pure(value)
+    }
+}
+
 impl Display for Assertion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Assertion::*;

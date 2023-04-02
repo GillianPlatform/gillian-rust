@@ -97,6 +97,14 @@ module TreeBlock = struct
 
   type outer = { offset : Expr.t option; root : t }
 
+  let rec is_empty block =
+    match block.content with
+    | Missing -> true
+    | Fields fields | Array fields -> List.for_all is_empty fields
+    | _ -> false
+
+  let outer_is_empty outer = is_empty outer.root
+
   let rec pp fmt { ty; content } =
     Fmt.pf fmt "%a :@ %a" pp_content content Ty.pp ty
 
@@ -117,23 +125,23 @@ module TreeBlock = struct
     pf ft "@[<v 2>AFTER OFFSET: %a %a @]" (Fmt.Dump.option Expr.pp) t.offset pp
       t.root
 
-  let rec to_rust_value ~tyenv ({ content; ty } as t) =
+  let rec to_rust_value ({ content; ty } as t) =
     match content with
     | Leaf s -> (
         match ty with
         | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
-        let tuple = List.map (to_rust_value ~tyenv) v in
+        let tuple = List.map to_rust_value v in
         EList tuple
     | Enum { discr; fields } ->
-        let fields = List.map (to_rust_value ~tyenv) fields in
+        let fields = List.map to_rust_value fields in
         Expr.EList [ Expr.int discr; EList fields ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
     | Missing -> mem_error "Attempting to read missing value"
 
-  let outer_assertion ~loc ~tyenv block =
+  let outer_assertion ~loc block =
     let offset =
       match block.offset with
       | None -> Expr.EList []
@@ -141,7 +149,7 @@ module TreeBlock = struct
     in
     let cp = Actions.cp_to_name Value in
     let ty = Ty.to_expr block.root.ty in
-    let value = to_rust_value ~tyenv block.root in
+    let value = to_rust_value block.root in
     Asrt.GA (cp, [ loc; offset; ty ], [ value ])
 
   let rec of_rust_struct_value
@@ -204,13 +212,9 @@ module TreeBlock = struct
         { ty; content = Array mem_array }
     | _, s -> DR.ok { ty; content = Symbolic s }
 
-  let outer_of_rust_value ~offset ~tyenv ~ty (e : Expr.t) =
-    let** root = of_rust_value ~tyenv ~ty e in
-    match offset with
-    | None -> DR.ok { offset; root }
-    | Some offset ->
-        let+ offset = Delayed.reduce offset in
-        Ok { offset = Some offset; root }
+  let outer_missing ~offset ~tyenv ty =
+    let root = { ty; content = Missing } in
+    { offset; root }
 
   let rec uninitialized ~tyenv ty =
     match ty with
@@ -320,6 +324,22 @@ module TreeBlock = struct
            `semi_concretize`: %a"
           Expr.pp e
 
+  let structural_missing ~tyenv (ty : Ty.t) =
+    match ty with
+    | Array { length; ty = cty } ->
+        let missing_child = { ty = cty; content = Missing } in
+        { ty; content = Array (List.init length (fun _ -> missing_child)) }
+    | Tuple fields ->
+        {
+          ty;
+          content =
+            Fields (List.map (fun ty -> { content = Missing; ty }) fields);
+        }
+    | Adt _ -> failwith "not handled yet: Adt structural missing"
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
+        Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
+          ty
+
   let rec find_path
       ~tyenv
       ~return_and_update
@@ -352,6 +372,13 @@ module TreeBlock = struct
             (v, { ty; content = replace_vec content new_block })
         | Symbolic s, _ ->
             let** this_block = semi_concretize ~tyenv ~variant ty s in
+            rec_call this_block path
+        | Missing, None ->
+            Logging.tmi (fun m ->
+                m "strutural missing: %a "
+                  (Fmt.Dump.list Partial_layout.pp_access)
+                  path);
+            let this_block = structural_missing ~tyenv ty in
             rec_call this_block path
         | _ -> Fmt.failwith "Invalid node")
     | _ -> failwith "Type mismatch"
@@ -400,9 +427,7 @@ module TreeBlock = struct
       let update = update block in
       match block.content with
       | Array vec ->
-          let ret =
-            List_utils.sublist_map ~start ~size ~f:(to_rust_value ~tyenv) vec
-          in
+          let ret = List_utils.sublist_map ~start ~size ~f:to_rust_value vec in
           DR.ok (ret, update)
       | _ -> DR.error (Invalid_type (block.ty, ty))
     in
@@ -479,7 +504,7 @@ module TreeBlock = struct
 
   let get_proj ~tyenv t proj ty copy =
     let update block = if copy then block else uninitialized ~tyenv ty in
-    let return_and_update t = DR.ok (to_rust_value ~tyenv t, update t) in
+    let return_and_update t = DR.ok (to_rust_value t, update t) in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
@@ -487,6 +512,11 @@ module TreeBlock = struct
       let++ value = of_rust_value ~tyenv ~ty value in
       ((), value)
     in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+    new_block
+
+  let rem_proj ~tyenv t proj ty =
+    let return_and_update _ = DR.ok ((), { ty; content = Missing }) in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
@@ -511,10 +541,21 @@ module TreeBlock = struct
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
-  let equality_constraint ~tyenv t1 t2 =
-    if not (Ty.equal t1.ty t2.ty) then
-      failwith "Cannot learn equality of two blocks of different types";
-    Formula.Infix.( #== ) (to_rust_value ~tyenv t1) (to_rust_value ~tyenv t2)
+  let rec equality_constraints t1 t2 =
+    let ( #== ) = Formula.Infix.( #== ) in
+    match (t1.content, t2.content) with
+    | Missing, _ | _, Missing -> []
+    | (Symbolic e1 | Leaf e1), (Symbolic e2 | Leaf e2) -> [ e1 #== e2 ]
+    | Fields f1, Fields f2 -> List_utils.concat_map_2 equality_constraints f1 f2
+    | Array f1, Array f2 -> List_utils.concat_map_2 equality_constraints f1 f2
+    | Enum e1, Enum e2 ->
+        (* Sub parts of enum cannot be missing *)
+        [ (to_rust_value t1) #== (to_rust_value t2) ]
+    | Symbolic e, content | content, Symbolic e -> (
+        try [ (to_rust_value { ty = t1.ty; content }) #== e ]
+        with MemoryError _ ->
+          failwith "Need to semi-concretize things to learn")
+    | _ -> Fmt.failwith "cannot learn equality of %a and %a" pp t1 pp t2
 
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
@@ -552,10 +593,12 @@ module TreeBlock = struct
         let+ offset = Delayed.reduce (subst_expr offset) in
         Ok { offset = Some offset; root }
 
-  let outer_equality_constraint ~tyenv (o1 : outer) (o2 : outer) =
+  let outer_equality_constraint (o1 : outer) (o2 : outer) =
     if not ((Option.equal Expr.equal) o1.offset o2.offset) then
       failwith "Cannot learn equality of two blocks of different offsets";
-    equality_constraint ~tyenv o1.root o2.root
+    if not (Ty.equal o1.root.ty o2.root.ty) then
+      failwith "Cannot learn equality of two blocks of different types";
+    equality_constraints o1.root o2.root
 end
 
 module MemMap = Map.Make (String)
@@ -608,17 +651,15 @@ let get_value ~tyenv (mem : t) loc proj ty =
   value
 
 let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
-  let** () =
-    match proj.from_base with
-    | [] -> DR.ok ()
-    | _ ->
-        DR.error
-          (Unhandled
-             "set_value: from_base not empty, can't handle partial trees yet")
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing ~offset:proj.base ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
   in
-  let++ new_block =
-    TreeBlock.outer_of_rust_value ~offset:proj.base ~tyenv ~ty value
-  in
+  let++ new_block = TreeBlock.set_proj ~tyenv root proj ty value in
   MemMap.add loc (T new_block) mem
 
 let rem_value (mem : t) loc =
@@ -646,7 +687,7 @@ let assertions ~tyenv (mem : t) =
   let value (loc, block) =
     let loc = Expr.loc_from_loc_name loc in
     match block with
-    | T block -> TreeBlock.outer_assertion ~loc ~tyenv block
+    | T block -> TreeBlock.outer_assertion ~loc block
     | Freed ->
         let cp = Actions.cp_to_name Freed in
         Asrt.GA (cp, [ loc ], [])

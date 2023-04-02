@@ -6,20 +6,15 @@ open Heap
 open Gil_syntax
 open Delayed_utils
 
-type block = {
-  observer : TreeBlock.outer option;
-  controller : TreeBlock.outer option;
-}
+type block = { observer : TreeBlock.outer; controller : TreeBlock.outer }
 
 let pp_block =
   let open Fmt in
   Fmt.braces
   @@ record ~sep:semi
        [
-         field "observer" (fun x -> x.observer) (Dump.option TreeBlock.pp_outer);
-         field "controller"
-           (fun x -> x.controller)
-           (Dump.option TreeBlock.pp_outer);
+         field "observer" (fun x -> x.observer) TreeBlock.pp_outer;
+         field "controller" (fun x -> x.controller) TreeBlock.pp_outer;
        ]
 
 type t = block MemMap.t
@@ -30,55 +25,13 @@ let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
 let observer_block pcy_var pcy_env =
   match MemMap.find_opt pcy_var pcy_env with
-  | Some { observer = Some observer; _ } -> DR.ok observer
+  | Some { observer; _ } -> DR.ok observer
   | _ -> DR.error (Err.MissingBlock pcy_var)
-
-let set_observer ~tyenv pcy_var observer env =
-  let++ block =
-    match MemMap.find_opt pcy_var env with
-    | Some ({ controller = Some controller } as block) ->
-        DR.ok
-          ~learned:
-            [ TreeBlock.outer_equality_constraint ~tyenv controller observer ]
-          { block with observer = Some observer }
-    | Some { controller = None; _ } | None ->
-        DR.ok { observer = Some observer; controller = None }
-  in
-  MemMap.add pcy_var block env
-
-let rem_observer pcy_var env =
-  match MemMap.find_opt pcy_var env with
-  | Some { observer = Some _; controller = None } -> MemMap.remove pcy_var env
-  | Some ({ observer = Some _; controller = Some _ } as block) ->
-      MemMap.add pcy_var { block with observer = None } env
-  | None | Some { observer = None; _ } ->
-      failwith "rem_observer: observer is None"
 
 let controller_block pcy_var pcy_env =
   match MemMap.find_opt pcy_var pcy_env with
-  | Some { controller = Some controller; _ } -> DR.ok controller
+  | Some { controller; _ } -> DR.ok controller
   | _ -> DR.error (Err.MissingBlock pcy_var)
-
-let set_controller ~tyenv pcy_var controller env =
-  let++ block =
-    match MemMap.find_opt pcy_var env with
-    | Some ({ observer = Some observer; _ } as block) ->
-        DR.ok
-          ~learned:
-            [ TreeBlock.outer_equality_constraint ~tyenv observer controller ]
-          { block with controller = Some controller }
-    | Some { observer = None; _ } | None ->
-        DR.ok { controller = Some controller; observer = None }
-  in
-  MemMap.add pcy_var block env
-
-let rem_controller pcy_var env =
-  match MemMap.find_opt pcy_var env with
-  | Some { controller = Some _; observer = None } -> MemMap.remove pcy_var env
-  | Some ({ controller = Some _; observer = Some _ } as block) ->
-      MemMap.add pcy_var { block with controller = None } env
-  | None | Some { controller = None; _ } ->
-      failwith "rem_controller: controller is None"
 
 let get_value_obs ~tyenv pcy_env pcy_var proj ty =
   let** observer = observer_block pcy_var pcy_env in
@@ -86,21 +39,29 @@ let get_value_obs ~tyenv pcy_env pcy_var proj ty =
   value
 
 let set_value_obs ~tyenv pcy_env pcy_var (proj : Projections.t) ty value =
-  let** () =
-    match proj.from_base with
-    | [] -> DR.ok ()
-    | _ ->
-        DR.error
-          (Err.Unhandled
-             "set_value_obs: from_base not empty, can't handle partial trees \
-              yet")
+  let missing_root () =
+    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+      (Projections.base_ty ~leaf_ty:ty proj)
   in
-  let** new_block =
-    TreeBlock.outer_of_rust_value ~offset:proj.base ~tyenv ~ty value
+  let observer, controller =
+    match MemMap.find_opt pcy_var pcy_env with
+    | Some { observer; controller } -> (observer, controller)
+    | None -> (missing_root (), missing_root ())
   in
-  set_observer ~tyenv pcy_var new_block pcy_env
+  let** observer = TreeBlock.set_proj ~tyenv observer proj ty value in
+  DR.ok
+    ~learned:(TreeBlock.outer_equality_constraint observer controller)
+    (MemMap.add pcy_var { observer; controller } pcy_env)
 
-let rem_value_obs ~tyenv pcy_env pcy_var = rem_observer pcy_var pcy_env
+let rem_value_obs ~tyenv pcy_env pcy_var proj ty =
+  match MemMap.find_opt pcy_var pcy_env with
+  | Some { observer; controller } ->
+      let++ observer = TreeBlock.rem_proj ~tyenv observer proj ty in
+      if
+        TreeBlock.outer_is_empty controller && TreeBlock.outer_is_empty observer
+      then MemMap.remove pcy_var pcy_env
+      else MemMap.add pcy_var { observer; controller } pcy_env
+  | None -> failwith "rem_observer: observer is None"
 
 let get_controller ~tyenv pcy_env pcy_var proj ty =
   let** controller = controller_block pcy_var pcy_env in
@@ -108,21 +69,29 @@ let get_controller ~tyenv pcy_env pcy_var proj ty =
   value
 
 let set_controller ~tyenv pcy_env pcy_var (proj : Projections.t) ty value =
-  let** () =
-    match proj.from_base with
-    | [] -> DR.ok ()
-    | _ ->
-        DR.error
-          (Err.Unhandled
-             "set_controller: from_base not empty, can't handle partial trees \
-              yet")
+  let missing_root () =
+    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+      (Projections.base_ty ~leaf_ty:ty proj)
   in
-  let** new_block =
-    TreeBlock.outer_of_rust_value ~offset:proj.base ~tyenv ~ty value
+  let observer, controller =
+    match MemMap.find_opt pcy_var pcy_env with
+    | Some { observer; controller } -> (observer, controller)
+    | None -> (missing_root (), missing_root ())
   in
-  set_controller ~tyenv pcy_var new_block pcy_env
+  let** controller = TreeBlock.set_proj ~tyenv controller proj ty value in
+  DR.ok
+    ~learned:(TreeBlock.outer_equality_constraint observer controller)
+    (MemMap.add pcy_var { observer; controller } pcy_env)
 
-let rem_controller ~tyenv pcy_env pcy_var = rem_controller pcy_var pcy_env
+let rem_controller ~tyenv pcy_env pcy_var proj ty =
+  match MemMap.find_opt pcy_var pcy_env with
+  | Some { observer; controller } ->
+      let++ controller = TreeBlock.rem_proj ~tyenv controller proj ty in
+      if
+        TreeBlock.outer_is_empty controller && TreeBlock.outer_is_empty observer
+      then MemMap.remove pcy_var pcy_env
+      else MemMap.add pcy_var { observer; controller } pcy_env
+  | None -> failwith "rem_observer: observer is None"
 
 let proj_on_var pcy_var (proj : Projections.t) =
   let () =
@@ -142,27 +111,18 @@ let proj_on_var pcy_var (proj : Projections.t) =
 
 let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
   match MemMap.find_opt pcy_var pcy_env with
-  | None | Some { controller = None; _ } | Some { observer = None; _ } ->
-      DR.error (Err.MissingBlock pcy_var)
-  | Some
-      ({ controller = Some controller; observer = Some observer } as
-      before_consume) ->
+  | None -> DR.error (Err.MissingBlock pcy_var)
+  | Some { controller; observer } ->
       let open TreeBlock in
-      let consume_proj ~tyenv t proj =
-        let update block = { ty = block.ty; content = Missing } in
-        let return_and_update t = DR.ok (to_rust_value ~tyenv t, update t) in
-        find_proj ~tyenv ~return_and_update ~ty t proj
-      in
-      let** value, observer = consume_proj ~tyenv observer proj in
+      (* Reading from the controller is a way of ensuring we have the part we require.
+         An invariant is that the values of the controller and the resolver have to coincide *)
+      let** value, _ = get_proj ~tyenv controller proj ty true in
+      let** observer = rem_proj ~tyenv observer proj ty in
       let learned =
         let open Formula.Infix in
         [ (proj_on_var pcy_var proj) #== value ]
       in
-      let new_pcies =
-        MemMap.add pcy_var
-          { before_consume with observer = Some observer }
-          pcy_env
-      in
+      let new_pcies = MemMap.add pcy_var { controller; observer } pcy_env in
       DR.ok ~learned new_pcies
 
 let pp ft t =
@@ -186,14 +146,10 @@ let substitution ~tyenv pcy_env subst =
     MemMap.to_seq pcy_env |> List.of_seq
     |> DR_list.map (fun (pcy_var, block) ->
            let** controller =
-             DR_option.map
-               (TreeBlock.outer_substitution ~tyenv ~subst_expr)
-               block.controller
+             TreeBlock.outer_substitution ~tyenv ~subst_expr block.controller
            in
            let++ observer =
-             DR_option.map
-               (TreeBlock.outer_substitution ~tyenv ~subst_expr)
-               block.observer
+             TreeBlock.outer_substitution ~tyenv ~subst_expr block.observer
            in
            (pcy_var, { controller; observer }))
   in

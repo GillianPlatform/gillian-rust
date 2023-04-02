@@ -21,5 +21,12 @@ let () =
       "i64";
       "i128";
       "isize";
-    |];
-  Printf.printf {|abstract pred "$POLYMORPHIC::own"(+pty, +self);|}
+    |]
+
+let () =
+  let file = open_in "./i__ownable.gil.incomplete" in
+  try
+    while true do
+      input_line file |> print_endline
+    done
+  with End_of_file -> ()

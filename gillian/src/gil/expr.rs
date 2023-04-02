@@ -210,8 +210,12 @@ impl Expr {
         }
     }
 
-    pub fn lst_concat(e1: Expr, e2: Expr) -> Self {
-        match (e1, e2) {
+    pub fn eq_f<E: Into<Expr>>(self, e2: E) -> super::Formula {
+        super::Formula::eq(self, e2.into())
+    }
+
+    pub fn lst_concat(self, e2: Expr) -> Self {
+        match (self, e2) {
             (Expr::EList(mut vec1), Expr::EList(mut vec2)) => {
                 vec1.append(&mut vec2);
                 Expr::EList(vec1)

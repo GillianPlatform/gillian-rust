@@ -42,8 +42,13 @@ fn extract_string_arg(attr: &AttrItem) -> Symbol {
     {
         sym
     } else {
-        panic!("Predicate ins attribute must be a string");
+        panic!("Attribute must be a string");
     }
+}
+
+pub fn diagnostic_item_string(def_id: DefId, tcx: TyCtxt) -> Option<String> {
+    get_attr(tcx.get_attrs_unchecked(def_id), &["rustc_diagnostic_item"])
+        .map(|x| extract_string_arg(x).to_string())
 }
 
 pub(crate) fn get_pre_id(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {

@@ -202,7 +202,6 @@ pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         Ok(x) => x,
         Err(e) => return e.to_compile_error().into(),
     };
-    dbg!(gilogic.to_string());
     quote!(
       #[::gilogic::macros::requires(#gilogic)]
       #input

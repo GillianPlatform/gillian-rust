@@ -126,13 +126,32 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn make_is_ptr_asrt(e: GExpr) -> Assertion {
-        let is_list = Assertion::Types(vec![(e.clone(), Type::ListType)]);
-        let size_2 = Assertion::Pure(Formula::eq(Expr::lst_len(e.clone()), Expr::int(2)));
-        let inner_types = Assertion::Types(vec![
-            (Expr::lnth(e.clone(), 0), Type::ObjectType),
-            (Expr::lnth(e, 1), Type::ListType),
+        let types = Assertion::Types(vec![
+            (e.clone(), Type::ListType),
+            (e.clone().lnth(0), Type::ObjectType),
+            (e.clone().lnth(1), Type::ListType),
         ]);
-        is_list.star(size_2).star(inner_types)
+        let size_2 = Assertion::Pure(Formula::eq(Expr::lst_len(e), Expr::int(2)));
+        types.star(size_2)
+    }
+
+    fn make_is_ref_asrt(e: GExpr) -> Assertion {
+        let types = Assertion::Types(vec![
+            (e.clone(), Type::ListType),
+            (e.clone().lnth(0), Type::ListType),
+            (e.clone().lnth(1), Type::ListType),
+        ]);
+        let size_2 = e.clone().lst_len().eq_f(2).into();
+        let first_ptr = Self::make_is_ptr_asrt(e.clone().lnth(0));
+        let second_prophecy =
+        // (|e[1]| == 2) * (e[1][1] == [])
+        e
+            .clone()
+            .lst_len()
+            .eq_f(2)
+            .into_asrt()
+            .star(e.lnth(1).lnth(1).eq_f([]).into());
+        types.star(size_2).star(first_ptr).star(second_prophecy)
     }
 
     fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
@@ -161,13 +180,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 }
                 self.var_map.insert(*var, GExpr::PVar(name.clone()));
                 if ty.is_any_ptr() {
-                    // FIXME: It shouldn't necessarily be a block pointer at all!
                     let lvar = Expr::LVar(self.new_temp());
                     self.var_map.insert(*var, lvar.clone());
                     let var_eq =
                         Assertion::Pure(Formula::eq(lvar.clone(), GExpr::PVar(name.clone())));
-                    self.type_knowledge
-                        .push(Self::make_is_ptr_asrt(lvar).star(var_eq));
+                    let type_knowledge = if matches!(ty.kind(), TyKind::Ref(_, _, Mutability::Mut))
+                    {
+                        Self::make_is_ref_asrt(lvar)
+                    } else {
+                        Self::make_is_ptr_asrt(lvar)
+                    };
+                    self.type_knowledge.push(type_knowledge.star(var_eq));
                 }
                 (name, ty)
             }
@@ -245,6 +268,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
         super::builtins::get_stub(ty, self.tcx)
+    }
+
+    fn unwrap_prophecy_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            TyKind::Adt(_, args) => args[0].expect_ty(),
+            _ => fatal!(self, "Prophecy field on non-prophecy"),
+        }
     }
 
     fn compile_constant(&self, cst: ConstValue<'tcx>, ty: Ty<'tcx>) -> GExpr {
@@ -350,6 +380,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .collect();
                 fields.into()
             }
+            ExprKind::Field {
+                lhs,
+                variant_index: _,
+                name,
+            } if matches!(&thir[*lhs].ty.kind(), TyKind::Tuple(..)) => {
+                self.compile_expression(*lhs, thir).lnth(name.as_u32())
+            }
             ExprKind::Borrow {
                 borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
                 arg,
@@ -423,11 +460,33 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let list = self.compile_expression(args[0], thir);
                     list.lst_len()
                 }
-                _ => fatal!(self, "{:?} unsupported call expression in assertion", expr),
+                Some(Stubs::MutRefGetProphecy) => {
+                    assert!(args.len() == 1);
+                    let mut_ref = self.compile_expression(args[0], thir);
+                    mut_ref.lnth(1)
+                }
+                Some(Stubs::ProphecyGetValue) => {
+                    assert!(args.len() == 1);
+                    let proph = self.compile_expression(args[0], thir);
+                    proph.lnth(0)
+                }
+                Some(Stubs::ProphecyField(i)) => {
+                    assert!(args.len() == 1);
+                    let proph = self.compile_expression(args[0], thir);
+                    let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
+                    [
+                        proph.clone().lnth(0),
+                        proph.lnth(1).lst_concat(
+                            [GilProj::Field(i, self.encode_type(ty)).into_expr()].into(),
+                        ),
+                    ]
+                    .into()
+                }
+                _ => fatal!(self, "{:?} unsupported call in expression", expr),
             },
             _ => fatal!(
                 self,
-                "{:?} unsupported Thir expression in assertion while compiling {:?}",
+                "{:?} unsupported Thir expression in expression while compiling {:?}",
                 expr,
                 self.did()
             ),
@@ -481,7 +540,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         }
                     }
                     _ => {
-                        fatal!(self, "{:?} unsupported call expression in assertion", expr);
+                        fatal!(self, "{:?} unsupported call in formula", expr);
                     }
                 }
             }
@@ -518,9 +577,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let ty = self.encode_type(thir.exprs[args[1]].ty);
         let left = self.compile_expression(args[0], thir);
         let right = self.compile_expression(args[1], thir);
-        let right_ty = thir.exprs[args[0]].ty;
+        let left_ty = thir.exprs[args[0]].ty;
         // If the type is a box or a nonnull, we need to access its pointer.
-        let (left, pfs) = if thir.exprs[args[0]].ty.is_box() {
+        let (left, pfs) = if left_ty.is_box() {
             // boxes have to be block pointers
             let loc = GExpr::LVar(self.new_temp());
             let ptr: Expr = [loc.clone(), [].into()].into();
@@ -533,7 +592,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let eq = Assertion::Pure(eq);
             let pfs = Assertion::star(typing, eq);
             (ptr, pfs)
-        } else if self.is_nonnull(right_ty) {
+        } else if self.is_nonnull(left_ty) {
             // FIXME: this is technically not correct,
             // we would need to annotate the pointsTo to make sure that's true.
             let loc = GExpr::LVar(self.new_temp());
@@ -547,6 +606,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let eq = Assertion::Pure(eq);
             let pfs = Assertion::star(typing, eq);
             (ptr, pfs)
+        } else if matches!(left_ty.kind(), TyKind::Ref(_, _, Mutability::Mut)) {
+            (left.lnth(0), Assertion::Emp)
         } else {
             (left, Assertion::Emp)
         };
@@ -595,13 +656,18 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     Assertion::Pred { name, params }
                 }
-                // Some(Stubs::OwnPred)
-                //     if matches!(
-                //         thir.exprs[args[0]].ty.kind(),
-                //         TyKind::Ref(_, ty, Mutability::Mut)
-                //     ) => {
-
-                //     }
+                Some(Stubs::ProphecyObserver) => {
+                    let prophecy = self.compile_expression(args[0], thir);
+                    let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
+                    let model = self.compile_expression(args[1], thir);
+                    super::core_preds::observer(prophecy, typ, model)
+                }
+                Some(Stubs::ProphecyController) => {
+                    let prophecy = self.compile_expression(args[0], thir);
+                    let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
+                    let model = self.compile_expression(args[1], thir);
+                    super::core_preds::controller(prophecy, typ, model)
+                }
                 _ => {
                     let (def_id, substs) = match ty.kind() {
                         TyKind::FnDef(def_id, substs) => self.resolve_candidate(*def_id, substs),

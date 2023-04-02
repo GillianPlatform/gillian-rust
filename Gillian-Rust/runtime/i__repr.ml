@@ -24,3 +24,11 @@ let () =
       "i128";
       "isize";
     |]
+
+let () =
+  let file = open_in "./i__repr.gil.incomplete" in
+  try
+    while true do
+      input_line file |> print_endline
+    done
+  with End_of_file -> ()

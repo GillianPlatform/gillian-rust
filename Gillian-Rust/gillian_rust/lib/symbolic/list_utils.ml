@@ -56,3 +56,14 @@ let override_range_with_list lst ~start ~f overrides =
 
 let sublist_map ~start ~size ~f lst =
   List.to_seq lst |> Seq.drop start |> Seq.take size |> Seq.map f |> List.of_seq
+
+let concat_map_2 f l1 l2 =
+  let rec aux f acc l1 l2 =
+    match (l1, l2) with
+    | [], [] -> List.rev acc
+    | x :: l1, y :: l2 ->
+        let xs = f x y in
+        aux f (List.rev_append xs acc) l1 l2
+    | _ -> raise (Invalid_argument "concat_map_2")
+  in
+  aux f [] l1 l2
