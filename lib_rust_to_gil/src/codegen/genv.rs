@@ -1,13 +1,18 @@
+use crate::logic::traits::TraitSolver;
 use crate::prelude::*;
 use rustc_middle::ty::{AdtDef, ReprOptions};
 use serde_json::{self, json};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
+
+use super::typ_encoding::type_param_name;
 
 pub struct GlobalEnv<'tcx> {
     /// The types that should be encoded for the GIL global env
     tcx: TyCtxt<'tcx>,
     types_in_queue: VecDeque<AdtDef<'tcx>>,
     encoded_adts: HashSet<AdtDef<'tcx>>,
+    mut_ref_shallow_reprs: HashMap<Ty<'tcx>, String>,
+    // Contains the type and the name of the created predicate.
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
@@ -32,6 +37,59 @@ impl<'tcx> GlobalEnv<'tcx> {
             tcx,
             types_in_queue: Default::default(),
             encoded_adts: Default::default(),
+            mut_ref_shallow_reprs: Default::default(),
+        }
+    }
+
+    pub fn add_mut_ref_shallow_repr(&mut self, ty: Ty<'tcx>) -> String {
+        self.mut_ref_shallow_reprs
+            .entry(ty)
+            .or_insert_with(|| format!("{}::shallow_repr", ty))
+            .clone()
+    }
+
+    pub fn add_mut_ref_shallow_reprs_to_prog(&mut self, prog: &mut Prog) {
+        for (ty, name) in self.mut_ref_shallow_reprs.iter() {
+            let shallow_repr = self
+                .tcx()
+                .get_diagnostic_item(Symbol::intern("gillian::repr::shallow_repr"))
+                .expect("Could not find gilogic::shallow_repr");
+            let inner_ty = match ty.kind() {
+                TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
+                _ => unreachable!("Something that isn't a mutref was added to the mutrefs in genv"),
+            };
+            let subst =
+                self.tcx()
+                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[
+                        *inner_ty,
+                    ]));
+            let (_, subst) = self.resolve_candidate(shallow_repr, subst);
+            let generic_params = subst.iter().enumerate().map(|(i, k)| {
+                let name = k.to_string();
+                let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
+                (name, None)
+            });
+            let params = generic_params
+                .chain(
+                    [
+                        ("ref".to_string(), Some(Type::ListType)),
+                        ("model".to_string(), None),
+                    ]
+                    .into_iter(),
+                )
+                .collect();
+            let num_params = subst.len() + 2;
+            let pred = Pred {
+                name: name.clone(),
+                num_params,
+                params,
+                ins: (0..num_params - 1).into_iter().collect(),
+                definitions: vec![],
+                pure: false,
+                abstract_: true,
+                facts: vec![],
+            };
+            prog.add_pred(pred);
         }
     }
 
@@ -99,6 +157,9 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
+    // This takes a self, because it's the last thing that should be done with the global env.
+    // After that, encoding any type might lead to compilation forgetting to include it in the
+    // initialization data.
     pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
         use serde_json::{Map, Value};
         let mut obj: Map<String, Value> = Map::new();

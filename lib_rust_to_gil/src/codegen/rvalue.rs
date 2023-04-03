@@ -1,4 +1,5 @@
 use super::memory::MemoryAction;
+use super::place::GilPlace;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
@@ -16,9 +17,30 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
-                let gil_place = self.push_get_gil_place(place);
-                log::debug!("THIS HAS TO BE CHANGED, IT'S NOT CORRECT");
-                [gil_place.into_expr_ptr(), Expr::null()].into()
+                if matches!(
+                    self.rvalue_ty(rvalue).kind(),
+                    TyKind::Ref(_, _, Mutability::Mut)
+                ) {
+                    // The case of mutable references, what do we do with the prophecy?
+                    if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
+                        // FIXME: HACK
+                        // This assumes that the lifetime of th created reference is the same as the old one,
+                        // since we carry the exact same prophecy around. It is not correct in general.
+                        let local = Expr::PVar(self.name_from_local(place.local));
+                        self.push_read_gil_place(
+                            GilPlace::base(local, self.place_ty(place).ty),
+                            self.rvalue_ty(rvalue),
+                            true,
+                        )
+                    } else {
+                        let gil_place = self.push_get_gil_place(place);
+                        let prophecy = self.push_create_prophecy_for(place);
+                        [gil_place.into_expr_ptr(), prophecy].into()
+                    }
+                } else {
+                    let gil_place = self.push_get_gil_place(place);
+                    gil_place.into_expr_ptr()
+                }
             }
             &Rvalue::AddressOf(_, place) => {
                 let gil_place = self.push_get_gil_place(place);

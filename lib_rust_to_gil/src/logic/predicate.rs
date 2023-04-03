@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::builtins::Stubs;
+use super::traits::TraitSolver;
 use super::utils::get_thir;
 use crate::{
     codegen::{
@@ -38,7 +39,6 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     abstract_: bool,
     var_map: HashMap<LocalVarId, GExpr>,
     type_knowledge: Vec<Assertion>,
-    type_info: Vec<(Expr, Type)>,
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
@@ -82,13 +82,28 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             did,
             abstract_,
             var_map: HashMap::new(),
-            type_info: Vec::new(),
             type_knowledge: Vec::new(),
+        }
+    }
+
+    fn is_mut_ref(ty: Ty) -> bool {
+        matches!(ty.kind(), TyKind::Ref(_, _, Mutability::Mut))
+    }
+
+    fn mut_ref_inner(ty: Ty) -> Option<Ty> {
+        if let TyKind::Ref(_, ty, Mutability::Mut) = ty.kind() {
+            Some(*ty)
+        } else {
+            None
         }
     }
 
     fn new_temp(&mut self) -> String {
         self.temp_gen.fresh_lvar()
+    }
+
+    fn temp_lvar(&mut self) -> GExpr {
+        Expr::LVar(self.new_temp())
     }
 
     fn get_ins(&self) -> Vec<usize> {
@@ -125,33 +140,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         self.tcx.def_path_str(self.did)
     }
 
-    fn make_is_ptr_asrt(e: GExpr) -> Assertion {
+    fn make_is_ptr_asrt(&mut self, e: GExpr) -> Assertion {
+        let loc = self.temp_lvar();
+        let proj = self.temp_lvar();
         let types = Assertion::Types(vec![
-            (e.clone(), Type::ListType),
-            (e.clone().lnth(0), Type::ObjectType),
-            (e.clone().lnth(1), Type::ListType),
+            (loc.clone(), Type::ObjectType),
+            (proj.clone(), Type::ListType),
         ]);
-        let size_2 = Assertion::Pure(Formula::eq(Expr::lst_len(e), Expr::int(2)));
-        types.star(size_2)
+        types.star(e.eq_f([loc, proj]).into_asrt())
     }
 
-    fn make_is_ref_asrt(e: GExpr) -> Assertion {
+    fn make_is_ref_asrt(&mut self, e: GExpr) -> Assertion {
+        let loc = self.temp_lvar();
+        let proj = self.temp_lvar();
+        let pcy = self.temp_lvar();
+        let pcy_proj = Expr::from(vec![]);
         let types = Assertion::Types(vec![
-            (e.clone(), Type::ListType),
-            (e.clone().lnth(0), Type::ListType),
-            (e.clone().lnth(1), Type::ListType),
+            (loc.clone(), Type::ObjectType),
+            (proj.clone(), Type::ListType),
+            (pcy_proj.clone(), Type::ListType),
         ]);
-        let size_2 = e.clone().lst_len().eq_f(2).into();
-        let first_ptr = Self::make_is_ptr_asrt(e.clone().lnth(0));
-        let second_prophecy =
-        // (|e[1]| == 2) * (e[1][1] == [])
-        e
-            .clone()
-            .lst_len()
-            .eq_f(2)
-            .into_asrt()
-            .star(e.lnth(1).lnth(1).eq_f([]).into());
-        types.star(size_2).star(first_ptr).star(second_prophecy)
+        types.star(e.eq_f([[loc, proj], [pcy, pcy_proj]]).into_asrt())
     }
 
     fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
@@ -178,19 +187,18 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 if subpattern.is_some() {
                     fatal!(self, "Predicate parameters cannot have subpatterns");
                 }
-                self.var_map.insert(*var, GExpr::PVar(name.clone()));
+                let lvar = GExpr::LVar(format!("#{name}"));
+
+                self.var_map.insert(*var, lvar.clone());
+                self.type_knowledge
+                    .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
                 if ty.is_any_ptr() {
-                    let lvar = Expr::LVar(self.new_temp());
-                    self.var_map.insert(*var, lvar.clone());
-                    let var_eq =
-                        Assertion::Pure(Formula::eq(lvar.clone(), GExpr::PVar(name.clone())));
-                    let type_knowledge = if matches!(ty.kind(), TyKind::Ref(_, _, Mutability::Mut))
-                    {
-                        Self::make_is_ref_asrt(lvar)
+                    let type_knowledge = if Self::is_mut_ref(ty) {
+                        self.make_is_ref_asrt(lvar)
                     } else {
-                        Self::make_is_ptr_asrt(lvar)
+                        self.make_is_ptr_asrt(lvar)
                     };
-                    self.type_knowledge.push(type_knowledge.star(var_eq));
+                    self.type_knowledge.push(type_knowledge);
                 }
                 (name, ty)
             }
@@ -416,7 +424,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 place
                                     .proj
                                     .push(GilProj::Field(name.as_u32(), self.encode_type(ty)));
-                                place.into_expr_ptr()
+                                [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()].into()
                             }
                             _ => fatal!(self, "Cannot deref this: {:?}", lhs),
                         }
@@ -565,9 +573,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn make_box(&self, ptr: GExpr) -> GExpr {
         let non_null = self.make_nonnull(ptr);
-        let phantom_data = [].into();
-        let unique = [non_null, phantom_data].into();
-        let global = [].into();
+        let phantom_data = vec![].into();
+        let unique: GExpr = [non_null, phantom_data].into();
+        let global = vec![].into();
         [unique, global].into()
     }
 
@@ -582,7 +590,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let (left, pfs) = if left_ty.is_box() {
             // boxes have to be block pointers
             let loc = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), [].into()].into();
+            let ptr: Expr = [loc.clone(), vec![].into()].into();
             let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
             let box_ = self.make_box(ptr.clone());
             let eq = Formula::Eq {
@@ -596,7 +604,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             // FIXME: this is technically not correct,
             // we would need to annotate the pointsTo to make sure that's true.
             let loc = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), [].into()].into();
+            let ptr: Expr = [loc.clone(), vec![].into()].into();
             let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
             let non_null = self.make_nonnull(ptr.clone());
             let eq = Formula::Eq {
@@ -606,7 +614,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let eq = Assertion::Pure(eq);
             let pfs = Assertion::star(typing, eq);
             (ptr, pfs)
-        } else if matches!(left_ty.kind(), TyKind::Ref(_, _, Mutability::Mut)) {
+        } else if Self::is_mut_ref(left_ty) {
             (left.lnth(0), Assertion::Emp)
         } else {
             (left, Assertion::Emp)
@@ -669,13 +677,33 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     super::core_preds::controller(prophecy, typ, model)
                 }
                 _ => {
-                    let (def_id, substs) = match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => self.resolve_candidate(*def_id, substs),
+                    let (name, substs) = match ty.kind() {
+                        TyKind::FnDef(def_id, substs) => {
+                            let arg_ty = thir.exprs[args[0]].ty;
+                            if self.tcx().is_diagnostic_item(
+                                Symbol::intern("gillian::repr::shallow_repr"),
+                                *def_id,
+                            ) && Self::is_mut_ref(arg_ty)
+                            {
+                                let name = self.global_env.add_mut_ref_shallow_repr(arg_ty);
+                                let inner_ty = Self::mut_ref_inner(arg_ty).unwrap();
+                                // We use the subst of the shallow_repr for the inner type.
+                                // That is the only thing we need here.
+                                let (_, substs) = self.resolve_candidate(
+                                    *def_id,
+                                    self.tcx.intern_substs(&[inner_ty.into()]),
+                                );
+                                (name, substs)
+                            } else {
+                                let (def_id, substs) = self.resolve_candidate(*def_id, substs);
+                                let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
+                                    .tcx
+                                    .def_path_str(def_id));
+                                (name, substs)
+                            }
+                        }
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
-                    let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
-                        .tcx
-                        .def_path_str(def_id));
 
                     let mut params = Vec::with_capacity(args.len() + substs.len());
                     for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
@@ -748,15 +776,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 
-        let with_equalities = if self.type_info.is_empty() {
-            inner
-        } else {
-            Assertion::star(inner, Assertion::Types(self.type_info.clone()))
-        };
-
         let generic_lifetimes = self.generic_lifetimes();
         let with_lifetime_token = if generic_lifetimes.is_empty() {
-            with_equalities
+            inner
         } else {
             if generic_lifetimes.len() > 1 {
                 fatal!(
@@ -764,7 +786,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     "Multiple generic lifetimes not supported yet in specs"
                 )
             };
-            generic_lifetimes.iter().fold(with_equalities, |acc, lft| {
+            generic_lifetimes.iter().fold(inner, |acc, lft| {
                 let lft_name = lifetime_param_name(lft);
                 Assertion::star(
                     acc,

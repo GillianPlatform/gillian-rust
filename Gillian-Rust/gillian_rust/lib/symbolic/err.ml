@@ -11,6 +11,7 @@ type t =
   | Invalid_value of Ty.t * Expr.t
   | Unhandled of string
   | MissingBlock of string
+  | Missing_pcy of Expr.t
   | Missing_lifetime of Lft.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t
@@ -21,7 +22,7 @@ let recovery_vals = function
   | Missing_lifetime e | Double_kill_lifetime e | Wrong_lifetime_status e ->
       [ Lft.to_expr e ]
   | Use_after_free l | MissingBlock l -> [ Expr.loc_from_loc_name l ]
-  | Invalid_value (_, e) -> [ e ]
+  | Invalid_value (_, e) | Missing_pcy e -> [ e ]
   | Invalid_free_pointer (loc, proj) -> [ loc; proj ]
   | Invalid_type _ | Invalid_list_op | Unhandled _ | Invalid_pcy_var _ -> []
 
@@ -32,6 +33,7 @@ let pp ft =
       pf ft "Expression needs to be concretized further: %a" Expr.pp e
   | Use_after_free s -> pf ft "Use after free: %s" s
   | MissingBlock s -> pf ft "MissingBlock: %s" s
+  | Missing_pcy e -> pf ft "Missing prophecy: %a" Expr.pp e
   | Invalid_type (t1, t2) -> pf ft "Invalid type: %a != %a" Ty.pp t1 Ty.pp t2
   | Invalid_list_op -> pf ft "Invalid list operation"
   | Invalid_loc e -> pf ft "Invalid location: %a" Expr.pp e

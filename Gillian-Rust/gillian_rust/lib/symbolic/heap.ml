@@ -216,6 +216,10 @@ module TreeBlock = struct
     let root = { ty; content = Missing } in
     { offset; root }
 
+  let outer_symbolic ~offset ~tyenv ty e =
+    let root = { ty; content = Symbolic e } in
+    { offset; root }
+
   let rec uninitialized ~tyenv ty =
     match ty with
     | Ty.Tuple v ->

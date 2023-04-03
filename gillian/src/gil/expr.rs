@@ -70,9 +70,9 @@ from_lit!(
 
 macro_rules! from_array {
     ($l:literal) => {
-        impl From<[Expr; $l]> for Expr {
-            fn from(x: [Expr; $l]) -> Self {
-                let vec = Vec::from(x);
+        impl<T: Into<Expr>> From<[T; $l]> for Expr {
+            fn from(x: [T; $l]) -> Self {
+                let vec = x.into_iter().map(|v| v.into()).collect();
                 Expr::EList(vec)
             }
         }

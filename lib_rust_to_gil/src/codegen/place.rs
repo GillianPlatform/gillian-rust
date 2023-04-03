@@ -118,7 +118,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         place.into_expr_ptr()
     }
 
-    fn push_read_gil_place_in_memory(
+    pub fn push_read_gil_place_in_memory(
         &mut self,
         res: String,
         gil_place: GilPlace<'tcx>,
@@ -184,7 +184,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_action(ret, action);
     }
 
-    fn push_read_gil_place(
+    pub fn push_read_gil_place(
         &mut self,
         gil_place: GilPlace<'tcx>,
         read_ty: Ty<'tcx>,

@@ -168,7 +168,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
             Tuple(_) => EncodedType(
                 [
-                    "tuple".into(),
+                    Expr::from("tuple"),
                     ty.tuple_fields()
                         .iter()
                         .map(|x| self.encode_type(x).into())
@@ -191,7 +191,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 };
                 EncodedType(
                     [
-                        "ptr".into(),
+                        Expr::from("ptr"),
                         mutability.into(),
                         self.encode_type(*ty).into(),
                     ]
@@ -205,7 +205,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 };
                 EncodedType(
                     [
-                        "ref".into(),
+                        Expr::from("ref"),
                         mutability.into(),
                         self.encode_type(*ty).into(),
                     ]
@@ -221,12 +221,19 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                     .collect();
                 // Adts are encoded by the environment
                 self.add_adt_to_genv(*def);
-                EncodedType(["adt".into(), name.into(), args.into()].into())
+                EncodedType([Expr::from("adt"), name.into(), args.into()].into())
             }
-            Slice(ty) => EncodedType(["slice".into(), self.encode_type(*ty).into()].into()),
+            Slice(ty) => EncodedType([Expr::from("slice"), self.encode_type(*ty).into()].into()),
             Array(ty, sz) => {
                 let sz_i = self.array_size_value(sz);
-                EncodedType(["array".into(), self.encode_type(*ty).into(), sz_i.into()].into())
+                EncodedType(
+                    [
+                        Expr::from("array"),
+                        self.encode_type(*ty).into(),
+                        sz_i.into(),
+                    ]
+                    .into(),
+                )
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             Param(ParamTy { index, name }) => {

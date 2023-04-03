@@ -9,6 +9,7 @@ type t =
   | Load_discr
   (* Prophecies *)
   | Pcy_resolve
+  | Pcy_alloc
   (* Core predicate manipulation *)
   | Get_value
   | Set_value
@@ -59,6 +60,7 @@ let of_name = function
   | "free" -> Free
   | "load_discr" -> Load_discr
   | "pcy_resolve" -> Pcy_resolve
+  | "pcy_alloc" -> Pcy_alloc
   | "get_value" -> Get_value
   | "set_value" -> Set_value
   | "rem_value" -> Rem_value
@@ -86,6 +88,7 @@ let to_name = function
   | Free -> "free"
   | Load_discr -> "load_discr"
   | Pcy_resolve -> "pcy_resolve"
+  | Pcy_alloc -> "pcy_alloc"
   | Get_value -> "get_value"
   | Set_value -> "set_value"
   | Rem_value -> "rem_value"

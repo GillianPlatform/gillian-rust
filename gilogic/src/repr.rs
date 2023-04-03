@@ -3,17 +3,25 @@ use crate::prophecies::Prophecy;
 use super::RustAssertion;
 
 pub trait ShallowRepresentation {
+    #[rustc_diagnostic_item = "gillian::repr::shallow_model_ty"]
     type ShallowModelTy;
 
     #[rustc_diagnostic_item = "gillian::repr::shallow_repr"]
     fn shallow_repr(self, model: Self::ShallowModelTy) -> RustAssertion;
+
+    fn mut_ref_inner(
+        &mut self,
+        _model: (Self::ShallowModelTy, Self::ShallowModelTy),
+    ) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
 }
 
 impl<T: ShallowRepresentation> ShallowRepresentation for &mut T {
-    type ShallowModelTy = (T::ShallowModelTy, Prophecy<T::ShallowModelTy>);
+    type ShallowModelTy = (T::ShallowModelTy, T::ShallowModelTy);
 
     fn shallow_repr(self, _model: Self::ShallowModelTy) -> RustAssertion {
-        unreachable!() // Implemented in GIL directly.
+        unreachable!("Implemented in GIL")
     }
 }
 
@@ -33,11 +41,11 @@ impl<T: ShallowRepresentation> Prophecised for &mut T {
     type ProphecyTy = Prophecy<T::ShallowModelTy>;
 
     fn prophecy(self) -> Self::ProphecyTy {
-        unreachable!() // Implemented in GIL directly.
+        unreachable!("Implemented in GIL")
     }
 
     fn with_prophecy(self, _pcy: Self::ProphecyTy) -> Self {
-        unreachable!() // Implemented in GIL directly.
+        unreachable!("Implemented in GIL")
     }
 }
 

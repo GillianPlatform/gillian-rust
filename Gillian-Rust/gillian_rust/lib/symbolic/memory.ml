@@ -22,11 +22,7 @@ type t = {
 
 type action_ret = (t * vt list, err_t) result
 
-let resolve_pcy_var (e : Expr.t) : (string, err_t) DR.t =
-  let* e = Delayed.reduce e in
-  match e with
-  | LVar name -> DR.ok name
-  | _ -> DR.error (Err.Invalid_pcy_var e)
+let resolve_pcy_var (e : Expr.t) : Expr.t Delayed.t = Delayed.reduce e
 
 let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
   let* loc_name = Delayed.resolve_loc lvar_loc in
@@ -237,18 +233,20 @@ let execute_get_value_observer mem args =
   let { heap; pcies; tyenv; lfts } = mem in
   match args with
   | [ pcy_var; proj_exp; ty_exp ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_value_obs ~tyenv pcies pcy_var proj ty in
-      make_branch ~mem ~rets:[ Expr.LVar pcy_var; proj_exp; ty_exp; value ] ()
+      let++ pcy_var, value =
+        Prophecies.get_value_obs ~tyenv pcies pcy_var proj ty
+      in
+      make_branch ~mem ~rets:[ pcy_var; proj_exp; ty_exp; value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
 
 let execute_set_value_observer mem args =
   let { pcies; tyenv } = mem in
   match args with
   | [ pcy_var; proj; ty; value ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let++ new_pcies =
@@ -260,7 +258,7 @@ let execute_set_value_observer mem args =
 let execute_rem_value_observer mem args =
   match args with
   | [ pcy_var; proj_exp; ty_exp ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let* proj = projections_of_expr proj_exp in
       let ty = Ty.of_expr ty_exp in
       let++ new_pcies =
@@ -273,18 +271,20 @@ let execute_get_pcy_controller mem args =
   let { heap; pcies; tyenv; lfts } = mem in
   match args with
   | [ pcy_var; proj_exp; ty_exp ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_controller ~tyenv pcies pcy_var proj ty in
-      make_branch ~mem ~rets:[ Expr.LVar pcy_var; proj_exp; ty_exp; value ] ()
+      let++ pcy_var, value =
+        Prophecies.get_controller ~tyenv pcies pcy_var proj ty
+      in
+      make_branch ~mem ~rets:[ pcy_var; proj_exp; ty_exp; value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
 
 let execute_set_pcy_controller mem args =
   let { pcies; tyenv } = mem in
   match args with
   | [ pcy_var; proj; ty; value ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let++ new_pcies =
@@ -296,7 +296,7 @@ let execute_set_pcy_controller mem args =
 let execute_rem_pcy_controller mem args =
   match args with
   | [ pcy_var; proj_exp; ty_exp ] ->
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let* proj = projections_of_expr proj_exp in
       let ty = Ty.of_expr ty_exp in
       let++ new_pcies =
@@ -309,13 +309,21 @@ let execute_pcy_resolve mem args =
   match args with
   | [ pcy_var; proj_exp; ty ] ->
       let ty = Ty.of_expr ty in
-      let** pcy_var = resolve_pcy_var pcy_var in
+      let* pcy_var = resolve_pcy_var pcy_var in
       let* proj = projections_of_expr proj_exp in
       let++ new_pcies =
         Prophecies.resolve ~tyenv:mem.tyenv mem.pcies pcy_var proj ty
       in
       make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for pcy_resolve"
+
+let execute_pcy_alloc mem args =
+  match args with
+  | [ ty ] ->
+      let ty = Ty.of_expr ty in
+      let ret, pcies = Prophecies.alloc ~tyenv:mem.tyenv mem.pcies ty in
+      DR.ok @@ make_branch ~mem:{ mem with pcies } ~rets:ret ()
+  | _ -> Fmt.failwith "Invalid arguments for pcy_alloc"
 
 let pp_branch fmt branch =
   let _, values = branch in

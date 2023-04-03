@@ -12,7 +12,7 @@ mod core_preds;
 mod dummy_pre;
 mod lemma;
 mod predicate;
-mod traits;
+pub(crate) mod traits;
 mod utils;
 
 #[derive(Debug)]
@@ -55,7 +55,7 @@ pub fn compile_logic<'tcx, 'genv>(
         for (name, _) in pred.params.iter().take(generic_amounts) {
             let lvar_name = format!("#{}", name.clone());
             definition = Assertion::star(
-                Assertion::Pure(Formula::eq(Expr::PVar(name.clone()), Expr::LVar(lvar_name))),
+                Expr::PVar(name.clone()).eq_f(Expr::LVar(lvar_name)).into(),
                 definition,
             )
         }

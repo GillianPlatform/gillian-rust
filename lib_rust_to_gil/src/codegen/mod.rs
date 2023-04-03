@@ -2,6 +2,7 @@ mod block;
 mod body;
 mod function_call;
 mod memory;
+mod prophecies;
 mod rvalue;
 mod statement;
 mod typ;

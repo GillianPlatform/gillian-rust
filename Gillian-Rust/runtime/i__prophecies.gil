@@ -1,0 +1,15 @@
+proc "gilogic::Prophecised::prophecy"(ty, ref) {
+  ret := l-nth(ref, 1i);
+  return
+};
+
+proc "gilogic::Prophecy::<(T, U)>::field_1"(ty_a, ty_b, pcy) {
+  ret := {{ l-nth(pcy, 0i), l+ (l-nth(pcy, 1i), {{ {{ "f", 1i, {{ "tuple", {{ ty_a, ty_b }} }} }} }})}};
+  return
+};
+
+proc "gilogic::Prophecy::<T>::resolve"(ty, pcy) {
+  u := [pcy_resolve](l-nth(pcy, 0i), l-nth(pcy, 1i), ty);
+  ret := null;
+  return
+};

@@ -198,6 +198,8 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
             }
         }
         self.add_specs();
+        self.global_env
+            .add_mut_ref_shallow_reprs_to_prog(&mut self.prog);
         let init_data = self.global_env.serialized_adt_declarations();
         ParsingUnit {
             prog: self.prog,
