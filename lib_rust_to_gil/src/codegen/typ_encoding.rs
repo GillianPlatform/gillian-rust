@@ -29,7 +29,7 @@ pub fn lifetime_param_name(name: &String) -> String {
 
 pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
-    fn atd_def_name(&self, def: &AdtDef) -> String;
+    fn adt_def_name(&self, def: &AdtDef) -> String;
 
     fn array_size_value(&self, sz: &Const) -> i128 {
         match sz.kind() {
@@ -106,7 +106,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 }])
             }
             Adt(def, subst) => {
-                let name = self.atd_def_name(def);
+                let name = self.adt_def_name(def);
                 let subst: serde_json::Value = subst
                     .iter()
                     .filter_map(|x| self.serialize_generic_arg(x))
@@ -213,7 +213,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 )
             }
             Adt(def, subst) => {
-                let name = self.atd_def_name(def);
+                let name = self.adt_def_name(def);
                 let args: Vec<_> = subst
                     .iter()
                     .filter_map(|a| self.encode_generic_arg(a))
@@ -249,7 +249,7 @@ impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
         self.global_env.add_adt(def);
     }
 
-    fn atd_def_name(&self, def: &AdtDef) -> String {
+    fn adt_def_name(&self, def: &AdtDef) -> String {
         self.tcx.item_name(def.did()).to_string()
     }
 }

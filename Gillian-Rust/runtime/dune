@@ -19,5 +19,11 @@
 
 (install
  (section share)
- (files i__binop.gil i__lang.gil i__std_shims.gil i__repr.gil i__ownable.gil)
+ (files
+  i__binop.gil
+  i__lang.gil
+  i__std_shims.gil
+  i__repr.gil
+  i__ownable.gil
+  i__prophecies.gil)
  (package gillian-rust))

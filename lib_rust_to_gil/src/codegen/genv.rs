@@ -26,7 +26,7 @@ impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
         self.add_adt(def);
     }
 
-    fn atd_def_name(&self, def: &AdtDef) -> String {
+    fn adt_def_name(&self, def: &AdtDef) -> String {
         self.tcx.item_name(def.did()).to_string()
     }
 }

@@ -1,1 +1,1 @@
-abstract pred "$POLYMORPHIC::own"(+pty, +self);
+abstract pred "$POLYMORPHIC::own"(+pty, +self, model);
