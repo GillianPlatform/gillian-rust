@@ -1,0 +1,5 @@
+proc "std::boxed::Box::<T, A>::leak"(T, A, b) {
+     ptr := l-nth(l-nth(l-nth(b, 0i), 0i), 0i);
+     ret := {{ ptr, {{ null, {{ }} }} }};
+     return
+};

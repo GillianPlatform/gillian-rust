@@ -27,7 +27,7 @@ impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx> {
 impl<'tcx, 'comp> ProgCtx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
-            prog: gillian::gil::Prog::new(runtime::imports()),
+            prog: gillian::gil::Prog::new(runtime::imports(config.prophecies)),
             global_env: GlobalEnv::new(tcx, config),
             temp_gen: TempGenerator::new(),
             pre_tbl: HashMap::new(),

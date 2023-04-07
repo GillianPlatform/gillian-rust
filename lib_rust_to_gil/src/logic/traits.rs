@@ -17,6 +17,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> (DefId, SubstsRef<'tcx>) {
+        log::debug!("Resolving candidate for {:?}<{:?}>", def_id, substs);
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
             None => (def_id, substs),

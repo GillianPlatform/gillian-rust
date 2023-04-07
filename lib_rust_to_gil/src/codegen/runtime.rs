@@ -9,14 +9,21 @@ macro_rules! import {
     };
 }
 
-pub fn imports() -> Vec<Import> {
-    vec![
+pub fn imports(prophecy_mode: bool) -> Vec<Import> {
+    let mut ret = vec![
         import!("i__binop.gil"),
         import!("i__lang.gil"),
         import!("i__std_shims.gil"),
-        import!("i__ownable.gil"),
         import!("i__prophecies.gil"),
-    ]
+    ];
+    if prophecy_mode {
+        ret.push(import!("i__ownable_pcy.gil"));
+        ret.push(import!("i__std_shims_pcy.gil"));
+    } else {
+        ret.push(import!("i__ownable.gil"));
+        ret.push(import!("i__std_shims_no_pcy.gil"));
+    }
+    ret
 }
 
 const CHECKED_ADD: &str = "i__binop_checked_add";

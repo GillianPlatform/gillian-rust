@@ -47,15 +47,21 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
         self.mut_ref_owns
             .entry(ty)
-            .or_insert_with(|| format!("{}::shallow_repr", ty))
+            .or_insert_with(|| format!("{}::mut_ref_own", ty))
             .clone()
     }
 
     pub fn add_mut_ref_shallow_reprs_to_prog(&mut self, prog: &mut Prog) {
         for (ty, name) in self.mut_ref_owns.iter() {
+            let symbol = if self.config.prophecies {
+                Symbol::intern("gillian::pcy::ownable::own")
+            } else {
+                Symbol::intern("gillian::ownable::own")
+            };
+
             let own = self
                 .tcx()
-                .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
+                .get_diagnostic_item(symbol)
                 .expect("Could not find gilogic::Ownable");
             let inner_ty = match ty.kind() {
                 TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
@@ -66,22 +72,23 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[
                         *inner_ty,
                     ]));
+
             let (_, subst) = self.resolve_candidate(own, subst);
             let generic_params = subst.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
                 (name, None)
             });
-            let params = generic_params
-                .chain(
-                    [
-                        ("ref".to_string(), Some(Type::ListType)),
-                        ("model".to_string(), None),
-                    ]
-                    .into_iter(),
-                )
+            let mut params: Vec<_> = generic_params
+                .chain([("ref".to_string(), Some(Type::ListType))].into_iter())
                 .collect();
-            let num_params = subst.len() + 2;
+            let mut num_params = subst.len() + 1;
+
+            if self.config.prophecies {
+                params.push(("model".to_string(), None));
+                num_params += 1;
+            }
+
             let pred = Pred {
                 name: name.clone(),
                 num_params,

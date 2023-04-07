@@ -17,10 +17,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
-                if matches!(
-                    self.rvalue_ty(rvalue).kind(),
-                    TyKind::Ref(_, _, Mutability::Mut)
-                ) {
+                if self.prophecies_enabled()
+                    && matches!(
+                        self.rvalue_ty(rvalue).kind(),
+                        TyKind::Ref(_, _, Mutability::Mut)
+                    )
+                {
                     // The case of mutable references, what do we do with the prophecy?
                     if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
                         // FIXME: HACK

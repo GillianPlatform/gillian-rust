@@ -49,6 +49,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     None
                 }
             }
+            "gilogic::Ownable::own_____open" => {
+                if ty_utils::is_ty_param(substs[0].expect_ty()) {
+                    Some(("$POLYMORPHIC::ref_mut_open".to_string(), Kind::Lemma))
+                } else {
+                    None
+                }
+            }
+            "gilogic::Ownable::own_____close" => {
+                if ty_utils::is_ty_param(substs[0].expect_ty()) {
+                    Some(("$POLYMORPHIC::ref_mut_close".to_string(), Kind::Lemma))
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

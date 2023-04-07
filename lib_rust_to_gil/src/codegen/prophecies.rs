@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use rustc_middle::{
     mir::Place,
-    ty::{Binder, ProjectionTy, TraitRef, Ty},
+    ty::{ProjectionTy, Ty},
 };
 use rustc_span::Symbol;
 
@@ -40,10 +40,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn push_create_prophecy_for(&mut self, place: Place<'tcx>) -> Expr {
+        if !self.prophecies_enabled() {
+            fatal!(self, "Prophecies are not enabled, something is wrong");
+        }
         let ty = self.place_ty(place).ty;
         let repr_ty_id = self
             .tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::ownable::representation_ty"))
+            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
             .expect("Couldn't find gillian::ownable::representation_ty");
         // let trait_id = self
         //     .tcx

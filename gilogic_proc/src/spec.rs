@@ -16,7 +16,7 @@ mod aux {
 
     impl Parse for CommaSepLvarDecl {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-            Punctuated::parse_separated_nonempty(input).map(CommaSepLvarDecl)
+            Punctuated::parse_terminated(input).map(CommaSepLvarDecl)
         }
     }
 
@@ -157,6 +157,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
             Err(error) => return error.to_compile_error().into(),
         }
     }
+
     // We create an lvar for each argument
     let f_args_lvars: Punctuated<LvarDecl, Token![,]> = item
         .sig
@@ -180,6 +181,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
+
     let id = Uuid::new_v4().to_string();
     let name = {
         let ident = item.sig.ident.to_string();

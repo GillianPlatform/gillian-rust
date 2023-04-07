@@ -4,7 +4,6 @@ use rustc_span::def_id::DefId;
 use std::collections::HashSet;
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
-use crate::config::Config;
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
@@ -46,6 +45,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             mir,
             global_env,
         }
+    }
+
+    pub fn prophecies_enabled(&self) -> bool {
+        self.global_env.config.prophecies
     }
 
     pub fn local_is_in_store(&self, local: Local) -> bool {

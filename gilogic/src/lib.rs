@@ -15,9 +15,8 @@ mod seq;
 pub use seq::Seq;
 
 mod ownable;
-pub use ownable::{Ownable, Prophecised};
-mod prophecies;
-pub use prophecies::*;
+pub use ownable::Ownable;
+pub mod prophecies;
 
 #[path = "stubs.rs"]
 pub mod __stubs;

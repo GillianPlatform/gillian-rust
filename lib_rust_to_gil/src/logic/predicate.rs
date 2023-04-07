@@ -87,6 +87,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
+    pub fn prophecies_enabled(&self) -> bool {
+        self.global_env.config.prophecies
+    }
+
+    pub fn assert_prophecies_enabled(&self, msg: &str) {
+        if !self.prophecies_enabled() {
+            let msg = format!("Prophecies are not enabled: {}", msg);
+            self.tcx().sess.fatal(msg);
+        }
+    }
+
     fn new_temp(&mut self) -> String {
         self.temp_gen.fresh_lvar()
     }
@@ -182,7 +193,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 self.toplevel_asrts
                     .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
                 if ty.is_any_ptr() {
-                    let type_knowledge = if ty_utils::is_mut_ref(ty) {
+                    let type_knowledge = if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
                         self.make_is_ref_asrt(lvar)
                     } else {
                         self.make_is_ptr_asrt(lvar)
@@ -413,7 +424,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 place
                                     .proj
                                     .push(GilProj::Field(name.as_u32(), self.encode_type(ty)));
-                                [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()].into()
+                                if self.prophecies_enabled() {
+                                    [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()]
+                                        .into()
+                                } else {
+                                    place.into_expr_ptr()
+                                }
                             }
                             _ => fatal!(self, "Cannot deref this: {:?}", lhs),
                         }
@@ -433,43 +449,39 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     GExpr::EList(vec![])
                 }
                 Some(Stubs::SeqAppend) => {
-                    assert!(args.len() == 2);
                     let list = self.compile_expression(args[0], thir);
                     let elem = self.compile_expression(args[1], thir);
                     let elem = vec![elem].into();
                     Expr::lst_concat(list, elem)
                 }
                 Some(Stubs::SeqPrepend) => {
-                    assert!(args.len() == 2);
                     let list = self.compile_expression(args[0], thir);
                     let elem = self.compile_expression(args[1], thir);
                     let elem = vec![elem].into();
                     Expr::lst_concat(elem, list)
                 }
                 Some(Stubs::SeqConcat) => {
-                    assert!(args.len() == 2);
                     let left = self.compile_expression(args[0], thir);
                     let right = self.compile_expression(args[1], thir);
                     Expr::lst_concat(left, right)
                 }
                 Some(Stubs::SeqLen) => {
-                    assert!(args.len() == 1);
                     let list = self.compile_expression(args[0], thir);
                     list.lst_len()
                 }
                 Some(Stubs::MutRefGetProphecy) => {
-                    assert!(args.len() == 1);
+                    self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                     let mut_ref = self.compile_expression(args[0], thir);
                     mut_ref.lnth(1)
                 }
                 Some(Stubs::MutRefSetProphecy) => {
-                    assert!(args.len() == 2);
+                    self.assert_prophecies_enabled("using `Prophecised::assign`");
                     let mut_ref = self.compile_expression(args[0], thir);
                     let pcy = self.compile_expression(args[1], thir);
                     [mut_ref.lnth(0), pcy].into()
                 }
                 Some(Stubs::ProphecyGetValue) => {
-                    assert!(args.len() == 1);
+                    self.assert_prophecies_enabled("using `Prophecy::value`");
                     let prophecy = self.compile_expression(args[0], thir);
                     let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
                     let ty = self.encode_type(ty);
@@ -479,7 +491,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     value
                 }
                 Some(Stubs::ProphecyField(i)) => {
-                    assert!(args.len() == 1);
+                    self.assert_prophecies_enabled("using `Prophecy::field`");
                     let proph = self.compile_expression(args[0], thir);
                     let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
                     [
@@ -614,7 +626,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let eq = Assertion::Pure(eq);
             let pfs = Assertion::star(typing, eq);
             (ptr, pfs)
-        } else if ty_utils::is_mut_ref(left_ty) {
+        } else if ty_utils::is_mut_ref(left_ty) && self.prophecies_enabled() {
             (left.lnth(0), Assertion::Emp)
         } else {
             (left, Assertion::Emp)
@@ -690,12 +702,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Pred { name, params }
                 }
                 Some(Stubs::ProphecyObserver) => {
+                    self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);
                     let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
                     let model = self.compile_expression(args[1], thir);
                     super::core_preds::observer(prophecy, typ, model)
                 }
                 Some(Stubs::ProphecyController) => {
+                    self.assert_prophecies_enabled("using prophecy::controller");
                     let prophecy = self.compile_expression(args[0], thir);
                     let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
                     let model = self.compile_expression(args[1], thir);
@@ -705,9 +719,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let (name, substs) = match ty.kind() {
                         TyKind::FnDef(def_id, substs) => {
                             let arg_ty = thir.exprs[args[0]].ty;
-                            if self.tcx().is_diagnostic_item(
-                                Symbol::intern("gillian::ownable::own"),
+                            if (self.tcx().is_diagnostic_item(
+                                Symbol::intern("gillian::pcy::ownable::own"),
                                 *def_id,
+                            ) ||
+                            self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), *def_id)
                             ) && ty_utils::is_mut_ref(arg_ty)
                             {
                                 let name = self.global_env.add_mut_ref_own(arg_ty);

@@ -14,36 +14,36 @@ exception NotConcrete of string
 module TypePreds = struct
   let ( .%[] ) e idx = Expr.list_nth e idx
 
-  let ( >- ) e ty =
-    let open Formula.Infix in
-    (Expr.typeof e) #== (Expr.type_ ty)
+  open Formula.Infix
+
+  let ( >- ) e ty = (Expr.typeof e) #== (Expr.type_ ty)
 
   let valid_thin_ptr e =
-    let open Formula.Infix in
     (Expr.list_length e) #== (Expr.int 2)
     #&& (e.%[0] >- ObjectType)
     #&& (e.%[1] >- ListType)
 
   let valid_fat_ptr e =
-    let open Formula.Infix in
     (Expr.list_length e) #== (Expr.int 2)
     #&& (valid_thin_ptr e.%[0])
     #&& (e.%[1] >- IntType)
 
-  let valid_thin_ref e =
-    let open Formula.Infix in
+  let valid_thin_mut_ref_pcy e =
     (Expr.list_length e) #== (Expr.int 2) #&& (valid_thin_ptr e.%[0])
 
-  let valid_fat_ref e =
-    let open Formula.Infix in
+  let valid_fat_mut_ref_pcy e =
     (Expr.list_length e) #== (Expr.int 2) #&& (valid_fat_ptr e.%[0])
 
   let valid scalar_ty e =
     match scalar_ty with
     | Ty.Scalar (Uint _ | Int _) -> e >- IntType
     | Scalar Bool -> e >- BooleanType
-    | Ref { ty = Slice _; _ } -> valid_fat_ref e
-    | Ref _ -> valid_thin_ref e
+    | Ref { ty = Slice _; mut = true } ->
+        if !Common.R_config.prophecy_mode then valid_fat_mut_ref_pcy e
+        else valid_fat_ptr e
+    | Ref { mut = true; ty = _ } ->
+        if !Common.R_config.prophecy_mode then valid_thin_mut_ref_pcy e
+        else valid_thin_ptr e
     | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
     | Ptr _ -> valid_thin_ptr e
     | Scalar Char -> True

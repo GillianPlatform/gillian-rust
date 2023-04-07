@@ -6,7 +6,11 @@ module Annot = Gil_syntax.Annot.Basic
 module TargetLangOptions = struct
   open Cmdliner
 
-  type t = { compiler_root : string option; expand_and_stop : bool }
+  type t = {
+    compiler_root : string option;
+    expand_and_stop : bool;
+    prophecies : bool;
+  }
 
   let term =
     let docs = Manpage.s_common_options in
@@ -19,14 +23,17 @@ module TargetLangOptions = struct
     let expand_and_stop =
       Arg.(value & flag & info [ "expand-and-stop" ] ~docs ~doc)
     in
-    let opt compiler_root expand_and_stop =
-      { compiler_root; expand_and_stop }
+    let doc = "Use Gillian-Rust in prophecy mode (RustHornBelt style)" in
+    let prophecies = Arg.(value & flag & info [ "prophecies" ] ~docs ~doc) in
+    let opt compiler_root expand_and_stop prophecies =
+      { compiler_root; expand_and_stop; prophecies }
     in
-    Term.(const opt $ compiler_root $ expand_and_stop)
+    Term.(const opt $ compiler_root $ expand_and_stop $ prophecies)
 
-  let apply { compiler_root; expand_and_stop } =
+  let apply { compiler_root; expand_and_stop; prophecies } =
     Option.iter (fun c -> R_config.compiler_root := c) compiler_root;
-    R_config.expand_and_stop := expand_and_stop
+    R_config.expand_and_stop := expand_and_stop;
+    R_config.prophecy_mode := prophecies
 end
 
 type init_data = Tyenv.t
@@ -58,6 +65,7 @@ let options ~out_dir () =
     "-Zcrate-attr='register_tool(gillian)'";
     "-Zcrate-attr='feature(rustc_attrs)'";
     R_config.exec_mode_arg ();
+    R_config.prophecy_mode_arg ();
   ]
 
 module Parsing = Gil_parsing.Make (Annot)

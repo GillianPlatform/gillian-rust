@@ -3,9 +3,8 @@
 extern crate gilogic;
 
 use gilogic::{
-    controller,
     macros::{assertion, borrow, close_borrow, ensures, lemma, open_borrow, predicate, requires},
-    observer, Ownable, Prophecised, Prophecy,
+    prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
 };
 
 struct WP<T> {
@@ -53,7 +52,7 @@ fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[lemma]
 #[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_inner_xy(p, x, y))]
-#[ensures(|r: &mut T, rp: &mut T| (r == &mut (*x).v) * gilogic::Ownable::ref_mut_inner(r.with_prophecy(k)))]
+#[ensures(|r: &mut T, rp: &mut T| (r == &mut (*x).v) * Ownable::ref_mut_inner(r.with_prophecy(k)))]
 fn split_x<'a, T: Ownable>(p: &'a mut WP<T>, k: Prophecy<T::RepresentationTy>);
 
 impl<T: Ownable> Ownable for WP<T> {

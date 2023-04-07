@@ -46,6 +46,7 @@ pub(crate) enum Stubs {
 pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
     if let TyKind::FnDef(did, _) = ty.kind() {
         crate::utils::attrs::diagnostic_item_string(*did, tcx).and_then(|name| {
+            log::debug!("Found stub: {}", name);
             match name.as_str() {
                 "gillian::pred::defs" => Some(Stubs::PredDefs),
                 "gillian::asrt::star" => Some(Stubs::AssertStar),
@@ -65,8 +66,10 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
                 "gillian::seq::prepend" => Some(Stubs::SeqPrepend),
                 "gillian::seq::concat" => Some(Stubs::SeqConcat),
                 "gillian::seq::len" => Some(Stubs::SeqLen),
-                "gillian::ownable::own" => Some(Stubs::OwnPred),
-                "gillian::ownable::ref_mut_inner" => Some(Stubs::RefMutInner),
+                "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Stubs::OwnPred),
+                "gillian::ownable::ref_mut_inner" | "gillian::pcy::ownable::ref_mut_inner" => {
+                    Some(Stubs::RefMutInner)
+                }
                 _ => {
                     if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
                         let mut iter = fields.split("::");
