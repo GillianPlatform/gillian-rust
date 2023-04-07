@@ -118,7 +118,7 @@ let execute_action act_name mem args =
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Load_discr -> protect execute_load_discr mem args
-  | Pcy_resolve | Pcy_alloc ->
+  | Pcy_resolve | Pcy_alloc | Pcy_assign ->
       failwith "Prophecies not yet implemented in concrete execution"
   | Get_value
   | Set_value
@@ -134,7 +134,10 @@ let execute_action act_name mem args =
   | Rem_value_observer
   | Get_pcy_controller
   | Set_pcy_controller
-  | Rem_pcy_controller -> failwith "Core Predicates used in concrete execution"
+  | Rem_pcy_controller
+  | Get_pcy_value
+  | Set_pcy_value
+  | Rem_pcy_value -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

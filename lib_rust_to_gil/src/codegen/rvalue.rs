@@ -77,7 +77,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         _type_annot,
                         _active_field,
                     ) => {
-                        let def = self.tcx.adt_def(adt_did);
+                        let def = self.tcx().adt_def(adt_did);
                         match def.adt_kind() {
                             AdtKind::Enum => {
                                 let n: Expr = variant_idx.as_u32().into();
@@ -192,7 +192,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         use mir::BinOp::*;
         match binop {
             Add if left_ty.is_integral() && left_ty == right_ty => {
-                let max_val = left_ty.numeric_max_val(self.tcx).unwrap();
+                let max_val = left_ty.numeric_max_val(self.tcx()).unwrap();
                 let max_val = self.encode_const(&max_val);
                 let temp = self.temp_var();
                 self.push_cmd(runtime::checked_add(
@@ -273,7 +273,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 offset: _,
             } => match ty.kind() {
                 TyKind::Tuple(..) => {
-                    let contents = self.tcx.destructure_mir_constant(
+                    let contents = self.tcx().destructure_mir_constant(
                         ty::ParamEnv::reveal_all(),
                         ConstantKind::Val(*val, ty),
                     );

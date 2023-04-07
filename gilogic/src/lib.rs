@@ -9,20 +9,6 @@ pub use tys::RustAssertion;
 
 pub mod macros {
     pub use gilogic_proc::*;
-
-    #[macro_export]
-    macro_rules! open_borrow {
-        ($p:ident ($($args:tt),*)) => {
-            ::std::concat_idents!($p,_____open) ($($args),*)
-        };
-    }
-
-    #[macro_export]
-    macro_rules! close_borrow {
-        ($p:ident ($($args:tt),*)) => {
-            ::std::concat_idents!($p,_____close) ($($args),*)
-        };
-    }
 }
 
 mod seq;

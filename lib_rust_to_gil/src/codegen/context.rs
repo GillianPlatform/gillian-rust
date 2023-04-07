@@ -9,7 +9,6 @@ use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
     locals_in_memory: HashSet<Local>,
-    pub(crate) config: &'body Config,
     pub(crate) tcx: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
@@ -33,14 +32,12 @@ impl<'tcx, 'body> HasDefId for GilCtxt<'tcx, 'body> {
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
-        config: &'body Config,
-        mir: &'body Body<'tcx>,
         ty_ctxt: TyCtxt<'tcx>,
+        mir: &'body Body<'tcx>,
         global_env: &'body mut GlobalEnv<'tcx>,
     ) -> Self {
         GilCtxt {
             tcx: ty_ctxt,
-            config,
             locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,

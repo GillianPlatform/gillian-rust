@@ -11,8 +11,9 @@ type t =
   | Invalid_value of Ty.t * Expr.t
   | Unhandled of string
   | MissingBlock of string
-  | Missing_pcy of Expr.t
+  | Missing_pcy of string
   | Missing_lifetime of Lft.t
+  | Missing_proj of Projections.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t
 [@@deriving yojson, show]
@@ -21,10 +22,15 @@ let recovery_vals = function
   | Too_symbolic e | Invalid_loc e -> [ e ]
   | Missing_lifetime e | Double_kill_lifetime e | Wrong_lifetime_status e ->
       [ Lft.to_expr e ]
-  | Use_after_free l | MissingBlock l -> [ Expr.loc_from_loc_name l ]
-  | Invalid_value (_, e) | Missing_pcy e -> [ e ]
+  | Use_after_free l | MissingBlock l | Missing_pcy l ->
+      [ Expr.loc_from_loc_name l ]
+  | Invalid_value (_, e) -> [ e ]
   | Invalid_free_pointer (loc, proj) -> [ loc; proj ]
-  | Invalid_type _ | Invalid_list_op | Unhandled _ | Invalid_pcy_var _ -> []
+  | Invalid_type _
+  | Invalid_list_op
+  | Unhandled _
+  | Invalid_pcy_var _
+  | Missing_proj _ -> []
 
 let pp ft =
   let open Fmt in
@@ -33,7 +39,8 @@ let pp ft =
       pf ft "Expression needs to be concretized further: %a" Expr.pp e
   | Use_after_free s -> pf ft "Use after free: %s" s
   | MissingBlock s -> pf ft "MissingBlock: %s" s
-  | Missing_pcy e -> pf ft "Missing prophecy: %a" Expr.pp e
+  | Missing_pcy s -> pf ft "Missing prophecy: %s" s
+  | Missing_proj proj -> pf ft "Missing projections: %a" Projections.pp proj
   | Invalid_type (t1, t2) -> pf ft "Invalid type: %a != %a" Ty.pp t1 Ty.pp t2
   | Invalid_list_op -> pf ft "Invalid list operation"
   | Invalid_loc e -> pf ft "Invalid location: %a" Expr.pp e

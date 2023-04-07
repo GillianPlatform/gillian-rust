@@ -39,7 +39,10 @@ pub enum SLCmd {
 
 impl Display for SLCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let display_binders = |f: &mut std::fmt::Formatter<'_>, b| {
+        let display_binders = |f: &mut std::fmt::Formatter<'_>, b: &[String]| {
+            if b.is_empty() {
+                return Ok(());
+            }
             write!(f, "[bind: ")?;
             super::print_utils::separated_display(b, ",", f)?;
             write!(f, "]")
@@ -51,7 +54,9 @@ impl Display for SLCmd {
                 parameters,
                 existentials,
             } => {
-                write!(f, "apply {}(", lemma_name)?;
+                write!(f, "apply ")?;
+                super::print_utils::write_maybe_quoted(lemma_name, f)?;
+                write!(f, "(")?;
                 super::print_utils::separated_display(parameters, ",", f)?;
                 write!(f, ")")?;
                 display_binders(f, existentials)

@@ -7,6 +7,7 @@ mod pred_names {
     pub(crate) const LFT: &str = "lft";
     pub(crate) const OBSERVER: &str = "value_observer";
     pub(crate) const CONTROLLER: &str = "pcy_controller";
+    pub(crate) const PCY_VALUE: &str = "pcy_value";
 }
 
 pub(crate) fn value(pointer: Expr, typ: EncodedType, pointee: Expr) -> Assertion {
@@ -44,5 +45,15 @@ pub(crate) fn controller(prophecy: Expr, typ: EncodedType, model: Expr) -> Asser
         name: pred_names::CONTROLLER.to_string(),
         ins: vec![pcy_var, proj, typ.into()],
         outs: vec![model],
+    }
+}
+
+pub(crate) fn pcy_value(prophecy: Expr, ty: EncodedType, value: Expr) -> Assertion {
+    let pcy_var = prophecy.clone().lnth(0);
+    let proj = prophecy.lnth(1);
+    Assertion::GA {
+        name: pred_names::PCY_VALUE.to_string(),
+        ins: vec![pcy_var, proj, ty.into()],
+        outs: vec![value],
     }
 }

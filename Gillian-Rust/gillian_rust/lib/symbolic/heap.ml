@@ -328,6 +328,12 @@ module TreeBlock = struct
            `semi_concretize`: %a"
           Expr.pp e
 
+  let rec partially_missing t =
+    match t.content with
+    | Missing -> true
+    | Array fields | Fields fields -> List.exists partially_missing fields
+    | Symbolic _ | Uninit | Enum _ | Leaf _ -> false
+
   let structural_missing ~tyenv (ty : Ty.t) =
     match ty with
     | Array { length; ty = cty } ->
@@ -512,9 +518,19 @@ module TreeBlock = struct
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
-    let return_and_update _ =
+    let return_and_update block =
       let++ value = of_rust_value ~tyenv ~ty value in
       ((), value)
+    in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+    new_block
+
+  let store_proj ~tyenv t proj ty value =
+    let return_and_update block =
+      if partially_missing block then DR.error (Err.Missing_proj proj)
+      else
+        let++ value = of_rust_value ~tyenv ~ty value in
+        ((), value)
     in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
@@ -646,7 +662,7 @@ let store_slice ~tyenv (mem : t) loc proj size ty values =
 
 let store ~tyenv (mem : t) loc proj ty value =
   let** block = find_not_freed loc mem in
-  let++ new_block = TreeBlock.set_proj ~tyenv block proj ty value in
+  let++ new_block = TreeBlock.store_proj ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
 let get_value ~tyenv (mem : t) loc proj ty =

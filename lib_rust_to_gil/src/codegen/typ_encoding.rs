@@ -23,7 +23,7 @@ pub fn type_param_name(index: u32, name: Symbol) -> String {
     format!("pty_{}{}", name, index)
 }
 
-pub fn lifetime_param_name(name: &String) -> String {
+pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
 }
 
@@ -238,6 +238,18 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             Param(ParamTy { index, name }) => {
                 EncodedType(Expr::PVar(type_param_name(*index, *name)))
+            }
+            Projection(ProjectionTy {
+                substs,
+                item_def_id,
+            }) => {
+                let name = self.tcx().item_name(*item_def_id);
+                let args: Vec<_> = substs
+                    .iter()
+                    .filter_map(|a| self.encode_generic_arg(a))
+                    .map(|a| a.0)
+                    .collect();
+                EncodedType([Expr::from("proj"), name.as_str().into(), args.into()].into())
             }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }

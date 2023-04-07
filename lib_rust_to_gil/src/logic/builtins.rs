@@ -29,6 +29,7 @@ pub(crate) enum Stubs {
     FormulaLessEq,
     FormulaLess,
     MutRefGetProphecy,
+    MutRefSetProphecy,
     ProphecyGetValue,
     ProphecyField(u32),
     ProphecyObserver,
@@ -38,8 +39,8 @@ pub(crate) enum Stubs {
     SeqPrepend,
     SeqConcat,
     SeqLen,
-    ShallowRepr,
     OwnPred,
+    RefMutInner,
 }
 
 pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
@@ -55,6 +56,7 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
                 "gillian::formula::less_eq" => Some(Stubs::FormulaLessEq),
                 "gillian::formula::less" => Some(Stubs::FormulaLess),
                 "gillian::mut_ref::get_prophecy" => Some(Stubs::MutRefGetProphecy),
+                "gillian::mut_ref::set_prophecy" => Some(Stubs::MutRefSetProphecy),
                 "gillian::prophecy::get_value" => Some(Stubs::ProphecyGetValue),
                 "gillian::prophecy::observer" => Some(Stubs::ProphecyObserver),
                 "gillian::prophecy::controller" => Some(Stubs::ProphecyController),
@@ -63,8 +65,8 @@ pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
                 "gillian::seq::prepend" => Some(Stubs::SeqPrepend),
                 "gillian::seq::concat" => Some(Stubs::SeqConcat),
                 "gillian::seq::len" => Some(Stubs::SeqLen),
-                "gillian::repr::shallow_repr" => Some(Stubs::ShallowRepr),
                 "gillian::ownable::own" => Some(Stubs::OwnPred),
+                "gillian::ownable::ref_mut_inner" => Some(Stubs::RefMutInner),
                 _ => {
                     if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
                         let mut iter = fields.split("::");

@@ -30,6 +30,14 @@ pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
 
 pub trait HasGenericLifetimes<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     fn generic_lifetimes(&self) -> Vec<String> {
+        if let Some(v) = crate::utils::attrs::diagnostic_item_string(self.did(), self.tcx()) {
+            if let "gillian::ownable::ref_mut_inner::open"
+            | "gillian::ownable::ref_mut_inner::close"
+            | "gillian::ownable::ref_mut_inner" = v.as_str()
+            {
+                return vec!["a".to_string()];
+            }
+        };
         let attr = crate::utils::attrs::get_attr(
             self.tcx().get_attrs_unchecked(self.did()),
             &["gillian", "parameters", "lifetimes"],

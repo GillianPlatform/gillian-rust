@@ -66,6 +66,7 @@ pub fn compile_logic<'tcx, 'genv>(
         LogicItem::Precondition(id, args, definition)
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
+        log::debug!("Compiling postcondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false);
         let generics_amount = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile();

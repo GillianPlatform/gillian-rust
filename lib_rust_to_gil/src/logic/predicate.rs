@@ -8,6 +8,7 @@ use crate::{
         place::{GilPlace, GilProj},
         typ_encoding::{lifetime_param_name, type_param_name},
     },
+    logic::core_preds,
     prelude::*,
     temp_gen::TempGenerator,
     utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
@@ -38,7 +39,7 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     did: DefId,
     abstract_: bool,
     var_map: HashMap<LocalVarId, GExpr>,
-    type_knowledge: Vec<Assertion>,
+    toplevel_asrts: Vec<Assertion>,
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
@@ -76,25 +77,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         abstract_: bool,
     ) -> Self {
         PredCtx {
+            tcx,
             temp_gen,
             global_env,
-            tcx,
             did,
             abstract_,
             var_map: HashMap::new(),
-            type_knowledge: Vec::new(),
-        }
-    }
-
-    fn is_mut_ref(ty: Ty) -> bool {
-        matches!(ty.kind(), TyKind::Ref(_, _, Mutability::Mut))
-    }
-
-    fn mut_ref_inner(ty: Ty) -> Option<Ty> {
-        if let TyKind::Ref(_, ty, Mutability::Mut) = ty.kind() {
-            Some(*ty)
-        } else {
-            None
+            toplevel_asrts: Vec::new(),
         }
     }
 
@@ -108,7 +97,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn get_ins(&self) -> Vec<usize> {
         let ins_attr = crate::utils::attrs::get_attr(
-            self.tcx.get_attrs_unchecked(self.did),
+            self.tcx().get_attrs_unchecked(self.did),
             &["gillian", "decl", "pred_ins"],
         )
         .expect("Predicate must have an ins attribute");
@@ -123,7 +112,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         {
             sym.as_str().to_owned()
         } else {
-            self.tcx
+            self.tcx()
                 .sess
                 .fatal("Predicate ins attribute must be a string");
         };
@@ -137,7 +126,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn pred_name(&self) -> String {
-        self.tcx.def_path_str(self.did)
+        self.tcx().def_path_str(self.did)
     }
 
     fn make_is_ptr_asrt(&mut self, e: GExpr) -> Assertion {
@@ -190,15 +179,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let lvar = GExpr::LVar(format!("#{name}"));
 
                 self.var_map.insert(*var, lvar.clone());
-                self.type_knowledge
+                self.toplevel_asrts
                     .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
                 if ty.is_any_ptr() {
-                    let type_knowledge = if Self::is_mut_ref(ty) {
+                    let type_knowledge = if ty_utils::is_mut_ref(ty) {
                         self.make_is_ref_asrt(lvar)
                     } else {
                         self.make_is_ptr_asrt(lvar)
                     };
-                    self.type_knowledge.push(type_knowledge);
+                    self.toplevel_asrts.push(type_knowledge);
                 }
                 (name, ty)
             }
@@ -267,15 +256,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn is_assertion_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_assertion_ty(ty, self.tcx)
+        super::builtins::is_assertion_ty(ty, self.tcx())
     }
 
     fn is_formula_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_formula_ty(ty, self.tcx)
+        super::builtins::is_formula_ty(ty, self.tcx())
     }
 
     fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
-        super::builtins::get_stub(ty, self.tcx)
+        super::builtins::get_stub(ty, self.tcx())
     }
 
     fn unwrap_prophecy_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -352,7 +341,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 if !substs.is_empty() {
                     fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id);
                 };
-                let cst = self.tcx.const_eval_poly(*def_id).unwrap_or_else(|_| {
+                let cst = self.tcx().const_eval_poly(*def_id).unwrap_or_else(|_| {
                     fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id)
                 });
                 self.compile_constant(cst, expr.ty)
@@ -473,10 +462,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let mut_ref = self.compile_expression(args[0], thir);
                     mut_ref.lnth(1)
                 }
+                Some(Stubs::MutRefSetProphecy) => {
+                    assert!(args.len() == 2);
+                    let mut_ref = self.compile_expression(args[0], thir);
+                    let pcy = self.compile_expression(args[1], thir);
+                    [mut_ref.lnth(0), pcy].into()
+                }
                 Some(Stubs::ProphecyGetValue) => {
                     assert!(args.len() == 1);
-                    let proph = self.compile_expression(args[0], thir);
-                    proph.lnth(0)
+                    let prophecy = self.compile_expression(args[0], thir);
+                    let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
+                    let ty = self.encode_type(ty);
+                    let value = self.temp_lvar();
+                    self.toplevel_asrts
+                        .push(core_preds::pcy_value(prophecy, ty, value.clone()));
+                    value
                 }
                 Some(Stubs::ProphecyField(i)) => {
                     assert!(args.len() == 1);
@@ -559,7 +559,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn is_nonnull(&self, ty: Ty<'tcx>) -> bool {
         if let Some(adt_def) = ty.ty_adt_def() {
             if let "core::ptr::NonNull" | "std::ptr::NonNull" =
-                self.tcx.def_path_str(adt_def.did()).as_str()
+                self.tcx().def_path_str(adt_def.did()).as_str()
             {
                 return true;
             }
@@ -614,7 +614,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let eq = Assertion::Pure(eq);
             let pfs = Assertion::star(typing, eq);
             (ptr, pfs)
-        } else if Self::is_mut_ref(left_ty) {
+        } else if ty_utils::is_mut_ref(left_ty) {
             (left.lnth(0), Assertion::Emp)
         } else {
             (left, Assertion::Emp)
@@ -653,12 +653,37 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                Some(Stubs::OwnPred)
-                    if matches!(thir.exprs[args[0]].ty.kind(), TyKind::Param(_)) =>
-                {
+                Some(Stubs::OwnPred) if ty_utils::is_ty_param(thir.exprs[args[0]].ty) => {
                     let name = crate::codegen::runtime::POLY_OWN_PRED.to_string();
                     let mut params = Vec::with_capacity(args.len() + 1);
                     params.push(self.encode_type(thir.exprs[args[0]].ty).into());
+                    for arg in args.iter() {
+                        params.push(self.compile_expression(*arg, thir));
+                    }
+                    Assertion::Pred { name, params }
+                }
+                Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) => {
+                    let name = crate::codegen::runtime::POLY_REF_MUT_OWN.to_string();
+                    let mut params = Vec::with_capacity(args.len() + 2);
+                    // FIXME: HACK: forcing the lifetime parameter
+                    let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
+                    params.push(lft_param);
+                    let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
+                    params.push(self.encode_type(inner_ty).into());
+                    for arg in args.iter() {
+                        params.push(self.compile_expression(*arg, thir));
+                    }
+                    Assertion::Pred { name, params }
+                }
+                Some(Stubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
+                if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) =>
+                {
+                    let name = crate::codegen::runtime::POLY_REF_MUT_INNER.to_string();
+                    let mut params = Vec::with_capacity(args.len() + 2);
+                    let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
+                    params.push(lft_param);
+                    let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
+                    params.push(self.encode_type(inner_ty).into());
                     for arg in args.iter() {
                         params.push(self.compile_expression(*arg, thir));
                     }
@@ -681,23 +706,23 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         TyKind::FnDef(def_id, substs) => {
                             let arg_ty = thir.exprs[args[0]].ty;
                             if self.tcx().is_diagnostic_item(
-                                Symbol::intern("gillian::repr::shallow_repr"),
+                                Symbol::intern("gillian::ownable::own"),
                                 *def_id,
-                            ) && Self::is_mut_ref(arg_ty)
+                            ) && ty_utils::is_mut_ref(arg_ty)
                             {
-                                let name = self.global_env.add_mut_ref_shallow_repr(arg_ty);
-                                let inner_ty = Self::mut_ref_inner(arg_ty).unwrap();
-                                // We use the subst of the shallow_repr for the inner type.
+                                let name = self.global_env.add_mut_ref_own(arg_ty);
+                                let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
+                                // We use the subst of the own predicate for the inner type.
                                 // That is the only thing we need here.
                                 let (_, substs) = self.resolve_candidate(
                                     *def_id,
-                                    self.tcx.intern_substs(&[inner_ty.into()]),
+                                    self.tcx().intern_substs(&[inner_ty.into()]),
                                 );
                                 (name, substs)
                             } else {
                                 let (def_id, substs) = self.resolve_candidate(*def_id, substs);
                                 let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
-                                    .tcx
+                                    .tcx()
                                     .def_path_str(def_id));
                                 (name, substs)
                             }
@@ -772,7 +797,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
         let inner = self.compile_assertion(expr, thir);
         let inner = self
-            .type_knowledge
+            .toplevel_asrts
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 

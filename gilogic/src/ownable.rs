@@ -11,12 +11,28 @@ And there would be functions between MutBorrows:
 Not sure how that would work, but it'd certainly be a nicer interface.
 */
 
+#[allow(non_snake_case)]
 pub trait Ownable {
-    #[rustc_diagnostic_item = "gillian::own::representation_ty"]
+    #[rustc_diagnostic_item = "gillian::ownable::representation_ty"]
     type RepresentationTy;
 
     #[rustc_diagnostic_item = "gillian::ownable::own"]
     fn own(self, model: Self::RepresentationTy) -> RustAssertion;
+
+    #[rustc_diagnostic_item = "gillian::ownable::ref_mut_inner"]
+    fn ref_mut_inner(&mut self) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
+
+    #[rustc_diagnostic_item = "gillian::ownable::ref_mut_inner::open"]
+    fn ref_mut_inner_____open(&mut self) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
+
+    #[rustc_diagnostic_item = "gillian::ownable::ref_mut_inner::close"]
+    fn ref_mut_inner_____close(&mut self) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
 }
 
 macro_rules! own_int {

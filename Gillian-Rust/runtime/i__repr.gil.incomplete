@@ -1,3 +1,0 @@
-abstract pred "$POLYMORPHIC::shallow_repr_inner"(+pty, +self, +pcy);
-
-abstract pred "<&mut T as gilogic::Ownable>::own"(+pty, +x);

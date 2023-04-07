@@ -269,16 +269,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 if copy {
                     Expr::PVar(variable)
                 } else {
-                    let from = Expr::PVar(variable.clone());
+                    let from = Expr::PVar(variable);
                     let v = self.temp_var();
                     self.push_cmd(Cmd::Assignment {
                         variable: v.clone(),
                         assigned_expr: from,
-                    });
-                    self.push_cmd(Cmd::Assignment {
-                        variable,
-                        assigned_expr: Expr::Lit(Literal::Nono),
-                    });
+                    }); // FIXME:
+                        // self.push_cmd(Cmd::Assignment {
+                        //     variable,
+                        //     assigned_expr: Expr::Lit(Literal::Nono),
+                        // });
                     Expr::PVar(v)
                 }
             }

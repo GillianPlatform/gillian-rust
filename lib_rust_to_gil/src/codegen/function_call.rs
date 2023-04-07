@@ -6,8 +6,14 @@ use rustc_middle::ty::{GenericArg, List};
 
 use super::typ_encoding::lifetime_param_name;
 
+#[derive(PartialEq, Eq)]
+enum Kind {
+    Lemma,
+    Function,
+}
+
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn shim(&mut self, fname: &str, substs: &List<GenericArg>) -> Option<String> {
+    fn shim(&mut self, fname: &str, substs: &List<GenericArg>) -> Option<(String, Kind)> {
         // The matching should probably be perfomed on the `def_path`
         // instead of the `def_path_str`.
         // This is a quick hack for now.
@@ -16,15 +22,32 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 if let TyKind::Ref(_, ty, Mutability::Mut) = substs[0].expect_ty().kind() {
                     if let TyKind::Adt(adt_def, subst) = substs[1].expect_ty().kind() {
                         if let "core::ptr::NonNull" | "std::ptr::NonNull" =
-                            self.tcx.def_path_str(adt_def.did()).as_str()
+                            self.tcx().def_path_str(adt_def.did()).as_str()
                         {
                             if subst[0].expect_ty() == *ty {
-                                return Some("mut_ref_to_nonnull_ptr".to_string());
+                                return Some((
+                                    "mut_ref_to_nonnull_ptr".to_string(),
+                                    Kind::Function,
+                                ));
                             }
                         }
                     }
                 };
                 None
+            }
+            "gilogic::Ownable::ref_mut_inner_____open" => {
+                if ty_utils::is_ty_param(substs[0].expect_ty()) {
+                    Some(("$POLYMORPHIC::ref_mut_inner_open".to_string(), Kind::Lemma))
+                } else {
+                    None
+                }
+            }
+            "gilogic::Ownable::ref_mut_inner_____close" => {
+                if ty_utils::is_ty_param(substs[0].expect_ty()) {
+                    Some(("$POLYMORPHIC::ref_mut_inner_close".to_string(), Kind::Lemma))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -42,8 +65,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             .const_fn_def()
             .expect("func of functioncall isn't const_fn_def");
 
-        let fname = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
-        let fname = self.shim(&fname, substs).unwrap_or(fname);
+        let fname = with_no_trimmed_paths!(self.tcx().def_path_str(def_id));
+        let (fname, kind) = self.shim(&fname, substs).unwrap_or((fname, Kind::Function));
         let mut gil_args = Vec::with_capacity(args.len() + substs.len());
 
         // Big hack, to handle lifetimes. I need to figure out the proper mapping.
@@ -68,7 +91,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             gil_args.push(self.push_encode_operand(arg));
         }
 
-        if !crate::utils::attrs::is_lemma(def_id, self.tcx()) {
+        if crate::utils::attrs::is_lemma(def_id, self.tcx()) || kind == Kind::Lemma {
+            let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
+                lemma_name: fname,
+                parameters: gil_args,
+                existentials: vec![],
+            }));
+            self.push_cmd(call);
+        } else {
             let ivar = self.temp_var();
             let call = Cmd::Call {
                 variable: ivar.clone(),
@@ -83,13 +113,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             if let Some(bb) = target {
                 self.push_cmd(Cmd::Goto(bb_label(bb)));
             }
-        } else {
-            let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
-                lemma_name: fname,
-                parameters: gil_args,
-                existentials: vec![],
-            }));
-            self.push_cmd(call);
         }
     }
 }

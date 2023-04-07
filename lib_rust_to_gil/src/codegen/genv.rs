@@ -1,5 +1,5 @@
-use crate::logic::traits::TraitSolver;
 use crate::prelude::*;
+use crate::{config::Config, logic::traits::TraitSolver};
 use rustc_middle::ty::{AdtDef, ReprOptions};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -7,11 +7,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use super::typ_encoding::type_param_name;
 
 pub struct GlobalEnv<'tcx> {
-    /// The types that should be encoded for the GIL global env
+    // Things that are global to compilation
     tcx: TyCtxt<'tcx>,
+    pub config: Config,
+    /// The types that should be encoded for the GIL global env
     types_in_queue: VecDeque<AdtDef<'tcx>>,
     encoded_adts: HashSet<AdtDef<'tcx>>,
-    mut_ref_shallow_reprs: HashMap<Ty<'tcx>, String>,
+    mut_ref_owns: HashMap<Ty<'tcx>, String>,
     // Contains the type and the name of the created predicate.
 }
 
@@ -32,28 +34,29 @@ impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
 }
 
 impl<'tcx> GlobalEnv<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
+            config,
             tcx,
             types_in_queue: Default::default(),
             encoded_adts: Default::default(),
-            mut_ref_shallow_reprs: Default::default(),
+            mut_ref_owns: Default::default(),
         }
     }
 
-    pub fn add_mut_ref_shallow_repr(&mut self, ty: Ty<'tcx>) -> String {
-        self.mut_ref_shallow_reprs
+    pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
+        self.mut_ref_owns
             .entry(ty)
             .or_insert_with(|| format!("{}::shallow_repr", ty))
             .clone()
     }
 
     pub fn add_mut_ref_shallow_reprs_to_prog(&mut self, prog: &mut Prog) {
-        for (ty, name) in self.mut_ref_shallow_reprs.iter() {
-            let shallow_repr = self
+        for (ty, name) in self.mut_ref_owns.iter() {
+            let own = self
                 .tcx()
-                .get_diagnostic_item(Symbol::intern("gillian::repr::shallow_repr"))
-                .expect("Could not find gilogic::shallow_repr");
+                .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
+                .expect("Could not find gilogic::Ownable");
             let inner_ty = match ty.kind() {
                 TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
                 _ => unreachable!("Something that isn't a mutref was added to the mutrefs in genv"),
@@ -63,7 +66,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[
                         *inner_ty,
                     ]));
-            let (_, subst) = self.resolve_candidate(shallow_repr, subst);
+            let (_, subst) = self.resolve_candidate(own, subst);
             let generic_params = subst.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));

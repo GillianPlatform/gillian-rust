@@ -7,13 +7,31 @@ impl<T> Prophecy<T> {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::get_value"]
     pub fn value(self) -> T {
-        unreachable!()
+        unreachable!("Implemented in GIL")
     }
 
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::resolve"]
     pub fn resolve(self) {
-        unreachable!()
+        unreachable!("Implemented in GIL")
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::prophecy::assign"]
+    pub fn assign(self, _v: T) {
+        unreachable!("Implemented in GIL")
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::prophecy::assign_proph"]
+    pub fn assign_proph(self, _v: Prophecy<T>) {
+        unreachable!("Implemented in GIL")
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::prophecy::rebased"]
+    pub fn rebased(self) -> Self {
+        unreachable!("Implemented in GIL")
     }
 }
 
@@ -21,13 +39,13 @@ impl<T, U> Prophecy<(T, U)> {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::field::2::0"]
     pub fn field_0(self) -> Prophecy<T> {
-        unreachable!()
+        unreachable!("Implemented in GIL")
     }
 
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::field::2::1"]
     pub fn field_1(self) -> Prophecy<U> {
-        unreachable!()
+        unreachable!("Implemented in GIL")
     }
 }
 

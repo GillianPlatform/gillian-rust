@@ -1,13 +1,5 @@
 (executables
- (names i__repr i__ownable))
-
-(rule
- (deps i__repr.exe i__repr.gil.incomplete)
- (target i__repr.gil)
- (action
-  (with-stdout-to
-   %{target}
-   (run ./i__repr.exe))))
+ (names i__ownable))
 
 (rule
  (deps i__ownable.exe i__ownable.gil.incomplete)
@@ -23,7 +15,6 @@
   i__binop.gil
   i__lang.gil
   i__std_shims.gil
-  i__repr.gil
   i__ownable.gil
   i__prophecies.gil)
  (package gillian-rust))
