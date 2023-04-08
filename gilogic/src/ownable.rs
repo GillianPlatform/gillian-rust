@@ -45,3 +45,15 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
         unreachable!("Implemented in GIL")
     }
 }
+
+impl<T: Ownable> Ownable for Box<T> {
+    fn own(self) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
+}
+
+impl Ownable for () {
+    fn own(self) -> RustAssertion {
+        unreachable!("Implemented in GIL")
+    }
+}

@@ -378,6 +378,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             fatal!(self, "Unsupported type for addition {:?}", ty)
                         }
                     }
+                    BinOp::Sub => {
+                        if ty.is_integral() {
+                            GExpr::minus(left, right)
+                        } else {
+                            fatal!(self, "Unsupported type for substraction {:?}", ty)
+                        }
+                    }
                     _ => fatal!(self, "Unsupported binary operator {:?}", op),
                 }
             }

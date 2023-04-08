@@ -3,7 +3,8 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
     parse_macro_input, punctuated::Punctuated, token::Colon, Attribute, FnArg, GenericParam,
-    ImplItemMethod, LifetimeDef, Pat, PatType, Receiver, ReturnType, Signature, Token, Type,
+    ImplItemMethod, LifetimeDef, Pat, PatIdent, PatType, Receiver, ReturnType, Signature, Token,
+    Type,
 };
 use uuid::Uuid;
 
@@ -230,11 +231,20 @@ pub(crate) fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStre
         .iter()
         .map(|arg| match arg {
             FnArg::Receiver(_receiver) => quote!(self.own()),
-            FnArg::Typed(PatType { pat, .. }) => quote!(#pat.own()),
+            FnArg::Typed(PatType {
+                pat: box Pat::Ident(PatIdent { ident, .. }),
+                ..
+            }) => quote!(#ident.own()),
+            _ => panic!("Invalid argument pattern for show_safety: {:?}", arg),
         })
         .collect();
+    let req = if args_own.is_empty() {
+        quote! { ::gilogic::__stubs::emp() }
+    } else {
+        args_own.to_token_stream()
+    };
     let result = quote! {
-        #[::gilogic::macros::requires(#args_own)]
+        #[::gilogic::macros::requires(#req)]
         #[::gilogic::macros::ensures(ret.own())]
         #item
     };

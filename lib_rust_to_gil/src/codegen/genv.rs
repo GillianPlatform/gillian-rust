@@ -51,7 +51,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             .clone()
     }
 
-    pub fn add_mut_ref_shallow_reprs_to_prog(&mut self, prog: &mut Prog) {
+    pub fn add_mut_ref_owns_to_prog(&mut self, prog: &mut Prog) {
         for (ty, name) in self.mut_ref_owns.iter() {
             let symbol = if self.config.prophecies {
                 Symbol::intern("gillian::pcy::ownable::own")

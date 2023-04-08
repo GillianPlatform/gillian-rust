@@ -1,7 +1,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, ensures, predicate, requires, show_safety},
+    macros::{assertion, close_borrow, ensures, open_borrow, predicate, requires, show_safety},
     Ownable, Seq,
 };
 use std::marker::PhantomData;
@@ -20,7 +20,7 @@ struct Node<T> {
     element: T,
 }
 
-impl<T> Node<T> {
+impl<T: Ownable> Node<T> {
     fn new(element: T) -> Self {
         Node {
             next: None,
@@ -31,23 +31,23 @@ impl<T> Node<T> {
 }
 
 #[predicate]
-fn dll_seg<T>(
+fn dll_seg<T: Ownable>(
     head: In<Option<NonNull<Node<T>>>>,
     tail_next: In<Option<NonNull<Node<T>>>>,
     tail: In<Option<NonNull<Node<T>>>>,
     head_prev: In<Option<NonNull<Node<T>>>>,
-    data: Seq<T>,
+    len: usize,
 ) {
-    assertion!((head == tail_next) * (tail == head_prev) * (data == Seq::nil()));
-    assertion!(|hptr, head_next, head_prev, element, rest: Seq<T>|
+    assertion!((head == tail_next) * (tail == head_prev) * (len == 0));
+    assertion!(|hptr, head_next, head_prev, element|
         (head == Some(hptr)) *
         (hptr -> Node { next: head_next, prev: head_prev, element }) *
-        (data == rest.prepend(element)) *
-        dll_seg(head_next, tail_next, tail, head, rest)
+        element.own() *
+        dll_seg(head_next, tail_next, tail, head, len - 1)
     )
 }
 
-impl<T> Ownable for LinkedList<T> {
+impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {
         assertion!(|head, tail, len| (self
@@ -57,12 +57,11 @@ impl<T> Ownable for LinkedList<T> {
                 len,
                 marker: PhantomData
             })
-            * (len == seq.len())
-            * dll_seg(head, None, tail, None, seq))
+            * dll_seg(head, None, tail, None, len));
     }
 }
 
-impl<T> LinkedList<T> {
+impl<T: Ownable> LinkedList<T> {
     #[show_safety]
     fn new() -> Self {
         Self {
@@ -74,11 +73,13 @@ impl<T> LinkedList<T> {
     }
 
     /// Adds the given node to the front of the list.
-    #[show_safety]
+    #[requires(|e: T| self.own() * (node -> Node { next: None, prev: None, element: e }))]
+    #[ensures(ret.own())]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
         unsafe {
+            open_borrow!(self.own());
             node.next = self.head;
             node.prev = None;
             let node = Some(Box::leak(node).into());
@@ -91,6 +92,7 @@ impl<T> LinkedList<T> {
 
             self.head = node;
             self.len += 1;
+            close_borrow!(self.own());
         }
     }
 
