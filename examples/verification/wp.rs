@@ -29,7 +29,6 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
         v_x.own() * v_y.own()
     )
 }
-
 // This creates:
 // 1) An abstract predicate called `borrowed_wp_xy` which can be opened.
 // 2) An abstract predicate called `borrowed_wp_xy$close_token`.

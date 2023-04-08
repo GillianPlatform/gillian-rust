@@ -1,8 +1,8 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, ensures, predicate, requires},
-    Seq, ShallowRepresentation,
+    macros::{assertion, ensures, predicate, requires, show_safety},
+    Ownable, Seq,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -47,11 +47,9 @@ fn dll_seg<T>(
     )
 }
 
-impl<T> ShallowRepresentation for LinkedList<T> {
-    type ShallowModelTy = Seq<T>;
-
+impl<T> Ownable for LinkedList<T> {
     #[predicate]
-    fn shallow_repr(self, model: Self::ShallowModelTy) {
+    fn own(self) {
         assertion!(|head, tail, len| (self
             == LinkedList {
                 head,
@@ -59,14 +57,13 @@ impl<T> ShallowRepresentation for LinkedList<T> {
                 len,
                 marker: PhantomData
             })
-            * (len == model.len())
-            * dll_seg(head, None, tail, None, model))
+            * (len == seq.len())
+            * dll_seg(head, None, tail, None, seq))
     }
 }
 
 impl<T> LinkedList<T> {
-    #[requires(emp)]
-    #[ensures(ret.shallow_repr(Seq::nil()))]
+    #[show_safety]
     fn new() -> Self {
         Self {
             head: None,
@@ -77,11 +74,7 @@ impl<T> LinkedList<T> {
     }
 
     /// Adds the given node to the front of the list.
-    #[requires(|vself, vnode, velem, vdata: Seq<T>, vdll| (self == vself) * (node == vnode) *
-        (vself -> vdll) * (vnode -> Node { next: None, prev: None, element: velem}) *
-        (vdata.len() < usize::MAX) *
-        vdll.shallow_repr(vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| (vself -> new_vdll) * new_vdll.shallow_repr( vdata.prepend(velem)))]
+    #[show_safety]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -101,17 +94,14 @@ impl<T> LinkedList<T> {
         }
     }
 
-    #[requires(|vself, velem, vdata: Seq<T>, vdll| (self == vself) * (elt == velem) *
-        (vself -> vdll) * (vdata.len() < usize::MAX) *
-        vdll.shallow_repr(vdata))]
-    #[ensures(|vself: &mut LinkedList<T>, new_vdll, velem, vdata: Seq<T>| (vself -> new_vdll) * new_vdll.shallow_repr(vdata.prepend(velem)))]
+    #[show_safety]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }
 
-    #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]
-    #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * vdll.shallow_repr(vdata))]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    // #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]
+    // #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * vdll.shallow_repr(vdata))]
+    // pub fn len(&self) -> usize {
+    //     self.len
+    // }
 }
