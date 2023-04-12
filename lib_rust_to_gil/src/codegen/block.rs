@@ -96,6 +96,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let goto = Cmd::Goto(bb_label(*target));
                 self.push_cmd(goto);
             }
+            TerminatorKind::DropAndReplace {
+                place,
+                value,
+                target,
+                unwind: _,
+            } => {
+                log::warn!(
+                    "Not handling the drop part of DropAndReplace yet: {:?}",
+                    place
+                );
+                let compiled_operand = self.push_encode_operand(value);
+                self.push_place_write(*place, compiled_operand, self.operand_ty(value));
+                let goto = Cmd::Goto(bb_label(*target));
+                self.push_cmd(goto);
+            }
             _ => fatal!(self, "Terminator not handled yet: {:#?}", terminator),
         }
     }
