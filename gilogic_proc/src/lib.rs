@@ -9,6 +9,7 @@ use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
 mod borrows;
+mod folding;
 mod gilogic_syn;
 mod quote;
 mod spec;
@@ -44,6 +45,16 @@ pub fn show_safety(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 #[proc_macro_attribute]
 pub fn borrow(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     borrows::borrow(args, input)
+}
+
+#[proc_macro]
+pub fn open_borrow(input: TokenStream_) -> TokenStream_ {
+    folding::add_to_call_name(input, "_____open")
+}
+
+#[proc_macro]
+pub fn close_borrow(input: TokenStream_) -> TokenStream_ {
+    folding::add_to_call_name(input, "_____close")
 }
 
 #[proc_macro]

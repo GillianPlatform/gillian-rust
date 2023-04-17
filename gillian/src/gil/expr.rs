@@ -70,9 +70,9 @@ from_lit!(
 
 macro_rules! from_array {
     ($l:literal) => {
-        impl From<[Expr; $l]> for Expr {
-            fn from(x: [Expr; $l]) -> Self {
-                let vec = Vec::from(x);
+        impl<T: Into<Expr>> From<[T; $l]> for Expr {
+            fn from(x: [T; $l]) -> Self {
+                let vec = x.into_iter().map(|v| v.into()).collect();
                 Expr::EList(vec)
             }
         }
@@ -210,8 +210,12 @@ impl Expr {
         }
     }
 
-    pub fn lst_concat(e1: Expr, e2: Expr) -> Self {
-        match (e1, e2) {
+    pub fn eq_f<E: Into<Expr>>(self, e2: E) -> super::Formula {
+        super::Formula::eq(self, e2.into())
+    }
+
+    pub fn lst_concat(self, e2: Expr) -> Self {
+        match (self, e2) {
             (Expr::EList(mut vec1), Expr::EList(mut vec2)) => {
                 vec1.append(&mut vec2);
                 Expr::EList(vec1)
@@ -238,6 +242,16 @@ impl Expr {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i + j),
             _ => Expr::BinOp {
                 operator: BinOp::IPlus,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+        }
+    }
+    pub fn minus(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i - j),
+            _ => Expr::BinOp {
+                operator: BinOp::IMinus,
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
             },

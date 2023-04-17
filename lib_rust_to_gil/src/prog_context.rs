@@ -8,9 +8,8 @@ use crate::config::Config;
 use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
 
-pub struct ProgCtx<'tcx, 'comp> {
+pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    config: &'comp Config,
     prog: gillian::gil::Prog,
     global_env: GlobalEnv<'tcx>,
     pre_tbl: HashMap<Symbol, (Vec<String>, Assertion)>,
@@ -19,35 +18,34 @@ pub struct ProgCtx<'tcx, 'comp> {
     temp_gen: TempGenerator,
 }
 
-impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx, '_> {
+impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
-    fn new(tcx: TyCtxt<'tcx>, config: &'comp Config) -> Self {
+impl<'tcx, 'comp> ProgCtx<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
-            prog: gillian::gil::Prog::new(runtime::imports()),
-            global_env: GlobalEnv::new(tcx),
+            prog: gillian::gil::Prog::new(runtime::imports(config.prophecies)),
+            global_env: GlobalEnv::new(tcx, config),
             temp_gen: TempGenerator::new(),
             pre_tbl: HashMap::new(),
             post_tbl: HashMap::new(),
             spec_tbl: HashMap::new(),
             tcx,
-            config,
         }
     }
 
     fn compile_logic(&mut self, did: DefId) {
-        let logic_item = compile_logic(did, self.tcx, &mut self.global_env, &mut self.temp_gen);
+        let logic_item = compile_logic(did, self.tcx(), &mut self.global_env, &mut self.temp_gen);
         match logic_item {
             LogicItem::Pred(pred) => self.prog.add_pred(pred),
             LogicItem::Lemma(lemma) => {
-                let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx);
-                let post_id = crate::utils::attrs::get_post_id(did, self.tcx);
+                let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
+                let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
                 let name =
-                    rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(did));
+                    rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
                 match (pre_id, post_id) {
                     (Some(pre_id), Some(post_id)) => {
                         self.spec_tbl.insert(name, (pre_id, post_id));
@@ -73,19 +71,20 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
     }
 
     fn compile_fn(&mut self, did: DefId) {
-        let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx);
-        let post_id = crate::utils::attrs::get_post_id(did, self.tcx);
-        let proc_name = rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(did));
-        let body = match self.tcx.def_kind(did) {
-            DefKind::Ctor(..) => self.tcx.optimized_mir(did),
+        let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
+        let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
+        let proc_name =
+            rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
+        let body = match self.tcx().def_kind(did) {
+            DefKind::Ctor(..) => self.tcx().optimized_mir(did),
             _ => std::cell::Ref::leak(
-                self.tcx
+                self.tcx()
                     .mir_promoted(WithOptConstParam::unknown(did.expect_local()))
                     .0
                     .borrow(),
             ),
         };
-        let ctx = GilCtxt::new(self.config, body, self.tcx, &mut self.global_env);
+        let ctx = GilCtxt::new(self.tcx(), body, &mut self.global_env);
         match (pre_id, post_id) {
             (Some(pre_id), Some(post_id)) => {
                 self.spec_tbl.insert(proc_name, (pre_id, post_id));
@@ -189,15 +188,16 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
     }
 
     fn final_prog(mut self) -> ParsingUnit {
-        for key in self.tcx.hir().body_owners() {
+        for key in self.tcx().hir().body_owners() {
             let did = key.to_def_id();
-            if crate::utils::attrs::is_logic(did, self.tcx) {
+            if crate::utils::attrs::is_logic(did, self.tcx()) {
                 self.compile_logic(did);
             } else {
                 self.compile_fn(did);
             }
         }
         self.add_specs();
+        self.global_env.add_mut_ref_owns_to_prog(&mut self.prog);
         let init_data = self.global_env.serialized_adt_declarations();
         ParsingUnit {
             prog: self.prog,
@@ -205,7 +205,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx, 'comp> {
         }
     }
 
-    pub(crate) fn compile_prog(tcx: TyCtxt<'tcx>, config: &'comp Config) -> ParsingUnit {
+    pub(crate) fn compile_prog(tcx: TyCtxt<'tcx>, config: Config) -> ParsingUnit {
         let this = Self::new(tcx, config);
         this.final_prog()
     }

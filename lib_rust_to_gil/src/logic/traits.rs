@@ -6,14 +6,18 @@ use rustc_infer::{
 use rustc_middle::ty::{Binder, SubstsRef, TraitRef};
 use rustc_trait_selection::traits::{translate_substs, SelectionContext, TraitEngineExt};
 
-use super::predicate::PredCtx;
+pub trait TraitSolver<'tcx> {
+    fn resolve_candidate(&self, def_id: DefId, substs: SubstsRef<'tcx>)
+        -> (DefId, SubstsRef<'tcx>);
+}
 
-impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
-    pub fn resolve_candidate(
+impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
+    fn resolve_candidate(
         &self,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> (DefId, SubstsRef<'tcx>) {
+        log::debug!("Resolving candidate for {:?}<{:?}>", def_id, substs);
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
             None => (def_id, substs),

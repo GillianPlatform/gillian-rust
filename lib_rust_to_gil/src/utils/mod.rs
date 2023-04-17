@@ -10,3 +10,4 @@ pub(crate) mod attrs;
 pub(crate) mod cleanup_logic;
 pub(crate) mod polymorphism;
 pub mod tcx_utils;
+pub mod ty;

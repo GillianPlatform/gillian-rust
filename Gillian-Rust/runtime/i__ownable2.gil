@@ -1,0 +1,17 @@
+abstract pred ref_mut_inner(+lft, +x, v);
+abstract pred ref_mut_close_token(+lft, +x);
+
+lemma "ref_mut_inner_open"(+lft, +x)
+  [[ (lft == #lft) * (x == #x) * ref_mut_inner(#lft, #x, #v) * <lft>(#lft, true) ]]
+  [[ <value>(x, v) *                      (* We have that x -> v *)
+     ref_mut_inner_close_token(lft, x) *  (* A witness that we have opened it and can close it to get our guard back *)
+  ]]
+  
+  
+lemma "ref_mut_inner_close"(+lft, +x)
+  [[ (lft == #lft) * (x == #x) *
+     ref_mut_inner_close_token(#lft, #x) * (* We consume that token *)
+     <value>(x, #v) *                    (* We consume that x -> v, but it can now be a different v! *)
+  ]]
+  [[ ref_mut_inner(lft, x, v) * <lft>(#lft; true)        (* We get our predicate and guard back *)
+  ]]

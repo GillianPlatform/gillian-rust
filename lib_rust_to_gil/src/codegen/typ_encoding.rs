@@ -23,13 +23,13 @@ pub fn type_param_name(index: u32, name: Symbol) -> String {
     format!("pty_{}{}", name, index)
 }
 
-pub fn lifetime_param_name(name: &String) -> String {
+pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
 }
 
 pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
-    fn atd_def_name(&self, def: &AdtDef) -> String;
+    fn adt_def_name(&self, def: &AdtDef) -> String;
 
     fn array_size_value(&self, sz: &Const) -> i128 {
         match sz.kind() {
@@ -85,8 +85,17 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
-            })
-            | Ref(_, ty, mutability) => {
+            }) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                json!([ "Ptr", {
+                    "mut": mutability,
+                    "ty": self.serialize_type(*ty)
+                }])
+            }
+            Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
@@ -97,7 +106,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 }])
             }
             Adt(def, subst) => {
-                let name = self.atd_def_name(def);
+                let name = self.adt_def_name(def);
                 let subst: serde_json::Value = subst
                     .iter()
                     .filter_map(|x| self.serialize_generic_arg(x))
@@ -159,7 +168,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
             Tuple(_) => EncodedType(
                 [
-                    "tuple".into(),
+                    Expr::from("tuple"),
                     ty.tuple_fields()
                         .iter()
                         .map(|x| self.encode_type(x).into())
@@ -175,15 +184,28 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
-            })
-            | Ref(_, ty, mutability) => {
+            }) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
                 };
                 EncodedType(
                     [
-                        "ref".into(),
+                        Expr::from("ptr"),
+                        mutability.into(),
+                        self.encode_type(*ty).into(),
+                    ]
+                    .into(),
+                )
+            }
+            Ref(_, ty, mutability) => {
+                let mutability = match mutability {
+                    Mutability::Mut => true,
+                    Mutability::Not => false,
+                };
+                EncodedType(
+                    [
+                        Expr::from("ref"),
                         mutability.into(),
                         self.encode_type(*ty).into(),
                     ]
@@ -191,7 +213,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                 )
             }
             Adt(def, subst) => {
-                let name = self.atd_def_name(def);
+                let name = self.adt_def_name(def);
                 let args: Vec<_> = subst
                     .iter()
                     .filter_map(|a| self.encode_generic_arg(a))
@@ -199,16 +221,35 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
                     .collect();
                 // Adts are encoded by the environment
                 self.add_adt_to_genv(*def);
-                EncodedType(["adt".into(), name.into(), args.into()].into())
+                EncodedType([Expr::from("adt"), name.into(), args.into()].into())
             }
-            Slice(ty) => EncodedType(["slice".into(), self.encode_type(*ty).into()].into()),
+            Slice(ty) => EncodedType([Expr::from("slice"), self.encode_type(*ty).into()].into()),
             Array(ty, sz) => {
                 let sz_i = self.array_size_value(sz);
-                EncodedType(["array".into(), self.encode_type(*ty).into(), sz_i.into()].into())
+                EncodedType(
+                    [
+                        Expr::from("array"),
+                        self.encode_type(*ty).into(),
+                        sz_i.into(),
+                    ]
+                    .into(),
+                )
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             Param(ParamTy { index, name }) => {
                 EncodedType(Expr::PVar(type_param_name(*index, *name)))
+            }
+            Projection(ProjectionTy {
+                substs,
+                item_def_id,
+            }) => {
+                let name = self.tcx().item_name(*item_def_id);
+                let args: Vec<_> = substs
+                    .iter()
+                    .filter_map(|a| self.encode_generic_arg(a))
+                    .map(|a| a.0)
+                    .collect();
+                EncodedType([Expr::from("proj"), name.as_str().into(), args.into()].into())
             }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }
@@ -220,7 +261,7 @@ impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
         self.global_env.add_adt(def);
     }
 
-    fn atd_def_name(&self, def: &AdtDef) -> String {
+    fn adt_def_name(&self, def: &AdtDef) -> String {
         self.tcx.item_name(def.did()).to_string()
     }
 }

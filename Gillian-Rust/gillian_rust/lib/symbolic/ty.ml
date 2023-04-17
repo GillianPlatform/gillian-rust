@@ -25,6 +25,7 @@ type t =
       (** This will have to be looked up in the global environment,
         For example List<u32> is Adt("List", [ u32 ] *)
   | Ref of { mut : bool; ty : t }
+  | Ptr of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
   | Slice of t
   | Unresolved of Expr.t
@@ -41,6 +42,7 @@ let rec subst_params ~(subst : t list) t =
   | Array { length; ty } -> Array { length; ty = subst_params ~subst ty }
   | Slice t -> Slice (subst_params ~subst t)
   | Ref { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
+  | Ptr { mut; ty } -> Ptr { mut; ty = subst_params ~subst ty }
   | Adt (name, l) -> Adt (name, List.map (subst_params ~subst) l)
 
 let rec of_lit = function
@@ -67,6 +69,7 @@ let rec of_lit = function
       let args = List.map of_lit l in
       Adt (name, args)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
+  | LList [ String "ptr"; Bool mut; ty ] -> Ptr { mut; ty = of_lit ty }
   | LList [ String "array"; ty; Int i ] ->
       Array { length = Z.to_int i; ty = of_lit ty }
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
@@ -79,6 +82,8 @@ let rec of_expr : Expr.t -> t = function
       Adt (name, list_of_list_expr l)
   | EList [ Expr.Lit (String "ref"); Expr.Lit (Bool mut); ty ] ->
       Ref { mut; ty = of_expr ty }
+  | EList [ Expr.Lit (String "ptr"); Expr.Lit (Bool mut); ty ] ->
+      Ptr { mut; ty = of_expr ty }
   | EList [ Expr.Lit (String "array"); ty; Expr.Lit (Int i) ] ->
       Array { length = Z.to_int i; ty = of_expr ty }
   | EList [ Expr.Lit (String "slice"); ty ] -> Slice (of_expr ty)
@@ -113,6 +118,7 @@ let rec to_expr = function
       let args = List.map to_expr a in
       EList [ Lit (String "adt"); Lit (String x); EList args ]
   | Ref { mut; ty } -> EList [ Lit (String "ref"); Lit (Bool mut); to_expr ty ]
+  | Ptr { mut; ty } -> EList [ Lit (String "ptr"); Lit (Bool mut); to_expr ty ]
   | Array { length; ty } ->
       EList [ Lit (String "array"); to_expr ty; Lit (Int (Z.of_int length)) ]
   | Slice ty -> EList [ Lit (String "slice"); to_expr ty ]
@@ -127,6 +133,7 @@ let rec pp ft t =
       pp_tuple ft t
   | Adt (s, args) -> pf ft "%s<%a>" s (list ~sep:comma pp) args
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
+  | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
   | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
@@ -138,6 +145,7 @@ let rec substitution ~subst_expr t =
   | Tuple t -> Tuple (List.map rec_call t)
   | Adt (name, l) -> Adt (name, List.map rec_call l)
   | Ref { mut; ty } -> Ref { mut; ty = rec_call ty }
+  | Ptr { mut; ty } -> Ptr { mut; ty = rec_call ty }
   | Array { length; ty } -> Array { length; ty = rec_call ty }
   | Slice t -> Slice (rec_call t)
   | Unresolved e -> Unresolved (subst_expr e)

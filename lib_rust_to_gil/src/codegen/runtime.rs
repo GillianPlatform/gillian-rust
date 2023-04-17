@@ -9,14 +9,21 @@ macro_rules! import {
     };
 }
 
-pub fn imports() -> Vec<Import> {
-    vec![
+pub fn imports(prophecy_mode: bool) -> Vec<Import> {
+    let mut ret = vec![
         import!("i__binop.gil"),
         import!("i__lang.gil"),
         import!("i__std_shims.gil"),
-        import!("i__repr.gil"),
-        import!("i__ownable.gil"),
-    ]
+        import!("i__prophecies.gil"),
+    ];
+    if prophecy_mode {
+        ret.push(import!("i__ownable_pcy.gil"));
+        ret.push(import!("i__std_shims_pcy.gil"));
+    } else {
+        ret.push(import!("i__ownable.gil"));
+        ret.push(import!("i__std_shims_no_pcy.gil"));
+    }
+    ret
 }
 
 const CHECKED_ADD: &str = "i__binop_checked_add";
@@ -25,6 +32,8 @@ const LANG_ASSERT: &str = "i__lang_assert";
 const _INT_OF_BOOL: &str = "i__lang_int_of_bool";
 const _BOOL_OF_INT: &str = "i__bool_of_lang_int";
 pub const POLY_OWN_PRED: &str = "$POLYMORPHIC::own";
+pub const POLY_REF_MUT_INNER: &str = "$POLYMORPHIC::ref_mut_inner";
+pub const POLY_REF_MUT_OWN: &str = "$POLYMORPHIC::ref_mut_own";
 
 pub fn checked_add(variable: String, e1: Expr, e2: Expr, max_val: Expr) -> Cmd {
     Cmd::Call {

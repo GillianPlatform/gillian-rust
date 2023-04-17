@@ -1,0 +1,4 @@
+proc "std::boxed::Box::<T, A>::leak"(T, A, b) {
+     ret := l-nth(l-nth(l-nth(b, 0i), 0i), 0i);
+     return
+};

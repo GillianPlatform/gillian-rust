@@ -1,4 +1,5 @@
 use super::memory::MemoryAction;
+use super::place::GilPlace;
 use crate::codegen::runtime;
 use crate::prelude::*;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
@@ -16,8 +17,32 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
-                let gil_place = self.push_get_gil_place(place);
-                gil_place.into_expr_ptr()
+                if self.prophecies_enabled()
+                    && matches!(
+                        self.rvalue_ty(rvalue).kind(),
+                        TyKind::Ref(_, _, Mutability::Mut)
+                    )
+                {
+                    // The case of mutable references, what do we do with the prophecy?
+                    if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
+                        // FIXME: HACK
+                        // This assumes that the lifetime of th created reference is the same as the old one,
+                        // since we carry the exact same prophecy around. It is not correct in general.
+                        let local = Expr::PVar(self.name_from_local(place.local));
+                        self.push_read_gil_place(
+                            GilPlace::base(local, self.place_ty(place).ty),
+                            self.rvalue_ty(rvalue),
+                            true,
+                        )
+                    } else {
+                        let gil_place = self.push_get_gil_place(place);
+                        let prophecy = self.push_create_prophecy_for(place);
+                        [gil_place.into_expr_ptr(), prophecy].into()
+                    }
+                } else {
+                    let gil_place = self.push_get_gil_place(place);
+                    gil_place.into_expr_ptr()
+                }
             }
             &Rvalue::AddressOf(_, place) => {
                 let gil_place = self.push_get_gil_place(place);
@@ -54,7 +79,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         _type_annot,
                         _active_field,
                     ) => {
-                        let def = self.tcx.adt_def(adt_did);
+                        let def = self.tcx().adt_def(adt_did);
                         match def.adt_kind() {
                             AdtKind::Enum => {
                                 let n: Expr = variant_idx.as_u32().into();
@@ -169,7 +194,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         use mir::BinOp::*;
         match binop {
             Add if left_ty.is_integral() && left_ty == right_ty => {
-                let max_val = left_ty.numeric_max_val(self.tcx).unwrap();
+                let max_val = left_ty.numeric_max_val(self.tcx()).unwrap();
                 let max_val = self.encode_const(&max_val);
                 let temp = self.temp_var();
                 self.push_cmd(runtime::checked_add(
@@ -250,7 +275,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 offset: _,
             } => match ty.kind() {
                 TyKind::Tuple(..) => {
-                    let contents = self.tcx.destructure_mir_constant(
+                    let contents = self.tcx().destructure_mir_constant(
                         ty::ParamEnv::reveal_all(),
                         ConstantKind::Val(*val, ty),
                     );

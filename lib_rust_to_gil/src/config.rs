@@ -1,6 +1,6 @@
 use std::{fmt, str::FromStr};
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ExecMode {
     Concrete,
     Symbolic,
@@ -32,9 +32,10 @@ impl fmt::Debug for ExecMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub mode: ExecMode,
+    pub prophecies: bool,
 }
 
 impl Config {
@@ -46,7 +47,8 @@ impl Config {
             .expect(
                 "Unspecified execution mode. Please add `--gillian-exec-mode=[verif|concrete|symb]",
             );
-        args.retain(|a| !a.starts_with("--gillian-exec-mode="));
-        Config { mode }
+        let prophecies = args.iter().any(|x| x == "--gillian-prophecies");
+        args.retain(|a| (a != "--gillian-prophecies") && !a.starts_with("--gillian-exec-mode="));
+        Config { mode, prophecies }
     }
 }

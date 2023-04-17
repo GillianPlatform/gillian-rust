@@ -118,7 +118,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         place.into_expr_ptr()
     }
 
-    fn push_read_gil_place_in_memory(
+    pub fn push_read_gil_place_in_memory(
         &mut self,
         res: String,
         gil_place: GilPlace<'tcx>,
@@ -184,7 +184,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         self.push_action(ret, action);
     }
 
-    fn push_read_gil_place(
+    pub fn push_read_gil_place(
         &mut self,
         gil_place: GilPlace<'tcx>,
         read_ty: Ty<'tcx>,
@@ -218,6 +218,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         // However, it's "value" is a tree with many things,
                         // and we need to access the actual pointer
                         Expr::PVar(new_base).lnth(0).lnth(0).lnth(0)
+                    } else if ty_utils::is_mut_ref(curr_typ.ty) && self.prophecies_enabled() {
+                        Expr::PVar(new_base).lnth(0)
                     } else {
                         Expr::PVar(new_base)
                     };
@@ -267,16 +269,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 if copy {
                     Expr::PVar(variable)
                 } else {
-                    let from = Expr::PVar(variable.clone());
+                    let from = Expr::PVar(variable);
                     let v = self.temp_var();
                     self.push_cmd(Cmd::Assignment {
                         variable: v.clone(),
                         assigned_expr: from,
-                    });
-                    self.push_cmd(Cmd::Assignment {
-                        variable,
-                        assigned_expr: Expr::Lit(Literal::Nono),
-                    });
+                    }); // FIXME:
+                        // self.push_cmd(Cmd::Assignment {
+                        //     variable,
+                        //     assigned_expr: Expr::Lit(Literal::Nono),
+                        // });
                     Expr::PVar(v)
                 }
             }

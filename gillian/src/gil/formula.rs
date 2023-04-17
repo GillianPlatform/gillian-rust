@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use super::{Expr, Type};
+use super::{Assertion, Expr, Type};
 
 #[derive(Debug, Clone)]
 pub enum Formula {
@@ -83,6 +83,10 @@ impl Formula {
             left: Box::new(left),
             right: Box::new(right),
         }
+    }
+
+    pub fn into_asrt(self) -> Assertion {
+        self.into()
     }
 }
 

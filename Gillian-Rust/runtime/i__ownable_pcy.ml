@@ -2,9 +2,7 @@
 
 let gen_identity_for_ty ty =
   Printf.printf
-    {|pred "<%s as gilogic::ShallowRepresentation>::shallow_repr"(+self, model):
-  (self == model);|}
-    ty;
+    {|pred "<%s as gilogic::Ownable>::own"(+self, model): self == model;|} ty;
   print_newline ();
   print_newline ()
 
@@ -24,3 +22,11 @@ let () =
       "i128";
       "isize";
     |]
+
+let () =
+  let file = open_in "./i__ownable_pcy.gil.incomplete" in
+  try
+    while true do
+      input_line file |> print_endline
+    done
+  with End_of_file -> ()

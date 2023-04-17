@@ -22,6 +22,8 @@ type t = {
 
 type action_ret = (t * vt list, err_t) result
 
+let resolve_pcy_var (e : Expr.t) : Expr.t Delayed.t = Delayed.reduce e
+
 let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
   let* loc_name = Delayed.resolve_loc lvar_loc in
   match loc_name with
@@ -230,82 +232,132 @@ let execute_rem_lft mem args =
 let execute_get_value_observer mem args =
   let { heap; pcies; tyenv; lfts } = mem in
   match args with
-  | [ loc; proj_exp; ty_exp ] ->
+  | [ pcy_id; proj_exp; ty_exp ] ->
+      let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
-      let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_value_obs ~tyenv pcies loc_name proj ty in
-      make_branch ~mem
-        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
-        ()
+      let++ value = Prophecies.get_value_obs ~tyenv pcies pcy_id proj ty in
+      make_branch ~mem ~rets:[ Expr.ALoc pcy_id; proj_exp; ty_exp; value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
 
 let execute_set_value_observer mem args =
   let { pcies; tyenv } = mem in
   match args with
-  | [ loc; proj; ty; value ] ->
+  | [ pcy_id; proj; ty; value ] ->
+      let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj in
       let++ new_pcies =
-        Prophecies.set_value_obs ~tyenv pcies loc_name proj ty value
+        Prophecies.set_value_obs ~tyenv pcies pcy_id proj ty value
       in
       make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for set_value_observer"
 
 let execute_rem_value_observer mem args =
   match args with
-  | [ loc; _proj_exp; _ty_exp ] ->
-      let loc_name =
-        match loc with
-        | Expr.ALoc loc | Lit (Loc loc) -> loc
-        | _ -> failwith "unreachable"
+  | [ Expr.ALoc pcy_id; proj_exp; ty_exp ] ->
+      let* proj = projections_of_expr proj_exp in
+      let ty = Ty.of_expr ty_exp in
+      let++ new_pcies =
+        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
       in
-      let new_pcies =
-        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies loc_name
-      in
-      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_get_pcy_controller mem args =
   let { heap; pcies; tyenv; lfts } = mem in
   match args with
-  | [ loc; proj_exp; ty_exp ] ->
+  | [ pcy_id; proj_exp; ty_exp ] ->
+      let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
-      let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_controller ~tyenv pcies loc_name proj ty in
-      make_branch ~mem
-        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
-        ()
+      let++ value = Prophecies.get_controller ~tyenv pcies pcy_id proj ty in
+      make_branch ~mem ~rets:[ Expr.ALoc pcy_id; proj_exp; ty_exp; value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
 
 let execute_set_pcy_controller mem args =
   let { pcies; tyenv } = mem in
   match args with
-  | [ loc; proj; ty; value ] ->
+  | [ pcy_id; proj; ty; value ] ->
+      let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj in
       let++ new_pcies =
-        Prophecies.set_controller ~tyenv pcies loc_name proj ty value
+        Prophecies.set_controller ~tyenv pcies pcy_id proj ty value
       in
       make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for set_pcy_controller"
 
 let execute_rem_pcy_controller mem args =
   match args with
-  | [ loc; _proj_exp; _ty_exp ] ->
-      let loc_name =
-        match loc with
-        | Expr.ALoc loc | Lit (Loc loc) -> loc
-        | _ -> failwith "unreachable"
+  | [ Expr.ALoc pcy_id; proj_exp; ty_exp ] ->
+      let* proj = projections_of_expr proj_exp in
+      let ty = Ty.of_expr ty_exp in
+      let++ new_pcies =
+        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
       in
-      let new_pcies =
-        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies loc_name
-      in
-      DR.ok (make_branch ~mem:{ mem with pcies = new_pcies } ())
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
+
+let execute_pcy_resolve mem args =
+  match args with
+  | [ pcy_id; proj_exp; ty ] ->
+      let ty = Ty.of_expr ty in
+      let** pcy_id = resolve_loc_result pcy_id in
+      let* proj = projections_of_expr proj_exp in
+      let++ new_pcies =
+        Prophecies.resolve ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
+      in
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
+  | _ -> Fmt.failwith "Invalid arguments for pcy_resolve"
+
+let execute_pcy_assign mem args =
+  let { pcies; tyenv; lfts } = mem in
+  match args with
+  | [ pcy_id; proj; ty; value ] ->
+      let ty = Ty.of_expr ty in
+      let* proj = projections_of_expr proj in
+      let** pcy_id = resolve_loc_result pcy_id in
+      let++ new_pcies = Prophecies.assign ~tyenv pcies pcy_id proj ty value in
+      make_branch ~mem:{ mem with pcies = new_pcies } ()
+  | _ -> Fmt.failwith "Invalid arguments for store"
+
+let execute_pcy_alloc mem args =
+  match args with
+  | [ ty ] ->
+      let ty = Ty.of_expr ty in
+      let ret, pcies = Prophecies.alloc ~tyenv:mem.tyenv mem.pcies ty in
+      DR.ok @@ make_branch ~mem:{ mem with pcies } ~rets:ret ()
+  | _ -> Fmt.failwith "Invalid arguments for pcy_alloc"
+
+let execut_get_pcy_value mem args =
+  match args with
+  | [ pcy_id; proj_expr; ty_expr ] ->
+      let* proj = projections_of_expr proj_expr in
+      let++ pcy_id = resolve_loc_result pcy_id in
+      let ty = Ty.of_expr ty_expr in
+      let ret, new_pcies =
+        Prophecies.get_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
+      in
+      make_branch
+        ~mem:{ mem with pcies = new_pcies }
+        ~rets:[ Expr.LVar pcy_id; proj_expr; ty_expr; ret ]
+        ()
+  | _ -> Fmt.failwith "Invalid arguments for pcy_get_value"
+
+let execute_set_pcy_value mem args =
+  match args with
+  | [ pcy_id; proj_expr; ty_expr; value ] ->
+      let* pcy_id = resolve_or_create_loc_name pcy_id in
+      let* proj = projections_of_expr proj_expr in
+      let ty = Ty.of_expr ty_expr in
+      let++ pcies =
+        Prophecies.set_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty value
+      in
+      make_branch ~mem:{ mem with pcies } ()
+  | _ -> Fmt.failwith "Invalid arguments for pcy_set_value"
+
+let execute_rem_pcy_value mem args_ = DR.ok (make_branch ~mem ())
 
 let pp_branch fmt branch =
   let _, values = branch in
@@ -332,6 +384,9 @@ let execute_action ~action_name mem args =
     | Store_value -> execute_store mem args
     | Load_discr -> execute_load_discr mem args
     | Free -> execute_free mem args
+    | Pcy_alloc -> execute_pcy_alloc mem args
+    | Pcy_resolve -> execute_pcy_resolve mem args
+    | Pcy_assign -> execute_pcy_assign mem args
     | Get_value -> execute_get_value mem args
     | Set_value ->
         (* Producers cannot fail, so we filter all errors and constrain the paths *)
@@ -346,6 +401,9 @@ let execute_action ~action_name mem args =
     | Get_pcy_controller -> execute_get_pcy_controller mem args
     | Set_pcy_controller -> execute_set_pcy_controller mem args
     | Rem_pcy_controller -> execute_rem_pcy_controller mem args
+    | Get_pcy_value -> execut_get_pcy_value mem args
+    | Set_pcy_value -> execute_set_pcy_value mem args
+    | Rem_pcy_value -> execute_rem_pcy_value mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   Logging.verbose (fun fmt ->

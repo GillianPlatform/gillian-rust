@@ -31,6 +31,7 @@ mod prelude {
     pub(crate) use crate::utils::tcx_utils::*;
     pub(crate) use gillian::gil::*;
     // pub(crate) use rustc_data_structures::fx::FxHashMap;
+    pub(crate) use crate::utils::ty as ty_utils;
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::{Ty, TyCtxt, TyKind, ValTree};
     pub(crate) use rustc_span::{def_id::DefId, Symbol};

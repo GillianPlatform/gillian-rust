@@ -42,7 +42,7 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.0@d41d8cd9",
-        "gillian@github:GillianPlatform/Gillian:gillian.json#0c7e5d8fc4acba232be02dd80c6e8ead42a0ef9b@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#596f53041ebbf0dcf622999f591056abf40dab01@d41d8cd9",
         "@opam/yojson@opam:2.0.2@eb65f292",
         "@opam/printbox@opam:0.5@b264109e",
         "@opam/ppxlib@opam:0.25.1@bd0b93cc",
@@ -59,21 +59,21 @@
         "@opam/ocaml-lsp-server@opam:1.14.1@ac41cc96"
       ]
     },
-    "gillian@github:GillianPlatform/Gillian:gillian.json#0c7e5d8fc4acba232be02dd80c6e8ead42a0ef9b@d41d8cd9": {
-      "id": "gillian@github:GillianPlatform/Gillian:gillian.json#0c7e5d8fc4acba232be02dd80c6e8ead42a0ef9b@d41d8cd9",
+    "gillian@github:GillianPlatform/Gillian:gillian.json#596f53041ebbf0dcf622999f591056abf40dab01@d41d8cd9": {
+      "id": "gillian@github:GillianPlatform/Gillian:gillian.json#596f53041ebbf0dcf622999f591056abf40dab01@d41d8cd9",
       "name": "gillian",
-      "version": "github:GillianPlatform/Gillian:gillian.json#0c7e5d8fc4acba232be02dd80c6e8ead42a0ef9b",
+      "version": "github:GillianPlatform/Gillian:gillian.json#596f53041ebbf0dcf622999f591056abf40dab01",
       "source": {
         "type": "install",
         "source": [
-          "github:GillianPlatform/Gillian:gillian.json#0c7e5d8fc4acba232be02dd80c6e8ead42a0ef9b"
+          "github:GillianPlatform/Gillian:gillian.json#596f53041ebbf0dcf622999f591056abf40dab01"
         ]
       },
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.0@d41d8cd9",
         "@opam/zarith@opam:1.12@232cc7f2",
-        "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/z3-4.8.12.tar.gz#md5:73fd07d094685039b03aed9e38040d13@64138dff",
+        "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.1.tar.gz#md5:faca55780446b99a4de22aa9753bbd39@14b2342b",
         "@opam/yojson@opam:2.0.2@eb65f292",
         "@opam/visitors@opam:20210608@7b4a1100",
         "@opam/uuidm@opam:0.9.7@a349b245",
@@ -180,18 +180,18 @@
         "@opam/conf-gmp@opam:4@c394e8f1"
       ]
     },
-    "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/z3-4.8.12.tar.gz#md5:73fd07d094685039b03aed9e38040d13@64138dff": {
-      "id": "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/z3-4.8.12.tar.gz#md5:73fd07d094685039b03aed9e38040d13@64138dff",
+    "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.1.tar.gz#md5:faca55780446b99a4de22aa9753bbd39@14b2342b": {
+      "id": "@opam/z3@archive:https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.1.tar.gz#md5:faca55780446b99a4de22aa9753bbd39@14b2342b",
       "name": "@opam/z3",
-      "version": "archive:https://github.com/Z3Prover/z3/archive/z3-4.8.12.tar.gz#md5:73fd07d094685039b03aed9e38040d13",
+      "version": "archive:https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.1.tar.gz#md5:faca55780446b99a4de22aa9753bbd39",
       "source": {
         "type": "install",
         "source": [
-          "archive:https://github.com/Z3Prover/z3/archive/z3-4.8.12.tar.gz#md5:73fd07d094685039b03aed9e38040d13"
+          "archive:https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.12.1.tar.gz#md5:faca55780446b99a4de22aa9753bbd39"
         ]
       },
       "overrides": [
-        "esy.lock/overrides/64138dff6b25ee9c8f0a5e121448a6c7"
+        "esy.lock/overrides/14b2342b1cb9c42fff93d80c13219266"
       ],
       "dependencies": [
         "ocaml@4.14.0@d41d8cd9",

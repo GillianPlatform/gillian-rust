@@ -3,9 +3,11 @@
 extern crate gilogic;
 
 use gilogic::{
-    close_borrow,
-    macros::{assertion, borrow, ensures, lemma, predicate, requires, show_safety},
-    open_borrow, Ownable,
+    macros::{
+        assertion, borrow, close_borrow, ensures, lemma, open_borrow, predicate, requires,
+        show_safety,
+    },
+    Ownable,
 };
 
 struct WP<T> {
@@ -27,7 +29,6 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
         v_x.own() * v_y.own()
     )
 }
-
 // This creates:
 // 1) An abstract predicate called `borrowed_wp_xy` which can be opened.
 // 2) An abstract predicate called `borrowed_wp_xy$close_token`.
@@ -43,26 +44,16 @@ fn wp_ref_mut_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T
     )
 }
 
-#[borrow]
-fn wp_ref_mut<'a, T: Ownable>(p: In<&'a mut WP<T>>) {
-    assertion!(|w: WP<T>| (p -> w) * w.own())
-}
-
-#[borrow]
-fn T_ref_mut<'a, T: Ownable>(p: In<&'a T>) {
-    assertion!(|v: T| (p -> v) * v.own())
-}
-
 // FIXME: pull lemmas shouldn't require lifetime tokens at all.
 #[lemma]
-#[requires(|pp| (p == pp) * wp_ref_mut(pp))]
-#[ensures(|pp, x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(pp, x, y))]
+#[requires(p.own())]
+#[ensures(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(p, x, y))]
 fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
 
 // FIXME: split lemmas shouldn't require lifetime tokens at all
 #[lemma]
-#[requires(|pp, x, y| (p == pp) * wp_ref_mut_xy(pp, x, y))]
-#[ensures(|x: *mut N<T>| T_ref_mut(&mut (*x).v))]
+#[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(p, x, y))]
+#[ensures(|r: &mut T| (r == &mut (*x).v) * r.own())]
 fn split_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 impl<T: Ownable> Ownable for WP<T> {
@@ -98,8 +89,16 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    #[requires(wp_ref_mut(self))]
-    #[ensures(T_ref_mut(ret))]
+    // #[show_safety]
+    // fn assign_first(&mut self, x: T) {
+    //     unsafe {
+    //         open_borrow!(self.own());
+    //         (*self.x).v = x;
+    //         close_borrow!(self.own());
+    //     }
+    // }
+
+    #[show_safety]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
             wp_ref_mut_pull_xy(self);

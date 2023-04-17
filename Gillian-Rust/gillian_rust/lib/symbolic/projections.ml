@@ -1,7 +1,7 @@
 open Gillian.Gil_syntax
 (* module Partial_layout = Partial_layout *)
 
-type arith_kind = Wrap | Overflow [@@deriving show]
+type arith_kind = Wrap | Overflow [@@deriving show, yojson]
 
 type op =
   | VField of int * Ty.t * int
@@ -10,7 +10,7 @@ type op =
   | Cast of Ty.t * Ty.t
   | Plus of arith_kind * int * Ty.t
   | UPlus of arith_kind * int
-[@@deriving show]
+[@@deriving show, yojson]
 
 let pp_elem fmt =
   let str_ak = function
@@ -25,9 +25,21 @@ let pp_elem fmt =
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%d)<%a>" (str_ak k) i Ty.pp ty
   | UPlus (k, i) -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
 
-type t = { base : Expr.t option; from_base : op list }
+type t = { base : Expr.t option; from_base : op list } [@@deriving yojson]
 
 let root = { base = None; from_base = [] }
+
+(** Returns the type at the base, if possible to find *)
+let base_ty ~(leaf_ty : Ty.t) (proj : t) =
+  match proj.from_base with
+  | [] -> leaf_ty
+  | ( Field (_, ty)
+    | VField (_, ty, _)
+    | Index (_, ty, _)
+    | Cast (ty, _)
+    | Plus (_, _, ty) )
+    :: _ -> ty
+  | UPlus _ :: _ -> failwith "reduced to uplus too early"
 
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)

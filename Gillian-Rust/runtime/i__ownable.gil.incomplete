@@ -1,0 +1,22 @@
+abstract pred "$POLYMORPHIC::own"(+pty, +self);
+
+abstract pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self);
+abstract pred "$POLYMORPHIC::ref_mut_close_token"(+lft, +pty, +self);
+
+lemma "$POLYMORPHIC::ref_mut_open"(lft, pty, self)
+  [[ (lft == #lft) * (pty == #pty) * (self == #self) * 
+     "$POLYMORPHIC::ref_mut_own"(#lft, #pty, #self) *
+     <lft>(#lft; true) ]]
+  [[ <value>(l-nth(#self, 0i), l-nth(#self, 1i), #pty; #value) *
+     "$POLYMORPHIC::own"(#pty, #value) *
+     "$POLYMORPHIC::ref_mut_close_token"(#lft, #pty, #self) ]]
+     
+lemma "$POLYMORPHIC::ref_mut_close"(lft, pty, self)
+  [[ (lft == #lft) * (pty == #pty) * (self == #self) * 
+     "$POLYMORPHIC::ref_mut_close_token"(#lft, #pty, #self) *
+     <value>(l-nth(#self, 0i), l-nth(#self, 1i), #pty; #value) *
+      "$POLYMORPHIC::own"(#pty, #value) ]]
+  [[ "$POLYMORPHIC::ref_mut_own"(#lft, #pty, #self) * <lft>(#lft; true) ]]
+  
+  
+pred "<() as gilogic::Ownable>::own"(+self): self == {{ }};

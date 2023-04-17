@@ -1,23 +1,31 @@
 (executables
- (names i__repr i__ownable))
+ (names i__ownable i__ownable_pcy))
 
 (rule
- (deps i__repr.exe)
- (target i__repr.gil)
- (action
-  (with-stdout-to
-   %{target}
-   (run ./i__repr.exe))))
-
-(rule
- (deps i__ownable.exe)
+ (deps i__ownable.exe i__ownable.gil.incomplete)
  (target i__ownable.gil)
  (action
   (with-stdout-to
    %{target}
    (run ./i__ownable.exe))))
 
+(rule
+ (deps i__ownable_pcy.exe i__ownable_pcy.gil.incomplete)
+ (target i__ownable_pcy.gil)
+ (action
+  (with-stdout-to
+   %{target}
+   (run ./i__ownable_pcy.exe))))
+
 (install
  (section share)
- (files i__binop.gil i__lang.gil i__std_shims.gil i__repr.gil i__ownable.gil)
+ (files
+  i__binop.gil
+  i__lang.gil
+  i__std_shims.gil
+  i__ownable.gil
+  i__ownable_pcy.gil
+  i__prophecies.gil
+  i__std_shims_pcy.gil
+  i__std_shims_no_pcy.gil)
  (package gillian-rust))

@@ -12,11 +12,42 @@ open Delayed_utils
 exception NotConcrete of string
 
 module TypePreds = struct
-  let valid_ptr e =
-    let open Formula.Infix in
+  let ( .%[] ) e idx = Expr.list_nth e idx
+
+  open Formula.Infix
+
+  let ( >- ) e ty = (Expr.typeof e) #== (Expr.type_ ty)
+
+  let valid_thin_ptr e =
     (Expr.list_length e) #== (Expr.int 2)
-    #&& ((Expr.typeof (Expr.list_nth e 0)) #== (Expr.type_ ObjectType))
-    #&& ((Expr.typeof (Expr.list_nth e 1)) #== (Expr.type_ ListType))
+    #&& (e.%[0] >- ObjectType)
+    #&& (e.%[1] >- ListType)
+
+  let valid_fat_ptr e =
+    (Expr.list_length e) #== (Expr.int 2)
+    #&& (valid_thin_ptr e.%[0])
+    #&& (e.%[1] >- IntType)
+
+  let valid_thin_mut_ref_pcy e =
+    (Expr.list_length e) #== (Expr.int 2) #&& (valid_thin_ptr e.%[0])
+
+  let valid_fat_mut_ref_pcy e =
+    (Expr.list_length e) #== (Expr.int 2) #&& (valid_fat_ptr e.%[0])
+
+  let valid scalar_ty e =
+    match scalar_ty with
+    | Ty.Scalar (Uint _ | Int _) -> e >- IntType
+    | Scalar Bool -> e >- BooleanType
+    | Ref { ty = Slice _; mut = true } ->
+        if !Common.R_config.prophecy_mode then valid_fat_mut_ref_pcy e
+        else valid_fat_ptr e
+    | Ref { mut = true; ty = _ } ->
+        if !Common.R_config.prophecy_mode then valid_thin_mut_ref_pcy e
+        else valid_thin_ptr e
+    | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
+    | Ptr _ -> valid_thin_ptr e
+    | Scalar Char -> True
+    | _ -> failwith "Not a leaf type, can't express validity"
 end
 
 let too_symbolic e =
@@ -57,15 +88,22 @@ module TreeBlock = struct
 
   and tree_content =
     | Symbolic of Expr.t
-    | Scalar of Expr.t
+    | Leaf of Expr.t
     | Fields of t list
     | Array of t list
     | Enum of { discr : int; fields : t list }
-    | ThinPtr of Expr.t (* Should probably go with scalars *)
-    | FatPtr of Expr.t * Projections.t * int
     | Uninit
+    | Missing
 
   type outer = { offset : Expr.t option; root : t }
+
+  let rec is_empty block =
+    match block.content with
+    | Missing -> true
+    | Fields fields | Array fields -> List.for_all is_empty fields
+    | _ -> false
+
+  let outer_is_empty outer = is_empty outer.root
 
   let rec pp fmt { ty; content } =
     Fmt.pf fmt "%a :@ %a" pp_content content Ty.pp ty
@@ -73,41 +111,37 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Scalar e -> Expr.pp ft e
+    | Leaf e -> Expr.pp ft e
     | Fields v -> (parens (Fmt.list ~sep:Fmt.comma pp)) ft v
     | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Fmt.list ~sep:comma pp) fields
-    | ThinPtr ptr -> pf ft "Ptr(%a)" Expr.pp ptr
-    | FatPtr (loc, proj, meta) ->
-        pf ft "FatPtr(%a, %a | %d)" Expr.pp loc Projections.pp proj meta
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
     | Symbolic s -> Expr.pp ft s
     | Uninit -> Fmt.string ft "UNINIT"
+    | Missing -> Fmt.string ft "MISSING"
 
   let pp_outer ft t =
     let open Fmt in
     pf ft "@[<v 2>AFTER OFFSET: %a %a @]" (Fmt.Dump.option Expr.pp) t.offset pp
       t.root
 
-  let rec to_rust_value ~tyenv ({ content; ty } as t) =
+  let rec to_rust_value ({ content; ty } as t) =
     match content with
-    | Scalar s -> (
-        match (ty, s) with
-        | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
+    | Leaf s -> (
+        match ty with
+        | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
-        let tuple = List.map (to_rust_value ~tyenv) v in
+        let tuple = List.map to_rust_value v in
         EList tuple
     | Enum { discr; fields } ->
-        let fields = List.map (to_rust_value ~tyenv) fields in
+        let fields = List.map to_rust_value fields in
         Expr.EList [ Expr.int discr; EList fields ]
-    | ThinPtr ptr -> ptr
-    | FatPtr (loc, proj, meta) ->
-        EList [ EList [ loc; Projections.to_expr proj ]; Expr.int meta ]
     | Symbolic s -> s
     | Uninit -> mem_error "Attempting to read uninitialized value"
+    | Missing -> mem_error "Attempting to read missing value"
 
-  let outer_assertion ~loc ~tyenv block =
+  let outer_assertion ~loc block =
     let offset =
       match block.offset with
       | None -> Expr.EList []
@@ -115,7 +149,7 @@ module TreeBlock = struct
     in
     let cp = Actions.cp_to_name Value in
     let ty = Ty.to_expr block.root.ty in
-    let value = to_rust_value ~tyenv block.root in
+    let value = to_rust_value block.root in
     Asrt.GA (cp, [ loc; offset; ty ], [ value ])
 
   let rec of_rust_struct_value
@@ -150,8 +184,10 @@ module TreeBlock = struct
 
   and of_rust_value ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
     match (ty, e) with
-    | Ty.Scalar (Uint _ | Int _), e -> DR.ok { ty; content = Scalar e }
-    | Ty.Scalar Bool, e -> DR.ok { ty; content = Scalar e }
+    | (Ty.Scalar (Uint _ | Int _ | Bool) | Ptr _ | Ref _), e ->
+        Logging.tmi (fun m -> m "valid: %a for %a" Expr.pp e Ty.pp ty);
+        if%sat TypePreds.valid ty e then DR.ok { ty; content = Leaf e }
+        else DR.error (Err.Invalid_value (ty, e))
     | Tuple _, Lit (LList data) ->
         let content = List.map lift_lit data in
         of_rust_value ~tyenv ~ty (EList content)
@@ -170,28 +206,19 @@ module TreeBlock = struct
             of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
         | Enum variants_tys ->
             of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
-    | Ref { ty = Slice _; _ }, EList [ EList [ loc; proj ]; Lit (Int i) ] ->
-        let proj = concretize_proj proj in
-        let content = FatPtr (loc, proj, Z.to_int i) in
-        DR.ok { ty; content }
-    | Ref _, e ->
-        if%sat TypePreds.valid_ptr e then
-          let content = ThinPtr e in
-          DR.ok { ty; content }
-        else DR.error (Invalid_value (ty, e))
     | Array { length; ty = ty' }, EList l
       when List.compare_length_with l length == 0 ->
         let++ mem_array = DR_list.map (of_rust_value ~tyenv ~ty:ty') l in
         { ty; content = Array mem_array }
     | _, s -> DR.ok { ty; content = Symbolic s }
 
-  let outer_of_rust_value ~offset ~tyenv ~ty (e : Expr.t) =
-    let** root = of_rust_value ~tyenv ~ty e in
-    match offset with
-    | None -> DR.ok { offset; root }
-    | Some offset ->
-        let+ offset = Delayed.reduce offset in
-        Ok { offset = Some offset; root }
+  let outer_missing ~offset ~tyenv ty =
+    let root = { ty; content = Missing } in
+    { offset; root }
+
+  let outer_symbolic ~offset ~tyenv ty e =
+    let root = { ty; content = Symbolic e } in
+    { offset; root }
 
   let rec uninitialized ~tyenv ty =
     match ty with
@@ -213,7 +240,7 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Unresolved _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ -> { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let uninitialized_outer ~tyenv ty =
@@ -291,7 +318,7 @@ module TreeBlock = struct
               in
               DR.ok { ty; content = Enum { discr = variant_idx; fields } }
             else too_symbolic expr)
-    | Scalar _ | Ref _ ->
+    | Scalar _ | Ref _ | Ptr _ ->
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
@@ -300,6 +327,28 @@ module TreeBlock = struct
           "Unresolved should have been resolved before getting to \
            `semi_concretize`: %a"
           Expr.pp e
+
+  let rec partially_missing t =
+    match t.content with
+    | Missing -> true
+    | Array fields | Fields fields -> List.exists partially_missing fields
+    | Symbolic _ | Uninit | Enum _ | Leaf _ -> false
+
+  let structural_missing ~tyenv (ty : Ty.t) =
+    match ty with
+    | Array { length; ty = cty } ->
+        let missing_child = { ty = cty; content = Missing } in
+        { ty; content = Array (List.init length (fun _ -> missing_child)) }
+    | Tuple fields ->
+        {
+          ty;
+          content =
+            Fields (List.map (fun ty -> { content = Missing; ty }) fields);
+        }
+    | Adt _ -> failwith "not handled yet: Adt structural missing"
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
+        Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
+          ty
 
   let rec find_path
       ~tyenv
@@ -333,6 +382,13 @@ module TreeBlock = struct
             (v, { ty; content = replace_vec content new_block })
         | Symbolic s, _ ->
             let** this_block = semi_concretize ~tyenv ~variant ty s in
+            rec_call this_block path
+        | Missing, None ->
+            Logging.tmi (fun m ->
+                m "strutural missing: %a "
+                  (Fmt.Dump.list Partial_layout.pp_access)
+                  path);
+            let this_block = structural_missing ~tyenv ty in
             rec_call this_block path
         | _ -> Fmt.failwith "Invalid node")
     | _ -> failwith "Type mismatch"
@@ -381,9 +437,7 @@ module TreeBlock = struct
       let update = update block in
       match block.content with
       | Array vec ->
-          let ret =
-            List_utils.sublist_map ~start ~size ~f:(to_rust_value ~tyenv) vec
-          in
+          let ret = List_utils.sublist_map ~start ~size ~f:to_rust_value vec in
           DR.ok (ret, update)
       | _ -> DR.error (Invalid_type (block.ty, ty))
     in
@@ -460,14 +514,29 @@ module TreeBlock = struct
 
   let get_proj ~tyenv t proj ty copy =
     let update block = if copy then block else uninitialized ~tyenv ty in
-    let return_and_update t = DR.ok (to_rust_value ~tyenv t, update t) in
+    let return_and_update t = DR.ok (to_rust_value t, update t) in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
-    let return_and_update _ =
+    let return_and_update block =
       let++ value = of_rust_value ~tyenv ~ty value in
       ((), value)
     in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+    new_block
+
+  let store_proj ~tyenv t proj ty value =
+    let return_and_update block =
+      if partially_missing block then DR.error (Err.Missing_proj proj)
+      else
+        let++ value = of_rust_value ~tyenv ~ty value in
+        ((), value)
+    in
+    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+    new_block
+
+  let rem_proj ~tyenv t proj ty =
+    let return_and_update _ = DR.ok ((), { ty; content = Missing }) in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
@@ -492,15 +561,28 @@ module TreeBlock = struct
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
-  let equality_constraint ~tyenv t1 t2 =
-    if not (Ty.equal t1.ty t2.ty) then
-      failwith "Cannot learn equality of two blocks of different types";
-    Formula.Infix.( #== ) (to_rust_value ~tyenv t1) (to_rust_value ~tyenv t2)
+  let rec equality_constraints t1 t2 =
+    let ( #== ) = Formula.Infix.( #== ) in
+    match (t1.content, t2.content) with
+    | Missing, _ | _, Missing -> []
+    | (Symbolic e1 | Leaf e1), (Symbolic e2 | Leaf e2) -> [ e1 #== e2 ]
+    | Fields f1, Fields f2 -> List_utils.concat_map_2 equality_constraints f1 f2
+    | Array f1, Array f2 -> List_utils.concat_map_2 equality_constraints f1 f2
+    | Enum e1, Enum e2 ->
+        (* Sub parts of enum cannot be missing *)
+        [ (to_rust_value t1) #== (to_rust_value t2) ]
+    | Symbolic e, content | content, Symbolic e -> (
+        try [ (to_rust_value { ty = t1.ty; content }) #== e ]
+        with MemoryError _ ->
+          failwith "Need to semi-concretize things to learn")
+    | _ -> Fmt.failwith "cannot learn equality of %a and %a" pp t1 pp t2
 
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
-      | Scalar e -> DR.ok @@ Scalar (subst_expr e)
+      | Leaf e ->
+          let e = subst_expr e in
+          DR.ok ~learned:[ TypePreds.valid ty e ] (Leaf e)
       | Array lst ->
           let++ lst = DR_list.map substitution lst in
           Array lst
@@ -510,20 +592,13 @@ module TreeBlock = struct
       | Enum { fields; discr } ->
           let++ fields = DR_list.map substitution fields in
           Enum { fields; discr }
-      | ThinPtr ptr ->
-          let ptr = subst_expr ptr in
-          DR.ok ~learned:[ TypePreds.valid_ptr ptr ] (ThinPtr ptr)
-      | FatPtr (e, proj, i) ->
-          let new_e = subst_expr e in
-          let new_proj = Projections.substitution ~subst_expr proj in
-          DR.ok @@ FatPtr (new_e, new_proj, i)
       | Symbolic s ->
           let new_s = subst_expr s in
           if new_s == s then DR.ok t
           else
             let++ value = of_rust_value ~tyenv ~ty new_s in
             value.content
-      | Uninit -> DR.ok t
+      | Uninit | Missing -> DR.ok t
     and substitution t =
       let++ content = substitute_content ~ty:t.ty t.content in
       { t with content }
@@ -538,10 +613,12 @@ module TreeBlock = struct
         let+ offset = Delayed.reduce (subst_expr offset) in
         Ok { offset = Some offset; root }
 
-  let outer_equality_constraint ~tyenv (o1 : outer) (o2 : outer) =
+  let outer_equality_constraint (o1 : outer) (o2 : outer) =
     if not ((Option.equal Expr.equal) o1.offset o2.offset) then
       failwith "Cannot learn equality of two blocks of different offsets";
-    equality_constraint ~tyenv o1.root o2.root
+    if not (Ty.equal o1.root.ty o2.root.ty) then
+      failwith "Cannot learn equality of two blocks of different types";
+    equality_constraints o1.root o2.root
 end
 
 module MemMap = Map.Make (String)
@@ -585,7 +662,7 @@ let store_slice ~tyenv (mem : t) loc proj size ty values =
 
 let store ~tyenv (mem : t) loc proj ty value =
   let** block = find_not_freed loc mem in
-  let++ new_block = TreeBlock.set_proj ~tyenv block proj ty value in
+  let++ new_block = TreeBlock.store_proj ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
 let get_value ~tyenv (mem : t) loc proj ty =
@@ -594,17 +671,15 @@ let get_value ~tyenv (mem : t) loc proj ty =
   value
 
 let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
-  let** () =
-    match proj.from_base with
-    | [] -> DR.ok ()
-    | _ ->
-        DR.error
-          (Unhandled
-             "set_value: from_base not empty, can't handle partial trees yet")
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing ~offset:proj.base ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
   in
-  let++ new_block =
-    TreeBlock.outer_of_rust_value ~offset:proj.base ~tyenv ~ty value
-  in
+  let++ new_block = TreeBlock.set_proj ~tyenv root proj ty value in
   MemMap.add loc (T new_block) mem
 
 let rem_value (mem : t) loc =
@@ -632,7 +707,7 @@ let assertions ~tyenv (mem : t) =
   let value (loc, block) =
     let loc = Expr.loc_from_loc_name loc in
     match block with
-    | T block -> TreeBlock.outer_assertion ~loc ~tyenv block
+    | T block -> TreeBlock.outer_assertion ~loc block
     | Freed ->
         let cp = Actions.cp_to_name Freed in
         Asrt.GA (cp, [ loc ], [])

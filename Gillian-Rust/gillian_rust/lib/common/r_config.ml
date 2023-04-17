@@ -19,3 +19,6 @@ let exec_mode_arg () =
     | BiAbduction -> "act"
   in
   arg_header ^ mode
+
+let prophecy_mode = ref false
+let prophecy_mode_arg () = if !prophecy_mode then "--gillian-prophecies" else ""
