@@ -89,6 +89,15 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
+    // #[show_safety]
+    // fn assign_first(&mut self, x: T) {
+    //     unsafe {
+    //         open_borrow!(self.own());
+    //         (*self.x).v = x;
+    //         close_borrow!(self.own());
+    //     }
+    // }
+
     #[show_safety]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
