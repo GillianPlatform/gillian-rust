@@ -1,4 +1,5 @@
 open Gillian.Gil_syntax
+module Recovery_tactic = Gillian.General.Recovery_tactic
 
 type t =
   | Too_symbolic of Expr.t
@@ -18,19 +19,21 @@ type t =
   | Wrong_lifetime_status of Lft.t
 [@@deriving yojson, show]
 
-let recovery_vals = function
-  | Too_symbolic e | Invalid_loc e -> [ e ]
-  | Missing_lifetime e | Double_kill_lifetime e | Wrong_lifetime_status e ->
-      [ Lft.to_expr e ]
-  | Use_after_free l | MissingBlock l | Missing_pcy l ->
-      [ Expr.loc_from_loc_name l ]
-  | Invalid_value (_, e) -> [ e ]
-  | Invalid_free_pointer (loc, proj) -> [ loc; proj ]
+let recovery_tactic =
+  let open Recovery_tactic in
+  function
+  | Too_symbolic e | Invalid_loc e | Invalid_value (_, e) -> try_unfold [ e ]
+  | Missing_lifetime e -> try_fold [ Lft.to_expr e ]
+  | MissingBlock l | Missing_pcy l -> try_unfold [ Expr.loc_from_loc_name l ]
+  | Invalid_free_pointer (loc, proj) -> try_unfold [ loc; proj ]
   | Invalid_type _
   | Invalid_list_op
   | Unhandled _
   | Invalid_pcy_var _
-  | Missing_proj _ -> []
+  | Use_after_free _
+  | Double_kill_lifetime _
+  | Wrong_lifetime_status _
+  | Missing_proj _ -> Recovery_tactic.none
 
 let pp ft =
   let open Fmt in

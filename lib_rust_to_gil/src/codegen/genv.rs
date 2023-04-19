@@ -89,6 +89,10 @@ impl<'tcx> GlobalEnv<'tcx> {
                 num_params += 1;
             }
 
+            // let guard = if self.config.prophecies {
+
+            // }
+
             let pred = Pred {
                 name: name.clone(),
                 num_params,
@@ -98,6 +102,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 pure: false,
                 abstract_: true,
                 facts: vec![],
+                guard: None, // this is wrong!
             };
             prog.add_pred(pred);
         }

@@ -95,7 +95,7 @@ module TreeBlock = struct
     | Uninit
     | Missing
 
-  type outer = { offset : Expr.t option; root : t }
+  type outer = { offset : Expr.t; root : t }
 
   let rec is_empty block =
     match block.content with
@@ -122,8 +122,7 @@ module TreeBlock = struct
 
   let pp_outer ft t =
     let open Fmt in
-    pf ft "@[<v 2>AFTER OFFSET: %a %a @]" (Fmt.Dump.option Expr.pp) t.offset pp
-      t.root
+    pf ft "@[<v 2>AFTER OFFSET: %a %a @]" Expr.pp t.offset pp t.root
 
   let rec to_rust_value ({ content; ty } as t) =
     match content with
@@ -142,14 +141,10 @@ module TreeBlock = struct
     | Missing -> mem_error "Attempting to read missing value"
 
   let outer_assertion ~loc block =
-    let offset =
-      match block.offset with
-      | None -> Expr.EList []
-      | Some o -> o
-    in
     let cp = Actions.cp_to_name Value in
     let ty = Ty.to_expr block.root.ty in
     let value = to_rust_value block.root in
+    let offset = block.offset in
     Asrt.GA (cp, [ loc; offset; ty ], [ value ])
 
   let rec of_rust_struct_value
@@ -245,7 +240,7 @@ module TreeBlock = struct
 
   let uninitialized_outer ~tyenv ty =
     let root = uninitialized ~tyenv ty in
-    { offset = None; root }
+    { offset = Expr.EList []; root }
 
   let semi_concretize ~tyenv ~variant ty expr =
     (* FIXME: this assumes the values are initialized? Not entirely sure...
@@ -395,13 +390,15 @@ module TreeBlock = struct
 
   let get_forest ~tyenv outer (proj : Projections.t) size ty copy =
     let open Partial_layout in
-    let base_equals =
-      match (proj.base, outer.offset) with
-      | None, None -> true
-      | Some x, Some y -> Expr.equal x y
-      | _ -> false
+    let* () =
+      let base_equals =
+        Formula.Infix.( #== )
+          (Option.value ~default:(Expr.EList []) proj.base)
+          outer.offset
+      in
+      if%ent base_equals then Delayed.return ()
+      else failwith "Trees need to be extended?"
     in
-    if not base_equals then failwith "Tree needs to be extended?";
     let t = outer.root in
     let start_address =
       {
@@ -446,13 +443,15 @@ module TreeBlock = struct
 
   let set_forest ~tyenv outer (proj : Projections.t) size ty values =
     let open Partial_layout in
-    let base_equals =
-      match (proj.base, outer.offset) with
-      | None, None -> true
-      | Some x, Some y -> Expr.equal x y
-      | _ -> false
+    let* () =
+      let base_equals =
+        Formula.Infix.( #== )
+          (Option.value ~default:(Expr.EList []) proj.base)
+          outer.offset
+      in
+      if%ent base_equals then Delayed.return ()
+      else failwith "Trees need to be extended?"
     in
-    if not base_equals then failwith "Tree needs to be extended?";
     let t = outer.root in
     assert (List.length values = size);
     let start_address =
@@ -490,13 +489,15 @@ module TreeBlock = struct
       (outer : outer)
       (proj : Projections.t) =
     let open Partial_layout in
-    let base_equals =
-      match (proj.base, outer.offset) with
-      | None, None -> true
-      | Some x, Some y -> Expr.equal x y
-      | _ -> false
+    let* () =
+      let base_equals =
+        Formula.Infix.( #== )
+          (Option.value ~default:(Expr.EList []) proj.base)
+          outer.offset
+      in
+      if%ent base_equals then Delayed.return ()
+      else failwith "Trees need to be extended?"
     in
-    if not base_equals then failwith "Tree needs to be extended?";
     let t = outer.root in
     let proj = proj.from_base in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
@@ -607,18 +608,30 @@ module TreeBlock = struct
 
   let outer_substitution ~tyenv ~subst_expr t =
     let** root = substitution ~tyenv ~subst_expr t.root in
-    match t.offset with
-    | None -> DR.ok { t with root }
-    | Some offset ->
-        let+ offset = Delayed.reduce (subst_expr offset) in
-        Ok { offset = Some offset; root }
+    let+ offset = Delayed.reduce (subst_expr t.offset) in
+    Ok { offset; root }
 
   let outer_equality_constraint (o1 : outer) (o2 : outer) =
-    if not ((Option.equal Expr.equal) o1.offset o2.offset) then
+    if not (Expr.equal o1.offset o2.offset) then
       failwith "Cannot learn equality of two blocks of different offsets";
     if not (Ty.equal o1.root.ty o2.root.ty) then
       failwith "Cannot learn equality of two blocks of different types";
     equality_constraints o1.root o2.root
+
+  let merge_outer (o1 : outer) (o2 : outer) =
+    let+ () =
+      let eq = Formula.Infix.( #== ) o1.offset o2.offset in
+      if%ent eq then Delayed.return ()
+      else
+        failwith "Not handled yet: merging outer blocks with different offsets"
+    in
+    match (o1.root, o2.root) with
+    | { content = Missing; _ }, _ -> o2
+    | _, { content = Missing; _ } -> o1
+    | _ ->
+        failwith
+          "Not handled yet: merging outer blocks with non-Missing root on both \
+           side"
 end
 
 module MemMap = Map.Make (String)
@@ -627,10 +640,11 @@ type block = T of TreeBlock.outer | Freed
 type t = block MemMap.t
 
 let find_not_freed loc mem =
-  let block = MemMap.find loc mem in
+  let block = MemMap.find_opt loc mem in
   match block with
-  | T t -> DR.ok t
-  | Freed -> DR.error (Use_after_free loc)
+  | Some (T t) -> DR.ok t
+  | Some Freed -> DR.error (Use_after_free loc)
+  | None -> DR.error (MissingBlock loc)
 
 let to_yojson _ = `Null
 let of_yojson _ = Error "Heap.of_yojson: Not implemented"
@@ -676,7 +690,9 @@ let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
     | Some (T root) -> root
     | Some Freed -> failwith "use after free"
     | None ->
-        TreeBlock.outer_missing ~offset:proj.base ~tyenv
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
           (Projections.base_ty ~leaf_ty:ty proj)
   in
   let++ new_block = TreeBlock.set_proj ~tyenv root proj ty value in
@@ -694,7 +710,11 @@ let deinit ~tyenv (mem : t) loc proj ty =
 
 let free (mem : t) loc ty =
   let** block = find_not_freed loc mem in
-  if Option.is_some block.offset then DR.error (MissingBlock loc)
+  let base_is_not_empty =
+    let open Formula.Infix in
+    fnot block.offset #== (Expr.EList [])
+  in
+  if%sat base_is_not_empty then DR.error (MissingBlock loc)
   else if not (Ty.equal block.root.ty ty) then
     DR.error (Invalid_type (ty, block.root.ty))
   else DR.ok (MemMap.add loc Freed mem)
@@ -727,27 +747,46 @@ let pp : t Fmt.t =
 
 let substitution ~tyenv heap subst =
   let open Gillian.Symbolic in
-  let non_loc = function
-    | Expr.ALoc _ | Lit (Loc _) -> false
-    | _ -> true
-  in
-  let () =
-    if not (Expr.Set.is_empty (Subst.domain subst (Some non_loc))) then
-      Fmt.pr "WARNING: SUBSTITUTION WITH LOCATIONS NO HANDLED\n@?"
-  in
-  let subst_expr = Subst.subst_in_expr subst ~partial:true in
-  let++ new_mapping =
-    MemMap.to_seq heap |> List.of_seq
-    |> DR_list.map (fun (loc, block) ->
-           let++ block =
-             match block with
-             | Freed -> DR.ok Freed
-             | T block ->
-                 let++ block =
-                   TreeBlock.outer_substitution ~tyenv ~subst_expr block
-                 in
-                 T block
-           in
-           (loc, block))
-  in
-  List.to_seq new_mapping |> MemMap.of_seq
+  if Subst.is_empty subst then DR.ok heap
+  else
+    let loc_subst =
+      Subst.fold subst
+        (fun l r acc ->
+          match l with
+          | ALoc loc | Lit (Loc loc) -> (loc, r) :: acc
+          | _ -> acc)
+        []
+    in
+    let subst_expr = Subst.subst_in_expr subst ~partial:true in
+    let++ new_mapping =
+      MemMap.to_seq heap |> List.of_seq
+      |> DR_list.map (fun (loc, block) ->
+             let++ block =
+               match block with
+               | Freed -> DR.ok Freed
+               | T block ->
+                   let++ block =
+                     TreeBlock.outer_substitution ~tyenv ~subst_expr block
+                   in
+                   T block
+             in
+             (loc, block))
+    in
+    let tree_substed = List.to_seq new_mapping |> MemMap.of_seq in
+    List.fold_left
+      (fun acc (old_loc, new_loc) ->
+        Logging.verbose (fun m ->
+            m "About to merge locs: %s -> %a" old_loc Expr.pp new_loc);
+        let new_loc =
+          match new_loc with
+          | Lit (Loc loc) | ALoc loc -> loc
+          | _ ->
+              Fmt.failwith
+                "substitution failed, for location, target isn't a location"
+        in
+        match (MemMap.find_opt old_loc acc, MemMap.find_opt new_loc acc) with
+        | None, None | None, Some _ -> acc
+        | Some tree, None ->
+            MemMap.remove old_loc acc |> MemMap.add new_loc tree
+        | Some _, Some _ -> Fmt.failwith "Can't merge trees yet")
+      tree_substed loc_subst

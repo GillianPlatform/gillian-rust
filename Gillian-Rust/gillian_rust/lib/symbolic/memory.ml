@@ -195,7 +195,7 @@ let get_failing_constraint _ =
 
 let get_fixes ?simple_fix:_ _ _ _ = failwith "get_fixes: Not yet implemented"
 let apply_fix _ _ _ _ = failwith "apply_fix: Not yet implemented"
-let get_recovery_vals _ e = Err.recovery_vals e
+let get_recovery_tactic _ e = Err.recovery_tactic e
 
 let execute_get_lft mem args =
   let open Gillian.Utils.Syntaxes.Result in

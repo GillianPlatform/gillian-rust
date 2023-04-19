@@ -2,9 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, token::Colon, Attribute, FnArg, GenericParam,
-    ImplItemMethod, LifetimeDef, Pat, PatIdent, PatType, Receiver, ReturnType, Signature, Token,
-    Type,
+    parse_macro_input, punctuated::Punctuated, token::Colon, Attribute, FnArg, ImplItemMethod, Pat,
+    PatIdent, PatType, ReturnType, Token,
 };
 use uuid::Uuid;
 
@@ -30,44 +29,6 @@ mod aux {
             Ok(LvarsAttr(ret))
         }
     }
-}
-
-fn generic_lifetimes(sig: &Signature) -> Vec<String> {
-    let explicit_lfts: Vec<_> = sig
-        .generics
-        .params
-        .iter()
-        .filter_map(|x| {
-            if let GenericParam::Lifetime(LifetimeDef { lifetime, .. }) = x {
-                Some(lifetime.ident.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    if !explicit_lfts.is_empty() {
-        return explicit_lfts;
-    }
-
-    for arg in &sig.inputs {
-        match arg {
-            FnArg::Receiver(Receiver {
-                reference: Some(..),
-                ..
-            })
-            | FnArg::Typed(PatType {
-                ty: box Type::Reference(..),
-                ..
-            }) => return vec!["a".to_string()],
-            _ => continue,
-        }
-    }
-    vec![]
-}
-
-fn generic_lifetimes_string(sig: &Signature) -> String {
-    generic_lifetimes(sig).join(",")
 }
 
 fn get_attr<'a>(
@@ -110,24 +71,20 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     let inputs = &item.sig.inputs;
     let generics = &item.sig.generics;
 
-    let gen_lft_str = generic_lifetimes_string(&item.sig);
-    let lft_params = quote!(#[gillian::parameters::lifetimes=#gen_lft_str]);
-    let lifetimes = if get_attr(
-        &item.attrs,
-        &["gillian", "lemma", "produces_lifetime_token"],
-    )
-    .is_some()
-    {
-        None
-    } else {
-        Some(quote!(#lft_params))
-    };
+    let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
 
     let lvar_list = parsed_assertion.lvars.to_token_stream().to_string();
+
+    let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
+        Some(quote!(#[gillian::for_lemma]))
+    } else {
+        None
+    };
 
     let result = quote! {
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
+        #for_lemma
         #[gillian::decl::precondition]
         #[gillian::decl::pred_ins=""]
         #lifetimes
@@ -137,7 +94,7 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
 
         #[gillian::spec::precondition=#name_string]
         #[gillian::spec::precondition::lvars=#lvar_list]
-        #lft_params
+        #lifetimes
         #item
     };
     result.into()
@@ -196,20 +153,18 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         ReturnType::Type(_token, ty) => quote! { #ty },
     };
     let generics = &item.sig.generics;
-    let gen_lft_str = generic_lifetimes_string(&item.sig);
-    let lifetimes = if get_attr(
-        &item.attrs,
-        &["gillian", "lemma", "consumes_lifetime_token"],
-    )
-    .is_some()
-    {
-        None
+    let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
+
+    let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
+        Some(quote!(#[gillian::for_lemma]))
     } else {
-        Some(quote!(#[gillian::parameters::lifetimes=#gen_lft_str]))
+        None
     };
+
     let result = quote! {
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
+        #for_lemma
         #[gillian::decl::postcondition]
         #[gillian::decl::pred_ins=#ins]
         #lifetimes

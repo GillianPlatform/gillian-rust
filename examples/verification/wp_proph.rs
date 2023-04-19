@@ -108,10 +108,10 @@ impl<T: Ownable> WP<T> {
         unsafe {
             let prophecy = self.prophecy();
             wp_ref_mut_pull_xy(self);
-            open_borrow!(wp_ref_mut_inner_xy(self));
+            open_borrow!(wp_ref_mut_inner_xy(self, self.x, self.y));
             let ret = &mut (*self.x).v;
             prophecy.field_1().resolve();
-            close_borrow!(wp_ref_mut_inner_xy(self));
+            close_borrow!(wp_ref_mut_inner_xy(self, self.x, self.y));
             split_x(self, ret.prophecy());
             ret
         }

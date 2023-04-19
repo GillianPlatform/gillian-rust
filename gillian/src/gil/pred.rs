@@ -12,6 +12,7 @@ pub struct Pred {
     pub pure: bool,
     pub abstract_: bool,
     pub facts: Vec<Formula>,
+    pub guard: Option<Assertion>,
 }
 
 impl Display for Pred {
@@ -55,6 +56,9 @@ impl Display for Pred {
                 }
                 write!(f, "{}", fact)?;
             }
+        }
+        if let Some(guard) = &self.guard {
+            writeln!(f, "guard: {};", guard)?;
         }
         Ok(())
     }

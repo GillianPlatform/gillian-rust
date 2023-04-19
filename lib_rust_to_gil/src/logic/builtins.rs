@@ -46,7 +46,6 @@ pub(crate) enum Stubs {
 pub(crate) fn get_stub<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Stubs> {
     if let TyKind::FnDef(did, _) = ty.kind() {
         crate::utils::attrs::diagnostic_item_string(*did, tcx).and_then(|name| {
-            log::debug!("Found stub: {}", name);
             match name.as_str() {
                 "gillian::pred::defs" => Some(Stubs::PredDefs),
                 "gillian::asrt::star" => Some(Stubs::AssertStar),

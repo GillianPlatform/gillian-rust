@@ -30,6 +30,7 @@ struct PredSig {
     params: Vec<(String, Option<Type>)>,
     ins: Vec<usize>,
     facts: Vec<Formula>,
+    guard: Option<Assertion>,
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
@@ -206,6 +207,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
+    fn guard(&self) -> Option<Assertion> {
+        crate::utils::attrs::get_attr(
+            self.tcx().get_attrs_unchecked(self.did()),
+            &["gillian", "borrow"],
+        )
+        .map(|_| {
+            let mut lfts: Vec<_> = self
+                .generic_lifetimes()
+                .into_iter()
+                .map(|x| lifetime_param_name(x.as_str()))
+                .collect();
+            if lfts.len() != 1 {
+                fatal!(
+                    self,
+                    "Borrow predicates must have exactly one lifetime parameter, for now."
+                );
+            }
+            core_preds::alive_lft(Expr::PVar(lfts.pop().unwrap()))
+        })
+    }
+
     fn sig(&mut self) -> PredSig {
         let generic_lifetimes = self.generic_lifetimes();
         let generic_types = self.generic_types();
@@ -239,11 +261,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .chain(generic_type_params)
             .chain(arguments)
             .collect();
+        let guard = self.guard();
         PredSig {
             name: self.pred_name(),
             params,
             ins,
             facts: vec![],
+            guard,
         }
     }
 
@@ -253,6 +277,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             params,
             ins,
             facts,
+            guard,
         } = self.sig();
         Pred {
             name,
@@ -263,6 +288,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             definitions: vec![],
             ins,
             pure: false,
+            guard,
         }
     }
 
@@ -723,8 +749,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     super::core_preds::controller(prophecy, typ, model)
                 }
                 _ => {
-                    let (name, substs) = match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => {
+                    let (def_id, substs) = match ty.kind() {
+                        TyKind::FnDef(def_id, substs) => (def_id, substs),
+                        _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
+                    };
+
+                    let (name, substs) = {
                             let arg_ty = thir.exprs[args[0]].ty;
                             if (self.tcx().is_diagnostic_item(
                                 Symbol::intern("gillian::pcy::ownable::own"),
@@ -749,11 +779,18 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                     .def_path_str(def_id));
                                 (name, substs)
                             }
-                        }
-                        _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
-                    };
+                        };
 
-                    let mut params = Vec::with_capacity(args.len() + substs.len());
+                    let mut params = Vec::with_capacity(args.len() + substs.len() + 1);
+                    {
+                        let self_lifetimes = self.generic_lifetimes();
+                        let callee_lifetimes =  (*def_id, self.tcx()).generic_lifetimes();
+                        if self_lifetimes.len() == 1 && callee_lifetimes.len() == 1 {
+                            params.push(Expr::PVar(lifetime_param_name(&self_lifetimes[0])));
+                        } else if callee_lifetimes.is_empty() {} else {
+                            fatal!(self, "Cannot handle lifetimes in function call properly")
+                        }
+                    }
                     for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
                         params.push(tyarg.into())
                     }
@@ -825,23 +862,26 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 
         let generic_lifetimes = self.generic_lifetimes();
-        let with_lifetime_token = if generic_lifetimes.is_empty() {
-            inner
-        } else {
-            if generic_lifetimes.len() > 1 {
-                fatal!(
-                    self,
-                    "Multiple generic lifetimes not supported yet in specs"
-                )
+        let with_lifetime_token =
+            if (!crate::logic::is_function_specification(self.did(), self.tcx()))
+                || generic_lifetimes.is_empty()
+            {
+                inner
+            } else {
+                if generic_lifetimes.len() > 1 {
+                    fatal!(
+                        self,
+                        "Multiple generic lifetimes not supported yet in specs"
+                    )
+                };
+                generic_lifetimes.iter().fold(inner, |acc, lft| {
+                    let lft_name = lifetime_param_name(lft);
+                    Assertion::star(
+                        acc,
+                        super::core_preds::alive_lft(Expr::LVar(format!("#{lft_name}"))),
+                    )
+                })
             };
-            generic_lifetimes.iter().fold(inner, |acc, lft| {
-                let lft_name = lifetime_param_name(lft);
-                Assertion::star(
-                    acc,
-                    super::core_preds::alive_lft(Expr::LVar(format!("#{lft_name}"))),
-                )
-            })
-        };
         with_lifetime_token
     }
 
@@ -915,6 +955,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             params,
             ins,
             facts,
+            guard,
         } = self.sig();
         get_thir!(thir, ret_expr, self);
         // FIXME: Use the list of statements of the main block expr
@@ -933,6 +974,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             definitions,
             ins,
             pure: false,
+            guard,
         }
     }
 

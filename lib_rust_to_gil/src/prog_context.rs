@@ -39,33 +39,36 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
 
     fn compile_logic(&mut self, did: DefId) {
         let logic_item = compile_logic(did, self.tcx(), &mut self.global_env, &mut self.temp_gen);
-        match logic_item {
-            LogicItem::Pred(pred) => self.prog.add_pred(pred),
-            LogicItem::Lemma(lemma) => {
-                let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
-                let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
-                let name =
-                    rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
-                match (pre_id, post_id) {
-                    (Some(pre_id), Some(post_id)) => {
-                        self.spec_tbl.insert(name, (pre_id, post_id));
+        if let Some(logic_item) = logic_item {
+            match logic_item {
+                LogicItem::Pred(pred) => self.prog.add_pred(pred),
+                LogicItem::Lemma(lemma) => {
+                    let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
+                    let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
+                    let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
+                        .tcx()
+                        .def_path_str(did));
+                    match (pre_id, post_id) {
+                        (Some(pre_id), Some(post_id)) => {
+                            self.spec_tbl.insert(name, (pre_id, post_id));
+                        }
+                        (Some(_), None) | (None, Some(_)) => {
+                            fatal!(
+                                self,
+                                "Missing precondition or postcondition for lemma: {:?}",
+                                did
+                            )
+                        }
+                        (None, None) => (),
                     }
-                    (Some(_), None) | (None, Some(_)) => {
-                        fatal!(
-                            self,
-                            "Missing precondition or postcondition for lemma: {:?}",
-                            did
-                        )
-                    }
-                    (None, None) => (),
+                    self.prog.add_lemma(lemma)
                 }
-                self.prog.add_lemma(lemma)
-            }
-            LogicItem::Precondition(symbol, args, asrt) => {
-                self.pre_tbl.insert(symbol, (args, asrt));
-            }
-            LogicItem::Postcondition(symbol, asrt) => {
-                self.post_tbl.insert(symbol, asrt);
+                LogicItem::Precondition(symbol, args, asrt) => {
+                    self.pre_tbl.insert(symbol, (args, asrt));
+                }
+                LogicItem::Postcondition(symbol, asrt) => {
+                    self.post_tbl.insert(symbol, asrt);
+                }
             }
         }
     }

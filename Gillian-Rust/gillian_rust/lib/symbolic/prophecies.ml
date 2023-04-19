@@ -28,19 +28,15 @@ let empty = MemMap.empty
 let to_yojson _ = `Null
 let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
-(* let MemMap.find_opt  pcy_var pcy_env =
-   match MemMap.find_opt pcy_var pcy_env with
-   | Some b -> Delayed.return @@ Some (pcy_var, b)
-   | None ->
-       let rec delayed_find to_find seq =
-         match seq () with
-         | Seq.Nil -> Delayed.return None
-         | Seq.Cons ((key, value), seq) ->
-             if%ent Formula.Infix.( #== ) to_find key then
-               Delayed.return (Some (key, value))
-             else delayed_find to_find seq
-       in
-       delayed_find pcy_var (MemMap.to_seq pcy_env) *)
+let merge old_proph new_proph =
+  let value_eq = Formula.Infix.( #== ) old_proph.value new_proph.value in
+  let* observer = TreeBlock.merge_outer old_proph.observer new_proph.observer in
+  let* controller =
+    TreeBlock.merge_outer old_proph.controller new_proph.controller
+  in
+  let ct_obs_eq = TreeBlock.outer_equality_constraint observer controller in
+  let learned = value_eq :: ct_obs_eq in
+  DR.ok ~learned { value = old_proph.value; observer; controller }
 
 let observer_block pcy_id pcy_env =
   match MemMap.find_opt pcy_id pcy_env with
@@ -59,7 +55,9 @@ let get_value_obs ~tyenv pcy_env pcy_var proj ty =
 
 let set_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
   let missing_root () =
-    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+    TreeBlock.outer_missing
+      ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+      ~tyenv
       (Projections.base_ty ~leaf_ty:ty proj)
   in
   let value, observer, controller =
@@ -87,7 +85,9 @@ let get_controller ~tyenv pcy_env pcy_var proj ty =
 
 let set_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
   let missing_root () =
-    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+    TreeBlock.outer_missing
+      ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+      ~tyenv
       (Projections.base_ty ~leaf_ty:ty proj)
   in
   let value, observer, controller =
@@ -125,7 +125,9 @@ let proj_on_var pcy_var (proj : Projections.t) =
 
 let get_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty =
   let missing_root () =
-    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+    TreeBlock.outer_missing
+      ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+      ~tyenv
       (Projections.base_ty ~leaf_ty:ty proj)
   in
   match MemMap.find_opt pcy_id pcy_env with
@@ -140,7 +142,9 @@ let get_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty =
 
 let set_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty new_value =
   let missing_root () =
-    TreeBlock.outer_missing ~offset:proj.base ~tyenv
+    TreeBlock.outer_missing
+      ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+      ~tyenv
       (Projections.base_ty ~leaf_ty:ty proj)
   in
   let value, observer, controller =
@@ -191,7 +195,7 @@ let alloc ~tyenv pcy_env ty =
   let new_block =
     let current_value = Expr.LVar (LVar.alloc ()) in
     let controller =
-      TreeBlock.outer_symbolic ~tyenv ~offset:None ty current_value
+      TreeBlock.outer_symbolic ~tyenv ~offset:(Expr.EList []) ty current_value
     in
     let observer = controller in
     { controller; observer; value }
@@ -207,25 +211,45 @@ let pp ft t =
 
 let substitution ~tyenv pcy_env subst =
   let open Gillian.Symbolic in
-  let non_loc = function
-    | Expr.ALoc _ | Lit (Loc _) -> false
-    | _ -> true
-  in
-  let () =
-    if not (Expr.Set.is_empty (Subst.domain subst (Some non_loc))) then
-      Fmt.pr "WARNING: SUBSTITUTION WITH LOCATIONS NO HANDLED\n@?"
-  in
-  let subst_expr = Subst.subst_in_expr subst ~partial:true in
-  let++ new_mapping =
-    MemMap.to_seq pcy_env |> List.of_seq
-    |> DR_list.map (fun (pcy_id, block) ->
-           let value = subst_expr block.value in
-           let** controller =
-             TreeBlock.outer_substitution ~tyenv ~subst_expr block.controller
-           in
-           let++ observer =
-             TreeBlock.outer_substitution ~tyenv ~subst_expr block.observer
-           in
-           (pcy_id, { value; controller; observer }))
-  in
-  List.to_seq new_mapping |> MemMap.of_seq
+  if Subst.is_empty subst then DR.ok pcy_env
+  else
+    let loc_subst =
+      Subst.fold subst
+        (fun l r acc ->
+          match l with
+          | ALoc loc | Lit (Loc loc) -> (loc, r) :: acc
+          | _ -> acc)
+        []
+    in
+    let subst_expr = Subst.subst_in_expr subst ~partial:true in
+    let** new_mapping =
+      MemMap.to_seq pcy_env |> List.of_seq
+      |> DR_list.map (fun (pcy_id, block) ->
+             let value = subst_expr block.value in
+             let** controller =
+               TreeBlock.outer_substitution ~tyenv ~subst_expr block.controller
+             in
+             let++ observer =
+               TreeBlock.outer_substitution ~tyenv ~subst_expr block.observer
+             in
+             (pcy_id, { value; controller; observer }))
+    in
+    let tree_substed = List.to_seq new_mapping |> MemMap.of_seq in
+    List.fold_left
+      (fun acc (old_loc, new_loc) ->
+        let** acc in
+        let new_loc =
+          match new_loc with
+          | Expr.Lit (Loc loc) | ALoc loc -> loc
+          | _ ->
+              Fmt.failwith
+                "substitution failed, for location, target isn't a location"
+        in
+        match (MemMap.find_opt old_loc acc, MemMap.find_opt new_loc acc) with
+        | None, None | None, Some _ -> DR.ok acc
+        | Some prophecy, None ->
+            MemMap.remove old_loc acc |> MemMap.add new_loc prophecy |> DR.ok
+        | Some old_prophecy, Some new_prophecy ->
+            let++ merged = merge old_prophecy new_prophecy in
+            MemMap.remove old_loc acc |> MemMap.add new_loc merged)
+      (DR.ok tree_substed) loc_subst

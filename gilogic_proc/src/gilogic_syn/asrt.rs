@@ -28,15 +28,6 @@ pub struct LvarDecl {
     pub ty_opt: Option<(Token![:], Type)>,
 }
 
-impl LvarDecl {
-    pub(crate) fn new(ident: Ident, ty_opt: Option<Type>) -> Self {
-        Self {
-            ident,
-            ty_opt: ty_opt.map(|ty| (Token![:](Span::call_site()), ty)),
-        }
-    }
-}
-
 ast_enum_of_structs! {
   /// A Gilogic assertion
   pub enum AsrtFragment {

@@ -98,13 +98,17 @@ pub(crate) fn is_postcondition(def_id: DefId, tcx: TyCtxt) -> bool {
     )
     .is_some()
 }
-
 pub(crate) fn is_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
         &["gillian", "decl", "lemma"],
     )
     .is_some()
+}
+
+pub(crate) fn is_function_specification(def_id: DefId, tcx: TyCtxt) -> bool {
+    (is_postcondition(def_id, tcx) || is_precondition(def_id, tcx))
+        && get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "for_lemma"]).is_none()
 }
 
 pub(crate) fn is_trusted_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
@@ -115,10 +119,31 @@ pub(crate) fn is_trusted_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
+pub(crate) fn is_fold(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "predicate", "fold"],
+    )
+    .is_some()
+}
+pub(crate) fn is_unfold(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "predicate", "unfold"],
+    )
+    .is_some()
+}
+
 pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
-    is_predicate(def_id, tcx)
-        || is_abstract_predicate(def_id, tcx)
-        || is_precondition(def_id, tcx)
-        || is_postcondition(def_id, tcx)
-        || is_lemma(def_id, tcx)
+    [
+        is_predicate,
+        is_abstract_predicate,
+        is_precondition,
+        is_postcondition,
+        is_lemma,
+        is_fold,
+        is_unfold,
+    ]
+    .iter()
+    .any(|f| f(def_id, tcx))
 }

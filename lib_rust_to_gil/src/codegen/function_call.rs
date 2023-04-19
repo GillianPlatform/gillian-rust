@@ -10,6 +10,8 @@ use super::typ_encoding::lifetime_param_name;
 enum Kind {
     Lemma,
     Function,
+    Unfold,
+    Fold,
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -35,35 +37,42 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 };
                 None
             }
-            "gilogic::Ownable::ref_mut_inner_____open" => {
+            "gilogic::Ownable::ref_mut_inner_____unfold" => {
                 if ty_utils::is_ty_param(substs[0].expect_ty()) {
                     Some(("$POLYMORPHIC::ref_mut_inner_open".to_string(), Kind::Lemma))
                 } else {
                     None
                 }
             }
-            "gilogic::Ownable::ref_mut_inner_____close" => {
+            "gilogic::Ownable::ref_mut_inner_____fold" => {
                 if ty_utils::is_ty_param(substs[0].expect_ty()) {
                     Some(("$POLYMORPHIC::ref_mut_inner_close".to_string(), Kind::Lemma))
                 } else {
                     None
                 }
             }
-            "gilogic::Ownable::own_____open" => {
+            "gilogic::Ownable::own_____unfold" => {
                 if ty_utils::is_ty_param(substs[0].expect_ty()) {
                     Some(("$POLYMORPHIC::ref_mut_open".to_string(), Kind::Lemma))
                 } else {
                     None
                 }
             }
-            "gilogic::Ownable::own_____close" => {
+            "gilogic::Ownable::own_____fold" => {
                 if ty_utils::is_ty_param(substs[0].expect_ty()) {
                     Some(("$POLYMORPHIC::ref_mut_close".to_string(), Kind::Lemma))
                 } else {
                     None
                 }
             }
-            _ => None,
+            other => other
+                .strip_suffix("_____unfold")
+                .map(|name| (name.to_string(), Kind::Unfold))
+                .or_else(|| {
+                    other
+                        .strip_suffix("_____fold")
+                        .map(|name| (name.to_string(), Kind::Fold))
+                }),
         }
     }
 
@@ -110,6 +119,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 lemma_name: fname,
                 parameters: gil_args,
                 existentials: vec![],
+            }));
+            self.push_cmd(call);
+        } else if let Kind::Fold = kind {
+            let call = Cmd::Logic(LCmd::SL(SLCmd::Fold {
+                pred_name: fname,
+                parameters: gil_args,
+                bindings: None,
+            }));
+            self.push_cmd(call);
+        } else if let Kind::Unfold = kind {
+            let call = Cmd::Logic(LCmd::SL(SLCmd::Unfold {
+                pred_name: fname,
+                parameters: gil_args,
+                bindings: None,
+                rec: false,
             }));
             self.push_cmd(call);
         } else {

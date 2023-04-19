@@ -29,13 +29,7 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
         v_x.own() * v_y.own()
     )
 }
-// This creates:
-// 1) An abstract predicate called `borrowed_wp_xy` which can be opened.
-// 2) An abstract predicate called `borrowed_wp_xy$close_token`.
-// 3) A lemma `borrowed_wp_xy$access` which exchanges `borrowed_wp_xy` and a token for `'a` for
-//      a) the assertion inside `borrowed_wp_xy` and
-//      b) a `borrowed_wp_xy$close_token`
-// 4) A lemma `borrowed_wp_xy$close` which exchanges the close_token and the assertion against the `borrowed_wp_xy`.
+
 #[borrow]
 fn wp_ref_mut_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     assertion!(|v_x: T, v_y: T|
@@ -89,22 +83,22 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    // #[show_safety]
-    // fn assign_first(&mut self, x: T) {
-    //     unsafe {
-    //         open_borrow!(self.own());
-    //         (*self.x).v = x;
-    //         close_borrow!(self.own());
-    //     }
-    // }
+    #[show_safety]
+    fn assign_first(&mut self, x: T) {
+        unsafe {
+            open_borrow!(self.own());
+            (*self.x).v = x;
+            close_borrow!(self.own());
+        }
+    }
 
     #[show_safety]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
             wp_ref_mut_pull_xy(self);
-            open_borrow!(wp_ref_mut_xy(self));
+            open_borrow!(wp_ref_mut_xy(self, self.x, self.y));
             let ret = &mut (*self.x).v;
-            close_borrow!(wp_ref_mut_xy(self));
+            close_borrow!(wp_ref_mut_xy(self, self.x, self.y));
             split_x(self);
             ret
         }

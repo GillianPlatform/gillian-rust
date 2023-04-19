@@ -180,18 +180,18 @@ impl ToTokens for Lemma {
         match body {
             None => tokens.extend(quote! {
                 #[cfg(gillian)]
-                #[gillian::decl::lemma]
-                #[gillian::lemma::trusted]
                 #(#attributes)*
+                #[gillian::lemma::trusted]
+                #[gillian::decl::lemma]
                 #sig {
                     unreachable!()
                 }
             }),
             Some(body) => tokens.extend(quote! {
                 #[cfg(gillian)]
+                #(#attributes)*
                 #[gillian::decl::lemma]
                 #[gillian::lemma::trusted]
-                #(#attributes)*
                 #sig #body
             }),
         }

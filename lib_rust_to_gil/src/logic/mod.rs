@@ -28,17 +28,17 @@ pub fn compile_logic<'tcx, 'genv>(
     tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
     temp_gen: &'genv mut TempGenerator,
-) -> LogicItem {
+) -> Option<LogicItem> {
     if is_abstract_predicate(did, tcx) {
         let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, true).compile();
-        LogicItem::Pred(pred)
+        Some(LogicItem::Pred(pred))
     } else if is_predicate(did, tcx) {
         let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false).compile();
-        LogicItem::Pred(pred)
+        Some(LogicItem::Pred(pred))
     } else if is_lemma(did, tcx) {
         let lemma =
             lemma::LemmaCtx::new(tcx, global_env, did, is_trusted_lemma(did, tcx)).compile();
-        LogicItem::Lemma(lemma)
+        Some(LogicItem::Lemma(lemma))
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false);
@@ -63,7 +63,7 @@ pub fn compile_logic<'tcx, 'genv>(
             .into_iter()
             .map(|p| p.0)
             .collect();
-        LogicItem::Precondition(id, args, definition)
+        Some(LogicItem::Precondition(id, args, definition))
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
         log::debug!("Compiling postcondition: {:?}", did);
@@ -83,8 +83,10 @@ pub fn compile_logic<'tcx, 'genv>(
         let id = tcx
             .get_diagnostic_name(did)
             .expect("All postcondition should be diagnostic items");
-        LogicItem::Postcondition(id, assertion)
+        Some(LogicItem::Postcondition(id, assertion))
         // Has to b safe, because we know there is exactly one definition
+    } else if is_fold(did, tcx) || is_unfold(did, tcx) {
+        None
     } else {
         unreachable!()
     }

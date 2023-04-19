@@ -11,6 +11,7 @@ use syn::parse_macro_input;
 mod borrows;
 mod folding;
 mod gilogic_syn;
+mod lifetime_hack;
 mod quote;
 mod spec;
 
@@ -49,12 +50,12 @@ pub fn borrow(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 
 #[proc_macro]
 pub fn open_borrow(input: TokenStream_) -> TokenStream_ {
-    folding::add_to_call_name(input, "_____open")
+    folding::add_to_call_name(input, "_____unfold")
 }
 
 #[proc_macro]
 pub fn close_borrow(input: TokenStream_) -> TokenStream_ {
-    folding::add_to_call_name(input, "_____close")
+    folding::add_to_call_name(input, "_____fold")
 }
 
 #[proc_macro]

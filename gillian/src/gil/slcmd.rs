@@ -61,6 +61,38 @@ impl Display for SLCmd {
                 write!(f, ")")?;
                 display_binders(f, existentials)
             }
+            Unfold {
+                pred_name,
+                parameters,
+                bindings,
+                rec,
+            } => {
+                write!(f, "unfold")?;
+                if *rec {
+                    write!(f, "*")?;
+                }
+                write!(f, " {}(", pred_name)?;
+                super::print_utils::separated_display(parameters, ", ", f)?;
+                write!(f, ")")?;
+                if bindings.is_some() {
+                    panic!("Can't write unfold with bindings for now: {:#?}", self);
+                }
+                Ok(())
+            }
+            Fold {
+                pred_name,
+                parameters,
+                bindings,
+            } => {
+                write!(f, "fold")?;
+                write!(f, " {}(", pred_name)?;
+                super::print_utils::separated_display(parameters, ", ", f)?;
+                write!(f, ")")?;
+                if bindings.is_some() {
+                    panic!("Can't write fold with bindings for now: {:#?}", self);
+                }
+                Ok(())
+            }
             _ => panic!("Can't write slcmd yet: {:#?}", self),
         }
     }
