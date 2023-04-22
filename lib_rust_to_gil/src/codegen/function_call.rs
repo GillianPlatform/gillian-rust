@@ -1,8 +1,9 @@
+use crate::logic::traits::TraitSolver;
 use crate::prelude::*;
 use crate::utils::polymorphism::HasGenericLifetimes;
 use names::bb_label;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{GenericArg, List};
+use rustc_middle::ty::SubstsRef;
 
 use super::typ_encoding::lifetime_param_name;
 
@@ -15,11 +16,17 @@ enum Kind {
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn shim(&mut self, fname: &str, substs: &List<GenericArg>) -> Option<(String, Kind)> {
+    fn shim(
+        &mut self,
+        did: DefId,
+        substs: SubstsRef<'tcx>,
+        arg_tys: &[Ty<'tcx>],
+    ) -> Option<(String, Kind)> {
         // The matching should probably be perfomed on the `def_path`
         // instead of the `def_path_str`.
         // This is a quick hack for now.
-        match fname {
+        let fname = self.tcx().def_path_str(did);
+        match fname.as_str() {
             "std::convert::Into::into" => {
                 if let TyKind::Ref(_, ty, Mutability::Mut) = substs[0].expect_ty().kind() {
                     if let TyKind::Adt(adt_def, subst) = substs[1].expect_ty().kind() {
@@ -52,18 +59,29 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             }
             "gilogic::Ownable::own_____unfold" => {
-                if ty_utils::is_ty_param(substs[0].expect_ty()) {
-                    Some(("$POLYMORPHIC::ref_mut_open".to_string(), Kind::Lemma))
-                } else {
-                    None
-                }
+                let arg_tys = self
+                    .tcx()
+                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(arg_tys));
+                let name = self
+                    .tcx()
+                    .def_path_str_with_substs(did, arg_tys)
+                    .strip_suffix("_____unfold")
+                    .unwrap()
+                    .to_string();
+                Some((name, Kind::Unfold))
             }
+
             "gilogic::Ownable::own_____fold" => {
-                if ty_utils::is_ty_param(substs[0].expect_ty()) {
-                    Some(("$POLYMORPHIC::ref_mut_close".to_string(), Kind::Lemma))
-                } else {
-                    None
-                }
+                let arg_tys = self
+                    .tcx()
+                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(arg_tys));
+                let name = self
+                    .tcx()
+                    .def_path_str_with_substs(did, arg_tys)
+                    .strip_suffix("_____fold")
+                    .unwrap()
+                    .to_string();
+                Some((name, Kind::Fold))
             }
             other => other
                 .strip_suffix("_____unfold")
@@ -88,8 +106,60 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             .const_fn_def()
             .expect("func of functioncall isn't const_fn_def");
 
+        if (self
+            .tcx()
+            .is_diagnostic_item(Symbol::intern("gillian::ownable::own::open"), def_id)
+            || self
+                .tcx()
+                .is_diagnostic_item(Symbol::intern("gillian::ownable::own::close"), def_id))
+            && ty_utils::is_mut_ref(self.operand_ty(&args[0]))
+        {
+            let arg_ty = self.operand_ty(&args[0]);
+            let name = self.global_env.add_mut_ref_own(arg_ty);
+            let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
+            let own_did = self
+                .tcx()
+                .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
+                .expect("You need to import gilogic");
+            let (_, substs) =
+                self.resolve_candidate(own_did, self.tcx().intern_substs(&[inner_ty.into()]));
+            let mut gil_args = vec![Expr::PVar(lifetime_param_name(
+                &self.generic_lifetimes()[0],
+            ))];
+            for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
+                gil_args.push(tyarg.into())
+            }
+            for arg in args {
+                gil_args.push(self.push_encode_operand(arg));
+            }
+            let cmd = if self
+                .tcx()
+                .is_diagnostic_item(Symbol::intern("gillian::ownable::own::open"), def_id)
+            {
+                Cmd::Logic(LCmd::SL(SLCmd::Unfold {
+                    pred_name: name,
+                    parameters: gil_args,
+                    bindings: None,
+                    rec: false,
+                }))
+            } else {
+                Cmd::Logic(LCmd::SL(SLCmd::Fold {
+                    pred_name: name,
+                    parameters: gil_args,
+                    bindings: None,
+                }))
+            };
+
+            self.push_cmd(cmd);
+            return;
+        }
+
         let fname = with_no_trimmed_paths!(self.tcx().def_path_str(def_id));
-        let (fname, kind) = self.shim(&fname, substs).unwrap_or((fname, Kind::Function));
+
+        let arg_tys = args.iter().map(|x| self.operand_ty(x)).collect::<Vec<_>>();
+        let (fname, kind) = self
+            .shim(def_id, substs, &arg_tys)
+            .unwrap_or((fname, Kind::Function));
         let mut gil_args = Vec::with_capacity(args.len() + substs.len());
 
         // Big hack, to handle lifetimes. I need to figure out the proper mapping.

@@ -86,18 +86,18 @@ impl<T: Ownable> WP<T> {
     // #[requires(|current: (T::RepresentationTy, T::RepresentationTy),
     //             proph: (T::RepresentationTy, T::RepresentationTy),
     //             xm: T::RepresentationTy|
-    //     self.own((current, proph))) * x.own(xm)
-    // ]
+    //     self.own((current, proph)) * x.own(xm)
+    // )]
     // #[ensures(
-    //     proph == (xm, current.1)
+    //     (proph == (xm, current.1))
     // )]
     // fn assign_first(&mut self, x: T) {
     //     unsafe {
-    //         open_borrow!(self.own());
+    //         // open_borrow!(self.own());
     //         let ret = (*self.x).v = x;
     //         self.prophecy().assign(self.representation());
     //         self.prophecy().resolve();
-    //         close_borrow!(self.own());
+    //         // close_borrow!(self.own());
     //         ret
     //     }
     // }
@@ -108,20 +108,10 @@ impl<T: Ownable> WP<T> {
         unsafe {
             let prophecy = self.prophecy();
             wp_ref_mut_pull_xy(self);
-            open_borrow!(wp_ref_mut_inner_xy(self, self.x, self.y));
             let ret = &mut (*self.x).v;
             prophecy.field_1().resolve();
-            close_borrow!(wp_ref_mut_inner_xy(self, self.x, self.y));
             split_x(self, ret.prophecy());
             ret
         }
     }
-
-    // A good example of a function that shouldn't be verifiable:
-    /*
-        fn both_mut<'a>(&'a mut self) -> (&'a mut T, &'a mut T) {
-        unsafe {
-            (&mut (*self.x).v, &mut(*self.x).v) <- mistake, it should be x and y, not twice x.
-        }
-    } */
 }

@@ -47,12 +47,13 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
         self.mut_ref_owns
             .entry(ty)
-            .or_insert_with(|| format!("{}::mut_ref_own", ty))
+            .or_insert_with(|| format!("<{} as gilogic::Ownable>::own", ty))
             .clone()
     }
 
     pub fn add_mut_ref_owns_to_prog(&mut self, prog: &mut Prog) {
-        for (ty, name) in self.mut_ref_owns.iter() {
+        let mut_ref_owns = std::mem::take(&mut self.mut_ref_owns);
+        for (ty, name) in mut_ref_owns.iter() {
             let symbol = if self.config.prophecies {
                 Symbol::intern("gillian::pcy::ownable::own")
             } else {
@@ -73,36 +74,57 @@ impl<'tcx> GlobalEnv<'tcx> {
                         *inner_ty,
                     ]));
 
-            let (_, subst) = self.resolve_candidate(own, subst);
-            let generic_params = subst.iter().enumerate().map(|(i, k)| {
-                let name = k.to_string();
-                let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
-                (name, None)
-            });
+            let (did, subst) = self.resolve_candidate(own, subst);
+            let generic_params = std::iter::once(("lft".to_string(), None)).chain(
+                subst.iter().enumerate().map(|(i, k)| {
+                    let name = k.to_string();
+                    let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
+                    (name, None)
+                }),
+            );
             let mut params: Vec<_> = generic_params
-                .chain([("ref".to_string(), Some(Type::ListType))].into_iter())
+                .clone()
+                .chain([("self".to_string(), Some(Type::ListType))].into_iter())
                 .collect();
-            let mut num_params = subst.len() + 1;
+            let mut num_params = subst.len() + 2;
 
             if self.config.prophecies {
                 params.push(("model".to_string(), None));
                 num_params += 1;
             }
 
-            // let guard = if self.config.prophecies {
-
-            // }
+            let (definitions, abstract_, guard) = if self.config.prophecies {
+                (vec![], true, None)
+            } else {
+                let slf = Expr::PVar("self".to_string());
+                let v = Expr::LVar("#v".to_string());
+                let pt =
+                    crate::logic::core_preds::value(slf, self.encode_type(*inner_ty), v.clone());
+                let params = generic_params
+                    .skip(1)
+                    .map(|(ty, _)| Expr::PVar(ty))
+                    .chain(std::iter::once(v))
+                    .collect();
+                let own = Assertion::Pred {
+                    name: self.tcx().def_path_str(did),
+                    params,
+                };
+                let guard = crate::logic::core_preds::alive_lft(Expr::PVar("lft".to_string()));
+                (vec![pt.star(own)], false, Some(guard))
+            };
 
             let pred = Pred {
                 name: name.clone(),
                 num_params,
                 params,
-                ins: (0..num_params - 1).into_iter().collect(),
-                definitions: vec![],
+                ins: (0..num_params - (self.config.prophecies as usize))
+                    .into_iter()
+                    .collect(),
+                definitions,
                 pure: false,
-                abstract_: true,
+                abstract_,
                 facts: vec![],
-                guard: None, // this is wrong!
+                guard,
             };
             prog.add_pred(pred);
         }

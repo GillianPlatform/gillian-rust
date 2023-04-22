@@ -28,6 +28,16 @@ proc "std::boxed::Box::<T>::new"(T, v) {
 };
 
 
+proc "std::boxed::Box::<T>::from_raw"(T, ptr) {
+     global := {{}};
+     non_null := {{ ptr }};
+     phantom_data := {{}};
+     unique := {{ non_null, phantom_data }};
+     box := {{ unique, global }};
+     ret := box;
+     return
+};
+
 proc mut_ref_to_nonnull_ptr(T, U, ref) {
      ret := {{ ref }};
      return

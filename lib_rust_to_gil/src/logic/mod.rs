@@ -8,7 +8,7 @@ use crate::utils::attrs::*;
 use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
 
 mod builtins;
-mod core_preds;
+pub(crate) mod core_preds;
 mod dummy_pre;
 mod lemma;
 mod predicate;

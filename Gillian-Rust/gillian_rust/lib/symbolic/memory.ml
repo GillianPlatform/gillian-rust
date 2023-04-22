@@ -162,19 +162,6 @@ let pp ft t =
 
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
-
-let substitution_in_place s mem =
-  let* heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s in
-  let heap =
-    match heap with
-    | Ok heap -> heap
-    | Error _ -> failwith "a path in heap subst failed"
-  in
-  let+ pcies = Prophecies.substitution ~tyenv:mem.tyenv mem.pcies s in
-  match pcies with
-  | Ok pcies -> { mem with heap; pcies; lfts = Lft_ctx.substitution s mem.lfts }
-  | Error _ -> failwith "a path in pcies subst failed"
-
 let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
 let lvars _ = failwith "lvars: Not yet implemented"
@@ -409,3 +396,18 @@ let execute_action ~action_name mem args =
   Logging.verbose (fun fmt ->
       fmt "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:pp_err) res);
   res
+
+let get_oks dr =
+  Delayed.bind dr (fun res ->
+      match res with
+      | Ok x -> Delayed.return x
+      | Error err ->
+          Logging.tmi (fun m -> m "Filtering error branch: %a" Err.pp err);
+          Delayed.vanish ())
+
+let substitution_in_place s mem =
+  let* heap = Heap.substitution ~tyenv:mem.tyenv mem.heap s |> get_oks in
+  let+ pcies =
+    Prophecies.substitution ~tyenv:mem.tyenv mem.pcies s |> get_oks
+  in
+  { mem with heap; pcies; lfts = Lft_ctx.substitution s mem.lfts }

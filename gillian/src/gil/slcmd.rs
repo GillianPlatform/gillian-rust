@@ -71,7 +71,7 @@ impl Display for SLCmd {
                 if *rec {
                     write!(f, "*")?;
                 }
-                write!(f, " {}(", pred_name)?;
+                write!(f, " \"{}\"(", pred_name)?;
                 super::print_utils::separated_display(parameters, ", ", f)?;
                 write!(f, ")")?;
                 if bindings.is_some() {
@@ -85,7 +85,7 @@ impl Display for SLCmd {
                 bindings,
             } => {
                 write!(f, "fold")?;
-                write!(f, " {}(", pred_name)?;
+                write!(f, " \"{}\"(", pred_name)?;
                 super::print_utils::separated_display(parameters, ", ", f)?;
                 write!(f, ")")?;
                 if bindings.is_some() {

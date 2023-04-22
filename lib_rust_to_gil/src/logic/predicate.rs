@@ -754,8 +754,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
 
+                    let arg_ty = thir.exprs[args[0]].ty;
                     let (name, substs) = {
-                            let arg_ty = thir.exprs[args[0]].ty;
                             if (self.tcx().is_diagnostic_item(
                                 Symbol::intern("gillian::pcy::ownable::own"),
                                 *def_id,
@@ -784,7 +784,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let mut params = Vec::with_capacity(args.len() + substs.len() + 1);
                     {
                         let self_lifetimes = self.generic_lifetimes();
-                        let callee_lifetimes =  (*def_id, self.tcx()).generic_lifetimes();
+                        let callee_lifetimes =
+                            if (self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), *def_id)
+                                || self.tcx().is_diagnostic_item(Symbol::intern("gillian::pcy::ownable::own"), *def_id) )
+                               && ty_utils::is_mut_ref(arg_ty) {
+                            vec!["a".to_string()]
+                        } else {
+                            (*def_id, self.tcx()).generic_lifetimes()
+                        };
                         if self_lifetimes.len() == 1 && callee_lifetimes.len() == 1 {
                             params.push(Expr::PVar(lifetime_param_name(&self_lifetimes[0])));
                         } else if callee_lifetimes.is_empty() {} else {

@@ -2,7 +2,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{assertion, close_borrow, ensures, open_borrow, predicate, requires, show_safety},
-    Ownable, Seq,
+    Ownable,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -20,13 +20,25 @@ struct Node<T> {
     element: T,
 }
 
-impl<T: Ownable> Node<T> {
+#[predicate]
+fn option_box_node<T: Ownable>(x: In<Option<Box<Node<T>>>>) {
+    assertion!((x == None));
+    assertion!(|next, prev, element, p|
+        (x == Some(p)) * (p -> Node { next, prev, element }) * element.own()
+    )
+}
+
+impl<T> Node<T> {
     fn new(element: T) -> Self {
         Node {
             next: None,
             prev: None,
             element,
         }
+    }
+
+    fn into_element(self: Box<Self>) -> T {
+        self.element
     }
 }
 
@@ -63,12 +75,43 @@ impl<T: Ownable> Ownable for LinkedList<T> {
 
 impl<T: Ownable> LinkedList<T> {
     #[show_safety]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             head: None,
             tail: None,
             len: 0,
             marker: PhantomData,
+        }
+    }
+
+    #[requires( self.own() )]
+    #[ensures(option_box_node(ret))]
+    fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
+        // Original function uses map
+        match self.head {
+            None => None,
+            Some(node) => unsafe {
+                let node = Box::from_raw(node.as_ptr());
+                self.head = node.next;
+
+                match self.head {
+                    None => self.tail = None,
+                    // Not creating new mutable (unique!) references overlapping `element`.
+                    Some(head) => (*head.as_ptr()).prev = None,
+                }
+
+                self.len -= 1;
+                Some(node)
+            },
+        }
+    }
+
+    #[show_safety]
+    pub fn pop_front(&mut self) -> Option<T> {
+        // Original implementation uses map
+        match self.pop_front_node() {
+            None => None,
+            Some(node) => Some(node.into_element()),
         }
     }
 
@@ -79,7 +122,6 @@ impl<T: Ownable> LinkedList<T> {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
         unsafe {
-            open_borrow!(self.own());
             node.next = self.head;
             node.prev = None;
             let node = Some(Box::leak(node).into());
@@ -92,7 +134,6 @@ impl<T: Ownable> LinkedList<T> {
 
             self.head = node;
             self.len += 1;
-            close_borrow!(self.own());
         }
     }
 

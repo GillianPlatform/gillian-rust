@@ -58,14 +58,6 @@ impl<T: Ownable> Ownable for WP<T> {
 }
 
 impl<T: Ownable> WP<T> {
-    // #[show_safety]
-    // fn drop(&mut self) {
-    //     unsafe {
-    //         Box::from_raw(self.x);
-    //         Box::from_raw(self.y);
-    //     }
-    // }
-
     #[show_safety]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
@@ -86,9 +78,9 @@ impl<T: Ownable> WP<T> {
     #[show_safety]
     fn assign_first(&mut self, x: T) {
         unsafe {
-            open_borrow!(self.own());
+            open_borrow!(Ownable::own(self));
             (*self.x).v = x;
-            close_borrow!(self.own());
+            close_borrow!(Ownable::own(self));
         }
     }
 
@@ -103,12 +95,4 @@ impl<T: Ownable> WP<T> {
             ret
         }
     }
-
-    // A good example of a function that shouldn't be verifiable:
-    /*
-        fn both_mut<'a>(&'a mut self) -> (&'a mut T, &'a mut T) {
-        unsafe {
-            (&mut (*self.x).v, &mut(*self.x).v) <- mistake, it should be x and y, not twice x.
-        }
-    } */
 }
