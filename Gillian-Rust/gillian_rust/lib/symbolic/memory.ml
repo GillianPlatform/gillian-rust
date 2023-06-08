@@ -180,7 +180,7 @@ let pp_err ft t = Err.pp ft t
 let get_failing_constraint _ =
   failwith "get_failing_constraints: Not yet implemented"
 
-let get_fixes ?simple_fix:_ _ _ _ = failwith "get_fixes: Not yet implemented"
+let get_fixes _ _ _ = failwith "get_fixes: Not yet implemented"
 let apply_fix _ _ _ _ = failwith "apply_fix: Not yet implemented"
 let get_recovery_tactic _ e = Err.recovery_tactic e
 

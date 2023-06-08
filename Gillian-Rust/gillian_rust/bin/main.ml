@@ -1,5 +1,6 @@
 open Gillian_rust
-module S_memory = Gillian.Monadic.MonadicSMemory.Lift (Symbolic.Memory)
+module Legacy = Gillian.Monadic.MonadicSMemory.Lift (Symbolic.Memory)
+module S_memory = Gillian.Symbolic.Legacy_s_memory.Modernize (Legacy)
 
 module Gil_to_rust_lifter
     (Verification : Gillian.Abstraction.Verifier.S

@@ -6,7 +6,7 @@ type vt = Values.t
 type st = Subst.t
 type err_t = string [@@deriving show]
 type t = { tyenv : Tyenv.t; heap : Heap.t }
-type action_ret = (t * vt list, err_t list) result
+type action_ret = (t * vt list, err_t) result
 
 (* Utils *)
 
@@ -105,7 +105,7 @@ let execute_load_discr mem args =
       Ok (mem, [ Literal.Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 
-let protect f mem args = try f mem args with Heap.MemoryError s -> Error [ s ]
+let protect f mem args = try f mem args with Heap.MemoryError s -> Error s
   [@@inline]
 
 let execute_action act_name mem args =
