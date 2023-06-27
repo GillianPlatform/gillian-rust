@@ -43,6 +43,12 @@ impl VarSubst for Formula {
     }
 }
 
+impl VarSubst for Observation {
+    fn subst(&mut self, subst: &HashMap<String, Ident>) {
+        self.inner.subst(subst);
+    }
+}
+
 impl VarSubst for TermArray {
     fn subst(&mut self, subst: &HashMap<String, Ident>) {
         self.elems.iter_mut().for_each(|e| e.subst(subst));

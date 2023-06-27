@@ -56,6 +56,16 @@ impl Formula {
     }
 }
 
+impl Observation {
+    fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
+        Formula::encode_inner(inner)
+    }
+
+    pub fn encode(&self) -> syn::Result<TokenStream> {
+        Self::encode_inner(&self.inner)
+    }
+}
+
 impl AsrtFragment {
     pub fn encode(&self) -> syn::Result<TokenStream> {
         match self {
@@ -69,6 +79,10 @@ impl AsrtFragment {
             Self::Pure(formula) => {
                 let formula = formula.encode()?;
                 Ok(quote!(::gilogic::__stubs::pure(#formula)))
+            }
+            Self::Observation(obs) => {
+                let observation = obs.encode()?;
+                Ok(quote!(::gilogic::__stubs::observation(#observation)))
             }
             Self::PredCall(call) => Ok(call.to_token_stream()),
             Self::__Nonexhaustive => todo!(),

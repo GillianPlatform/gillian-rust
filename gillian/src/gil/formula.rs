@@ -88,6 +88,36 @@ impl Formula {
     pub fn into_asrt(self) -> Assertion {
         self.into()
     }
+
+    pub fn into_expr(self) -> Expr {
+        match self {
+            Self::True => Expr::bool(true),
+            Self::False => Expr::bool(false),
+            Self::Not(b) => {
+                let b = (*b).into_expr();
+                !b
+            }
+            Self::And { left, right } => {
+                let left = (*left).into_expr();
+                let right = (*right).into_expr();
+                Expr::and(left, right)
+            }
+            Self::Or { left, right } => {
+                let left = (*left).into_expr();
+                let right = (*right).into_expr();
+                Expr::or(left, right)
+            }
+            Self::Eq { left, right } => Expr::eq_expr(*left, *right),
+            Self::ILess { left, right } => Expr::i_lt(*left, *right),
+            Self::ILessEq { left, right } => Expr::i_leq(*left, *right),
+            Self::FLess { left, right } => Expr::f_lt(*left, *right),
+            Self::FLessEq { left, right } => Expr::f_leq(*left, *right),
+            Self::StrLess { .. } => panic!("String less not handled yet"),
+            Self::SetMem { .. } => panic!("Set membership less not handled yet"),
+            Self::SetSub { .. } => panic!("Set subset not handled yet"),
+            Self::ForAll { .. } => panic!("ForAll not handled yet"),
+        }
+    }
 }
 
 impl Display for Formula {

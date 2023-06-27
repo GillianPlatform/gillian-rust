@@ -58,6 +58,12 @@ pub fn pure(_: RustFormula) -> RustAssertion {
     unreachable!()
 }
 
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::observation"]
+pub fn observation(_: RustFormula) -> RustAssertion {
+    unreachable!()
+}
+
 pub trait PointsTo<T>: Sized {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::asrt::points_to"]

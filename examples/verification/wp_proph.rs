@@ -4,7 +4,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{assertion, borrow, close_borrow, ensures, lemma, open_borrow, predicate, requires},
-    prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
+    prophecies::{controller, observation, observer, Ownable, Prophecised, Prophecy},
 };
 
 struct WP<T> {
@@ -66,7 +66,7 @@ impl<T: Ownable> Ownable for WP<T> {
 
 impl<T: Ownable> WP<T> {
     #[requires(|lx: T::RepresentationTy, ly: T::RepresentationTy| x.own(lx) * y.own(ly))]
-    #[ensures(ret.own((lx, ly)))]
+    #[ensures(|ret_v| ret.own(ret_v) * observation(ret_v == (lx, ly)))]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
 

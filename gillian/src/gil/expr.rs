@@ -149,6 +149,17 @@ impl Expr {
         }
     }
 
+    pub fn i_leq(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i <= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::ILessThanEqual,
+            },
+        }
+    }
+
     pub fn f_lt(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i < j),
@@ -156,6 +167,17 @@ impl Expr {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
                 operator: BinOp::FLessThan,
+            },
+        }
+    }
+
+    pub fn f_leq(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i <= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::FLessThanEqual,
             },
         }
     }
@@ -252,6 +274,28 @@ impl Expr {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i - j),
             _ => Expr::BinOp {
                 operator: BinOp::IMinus,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+        }
+    }
+
+    pub fn and(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Bool(i)), Expr::Lit(Literal::Bool(j))) => Expr::bool(*i && *j),
+            _ => Expr::BinOp {
+                operator: BinOp::BAnd,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+        }
+    }
+
+    pub fn or(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Bool(i)), Expr::Lit(Literal::Bool(j))) => Expr::bool(*i || *j),
+            _ => Expr::BinOp {
+                operator: BinOp::BOr,
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
             },

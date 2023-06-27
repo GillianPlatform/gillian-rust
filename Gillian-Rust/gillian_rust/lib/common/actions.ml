@@ -32,6 +32,9 @@ type t =
   | Get_pcy_value
   | Set_pcy_value
   | Rem_pcy_value
+  | Get_observation
+  | Set_observation
+  | Rem_observation
 
 type core_predicate =
   | Value
@@ -40,6 +43,7 @@ type core_predicate =
   | Value_observer
   | Pcy_controller
   | Pcy_value
+  | Observation
 
 let ga_to_getter = function
   | Value -> Get_value
@@ -48,6 +52,7 @@ let ga_to_getter = function
   | Value_observer -> Get_value_observer
   | Pcy_controller -> Get_pcy_controller
   | Pcy_value -> Get_pcy_value
+  | Observation -> Get_observation
 
 let ga_to_setter = function
   | Value -> Set_value
@@ -56,6 +61,7 @@ let ga_to_setter = function
   | Value_observer -> Set_value_observer
   | Pcy_controller -> Set_pcy_controller
   | Pcy_value -> Set_pcy_value
+  | Observation -> Set_observation
 
 let ga_to_deleter = function
   | Value -> Rem_value
@@ -64,6 +70,7 @@ let ga_to_deleter = function
   | Value_observer -> Rem_value_observer
   | Pcy_controller -> Rem_pcy_controller
   | Pcy_value -> Rem_pcy_value
+  | Observation -> Rem_observation
 
 let of_name = function
   | "alloc" -> Alloc
@@ -95,6 +102,9 @@ let of_name = function
   | "get_pcy_value" -> Get_pcy_value
   | "set_pcy_value" -> Set_pcy_value
   | "rem_pcy_value" -> Rem_pcy_value
+  | "get_observation" -> Get_observation
+  | "set_observation" -> Set_observation
+  | "rem_observation" -> Rem_observation
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
@@ -127,6 +137,9 @@ let to_name = function
   | Get_pcy_value -> "get_pcy_value"
   | Set_pcy_value -> "set_pcy_value"
   | Rem_pcy_value -> "rem_pcy_value"
+  | Get_observation -> "get_observation"
+  | Set_observation -> "set_observation"
+  | Rem_observation -> "rem_observation"
 
 let cp_to_name = function
   | Value -> "value"
@@ -135,6 +148,7 @@ let cp_to_name = function
   | Value_observer -> "value_observer"
   | Pcy_controller -> "pcy_controller"
   | Pcy_value -> "pcy_value"
+  | Observation -> "observation"
 
 let cp_of_name = function
   | "value" -> Value
@@ -143,6 +157,7 @@ let cp_of_name = function
   | "value_observer" -> Value_observer
   | "pcy_controller" -> Pcy_controller
   | "pcy_value" -> Pcy_value
+  | "observation" -> Observation
   | _ -> failwith "incorrect compilation: unknown core predicate"
 
 let ga_to_getter_str str = str |> cp_of_name |> ga_to_getter |> to_name

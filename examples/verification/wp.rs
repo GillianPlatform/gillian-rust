@@ -76,9 +76,7 @@ impl<T: Ownable> WP<T> {
     #[show_safety]
     fn assign_first(&mut self, x: T) {
         unsafe {
-            open_borrow!(Ownable::own(self));
             (*self.x).v = x;
-            close_borrow!(Ownable::own(self));
         }
     }
 

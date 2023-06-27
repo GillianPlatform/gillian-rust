@@ -39,6 +39,8 @@ ast_enum_of_structs! {
     PredCall(AsrtPredCall),
     /// A pure formula
     Pure(Formula),
+    /// A pure observation
+    Observation(Observation),
     #[doc(hidden)]
     __Nonexhaustive,
   }
@@ -81,6 +83,14 @@ ast_struct! {
     // Pre-typing will check for valid operators.
     pub inner: Term,
   }
+}
+
+ast_struct! {
+    pub struct Observation {
+        pub open_dollar: Token![$],
+        pub inner: Term,
+        pub close_dollar: Token![$],
+    }
 }
 
 ast_enum_of_structs! {
@@ -616,6 +626,17 @@ pub(crate) mod parsing {
         fn parse(input: ParseStream) -> Result<Self> {
             if input.peek(kw::emp) {
                 return input.parse().map(Self::Emp);
+            }
+            if input.peek(token::Dollar) {
+                // We're in the case of an observation.
+                let open_dollar = input.parse()?;
+                let inner = input.parse()?;
+                let close_dollar = input.parse()?;
+                return Ok(Self::Observation(Observation {
+                    open_dollar,
+                    inner,
+                    close_dollar,
+                }));
             }
             if input.peek(token::Paren) {
                 // We're in the case of either a formula or a points-to.
@@ -1815,6 +1836,14 @@ pub(crate) mod printing {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.paren_token
                 .surround(tokens, |tokens| self.inner.to_tokens(tokens))
+        }
+    }
+
+    impl ToTokens for Observation {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.open_dollar.to_tokens(tokens);
+            self.inner.to_tokens(tokens);
+            self.close_dollar.to_tokens(tokens);
         }
     }
 

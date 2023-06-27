@@ -15,8 +15,10 @@ type t =
   | Missing_pcy of string
   | Missing_lifetime of Lft.t
   | Missing_proj of Projections.t
+  | Missing_observation of Formula.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t
+  | Unsat_observation of Formula.t
 [@@deriving yojson, show]
 
 let recovery_tactic =
@@ -26,6 +28,10 @@ let recovery_tactic =
   | Missing_lifetime e -> try_fold [ Lft.to_expr e ]
   | MissingBlock l | Missing_pcy l -> try_unfold [ Expr.loc_from_loc_name l ]
   | Invalid_free_pointer (loc, proj) -> try_unfold [ loc; proj ]
+  | Missing_observation f -> (
+      match Formula.to_expr f with
+      | Some e -> try_unfold [ e ]
+      | None -> Recovery_tactic.none)
   | Invalid_type _
   | Invalid_list_op
   | Unhandled _
@@ -33,7 +39,8 @@ let recovery_tactic =
   | Use_after_free _
   | Double_kill_lifetime _
   | Wrong_lifetime_status _
-  | Missing_proj _ -> Recovery_tactic.none
+  | Missing_proj _
+  | Unsat_observation _ -> Recovery_tactic.none
 
 let pp ft =
   let open Fmt in
@@ -51,8 +58,10 @@ let pp ft =
   | Invalid_free_pointer (loc, proj) ->
       pf ft "Invalid free pointer: (%a, %a)" Expr.pp loc Expr.pp proj
   | Missing_lifetime e -> pf ft "Missing lifetime: %a" Lft.pp e
+  | Missing_observation f -> pf ft "Missing observation: %a" Formula.pp f
   | Double_kill_lifetime e -> pf ft "Double kill lifetime: %a" Lft.pp e
   | Wrong_lifetime_status e -> pf ft "Wrong lifetime status: %a" Lft.pp e
   | Unhandled s -> pf ft "Unhandled: %s" s
   | Invalid_value (t, e) ->
       pf ft "Invalid value for type %a: %a" Ty.pp t Expr.pp e
+  | Unsat_observation f -> pf ft "Unsat observation: %a" Formula.pp f

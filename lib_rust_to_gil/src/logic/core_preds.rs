@@ -1,4 +1,4 @@
-use gillian::gil::{Assertion, Expr};
+use gillian::gil::{Assertion, Expr, Formula};
 
 use crate::codegen::typ_encoding::EncodedType;
 
@@ -8,6 +8,7 @@ mod pred_names {
     pub(crate) const OBSERVER: &str = "value_observer";
     pub(crate) const CONTROLLER: &str = "pcy_controller";
     pub(crate) const PCY_VALUE: &str = "pcy_value";
+    pub(crate) const OBSERVATION: &str = "observation";
 }
 
 pub(crate) fn value(pointer: Expr, typ: EncodedType, pointee: Expr) -> Assertion {
@@ -55,5 +56,14 @@ pub(crate) fn pcy_value(prophecy: Expr, ty: EncodedType, value: Expr) -> Asserti
         name: pred_names::PCY_VALUE.to_string(),
         ins: vec![pcy_var, proj, ty.into()],
         outs: vec![value],
+    }
+}
+
+pub(crate) fn observation(formula: Formula) -> Assertion {
+    let lowered = formula.into_expr();
+    Assertion::GA {
+        name: pred_names::OBSERVATION.to_string(),
+        ins: vec![lowered],
+        outs: vec![],
     }
 }

@@ -17,6 +17,7 @@ type t = {
   pcies : Prophecies.t;
   heap : Heap.t;
   lfts : Lft_ctx.t;
+  obs_ctx : Obs_ctx.t;
 }
 [@@deriving yojson]
 
@@ -46,7 +47,13 @@ let resolve_loc_result loc =
   Delayed_result.of_do ~none:(Err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
 let init tyenv =
-  { tyenv; heap = Heap.empty; lfts = Lft_ctx.empty; pcies = Prophecies.empty }
+  {
+    tyenv;
+    heap = Heap.empty;
+    lfts = Lft_ctx.empty;
+    pcies = Prophecies.empty;
+    obs_ctx = Obs_ctx.empty;
+  }
 
 let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)
@@ -150,6 +157,29 @@ let execute_rem_value mem args =
       DR.ok (make_branch ~mem:{ mem with heap = new_heap } ())
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
+let formula_of_expr_exn expr =
+  match Formula.lift_logic_expr expr with
+  | Some (f, _) -> f
+  | None -> failwith "Invalid formula in observation"
+
+let execute_get_observation mem args =
+  match args with
+  | [ formula_expr ] ->
+      let formula = formula_of_expr_exn formula_expr in
+      let++ () = Obs_ctx.get_observation mem.obs_ctx formula in
+      make_branch ~mem ~rets:[ formula_expr ] ()
+  | _ -> Fmt.failwith "Invalid arguments for get_observation"
+
+let execute_set_observation mem args =
+  match args with
+  | [ formula ] ->
+      let formula = formula_of_expr_exn formula in
+      let++ new_obs = Obs_ctx.set_observation mem.obs_ctx formula in
+      make_branch ~mem:{ mem with obs_ctx = new_obs } ()
+  | _ -> Fmt.failwith "Invalid arguments for set_observation"
+
+(* Observations are persistent *)
+let execute_rem_observation mem args = DR.ok (make_branch ~mem ())
 let ga_to_setter str = Actions.ga_to_setter_str str
 let ga_to_getter str = Actions.ga_to_getter_str str
 let ga_to_deleter str = Actions.ga_to_deleter_str str
@@ -391,6 +421,9 @@ let execute_action ~action_name mem args =
     | Get_pcy_value -> execut_get_pcy_value mem args
     | Set_pcy_value -> execute_set_pcy_value mem args
     | Rem_pcy_value -> execute_rem_pcy_value mem args
+    | Get_observation -> execute_get_observation mem args
+    | Set_observation -> execute_set_observation mem args
+    | Rem_observation -> execute_rem_observation mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   Logging.verbose (fun fmt ->

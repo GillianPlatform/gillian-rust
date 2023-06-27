@@ -687,6 +687,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let formula = self.compile_formula(args[0], thir);
                     Assertion::Pure(formula)
                 }
+                Some(Stubs::AssertObservation) => {
+                    assert!(args.len() == 1, "Observation call must have one argment");
+                    let formula = self.compile_formula(args[0], thir);
+                    super::core_preds::observation(formula)
+                }
                 Some(Stubs::AssertStar) => {
                     assert!(args.len() == 2, "Pure call must have one argument");
                     let left = self.compile_assertion(args[0], thir);

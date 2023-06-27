@@ -1,4 +1,4 @@
-use crate::RustAssertion;
+use crate::tys::RustAssertion;
 
 /*
 Here's an idea:
