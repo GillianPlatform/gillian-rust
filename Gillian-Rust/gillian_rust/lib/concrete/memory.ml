@@ -137,7 +137,10 @@ let execute_action act_name mem args =
   | Rem_pcy_controller
   | Get_pcy_value
   | Set_pcy_value
-  | Rem_pcy_value -> failwith "Core Predicates used in concrete execution"
+  | Rem_pcy_value
+  | Get_observation
+  | Set_observation
+  | Rem_observation -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

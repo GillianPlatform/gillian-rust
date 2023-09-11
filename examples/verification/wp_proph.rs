@@ -66,7 +66,7 @@ impl<T: Ownable> Ownable for WP<T> {
 
 impl<T: Ownable> WP<T> {
     #[requires(|lx: T::RepresentationTy, ly: T::RepresentationTy| x.own(lx) * y.own(ly))]
-    #[ensures(|ret_v| ret.own(ret_v) * observation(ret_v == (lx, ly)))]
+    #[ensures(|ret_v| ret.own(ret_v) * $ret_v == (lx, ly)$)]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
 
