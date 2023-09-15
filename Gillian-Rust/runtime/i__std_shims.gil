@@ -38,11 +38,6 @@ proc "std::boxed::Box::<T>::from_raw"(T, ptr) {
      return
 };
 
-proc mut_ref_to_nonnull_ptr(T, U, ref) {
-     ret := {{ ref }};
-     return
-};
-
 proc "core::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
     ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
     return

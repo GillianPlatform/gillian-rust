@@ -97,6 +97,18 @@ module TreeBlock = struct
 
   type outer = { offset : Expr.t; root : t }
 
+  let rec lvars t =
+    let open Utils.Containers in
+    match t.content with
+    | Uninit | Missing -> SS.empty
+    | Symbolic e | Leaf e -> Expr.lvars e
+    | Fields l | Array l | Enum { fields = l; _ } ->
+        List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
+
+  let outer_lvars outer =
+    let open Utils.Containers in
+    SS.union (lvars outer.root) (Expr.lvars outer.offset)
+
   let rec is_empty block =
     match block.content with
     | Missing -> true
@@ -207,11 +219,11 @@ module TreeBlock = struct
         { ty; content = Array mem_array }
     | _, s -> DR.ok { ty; content = Symbolic s }
 
-  let outer_missing ~offset ~tyenv ty =
+  let outer_missing ~offset ~tyenv:_ ty =
     let root = { ty; content = Missing } in
     { offset; root }
 
-  let outer_symbolic ~offset ~tyenv ty e =
+  let outer_symbolic ~offset ~tyenv:_ ty e =
     let root = { ty; content = Symbolic e } in
     { offset; root }
 
@@ -329,7 +341,12 @@ module TreeBlock = struct
     | Array fields | Fields fields -> List.exists partially_missing fields
     | Symbolic _ | Uninit | Enum _ | Leaf _ -> false
 
-  let structural_missing ~tyenv (ty : Ty.t) =
+  let totally_missing t =
+    match t.content with
+    | Missing -> true
+    | _ -> false
+
+  let structural_missing ~tyenv:_ (ty : Ty.t) =
     match ty with
     | Array { length; ty = cty } ->
         let missing_child = { ty = cty; content = Missing } in
@@ -519,7 +536,7 @@ module TreeBlock = struct
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
-    let return_and_update block =
+    let return_and_update _block =
       let++ value = of_rust_value ~tyenv ~ty value in
       ((), value)
     in
@@ -569,7 +586,7 @@ module TreeBlock = struct
     | (Symbolic e1 | Leaf e1), (Symbolic e2 | Leaf e2) -> [ e1 #== e2 ]
     | Fields f1, Fields f2 -> List_utils.concat_map_2 equality_constraints f1 f2
     | Array f1, Array f2 -> List_utils.concat_map_2 equality_constraints f1 f2
-    | Enum e1, Enum e2 ->
+    | Enum _, Enum _ ->
         (* Sub parts of enum cannot be missing *)
         [ (to_rust_value t1) #== (to_rust_value t2) ]
     | Symbolic e, content | content, Symbolic e -> (
@@ -638,6 +655,14 @@ module MemMap = Map.Make (String)
 
 type block = T of TreeBlock.outer | Freed
 type t = block MemMap.t
+
+let block_lvars = function
+  | Freed -> Utils.Containers.SS.empty
+  | T outer -> TreeBlock.outer_lvars outer
+
+let lvars t =
+  let open Utils.Containers in
+  MemMap.fold (fun _ block acc -> SS.union acc (block_lvars block)) t SS.empty
 
 let find_not_freed loc mem =
   let block = MemMap.find_opt loc mem in
@@ -723,7 +748,7 @@ let load_discr ~tyenv (mem : t) loc proj enum_typ =
   let** block = find_not_freed loc mem in
   TreeBlock.get_discr ~tyenv block proj enum_typ
 
-let assertions ~tyenv (mem : t) =
+let assertions ~tyenv:_ (mem : t) =
   let value (loc, block) =
     let loc = Expr.loc_from_loc_name loc in
     match block with
@@ -736,12 +761,12 @@ let assertions ~tyenv (mem : t) =
 
 let empty : t = MemMap.empty
 
+let pp_block ft = function
+  | Freed -> Fmt.pf ft "FREED"
+  | T t -> TreeBlock.pp_outer ft t
+
 let pp : t Fmt.t =
   let open Fmt in
-  let pp_block ft = function
-    | Freed -> pf ft "FREED"
-    | T t -> TreeBlock.pp_outer ft t
-  in
   iter_bindings ~sep:(any "@\n") MemMap.iter
     (parens (pair ~sep:(any "-> ") string pp_block))
 
@@ -788,5 +813,7 @@ let substitution ~tyenv heap subst =
         | None, None | None, Some _ -> acc
         | Some tree, None ->
             MemMap.remove old_loc acc |> MemMap.add new_loc tree
-        | Some _, Some _ -> Fmt.failwith "Can't merge trees yet")
+        | Some tree_left, Some tree_right ->
+            Fmt.failwith "Can't merge trees yet \nLEFT: %a\nRIGHT:%a" pp_block
+              tree_left pp_block tree_right)
       tree_substed loc_subst

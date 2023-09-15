@@ -1,6 +1,6 @@
 (library
  (name concrete)
  (libraries gillian gillian.alcotest-runner common rutils)
- (flags -open Common -open Rutils)
+ (flags :standard -open Common -open Rutils)
  (preprocess
   (pps ppx_deriving.std ppx_deriving_yojson gillian.ppx_sat)))

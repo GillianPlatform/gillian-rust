@@ -15,7 +15,7 @@ let get t lft =
 
 let produce t lft status =
   match (LftMap.find_opt lft t, status) with
-  | None, satus -> Ok (LftMap.add lft status t)
+  | None, status -> Ok (LftMap.add lft status t)
   | Some false, false -> Ok t (* <lft>(#l, false) is pure *)
   | Some _, _ -> Error (Err.Wrong_lifetime_status lft)
 
@@ -48,3 +48,6 @@ let substitution subst t =
   LftMap.to_seq t
   |> Seq.map (fun (x, y) -> (Lft.substitution ~subst_expr x, y))
   |> LftMap.of_seq
+
+let lvars t =
+  LftMap.fold (fun lft _ acc -> SS.union acc (Lft.lvars lft)) t SS.empty

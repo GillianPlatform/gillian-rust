@@ -7,3 +7,4 @@ val of_expr : Expr.t -> t
 val to_expr : t -> Expr.t
 val ( <=% ) : t -> t -> Formula.t
 val substitution : subst_expr:(Expr.t -> Expr.t) -> t -> t
+val lvars : t -> Utils.Containers.SS.t

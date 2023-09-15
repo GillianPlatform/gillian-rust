@@ -9,3 +9,4 @@ let of_expr t = t
 let to_expr t = t
 let ( <=% ) lft_a lft_b = Formula.SetSub (lft_a, lft_b)
 let substitution ~subst_expr lft = subst_expr lft
+let lvars = Expr.lvars

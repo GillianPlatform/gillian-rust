@@ -301,7 +301,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
-        super::builtins::get_stub(ty, self.tcx())
+        Stubs::for_fn_def_ty(ty, self.tcx())
     }
 
     fn unwrap_prophecy_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {

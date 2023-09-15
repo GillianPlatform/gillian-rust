@@ -7,6 +7,7 @@ const RET_VAR: &str = "ret";
 const RET_LABEL: &str = "rlab";
 const MIR_TEMP_PREFIX: &str = "m_";
 const GIL_TEMP_PREFIX: &str = "g_";
+const LVAR_TEMP_PREFIX: &str = "#temp__";
 const GIL_UNUSED_VAR: &str = "u";
 
 pub fn bb_label(bb: BasicBlock) -> String {
@@ -27,6 +28,10 @@ pub fn temp_name_from_local(local: Local) -> String {
 
 pub fn gil_temp_from_id(id: usize) -> String {
     format!("{}{}", GIL_TEMP_PREFIX, id)
+}
+
+pub fn lvar_temp_from_id(id: usize) -> String {
+    format!("{}{}", LVAR_TEMP_PREFIX, id)
 }
 
 pub fn unused_var() -> String {

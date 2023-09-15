@@ -7,7 +7,7 @@ use crate::temp_gen::TempGenerator;
 use crate::utils::attrs::*;
 use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
 
-mod builtins;
+pub(crate) mod builtins;
 pub(crate) mod core_preds;
 mod dummy_pre;
 mod lemma;

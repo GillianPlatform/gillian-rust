@@ -21,7 +21,6 @@ pub struct SingleSpec {
     pub pre: Assertion,
     pub posts: Vec<Assertion>,
     pub flag: Flag,
-    pub to_verify: bool,
 }
 
 impl fmt::Display for SingleSpec {
@@ -39,7 +38,6 @@ pub struct Spec {
     pub name: String,
     pub params: Vec<String>,
     pub sspecs: Vec<SingleSpec>,
-    pub to_verify: bool,
 }
 
 impl fmt::Display for Spec {

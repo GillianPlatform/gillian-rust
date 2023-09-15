@@ -79,6 +79,14 @@ pub trait Prophecised {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::set_prophecy"]
     fn with_prophecy(self, pcy: Self::ProphecyTy) -> Self;
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::prophecy_auto_update"]
+    fn prophecy_auto_update(self);
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::resolve"]
+    fn prophecy_resolve(self);
 }
 
 impl<T: Ownable> Prophecised for &mut T {
@@ -89,6 +97,14 @@ impl<T: Ownable> Prophecised for &mut T {
     }
 
     fn with_prophecy(self, _pcy: Self::ProphecyTy) -> Self {
+        unreachable!("Implemented in GIL")
+    }
+
+    fn prophecy_auto_update(self) {
+        unreachable!("Implemented in GIL")
+    }
+
+    fn prophecy_resolve(self) {
         unreachable!("Implemented in GIL")
     }
 }
@@ -152,4 +168,12 @@ pub fn controller<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
 #[rustc_diagnostic_item = "gillian::prophecy::observer"]
 pub fn observer<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
     unreachable!()
+}
+
+#[macro_export]
+macro_rules! mutref_auto_resolve {
+    ($x: expr) => {
+        $x.prophecy_auto_update();
+        $x.prophecy_resolve();
+    };
 }

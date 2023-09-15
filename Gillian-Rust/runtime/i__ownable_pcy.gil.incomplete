@@ -1,24 +1,10 @@
 abstract pred "$POLYMORPHIC::own"(+pty, +self, model);
 
-abstract pred "$POLYMORPHIC::ref_mut_inner"(+lft, +pty, +self);
-abstract pred "$POLYMORPHIC::ref_mut_inner_close_token"(+lft, +pty, +self);
-
-lemma "$POLYMORPHIC::ref_mut_inner_open"(lft, pty, self)
-  [[ (lft == #lft) * (pty == #pty) * (self == {{ #ptr, #pcy }}) * 
-     "$POLYMORPHIC::ref_mut_inner"(#lft, #pty, {{ #ptr, #pcy }}) *
-     <lft>(#lft; true) ]]
-  [[ <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), #pty; #value) *
-     "$POLYMORPHIC::own"(#pty, #value, #repr) *
-     <pcy_controller>(l-nth(#pcy, 0i), l-nth(#pcy, 1i), {{ "proj", "RepresentationTy", {{ #pty }} }}; #repr) *
-     "$POLYMORPHIC::ref_mut_inner_close_token"(#lft, #pty, {{ #ptr, #pcy }}) ]]
-     
-lemma "$POLYMORPHIC::ref_mut_inner_close"(lft, pty, self)
-  [[ (lft == #lft) * (pty == #pty) * (self == {{ #ptr, #pcy }}) * 
-     "$POLYMORPHIC::ref_mut_inner_close_token"(#lft, #pty, {{ #ptr, #pcy }}) *
-     <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), #pty; #value) *
-      "$POLYMORPHIC::own"(#pty, #value, #repr) *
-      <pcy_controller>(l-nth(#pcy, 0i), l-nth(#pcy, 1i), {{ "proj", "RepresentationTy", {{ #pty }} }}; #repr)]]
-  [[ "$POLYMORPHIC::ref_mut_inner"(#lft, #pty, {{ #ptr, #pcy }}) * <lft>(#lft; true) ]]
+pred "$POLYMORPHIC::ref_mut_inner"(+lft, +pty, +self):
+  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), pty; #value) *
+  "$POLYMORPHIC::own"(pty, #value, #repr) *
+  <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty }} }}; #repr);
+guard: <lft>(lft; true);
 
 (* <&mut T as Ownable>::own(T, T::RepresentationTy, self, (current, prophecy)) *)
 pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self, model):
@@ -27,3 +13,4 @@ pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self, model):
   (model == {{ #current, #future }}) *
     <value_observer>(#pcy, {{ }}, {{ "proj", "RepresentationTy", {{ pty }} }}; #current) *
     "$POLYMORPHIC::ref_mut_inner"(lft, pty, self);
+    

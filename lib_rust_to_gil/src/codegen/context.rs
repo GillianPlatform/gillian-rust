@@ -3,6 +3,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_span::def_id::DefId;
 use std::collections::HashSet;
 
+use super::names::lvar_temp_from_id;
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use crate::prelude::*;
 
@@ -11,6 +12,7 @@ pub struct GilCtxt<'tcx, 'body> {
     pub(crate) tcx: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
+    lvar_temp_counter: usize,
     switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'body Body<'tcx>,
@@ -40,6 +42,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,
+            lvar_temp_counter: 0,
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
@@ -93,6 +96,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let current = self.gil_temp_counter;
         self.gil_temp_counter += 1;
         gil_temp_from_id(current)
+    }
+
+    pub fn temp_lvar(&mut self) -> String {
+        let current: usize = self.lvar_temp_counter;
+        self.lvar_temp_counter += 1;
+        lvar_temp_from_id(current)
     }
 
     pub fn switch_label(&mut self) -> String {

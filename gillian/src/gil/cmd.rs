@@ -1,5 +1,5 @@
 use super::print_utils::separated_display;
-use super::{Expr, LCmd, LogicBindings};
+use super::{Expr, LCmd, LogicBindings, SLCmd};
 use std::fmt;
 
 #[derive(Debug)]
@@ -52,6 +52,12 @@ pub enum Cmd {
         name: String,
         parameters: Vec<Expr>,
     },
+}
+
+impl Cmd {
+    pub fn slcmd(slcmd: SLCmd) -> Self {
+        Self::Logic(LCmd::SL(slcmd))
+    }
 }
 
 impl fmt::Display for Cmd {

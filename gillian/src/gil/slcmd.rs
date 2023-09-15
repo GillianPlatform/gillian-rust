@@ -93,6 +93,13 @@ impl Display for SLCmd {
                 }
                 Ok(())
             }
+            SepAssert {
+                assertion,
+                existentials,
+            } => {
+                write!(f, "sep_assert ({})", assertion)?;
+                display_binders(f, existentials)
+            }
             _ => panic!("Can't write slcmd yet: {:#?}", self),
         }
     }

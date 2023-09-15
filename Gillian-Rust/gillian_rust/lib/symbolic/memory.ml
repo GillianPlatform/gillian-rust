@@ -23,8 +23,6 @@ type t = {
 
 type action_ret = (t * vt list, err_t) result
 
-let resolve_pcy_var (e : Expr.t) : Expr.t Delayed.t = Delayed.reduce e
-
 let resolve_or_create_loc_name (lvar_loc : Expr.t) : string Delayed.t =
   let* loc_name = Delayed.resolve_loc lvar_loc in
   match loc_name with
@@ -59,7 +57,7 @@ let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)
 
 let execute_alloc mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; tyenv; _ } = mem in
   match args with
   | [ ty ] ->
       let ty = Ty.of_expr ty in
@@ -72,7 +70,7 @@ let execute_alloc mem args =
   | _ -> Fmt.failwith "Invalid arguments for alloc"
 
 let execute_store mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
@@ -83,7 +81,7 @@ let execute_store mem args =
   | _ -> Fmt.failwith "Invalid arguments for store"
 
 let execute_load mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
       let ty = Ty.of_expr ty in
@@ -106,7 +104,7 @@ let execute_load_discr mem args =
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_free mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; _ } = mem in
   match args with
   | [ loc; proj; ty ] ->
       let** () =
@@ -122,7 +120,7 @@ let execute_free mem args =
   | _ -> Fmt.failwith "Invalid arguments for free"
 
 let execute_get_value mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
@@ -135,7 +133,7 @@ let execute_get_value mem args =
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_set_value mem args =
-  let { heap; tyenv; lfts } = mem in
+  let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
@@ -179,7 +177,7 @@ let execute_set_observation mem args =
   | _ -> Fmt.failwith "Invalid arguments for set_observation"
 
 (* Observations are persistent *)
-let execute_rem_observation mem args = DR.ok (make_branch ~mem ())
+let execute_rem_observation mem _ = DR.ok (make_branch ~mem ())
 let ga_to_setter str = Actions.ga_to_setter_str str
 let ga_to_getter str = Actions.ga_to_getter_str str
 let ga_to_deleter str = Actions.ga_to_deleter_str str
@@ -192,13 +190,22 @@ let pp ft t =
 
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
-let fresh_val _ = failwith "fresh_val: Not yet implemented"
 let clean_up ?keep:_ _ = failwith "clean_up: Not yet implemented"
-let lvars _ = failwith "lvars: Not yet implemented"
+
+let lvars t =
+  let open Utils.Containers in
+  Prophecies.lvars t.pcies
+  |> SS.union (Heap.lvars t.heap)
+  |> SS.union (Lft_ctx.lvars t.lfts)
+  |> SS.union (Obs_ctx.lvars t.obs_ctx)
+
 let alocs _ = failwith "alocs: Not yet implemented"
 
-let assertions ?to_keep:_ { heap; tyenv; lfts } =
-  Lft_ctx.assertions lfts @ Heap.assertions ~tyenv heap
+let assertions ?to_keep:_ { heap; tyenv; lfts; pcies; obs_ctx } =
+  Obs_ctx.assertions obs_ctx
+  @ Prophecies.assertions ~tyenv pcies
+  @ Lft_ctx.assertions lfts
+  @ Heap.assertions ~tyenv heap
 
 let mem_constraints _ =
   Logging.normal (fun m -> m "WARNING: MEM_CONSTRAINTS\n@?");
@@ -247,7 +254,7 @@ let execute_rem_lft mem args =
   | _ -> Fmt.failwith "Invalid arguments for rem_alive_lft"
 
 let execute_get_value_observer mem args =
-  let { heap; pcies; tyenv; lfts } = mem in
+  let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
@@ -258,7 +265,7 @@ let execute_get_value_observer mem args =
   | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
 
 let execute_set_value_observer mem args =
-  let { pcies; tyenv } = mem in
+  let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
@@ -282,7 +289,7 @@ let execute_rem_value_observer mem args =
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_get_pcy_controller mem args =
-  let { heap; pcies; tyenv; lfts } = mem in
+  let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
@@ -293,7 +300,7 @@ let execute_get_pcy_controller mem args =
   | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
 
 let execute_set_pcy_controller mem args =
-  let { pcies; tyenv } = mem in
+  let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
@@ -329,7 +336,7 @@ let execute_pcy_resolve mem args =
   | _ -> Fmt.failwith "Invalid arguments for pcy_resolve"
 
 let execute_pcy_assign mem args =
-  let { pcies; tyenv; lfts } = mem in
+  let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
@@ -374,7 +381,7 @@ let execute_set_pcy_value mem args =
       make_branch ~mem:{ mem with pcies } ()
   | _ -> Fmt.failwith "Invalid arguments for pcy_set_value"
 
-let execute_rem_pcy_value mem args_ = DR.ok (make_branch ~mem ())
+let execute_rem_pcy_value mem _args = DR.ok (make_branch ~mem ())
 
 let pp_branch fmt branch =
   let _, values = branch in

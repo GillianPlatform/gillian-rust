@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 mod action_names {
-
     pub(crate) const ALLOC: &str = "alloc";
     pub(crate) const LOAD_VALUE: &str = "load_value";
     pub(crate) const STORE_VALUE: &str = "store_value";
@@ -10,6 +9,7 @@ mod action_names {
     pub(crate) const DEINIT: &str = "deinit";
     pub(crate) const FREE: &str = "free";
     pub(crate) const LOAD_DISCR: &str = "load_discr";
+    pub(crate) const PCY_ASSIGN: &str = "pcy_assign";
 }
 
 pub enum MemoryAction<'tcx> {
@@ -54,6 +54,11 @@ pub enum MemoryAction<'tcx> {
         location: Expr,
         projection: Expr,
         enum_typ: Ty<'tcx>,
+    },
+    PcyAssign {
+        pcy: Expr,
+        repr_ty: Ty<'tcx>,
+        value: Expr,
     },
 }
 
@@ -190,7 +195,19 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 });
                 self.push_cmd(Cmd::Assignment {
                     variable: target,
-                    assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
+                    assigned_expr: Expr::PVar(temp).lnth(0),
+                })
+            }
+            MemoryAction::PcyAssign {
+                pcy,
+                repr_ty,
+                value,
+            } => {
+                let encoded_typ = self.encode_type(repr_ty).into();
+                self.push_cmd(Cmd::Action {
+                    variable: target,
+                    action_name: action_names::PCY_ASSIGN.to_string(),
+                    parameters: vec![pcy.clone().lnth(0), pcy.lnth(1), encoded_typ, value],
                 })
             }
         };

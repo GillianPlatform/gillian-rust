@@ -54,6 +54,10 @@ impl Prog {
     pub fn add_lemma(&mut self, lemma: Lemma) {
         self.lemmas.insert(lemma.name.clone(), lemma);
     }
+
+    pub fn add_only_spec(&mut self, spec: Spec) {
+        self.only_specs.insert(spec.name.clone(), spec);
+    }
 }
 
 impl Display for Prog {
@@ -64,6 +68,11 @@ impl Display for Prog {
         assert!(ver_imports.is_empty(), "So far, imports cannot work");
         // f.write_str(";\nimport verify ")?;
         f.write_str(";\n\n")?;
+        for spec in self.only_specs.values() {
+            f.write_str("axiomatic ")?;
+            spec.fmt(f)?;
+            f.write_str("\n\n")?;
+        }
         for pred in self.preds.values() {
             pred.fmt(f)?;
             f.write_str("\n\n")?;

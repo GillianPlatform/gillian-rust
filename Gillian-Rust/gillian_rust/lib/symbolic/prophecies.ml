@@ -12,6 +12,12 @@ type prophecy = {
   controller : TreeBlock.outer;
 }
 
+let prophecy_lvars prophecy =
+  let open Utils.Containers in
+  Expr.lvars prophecy.value
+  |> SS.union (TreeBlock.outer_lvars prophecy.observer)
+  |> SS.union (TreeBlock.outer_lvars prophecy.controller)
+
 let pp_prophecy =
   let open Fmt in
   Fmt.braces
@@ -23,6 +29,46 @@ let pp_prophecy =
        ]
 
 type t = prophecy MemMap.t
+
+let assertions ~tyenv:_ (pcies : t) =
+  let cps loc pcy =
+    (* Location and ty are uniform *)
+    let loc = Expr.loc_from_loc_name loc in
+    let ty = Ty.to_expr pcy.controller.root.ty in
+    (* The future value of the prophecy variable *)
+    let value =
+      let cp = Actions.cp_to_name Pcy_value in
+      Asrt.GA (cp, [ loc; Expr.EList []; ty ], [ pcy.value ])
+    in
+    (* Contructor for controller and observer which share logic *)
+    let build_obs_ctrl cp (outer : TreeBlock.outer) =
+      if TreeBlock.totally_missing outer.root then None
+      else if TreeBlock.partially_missing outer.root then
+        failwith "Prophecy controller/observers should not be partially missing"
+      else
+        let value = TreeBlock.to_rust_value outer.root in
+        let offset = outer.offset in
+        Some (Asrt.GA (cp, [ loc; offset; ty ], [ value ]))
+    in
+    let controller =
+      let cp = Actions.cp_to_name Pcy_controller in
+      build_obs_ctrl cp pcy.controller
+    in
+    let observer =
+      let cp = Actions.cp_to_name Value_observer in
+      build_obs_ctrl cp pcy.observer
+    in
+    (value, controller, observer)
+  in
+  MemMap.fold
+    (fun loc pcy acc ->
+      let value, controller, observer = cps loc pcy in
+      (value :: Option.to_list controller) @ Option.to_list observer @ acc)
+    pcies []
+
+let lvars t =
+  let open Utils.Containers in
+  MemMap.fold (fun _ pcy acc -> SS.union acc (prophecy_lvars pcy)) t SS.empty
 
 let empty = MemMap.empty
 let to_yojson _ = `Null
@@ -176,14 +222,14 @@ let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
       in
       DR.ok ~learned new_pcies
 
-let assign ~tyenv pcy_env pcy_var (proj : Projections.t) ty value =
+let assign ~tyenv pcy_env pcy_var (proj : Projections.t) ty assigned =
   match MemMap.find_opt pcy_var pcy_env with
   | None -> DR.error (Err.Missing_pcy pcy_var)
   | Some { value; controller; observer } ->
       let open TreeBlock in
       (* We need both and need to write in both the controller and observer at once *)
-      let** controller = store_proj ~tyenv controller proj ty value in
-      let** observer = store_proj ~tyenv observer proj ty value in
+      let** controller = store_proj ~tyenv controller proj ty assigned in
+      let** observer = store_proj ~tyenv observer proj ty assigned in
       let new_pcies =
         MemMap.add pcy_var { value; controller; observer } pcy_env
       in

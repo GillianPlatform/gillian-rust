@@ -143,7 +143,6 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
             pre,
             posts: vec![post],
             flag: gillian::gil::Flag::Normal,
-            to_verify: true,
         };
         let proc = self.prog.procs.get_mut(&key).unwrap();
         match &mut proc.spec {
@@ -153,7 +152,6 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
                     name: proc.name.clone(),
                     params: proc.params.clone(),
                     sspecs: vec![sspec],
-                    to_verify: true,
                 })
             }
         }
@@ -177,7 +175,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
         lemma.concs = vec![post];
     }
 
-    /// Careful, after calling add_specs, the spec table is emptied
+    // Careful, after calling add_specs, the spec table is emptied
     fn add_specs(&mut self) {
         let spec_tbl = std::mem::take(&mut self.spec_tbl);
         for (key, (pre_id, post_id)) in spec_tbl {
@@ -200,7 +198,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
             }
         }
         self.add_specs();
-        self.global_env.add_mut_ref_owns_to_prog(&mut self.prog);
+        self.global_env.flush_remaining_defs_to_prog(&mut self.prog);
         let init_data = self.global_env.serialized_adt_declarations();
         ParsingUnit {
             prog: self.prog,

@@ -3,8 +3,9 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, borrow, close_borrow, ensures, lemma, open_borrow, predicate, requires},
-    prophecies::{controller, observation, observer, Ownable, Prophecised, Prophecy},
+    macros::{assertion, borrow, ensures, lemma, predicate, requires},
+    mutref_auto_resolve,
+    prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
 };
 
 struct WP<T> {
@@ -83,35 +84,31 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    // #[requires(|current: (T::RepresentationTy, T::RepresentationTy),
-    //             proph: (T::RepresentationTy, T::RepresentationTy),
-    //             xm: T::RepresentationTy|
-    //     self.own((current, proph)) * x.own(xm)
-    // )]
-    // #[ensures(
-    //     (proph == (xm, current.1))
-    // )]
-    // fn assign_first(&mut self, x: T) {
+    #[requires(|current: (T::RepresentationTy, T::RepresentationTy),
+                proph: (T::RepresentationTy, T::RepresentationTy),
+                xm: T::RepresentationTy|
+        self.own((current, proph)) * x.own(xm)
+    )]
+    #[ensures(
+        $proph == (xm, current.1)$
+    )]
+    fn assign_first(&mut self, x: T) {
+        unsafe {
+            (*self.x).v = x;
+            mutref_auto_resolve!(self);
+        }
+    }
+
+    // #[requires(|cself: (T::RepresentationTy, T::RepresentationTy), pself: (T::RepresentationTy, T::RepresentationTy)| self.own((cself, pself)))]
+    // #[ensures(|c, p| ret.own((c, p)) * (cself.1 == pself.1))]
+    // fn first_mut<'a>(&'a mut self) -> &'a mut T {
     //     unsafe {
-    //         // open_borrow!(self.own());
-    //         let ret = (*self.x).v = x;
-    //         self.prophecy().assign(self.representation());
-    //         self.prophecy().resolve();
-    //         // close_borrow!(self.own());
+    //         let prophecy = self.prophecy();
+    //         wp_ref_mut_pull_xy(self);
+    //         let ret = &mut (*self.x).v;
+    //         prophecy.field_1().resolve();
+    //         split_x(self, ret.prophecy());
     //         ret
     //     }
     // }
-
-    #[requires(|cself: (T::RepresentationTy, T::RepresentationTy), pself: (T::RepresentationTy, T::RepresentationTy)| self.own((cself, pself)))]
-    #[ensures(|c, p| ret.own((c, p)) * (cself.1 == pself.1))]
-    fn first_mut<'a>(&'a mut self) -> &'a mut T {
-        unsafe {
-            let prophecy = self.prophecy();
-            wp_ref_mut_pull_xy(self);
-            let ret = &mut (*self.x).v;
-            prophecy.field_1().resolve();
-            split_x(self, ret.prophecy());
-            ret
-        }
-    }
 }
