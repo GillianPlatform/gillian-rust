@@ -30,6 +30,11 @@ let pp_prophecy =
 
 type t = prophecy MemMap.t
 
+let sure_is_nonempty =
+  MemMap.exists (fun _ { observer; controller; _ } ->
+      (not @@ TreeBlock.outer_is_empty observer)
+      || (not @@ TreeBlock.outer_is_empty controller))
+
 let assertions ~tyenv:_ (pcies : t) =
   let cps loc pcy =
     (* Location and ty are uniform *)
@@ -100,7 +105,9 @@ let controller_block pcy_id pcy_env =
 
 let get_value_obs ~tyenv pcy_env pcy_var proj ty =
   let** observer = observer_block pcy_var pcy_env in
-  let++ value, _ = TreeBlock.get_proj ~tyenv observer proj ty false in
+  let++ value, _ =
+    TreeBlock.get_proj ~loc:pcy_var ~tyenv observer proj ty false
+  in
   value
 
 let set_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
@@ -130,7 +137,12 @@ let rem_value_obs ~tyenv pcy_env pcy_var proj ty =
 
 let get_controller ~tyenv pcy_env pcy_var proj ty =
   let** controller = controller_block pcy_var pcy_env in
-  let++ value, _ = TreeBlock.get_proj ~tyenv controller proj ty false in
+  let++ value, _ =
+    (* FIXME: This might not raise the right error.
+       We need to pass what kind of error should be created.
+       Of course, this is still sound, but risk triggering the wrong automations. *)
+    TreeBlock.get_proj ~loc:pcy_var ~tyenv controller proj ty false
+  in
   value
 
 let set_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
@@ -215,7 +227,9 @@ let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
       let open TreeBlock in
       (* Reading from the controller is a way of ensuring we have the part we require.
          An invariant is that the values of the controller and the resolver have to coincide *)
-      let** current_value, _ = get_proj ~tyenv controller proj ty true in
+      let** current_value, _ =
+        get_proj ~loc:pcy_var ~tyenv controller proj ty true
+      in
       let** observer = rem_proj ~tyenv observer proj ty in
       let learned =
         let open Formula.Infix in
@@ -232,8 +246,12 @@ let assign ~tyenv pcy_env pcy_var (proj : Projections.t) ty assigned =
   | Some { value; controller; observer } ->
       let open TreeBlock in
       (* We need both and need to write in both the controller and observer at once *)
-      let** controller = store_proj ~tyenv controller proj ty assigned in
-      let** observer = store_proj ~tyenv observer proj ty assigned in
+      let** controller =
+        store_proj ~loc:pcy_var ~tyenv controller proj ty assigned
+      in
+      let** observer =
+        store_proj ~loc:pcy_var ~tyenv observer proj ty assigned
+      in
       let new_pcies =
         MemMap.add pcy_var { value; controller; observer } pcy_env
       in

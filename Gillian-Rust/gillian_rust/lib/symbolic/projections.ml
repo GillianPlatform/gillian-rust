@@ -68,6 +68,7 @@ let op_of_expr : Expr.t -> op = function
   | e -> Fmt.failwith "invalid projection expression element %a" Expr.pp e
 
 let of_lit_list lst : t = { base = None; from_base = List.map op_of_lit lst }
+let add_ops proj ops = { proj with from_base = proj.from_base @ ops }
 
 let expr_of_elem : op -> Expr.t =
   let is_wrap = function

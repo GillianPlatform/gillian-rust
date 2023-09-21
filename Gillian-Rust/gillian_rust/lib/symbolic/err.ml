@@ -1,6 +1,8 @@
 open Gillian.Gil_syntax
 module Recovery_tactic = Gillian.General.Recovery_tactic
 
+type qty = Partially | Totally [@@deriving yojson, show]
+
 type t =
   | Too_symbolic of Expr.t
   | Use_after_free of string
@@ -10,11 +12,12 @@ type t =
   | Invalid_pcy_var of Expr.t
   | Invalid_free_pointer of Expr.t * Expr.t
   | Invalid_value of Ty.t * Expr.t
+  | Uninitialised_access of string * Projections.t
   | Unhandled of string
   | MissingBlock of string
   | Missing_pcy of string
   | Missing_lifetime of Lft.t
-  | Missing_proj of Projections.t
+  | Missing_proj of (string * Projections.t * qty) (* Something could be only partially missing *)
   | Missing_observation of Formula.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t
@@ -32,6 +35,8 @@ let recovery_tactic =
       match Formula.to_expr f with
       | Some e -> try_unfold [ e ]
       | None -> Recovery_tactic.none)
+  | Missing_proj (loc, proj, _) ->
+      try_unfold [ Expr.loc_from_loc_name loc; Projections.to_expr proj ]
   | Invalid_type _
   | Invalid_list_op
   | Unhandled _
@@ -39,18 +44,24 @@ let recovery_tactic =
   | Use_after_free _
   | Double_kill_lifetime _
   | Wrong_lifetime_status _
-  | Missing_proj _
-  | Unsat_observation _ -> Recovery_tactic.none
+  | Unsat_observation _
+  | Uninitialised_access _ -> Recovery_tactic.none
 
 let pp ft =
   let open Fmt in
+  let pp_qty ft = function
+    | Totally -> string ft "Totally"
+    | Partially -> string ft "Partially"
+  in
   function
   | Too_symbolic e ->
       pf ft "Expression needs to be concretized further: %a" Expr.pp e
   | Use_after_free s -> pf ft "Use after free: %s" s
   | MissingBlock s -> pf ft "MissingBlock: %s" s
   | Missing_pcy s -> pf ft "Missing prophecy: %s" s
-  | Missing_proj proj -> pf ft "Missing projections: %a" Projections.pp proj
+  | Missing_proj (loc, proj, qty) ->
+      pf ft "%a missing projections at location %s: %a" pp_qty qty loc
+        Projections.pp proj
   | Invalid_type (t1, t2) -> pf ft "Invalid type: %a != %a" Ty.pp t1 Ty.pp t2
   | Invalid_list_op -> pf ft "Invalid list operation"
   | Invalid_loc e -> pf ft "Invalid location: %a" Expr.pp e
@@ -65,3 +76,23 @@ let pp ft =
   | Invalid_value (t, e) ->
       pf ft "Invalid value for type %a: %a" Ty.pp t Expr.pp e
   | Unsat_observation f -> pf ft "Unsat observation: %a" Formula.pp f
+  | Uninitialised_access (loc, proj) ->
+      pf ft "Uninitialized memory access at: (%s, %a)" loc Projections.pp proj
+
+module Conversion_error = struct
+  (** Conversion error when converting trees to Rust values *)
+
+  type reason = Uninit | Missing
+  type t = reason * Projections.op list
+
+  let lift ~loc ~proj (reason, additional_proj) =
+    let total_proj = Projections.add_ops proj additional_proj in
+    let qty =
+      match additional_proj with
+      | [] -> Totally
+      | _ -> Partially
+    in
+    match reason with
+    | Uninit -> Uninitialised_access (loc, total_proj)
+    | Missing -> Missing_proj (loc, total_proj, qty)
+end

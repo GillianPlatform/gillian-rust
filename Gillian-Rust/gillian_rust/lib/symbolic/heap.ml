@@ -136,22 +136,42 @@ module TreeBlock = struct
     let open Fmt in
     pf ft "@[<v 2>AFTER OFFSET: %a %a @]" Expr.pp t.offset pp t.root
 
-  let rec to_rust_value ({ content; ty } as t) : (Expr.t, Err.t) Result.t =
-    let open Result.Syntax in
-    match content with
-    | Leaf s -> (
-        match ty with
-        | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> Ok s
-        | _ -> Fmt.failwith "Malformed tree: %a" pp t)
-    | Fields v | Array v ->
-        let+ tuple = List.map to_rust_value v |> Result.all in
-        Expr.EList tuple
-    | Enum { discr; fields } ->
-        let+ fields = List.map to_rust_value fields |> Result.all in
-        Expr.EList [ Expr.int discr; EList fields ]
-    | Symbolic s -> Ok s
-    | Uninit -> mem_error "Attempting to read uninitialized value"
-    | Missing -> mem_error "Attempting to read missing value"
+  let to_rust_value block : (Expr.t, Err.Conversion_error.t) Result.t =
+    let rec aux ~current_proj ({ content; ty } as t) :
+        (Expr.t, Err.Conversion_error.t) Result.t =
+      let open Result.Syntax in
+      match content with
+      | Leaf s -> (
+          match ty with
+          | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> Ok s
+          | _ -> Fmt.failwith "Malformed tree: %a" pp t)
+      | Fields v ->
+          let proj i = Projections.Field (i, ty) in
+          let+ tuple =
+            List.mapi
+              (fun i f -> aux ~current_proj:(proj i :: current_proj) f)
+              v
+            |> Result.all
+          in
+          Expr.EList tuple
+      | Array v ->
+          let total_size = List.length v in
+          let proj i = Projections.Index (i, ty, total_size) in
+          let+ tuple =
+            List.mapi
+              (fun i f -> aux ~current_proj:(proj i :: current_proj) f)
+              v
+            |> Result.all
+          in
+          Expr.EList tuple
+      | Enum { discr; fields } ->
+          let+ fields = List.map (aux ~current_proj) fields |> Result.all in
+          Expr.EList [ Expr.int discr; EList fields ]
+      | Symbolic s -> Ok s
+      | Uninit -> Error (Uninit, List.rev current_proj)
+      | Missing -> Error (Missing, List.rev current_proj)
+    in
+    aux ~current_proj:[] block
 
   let to_rust_value_exn ~msg t = to_rust_value t |> Result.ok_or ~msg
 
@@ -159,9 +179,7 @@ module TreeBlock = struct
     let cp = Actions.cp_to_name Value in
     let ty = Ty.to_expr block.root.ty in
     let value =
-      to_rust_value_exn
-        ~msg:(Fmt.str "%s: Partially missing?" __FUNCTION__)
-        block.root
+      to_rust_value_exn ~msg:(__FUNCTION__ ^ ": Partially missing?") block.root
     in
     let offset = block.offset in
     Asrt.GA (cp, [ loc; offset; ty ], [ value ])
@@ -347,6 +365,15 @@ module TreeBlock = struct
     | Missing -> true
     | Array fields | Fields fields -> List.exists partially_missing fields
     | Symbolic _ | Uninit | Enum _ | Leaf _ -> false
+
+  let rec missing_qty t =
+    match t.content with
+    | Missing -> Some Err.Totally
+    | Array fields | Fields fields ->
+        if List.exists (fun f -> Option.is_some (missing_qty f)) fields then
+          Some Partially
+        else None
+    | Symbolic _ | Uninit | Enum _ | Leaf _ -> None
 
   let totally_missing t =
     match t.content with
@@ -554,12 +581,15 @@ module TreeBlock = struct
     let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
     (ret, { outer with root })
 
-  let get_proj ~tyenv t proj ty copy =
+  let get_proj ~loc ~tyenv t proj ty copy =
     let open Result.Syntax in
     let update block = if copy then block else uninitialized ~tyenv ty in
     let return_and_update t =
       let result =
-        let+ value = to_rust_value t in
+        let+ value =
+          to_rust_value t
+          |> Result.map_error (Err.Conversion_error.lift ~loc ~proj)
+        in
         (value, update t)
       in
       DR.of_result result
@@ -574,12 +604,13 @@ module TreeBlock = struct
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
-  let store_proj ~tyenv t proj ty value =
+  let store_proj ~loc ~tyenv t proj ty value =
     let return_and_update block =
-      if partially_missing block then DR.error (Err.Missing_proj proj)
-      else
-        let++ value = of_rust_value ~tyenv ~ty value in
-        ((), value)
+      match missing_qty block with
+      | Some qty -> DR.error (Err.Missing_proj (loc, proj, qty))
+      | None ->
+          let++ value = of_rust_value ~tyenv ~ty value in
+          ((), value)
     in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
@@ -717,7 +748,7 @@ let alloc ~tyenv (heap : t) ty =
 let load ~tyenv (mem : t) loc proj ty copy =
   Logging.tmi (fun m -> m "Found block: %s" loc);
   let** block = find_not_freed loc mem in
-  let++ v, new_block = TreeBlock.get_proj ~tyenv block proj ty copy in
+  let++ v, new_block = TreeBlock.get_proj ~loc ~tyenv block proj ty copy in
   let new_mem = MemMap.add loc (T new_block) mem in
   (v, new_mem)
 
@@ -735,12 +766,12 @@ let store_slice ~tyenv (mem : t) loc proj size ty values =
 
 let store ~tyenv (mem : t) loc proj ty value =
   let** block = find_not_freed loc mem in
-  let++ new_block = TreeBlock.store_proj ~tyenv block proj ty value in
+  let++ new_block = TreeBlock.store_proj ~loc ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
 let get_value ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
-  let++ value, _ = TreeBlock.get_proj ~tyenv block proj ty false in
+  let++ value, _ = TreeBlock.get_proj ~loc ~tyenv block proj ty false in
   value
 
 let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
@@ -803,6 +834,12 @@ let pp : t Fmt.t =
   let open Fmt in
   iter_bindings ~sep:(any "@\n") MemMap.iter
     (parens (pair ~sep:(any "-> ") string pp_block))
+
+let sure_is_nonempty =
+  MemMap.exists (fun _ block ->
+      match block with
+      | Freed -> true
+      | T outer -> not (TreeBlock.outer_is_empty outer))
 
 let substitution ~tyenv heap subst =
   let open Gillian.Symbolic in

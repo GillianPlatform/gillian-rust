@@ -53,6 +53,11 @@ let init tyenv =
     obs_ctx = Obs_ctx.empty;
   }
 
+let sure_is_nonempty { heap; lfts; pcies; _ } =
+  Heap.sure_is_nonempty heap
+  || (not @@ Lft_ctx.is_empty lfts)
+  || Prophecies.sure_is_nonempty pcies
+
 let get_init_data { tyenv; _ } = tyenv
 let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)

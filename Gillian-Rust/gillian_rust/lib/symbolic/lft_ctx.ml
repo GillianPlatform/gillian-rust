@@ -3,6 +3,8 @@ module LftMap = Map.Make (Lft)
 
 type t = bool LftMap.t [@@deriving yojson]
 
+let is_empty = LftMap.for_all (fun _ b -> not b)
+
 let pp ft t =
   (Fmt.iter_bindings LftMap.iter (fun ft (x, y) ->
        Fmt.pf ft "%a: %b" Lft.pp x y))
