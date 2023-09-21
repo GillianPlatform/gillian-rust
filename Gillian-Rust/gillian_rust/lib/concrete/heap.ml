@@ -154,12 +154,12 @@ module TreeBlock = struct
       when Ty.equal against ty -> (
         match (content, variant) with
         | (Fields vec | Array vec), None ->
-            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let e = Result.ok_or vec.%[index] ~msg:"Index out of bounds" in
             let v, sub_block = rec_call e r in
             let new_block = Result.get_ok (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
         | Enum { fields = vec; discr }, Some discr' when discr = discr' ->
-            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let e = Result.ok_or vec.%[index] ~msg:"Index out of bounds" in
             let v, sub_block = rec_call e r in
             let new_block = Result.get_ok (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
@@ -189,7 +189,7 @@ module TreeBlock = struct
                   (Result.ok_or
                      (Array_utils.override_range vec ~start ~size (fun _ ->
                           uninitialized ~tyenv ty))
-                     "Invalid slice range");
+                     ~msg:"Invalid slice range");
               ty;
             }
         | _ -> failwith "Not an array"
@@ -226,7 +226,7 @@ module TreeBlock = struct
                 (Result.ok_or
                    (Array_utils.override_range_with_list vec ~start
                       ~f:(of_rust_value ~tyenv ~ty) values)
-                   "Invalid slice range");
+                   ~msg:"Invalid slice range");
             ty;
           }
       | _ -> failwith "Not an array"

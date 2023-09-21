@@ -46,7 +46,11 @@ let assertions ~tyenv:_ (pcies : t) =
       else if TreeBlock.partially_missing outer.root then
         failwith "Prophecy controller/observers should not be partially missing"
       else
-        let value = TreeBlock.to_rust_value outer.root in
+        let value =
+          TreeBlock.to_rust_value_exn
+            ~msg:(Fmt.str "Prophecies.assertion: invalid value for %s outer" cp)
+            outer.root
+        in
         let offset = outer.offset in
         Some (Asrt.GA (cp, [ loc; offset; ty ], [ value ]))
     in

@@ -1,2 +1,3 @@
 (library
- (name rutils))
+ (name rutils)
+ (libraries gillian))

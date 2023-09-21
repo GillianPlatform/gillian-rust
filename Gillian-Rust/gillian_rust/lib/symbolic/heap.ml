@@ -136,26 +136,33 @@ module TreeBlock = struct
     let open Fmt in
     pf ft "@[<v 2>AFTER OFFSET: %a %a @]" Expr.pp t.offset pp t.root
 
-  let rec to_rust_value ({ content; ty } as t) =
+  let rec to_rust_value ({ content; ty } as t) : (Expr.t, Err.t) Result.t =
+    let open Result.Syntax in
     match content with
     | Leaf s -> (
         match ty with
-        | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> s
+        | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> Ok s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
-        let tuple = List.map to_rust_value v in
-        EList tuple
+        let+ tuple = List.map to_rust_value v |> Result.all in
+        Expr.EList tuple
     | Enum { discr; fields } ->
-        let fields = List.map to_rust_value fields in
+        let+ fields = List.map to_rust_value fields |> Result.all in
         Expr.EList [ Expr.int discr; EList fields ]
-    | Symbolic s -> s
+    | Symbolic s -> Ok s
     | Uninit -> mem_error "Attempting to read uninitialized value"
     | Missing -> mem_error "Attempting to read missing value"
+
+  let to_rust_value_exn ~msg t = to_rust_value t |> Result.ok_or ~msg
 
   let outer_assertion ~loc block =
     let cp = Actions.cp_to_name Value in
     let ty = Ty.to_expr block.root.ty in
-    let value = to_rust_value block.root in
+    let value =
+      to_rust_value_exn
+        ~msg:(Fmt.str "%s: Partially missing?" __FUNCTION__)
+        block.root
+    in
     let offset = block.offset in
     Asrt.GA (cp, [ loc; offset; ty ], [ value ])
 
@@ -396,7 +403,7 @@ module TreeBlock = struct
       when Ty.equal against ty -> (
         match (content, variant) with
         | (Fields vec | Array vec), None ->
-            let e = Result.ok_or vec.%[index] "Index out of bounds" in
+            let e = Result.ok_or vec.%[index] ~msg:"Index out of bounds" in
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
@@ -455,7 +462,7 @@ module TreeBlock = struct
                   (Result.ok_or
                      (List_utils.override_range vec ~start ~size (fun _ ->
                           uninitialized ~tyenv ty))
-                     "Invalid slice range");
+                     ~msg:"Invalid slice range");
               ty;
             }
         | _ -> failwith "Not an array"
@@ -548,8 +555,15 @@ module TreeBlock = struct
     (ret, { outer with root })
 
   let get_proj ~tyenv t proj ty copy =
+    let open Result.Syntax in
     let update block = if copy then block else uninitialized ~tyenv ty in
-    let return_and_update t = DR.ok (to_rust_value t, update t) in
+    let return_and_update t =
+      let result =
+        let+ value = to_rust_value t in
+        (value, update t)
+      in
+      DR.of_result result
+    in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let set_proj ~tyenv t proj ty value =
@@ -604,12 +618,15 @@ module TreeBlock = struct
     | Fields f1, Fields f2 -> List_utils.concat_map_2 equality_constraints f1 f2
     | Array f1, Array f2 -> List_utils.concat_map_2 equality_constraints f1 f2
     | Enum _, Enum _ ->
+        let to_value =
+          to_rust_value_exn ~msg:"Equality constraint: Malformed enums!!"
+        in
         (* Sub parts of enum cannot be missing *)
-        [ (to_rust_value t1) #== (to_rust_value t2) ]
+        [ (to_value t1) #== (to_value t2) ]
     | Symbolic e, content | content, Symbolic e -> (
-        try [ (to_rust_value { ty = t1.ty; content }) #== e ]
-        with MemoryError _ ->
-          failwith "Need to semi-concretize things to learn")
+        match to_rust_value { ty = t1.ty; content } with
+        | Ok value -> [ value #== e ]
+        | Error _ -> Fmt.failwith "Need to semi-concretize things to learn")
     | _ -> Fmt.failwith "cannot learn equality of %a and %a" pp t1 pp t2
 
   let substitution ~tyenv ~subst_expr t =
