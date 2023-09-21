@@ -53,6 +53,7 @@ let init tyenv =
     obs_ctx = Obs_ctx.empty;
   }
 
+let get_init_data { tyenv; _ } = tyenv
 let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)
 
@@ -452,4 +453,10 @@ let substitution_in_place s mem =
   in
   { mem with heap; pcies; lfts = Lft_ctx.substitution s mem.lfts }
 
-let can_fix _ = false
+let can_fix = function
+  | Err.MissingBlock _
+  | Missing_pcy _
+  | Missing_lifetime _
+  | Missing_proj _
+  | Missing_observation _ -> true
+  | _ -> false

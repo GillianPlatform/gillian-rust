@@ -1,8 +1,13 @@
 abstract pred "$POLYMORPHIC::own"(+pty, +self);
 
-abstract pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self);
-abstract pred "$POLYMORPHIC::ref_mut_close_token"(+lft, +pty, +self);
+pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self):
+  <value>(l-nth(self, 0i), l-nth(self, 1i), pty; #v) *
+  "$POLYMORPHIC::own"(pty, #v);
+guard: <lft>(lft; true);
   
+pred "$POLYMOPRHIC::ref_mut_own$$inner"(+pty, +self):
+  <value>(l-nth(self, 0i), l-nth(self, 1i), pty; #v) *
+  "$POLYMORPHIC::own"(pty, #v);
   
 pred "<() as gilogic::Ownable>::own"(+self): self == {{ }};
 

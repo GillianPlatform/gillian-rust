@@ -32,7 +32,8 @@ type t =
       (** A parameter in an ADT def, should be substituted before used *)
 [@@deriving yojson, eq]
 (* FIXME: type equality cannot be decided syntactically in theory. It has to be decided by SAT.
-   But it requires a lot of changes in Projections and Partial_layout that I'm not ready to make yet. *)
+   But it requires a lot of changes in Projections and Partial_layout that I'm not ready to make yet.
+   However, as it is right now, nothing is unsound, simply less complete. *)
 
 let rec subst_params ~(subst : t list) t =
   match t with

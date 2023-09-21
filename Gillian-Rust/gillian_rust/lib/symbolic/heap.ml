@@ -346,7 +346,7 @@ module TreeBlock = struct
     | Missing -> true
     | _ -> false
 
-  let structural_missing ~tyenv:_ (ty : Ty.t) =
+  let structural_missing ~tyenv (ty : Ty.t) =
     match ty with
     | Array { length; ty = cty } ->
         let missing_child = { ty = cty; content = Missing } in
@@ -357,7 +357,20 @@ module TreeBlock = struct
           content =
             Fields (List.map (fun ty -> { content = Missing; ty }) fields);
         }
-    | Adt _ -> failwith "not handled yet: Adt structural missing"
+    | Adt (name, subst) -> (
+        match Tyenv.adt_def ~tyenv name with
+        | Struct (_repr, fields) ->
+            let missing_fields =
+              List.map
+                (fun (_, cty) ->
+                  let ty = Ty.subst_params ~subst cty in
+                  { ty; content = Missing })
+                fields
+            in
+            { ty; content = Fields missing_fields }
+        | Enum _ as def ->
+            Fmt.failwith "Unhandled: structural missing for Enum %a"
+              Common.Ty.Adt_def.pp def)
     | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
@@ -506,6 +519,8 @@ module TreeBlock = struct
       (outer : outer)
       (proj : Projections.t) =
     let open Partial_layout in
+    Logging.tmi (fun m ->
+        m "Currently in the following block: %a" pp_outer outer);
     let* () =
       let base_equals =
         Formula.Infix.( #== )
@@ -519,13 +534,15 @@ module TreeBlock = struct
     let proj = proj.from_base in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
     let context = context_from_env tyenv in
-    Logging.normal (fun m ->
+    Logging.verbose (fun m ->
         m "Finding address: %a" (Fmt.Dump.list Projections.pp_elem) proj);
-    Logging.normal (fun m ->
+    Logging.verbose (fun m ->
         m "PL for %a: %a" Ty.pp t.ty pp_partial_layout
           (context.partial_layouts t.ty));
-    let accesses = resolve_address ~tyenv ~context address |> List.rev in
-    Logging.normal (fun m ->
+    let accesses =
+      resolve_address_debug_access_error ~tyenv ~context address |> List.rev
+    in
+    Logging.verbose (fun m ->
         m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
     let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
     (ret, { outer with root })
