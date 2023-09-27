@@ -342,26 +342,37 @@ let pp_branch fmt branch =
   Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
 
 let consume ~core_pred mem args =
-  let core_pred = Actions.cp_of_name core_pred in
-  match core_pred with
-  | Value -> execute_cons_value mem args
-  | Lft -> execute_cons_lft mem args
-  | Pcy_value -> execute_cons_pcy_value mem args
-  | Pcy_controller -> execute_cons_pcy_controller mem args
-  | Value_observer -> execute_cons_value_observer mem args
-  | Observation -> execute_cons_observation mem args
-  | Freed -> Fmt.failwith "Unimplemented: Consume Freed"
+  Logging.verbose (fun m -> m "Executing consumer for %s" core_pred);
+  let+ res =
+    let core_pred = Actions.cp_of_name core_pred in
+    match core_pred with
+    | Value -> execute_cons_value mem args
+    | Lft -> execute_cons_lft mem args
+    | Pcy_value -> execute_cons_pcy_value mem args
+    | Pcy_controller -> execute_cons_pcy_controller mem args
+    | Value_observer -> execute_cons_value_observer mem args
+    | Observation -> execute_cons_observation mem args
+    | Freed -> Fmt.failwith "Unimplemented: Consume Freed"
+  in
+  Logging.verbose (fun m ->
+      m "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:Err.pp) res);
+  res
 
 let produce ~core_pred mem args =
-  let core_pred = Actions.cp_of_name core_pred in
-  match core_pred with
-  | Value -> execute_prod_value mem args
-  | Lft -> execute_prod_lft mem args
-  | Pcy_value -> execute_prod_pcy_value mem args
-  | Pcy_controller -> execute_prod_pcy_controller mem args
-  | Value_observer -> execute_prod_value_observer mem args
-  | Observation -> execute_prod_observation mem args
-  | Freed -> Fmt.failwith "Unimplemented: Produce Freed"
+  Logging.verbose (fun m -> m "Executing producer for %s" core_pred);
+  let+ res =
+    let core_pred = Actions.cp_of_name core_pred in
+    match core_pred with
+    | Value -> execute_prod_value mem args
+    | Lft -> execute_prod_lft mem args
+    | Pcy_value -> execute_prod_pcy_value mem args
+    | Pcy_controller -> execute_prod_pcy_controller mem args
+    | Value_observer -> execute_prod_value_observer mem args
+    | Observation -> execute_prod_observation mem args
+    | Freed -> Fmt.failwith "Unimplemented: Produce Freed"
+  in
+  Logging.verbose (fun m -> m "Resulting in: %a" pp res);
+  res
 
 let execute_action ~action_name mem args =
   Logging.verbose (fun fmt ->
