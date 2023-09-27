@@ -6,7 +6,7 @@ type t = Formula.t list [@@deriving yojson]
 
 let empty = []
 
-let get_observation (t : t) (obs : Formula.t) : (unit, Err.t) DR.t =
+let cons_observation (t : t) (obs : Formula.t) : (unit, Err.t) DR.t =
   let open Delayed.Syntax in
   let* valid_entailment = Delayed.entails t obs in
   if valid_entailment then DR.ok ()
@@ -14,10 +14,10 @@ let get_observation (t : t) (obs : Formula.t) : (unit, Err.t) DR.t =
     let error = Err.Missing_observation obs in
     DR.error error
 
-let set_observation (t : t) (obs : Formula.t) : (t, Err.t) DR.t =
+let prod_observation (t : t) (obs : Formula.t) : t Delayed.t =
   let open Delayed.Syntax in
   let* is_sat = Delayed.check_sat (Formula.conjunct (obs :: t)) in
-  if is_sat then DR.ok (obs :: t) else DR.error (Err.Unsat_observation obs)
+  if is_sat then Delayed.return (obs :: t) else Delayed.vanish ()
 
 let assertions (t : t) =
   let cp = Common.Actions.cp_to_name Observation in

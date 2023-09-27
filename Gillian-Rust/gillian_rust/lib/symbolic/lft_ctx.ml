@@ -10,16 +10,17 @@ let pp ft t =
        Fmt.pf ft "%a: %b" Lft.pp x y))
     ft t
 
-let get t lft =
+let cons t lft =
   match LftMap.find_opt lft t with
   | None -> Error (Err.Missing_lifetime lft)
-  | Some status -> Ok status
+  | Some true -> Ok (true, LftMap.remove lft t)
+  | Some false -> Ok (false, t)
 
 let produce t lft status =
   match (LftMap.find_opt lft t, status) with
-  | None, status -> Ok (LftMap.add lft status t)
-  | Some false, false -> Ok t (* <lft>(#l, false) is pure *)
-  | Some _, _ -> Error (Err.Wrong_lifetime_status lft)
+  | None, status -> Some (LftMap.add lft status t)
+  | Some false, false -> Some t (* <lft>(#l, false) is pure *)
+  | Some _, _ -> None
 
 let kill t loc =
   match LftMap.find_opt loc t with
@@ -35,7 +36,6 @@ let check_status ~expected t loc =
 
 let check_alive t loc = check_status ~expected:true t loc
 let check_dead t loc = check_status ~expected:false t loc
-let remove t loc = LftMap.remove loc t
 let empty = LftMap.empty
 
 let assertions t =

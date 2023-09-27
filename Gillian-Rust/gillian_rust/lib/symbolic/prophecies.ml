@@ -93,24 +93,33 @@ let merge old_proph new_proph =
   let learned = value_eq :: ct_obs_eq in
   DR.ok ~learned { value = old_proph.value; observer; controller }
 
-let observer_block pcy_id pcy_env =
+let with_observer_block pcy_id pcy_env f =
+  let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
-  | Some { observer; _ } -> DR.ok observer
-  | _ -> DR.error (Err.Missing_pcy pcy_id)
+  | Some pcy ->
+      let++ value, new_observer = f pcy.observer in
+      let new_pcymap =
+        MemMap.add pcy_id { pcy with observer = new_observer } pcy_env
+      in
+      (value, new_pcymap)
+  | None -> DR.error (Err.Missing_pcy pcy_id)
 
-let controller_block pcy_id pcy_env =
+let with_controller_block pcy_id pcy_env f =
+  let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
-  | Some { controller; _ } -> DR.ok controller
-  | _ -> DR.error (Err.Missing_pcy pcy_id)
+  | Some pcy ->
+      let++ value, new_controller = f pcy.controller in
+      let new_pcymap =
+        MemMap.add pcy_id { pcy with controller = new_controller } pcy_env
+      in
+      (value, new_pcymap)
+  | None -> DR.error (Err.Missing_pcy pcy_id)
 
-let get_value_obs ~tyenv pcy_env pcy_var proj ty =
-  let** observer = observer_block pcy_var pcy_env in
-  let++ value, _ =
-    TreeBlock.get_proj ~loc:pcy_var ~tyenv observer proj ty false
-  in
-  value
+let cons_value_obs ~tyenv pcy_env pcy_var proj ty =
+  with_observer_block pcy_var pcy_env @@ fun observer ->
+  TreeBlock.cons_proj ~loc:pcy_var ~tyenv observer proj ty
 
-let set_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
+let prod_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -122,30 +131,19 @@ let set_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
     | Some { value; observer; controller } -> (value, observer, controller)
     | None -> (Expr.LVar (LVar.alloc ()), missing_root (), missing_root ())
   in
-  let** observer = TreeBlock.set_proj ~tyenv observer proj ty obs_value in
-  DR.ok
+  let* observer = TreeBlock.prod_proj ~tyenv observer proj ty obs_value in
+  Delayed.return
     ~learned:(TreeBlock.outer_equality_constraint observer controller)
     (MemMap.add pcy_id { value; observer; controller } pcy_env)
 
-let rem_value_obs ~tyenv pcy_env pcy_var proj ty =
-  (* We must find it, because we returned it through the getter *)
-  match MemMap.find_opt pcy_var pcy_env with
-  | Some { value; observer; controller } ->
-      let++ observer = TreeBlock.rem_proj ~tyenv observer proj ty in
-      MemMap.add pcy_var { value; observer; controller } pcy_env
-  | None -> failwith "rem_observer: observer is None"
+let cons_controller ~tyenv pcy_env pcy_var proj ty =
+  with_controller_block pcy_var pcy_env @@ fun controller ->
+  (* FIXME: This might not raise the right error.
+     We need to pass what kind of error should be created.
+     Of course, this is still sound, but risk triggering the wrong automations. *)
+  TreeBlock.cons_proj ~loc:pcy_var ~tyenv controller proj ty
 
-let get_controller ~tyenv pcy_env pcy_var proj ty =
-  let** controller = controller_block pcy_var pcy_env in
-  let++ value, _ =
-    (* FIXME: This might not raise the right error.
-       We need to pass what kind of error should be created.
-       Of course, this is still sound, but risk triggering the wrong automations. *)
-    TreeBlock.get_proj ~loc:pcy_var ~tyenv controller proj ty false
-  in
-  value
-
-let set_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
+let prod_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -157,17 +155,10 @@ let set_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
     | Some { value; observer; controller } -> (value, observer, controller)
     | None -> (Expr.LVar (LVar.alloc ()), missing_root (), missing_root ())
   in
-  let** controller = TreeBlock.set_proj ~tyenv controller proj ty ctrl_value in
-  DR.ok
+  let* controller = TreeBlock.prod_proj ~tyenv controller proj ty ctrl_value in
+  Delayed.return
     ~learned:(TreeBlock.outer_equality_constraint observer controller)
     (MemMap.add pcy_id { value; observer; controller } pcy_env)
-
-let rem_controller ~tyenv pcy_env pcy_id proj ty =
-  match MemMap.find_opt pcy_id pcy_env with
-  | Some { value; observer; controller } ->
-      let++ controller = TreeBlock.rem_proj ~tyenv controller proj ty in
-      MemMap.add pcy_id { value; observer; controller } pcy_env
-  | None -> failwith "rem_observer: observer is None"
 
 let proj_on_var pcy_var (proj : Projections.t) =
   let () =
@@ -185,7 +176,8 @@ let proj_on_var pcy_var (proj : Projections.t) =
   in
   List.fold_left apply_op pcy_var proj.from_base
 
-let get_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty =
+let cons_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty =
+  (* Value is persistent, consuming doesn't remove from the map *)
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -202,7 +194,7 @@ let get_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty =
       ( projected_value,
         MemMap.add pcy_id { value; observer; controller } pcy_env )
 
-let set_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty new_value =
+let prod_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty new_value =
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -218,7 +210,8 @@ let set_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty new_value =
     let open Formula.Infix in
     [ (proj_on_var value proj) #== new_value ]
   in
-  DR.ok ~learned (MemMap.add pcy_id { value; observer; controller } pcy_env)
+  Delayed.return ~learned
+    (MemMap.add pcy_id { value; observer; controller } pcy_env)
 
 let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
   match MemMap.find_opt pcy_var pcy_env with
@@ -228,9 +221,9 @@ let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
       (* Reading from the controller is a way of ensuring we have the part we require.
          An invariant is that the values of the controller and the resolver have to coincide *)
       let** current_value, _ =
-        get_proj ~loc:pcy_var ~tyenv controller proj ty true
+        load_proj ~loc:pcy_var ~tyenv controller proj ty true
       in
-      let** observer = rem_proj ~tyenv observer proj ty in
+      let** _, observer = cons_proj ~loc:pcy_var ~tyenv observer proj ty in
       let learned =
         let open Formula.Infix in
         [ (proj_on_var value proj) #== current_value ]

@@ -380,6 +380,8 @@ module TreeBlock = struct
     | Missing -> true
     | _ -> false
 
+  let missing ty = { ty; content = Missing }
+
   let structural_missing ~tyenv (ty : Ty.t) =
     match ty with
     | Array { length; ty = cty } ->
@@ -581,7 +583,7 @@ module TreeBlock = struct
     let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
     (ret, { outer with root })
 
-  let get_proj ~loc ~tyenv t proj ty copy =
+  let load_proj ~loc ~tyenv t proj ty copy =
     let open Result.Syntax in
     let update block = if copy then block else uninitialized ~tyenv ty in
     let return_and_update t =
@@ -596,13 +598,32 @@ module TreeBlock = struct
     in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
-  let set_proj ~tyenv t proj ty value =
-    let return_and_update _block =
-      let++ value = of_rust_value ~tyenv ~ty value in
-      ((), value)
+  let cons_proj ~loc ~tyenv t proj ty =
+    let open Result.Syntax in
+    let return_and_update t =
+      let result =
+        let+ value =
+          to_rust_value t
+          |> Result.map_error (Err.Conversion_error.lift ~loc ~proj)
+        in
+        (value, missing t.ty)
+      in
+      DR.of_result result
     in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-    new_block
+    find_proj ~tyenv ~return_and_update ~ty t proj
+
+  let prod_proj ~tyenv t proj ty value =
+    let* new_block =
+      let return_and_update _block =
+        let++ value = of_rust_value ~tyenv ~ty value in
+        ((), value)
+      in
+      let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+      new_block
+    in
+    match new_block with
+    | Ok x -> Delayed.return x
+    | Error _ -> Delayed.vanish ()
 
   let store_proj ~loc ~tyenv t proj ty value =
     let return_and_update block =
@@ -612,11 +633,6 @@ module TreeBlock = struct
           let++ value = of_rust_value ~tyenv ~ty value in
           ((), value)
     in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-    new_block
-
-  let rem_proj ~tyenv t proj ty =
-    let return_and_update _ = DR.ok ((), { ty; content = Missing }) in
     let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
     new_block
 
@@ -748,7 +764,7 @@ let alloc ~tyenv (heap : t) ty =
 let load ~tyenv (mem : t) loc proj ty copy =
   Logging.tmi (fun m -> m "Found block: %s" loc);
   let** block = find_not_freed loc mem in
-  let++ v, new_block = TreeBlock.get_proj ~loc ~tyenv block proj ty copy in
+  let++ v, new_block = TreeBlock.load_proj ~loc ~tyenv block proj ty copy in
   let new_mem = MemMap.add loc (T new_block) mem in
   (v, new_mem)
 
@@ -769,12 +785,12 @@ let store ~tyenv (mem : t) loc proj ty value =
   let++ new_block = TreeBlock.store_proj ~loc ~tyenv block proj ty value in
   MemMap.add loc (T new_block) mem
 
-let get_value ~tyenv (mem : t) loc proj ty =
+let cons_value ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
-  let++ value, _ = TreeBlock.get_proj ~loc ~tyenv block proj ty false in
-  value
+  let++ value, outer = TreeBlock.cons_proj ~loc ~tyenv block proj ty in
+  (value, MemMap.add loc (T outer) mem)
 
-let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
+let prod_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
   let root =
     match MemMap.find_opt loc mem with
     | Some (T root) -> root
@@ -785,13 +801,8 @@ let set_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
           ~tyenv
           (Projections.base_ty ~leaf_ty:ty proj)
   in
-  let++ new_block = TreeBlock.set_proj ~tyenv root proj ty value in
+  let+ new_block = TreeBlock.prod_proj ~tyenv root proj ty value in
   MemMap.add loc (T new_block) mem
-
-let rem_value (mem : t) loc =
-  (* We assume that rem is *always* called after get.
-     Therefore we don't need to check anything, we just remove. *)
-  MemMap.remove loc mem
 
 let deinit ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in

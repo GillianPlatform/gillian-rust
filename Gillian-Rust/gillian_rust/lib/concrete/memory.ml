@@ -120,27 +120,6 @@ let execute_action act_name mem args =
   | Load_discr -> protect execute_load_discr mem args
   | Pcy_resolve | Pcy_alloc | Pcy_assign ->
       failwith "Prophecies not yet implemented in concrete execution"
-  | Get_value
-  | Set_value
-  | Rem_value
-  | Get_freed
-  | Set_freed
-  | Rem_freed
-  | Get_lft
-  | Set_lft
-  | Rem_lft
-  | Get_value_observer
-  | Set_value_observer
-  | Rem_value_observer
-  | Get_pcy_controller
-  | Set_pcy_controller
-  | Rem_pcy_controller
-  | Get_pcy_value
-  | Set_pcy_value
-  | Rem_pcy_value
-  | Get_observation
-  | Set_observation
-  | Rem_observation -> failwith "Core Predicates used in concrete execution"
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

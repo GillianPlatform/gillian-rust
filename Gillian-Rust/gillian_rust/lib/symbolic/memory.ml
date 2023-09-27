@@ -125,68 +125,50 @@ let execute_free mem args =
       make_branch ~mem:{ mem with heap = new_heap } ()
   | _ -> Fmt.failwith "Invalid arguments for free"
 
-let execute_get_value mem args =
+let execute_cons_value mem args =
   let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Heap.get_value ~tyenv heap loc_name proj ty in
-      make_branch ~mem
-        ~rets:[ Expr.loc_from_loc_name loc_name; proj_exp; ty_exp; value ]
-        ()
+      let++ value, heap = Heap.cons_value ~tyenv heap loc_name proj ty in
+      make_branch ~mem:{ mem with heap } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
-let execute_set_value mem args =
+let execute_prod_value mem args =
   let { heap; tyenv; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
       let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj in
-      let++ new_heap = Heap.set_value ~tyenv heap loc_name proj ty value in
-      make_branch ~mem:{ mem with heap = new_heap } ()
+      let+ new_heap = Heap.prod_value ~tyenv heap loc_name proj ty value in
+      { mem with heap = new_heap }
   | _ -> Fmt.failwith "Invalid arguments for set_value"
-
-let execute_rem_value mem args =
-  match args with
-  | [ loc; _proj_exp; _ty_exp ] ->
-      let loc_name =
-        match loc with
-        | Expr.ALoc loc | Lit (Loc loc) -> loc
-        | _ -> failwith "unreachable"
-      in
-      let new_heap = Heap.rem_value mem.heap loc_name in
-      DR.ok (make_branch ~mem:{ mem with heap = new_heap } ())
-  | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let formula_of_expr_exn expr =
   match Formula.lift_logic_expr expr with
   | Some (f, _) -> f
   | None -> failwith "Invalid formula in observation"
 
-let execute_get_observation mem args =
+let execute_cons_observation mem args =
   match args with
   | [ formula_expr ] ->
       let formula = formula_of_expr_exn formula_expr in
-      let++ () = Obs_ctx.get_observation mem.obs_ctx formula in
-      make_branch ~mem ~rets:[ formula_expr ] ()
+      let++ () = Obs_ctx.cons_observation mem.obs_ctx formula in
+      make_branch ~mem ()
   | _ -> Fmt.failwith "Invalid arguments for get_observation"
 
-let execute_set_observation mem args =
+let execute_prod_observation mem args =
   match args with
   | [ formula ] ->
       let formula = formula_of_expr_exn formula in
-      let++ new_obs = Obs_ctx.set_observation mem.obs_ctx formula in
-      make_branch ~mem:{ mem with obs_ctx = new_obs } ()
+      let+ new_obs = Obs_ctx.prod_observation mem.obs_ctx formula in
+      { mem with obs_ctx = new_obs }
   | _ -> Fmt.failwith "Invalid arguments for set_observation"
 
 (* Observations are persistent *)
-let execute_rem_observation mem _ = DR.ok (make_branch ~mem ())
-let ga_to_setter str = Actions.ga_to_setter_str str
-let ga_to_getter str = Actions.ga_to_getter_str str
-let ga_to_deleter str = Actions.ga_to_deleter_str str
 let is_overlapping_asrt _ = false
 let copy t = t
 
@@ -227,107 +209,78 @@ let get_fixes _ _ _ = failwith "get_fixes: Not yet implemented"
 let apply_fix _ _ = failwith "apply_fix: Not yet implemented"
 let get_recovery_tactic _ e = Err.recovery_tactic e
 
-let execute_get_lft mem args =
+let execute_cons_lft mem args =
   let open Gillian.Utils.Syntaxes.Result in
   match args with
   | [ lft_expr ] ->
-      let lft = Lft.of_expr lft_expr in
-      let res =
-        let+ res = Lft_ctx.get mem.lfts lft in
-        make_branch ~mem ~rets:[ lft_expr; Expr.bool res ] ()
+      let branch =
+        let lft = Lft.of_expr lft_expr in
+        let+ res, lfts = Lft_ctx.cons mem.lfts lft in
+        make_branch ~mem:{ mem with lfts } ~rets:[ Expr.bool res ] ()
       in
-      Delayed.return res
+      Delayed.return branch
   | _ -> Fmt.failwith "Invalid arguments for get_alive_lft"
 
-let execute_set_lft mem args =
-  let open Gillian.Utils.Syntaxes.Result in
+let execute_prod_lft mem args =
   match args with
-  | [ lft; Expr.Lit (Bool status) ] ->
+  | [ lft; Expr.Lit (Bool status) ] -> (
       let lft = Lft.of_expr lft in
-      let ret =
-        let+ lfts = Lft_ctx.produce mem.lfts lft status in
-        make_branch ~mem:{ mem with lfts } ()
-      in
-      Delayed.return ret
+      match Lft_ctx.produce mem.lfts lft status with
+      | Some lfts -> Delayed.return { mem with lfts }
+      | None -> Delayed.vanish ())
   | _ -> Fmt.failwith "Invalid arguments for new_lft"
 
-let execute_rem_lft mem args =
-  match args with
-  | [ lft ] ->
-      let lft = Lft.of_expr lft in
-      let new_lfts = Lft_ctx.remove mem.lfts lft in
-      DR.ok (make_branch ~mem:{ mem with lfts = new_lfts } ())
-  | _ -> Fmt.failwith "Invalid arguments for rem_alive_lft"
-
-let execute_get_value_observer mem args =
+let execute_cons_value_observer mem args =
   let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_value_obs ~tyenv pcies pcy_id proj ty in
-      make_branch ~mem ~rets:[ Expr.ALoc pcy_id; proj_exp; ty_exp; value ] ()
+      let++ value, pcies =
+        Prophecies.cons_value_obs ~tyenv pcies pcy_id proj ty
+      in
+      make_branch ~mem:{ mem with pcies } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
 
-let execute_set_value_observer mem args =
+let execute_prod_value_observer mem args =
   let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
-      let++ new_pcies =
-        Prophecies.set_value_obs ~tyenv pcies pcy_id proj ty value
+      let+ new_pcies =
+        Prophecies.prod_value_obs ~tyenv pcies pcy_id proj ty value
       in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
+      { mem with pcies = new_pcies }
   | _ -> Fmt.failwith "Invalid arguments for set_value_observer"
 
-let execute_rem_value_observer mem args =
-  match args with
-  | [ Expr.ALoc pcy_id; proj_exp; ty_exp ] ->
-      let* proj = projections_of_expr proj_exp in
-      let ty = Ty.of_expr ty_exp in
-      let++ new_pcies =
-        Prophecies.rem_value_obs ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
-      in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
-  | _ -> Fmt.failwith "Invalid arguments for get_value"
-
-let execute_get_pcy_controller mem args =
+let execute_cons_pcy_controller mem args =
   let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value = Prophecies.get_controller ~tyenv pcies pcy_id proj ty in
-      make_branch ~mem ~rets:[ Expr.ALoc pcy_id; proj_exp; ty_exp; value ] ()
+      let++ value, pcies =
+        Prophecies.cons_controller ~tyenv pcies pcy_id proj ty
+      in
+      make_branch ~mem:{ mem with pcies } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
 
-let execute_set_pcy_controller mem args =
+let execute_prod_pcy_controller mem args =
   let { pcies; tyenv; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
-      let++ new_pcies =
-        Prophecies.set_controller ~tyenv pcies pcy_id proj ty value
+      let+ new_pcies =
+        Prophecies.prod_controller ~tyenv pcies pcy_id proj ty value
       in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
+      { mem with pcies = new_pcies }
   | _ -> Fmt.failwith "Invalid arguments for set_pcy_controller"
-
-let execute_rem_pcy_controller mem args =
-  match args with
-  | [ Expr.ALoc pcy_id; proj_exp; ty_exp ] ->
-      let* proj = projections_of_expr proj_exp in
-      let ty = Ty.of_expr ty_exp in
-      let++ new_pcies =
-        Prophecies.rem_controller ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
-      in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
-  | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_pcy_resolve mem args =
   match args with
@@ -360,46 +313,55 @@ let execute_pcy_alloc mem args =
       DR.ok @@ make_branch ~mem:{ mem with pcies } ~rets:ret ()
   | _ -> Fmt.failwith "Invalid arguments for pcy_alloc"
 
-let execut_get_pcy_value mem args =
+let execute_cons_pcy_value mem args =
   match args with
   | [ pcy_id; proj_expr; ty_expr ] ->
       let* proj = projections_of_expr proj_expr in
       let++ pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_expr in
       let ret, new_pcies =
-        Prophecies.get_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
+        Prophecies.cons_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
       in
-      make_branch
-        ~mem:{ mem with pcies = new_pcies }
-        ~rets:[ Expr.LVar pcy_id; proj_expr; ty_expr; ret ]
-        ()
+      make_branch ~mem:{ mem with pcies = new_pcies } ~rets:[ ret ] ()
   | _ -> Fmt.failwith "Invalid arguments for pcy_get_value"
 
-let execute_set_pcy_value mem args =
+let execute_prod_pcy_value mem args =
   match args with
   | [ pcy_id; proj_expr; ty_expr; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
       let* proj = projections_of_expr proj_expr in
       let ty = Ty.of_expr ty_expr in
-      let++ pcies =
-        Prophecies.set_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty value
+      let+ pcies =
+        Prophecies.prod_value ~tyenv:mem.tyenv mem.pcies pcy_id proj ty value
       in
-      make_branch ~mem:{ mem with pcies } ()
+      { mem with pcies }
   | _ -> Fmt.failwith "Invalid arguments for pcy_set_value"
-
-let execute_rem_pcy_value mem _args = DR.ok (make_branch ~mem ())
 
 let pp_branch fmt branch =
   let _, values = branch in
   Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
 
-let filter_errors dr =
-  Delayed.bind dr (fun res ->
-      match res with
-      | Ok _ -> Delayed.return res
-      | Error err ->
-          Logging.tmi (fun m -> m "Filtering error branch: %a" Err.pp err);
-          Delayed.vanish ())
+let consume ~core_pred mem args =
+  let core_pred = Actions.cp_of_name core_pred in
+  match core_pred with
+  | Value -> execute_cons_value mem args
+  | Lft -> execute_cons_lft mem args
+  | Pcy_value -> execute_cons_pcy_value mem args
+  | Pcy_controller -> execute_cons_pcy_controller mem args
+  | Value_observer -> execute_cons_value_observer mem args
+  | Observation -> execute_cons_observation mem args
+  | Freed -> Fmt.failwith "Unimplemented: Consume Freed"
+
+let produce ~core_pred mem args =
+  let core_pred = Actions.cp_of_name core_pred in
+  match core_pred with
+  | Value -> execute_prod_value mem args
+  | Lft -> execute_prod_lft mem args
+  | Pcy_value -> execute_prod_pcy_value mem args
+  | Pcy_controller -> execute_prod_pcy_controller mem args
+  | Value_observer -> execute_prod_value_observer mem args
+  | Observation -> execute_prod_observation mem args
+  | Freed -> Fmt.failwith "Unimplemented: Produce Freed"
 
 let execute_action ~action_name mem args =
   Logging.verbose (fun fmt ->
@@ -417,26 +379,6 @@ let execute_action ~action_name mem args =
     | Pcy_alloc -> execute_pcy_alloc mem args
     | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args
-    | Get_value -> execute_get_value mem args
-    | Set_value ->
-        (* Producers cannot fail, so we filter all errors and constrain the paths *)
-        execute_set_value mem args |> filter_errors
-    | Rem_value -> execute_rem_value mem args
-    | Get_lft -> execute_get_lft mem args
-    | Set_lft -> execute_set_lft mem args |> filter_errors
-    | Rem_lft -> execute_rem_lft mem args
-    | Get_value_observer -> execute_get_value_observer mem args
-    | Set_value_observer -> execute_set_value_observer mem args
-    | Rem_value_observer -> execute_rem_value_observer mem args
-    | Get_pcy_controller -> execute_get_pcy_controller mem args
-    | Set_pcy_controller -> execute_set_pcy_controller mem args
-    | Rem_pcy_controller -> execute_rem_pcy_controller mem args
-    | Get_pcy_value -> execut_get_pcy_value mem args
-    | Set_pcy_value -> execute_set_pcy_value mem args
-    | Rem_pcy_value -> execute_rem_pcy_value mem args
-    | Get_observation -> execute_get_observation mem args
-    | Set_observation -> execute_set_observation mem args
-    | Rem_observation -> execute_rem_observation mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   Logging.verbose (fun fmt ->
