@@ -154,3 +154,13 @@ let rec substitution ~subst_expr t =
 let slice_elements = function
   | Slice t -> t
   | _ -> failwith "not a slice type"
+
+let fields ~tyenv ty =
+  match ty with
+  | Adt (name, subst) -> (
+      match Common.Tyenv.adt_def ~tyenv name with
+      | Struct (_, fields) ->
+          List.map (fun (_, cty) -> subst_params ~subst cty) fields
+      | _ -> failwith "field amount on non-struct adt")
+  | Tuple tys -> tys
+  | _ -> Fmt.failwith "field_amount on %a" pp ty

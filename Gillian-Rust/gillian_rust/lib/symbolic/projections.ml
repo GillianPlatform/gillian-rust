@@ -1,7 +1,7 @@
 open Gillian.Gil_syntax
 (* module Partial_layout = Partial_layout *)
 
-type arith_kind = Wrap | Overflow [@@deriving show, yojson]
+type arith_kind = Wrap | Overflow [@@deriving show, yojson, eq]
 
 type op =
   | VField of int * Ty.t * int
@@ -10,7 +10,7 @@ type op =
   | Cast of Ty.t * Ty.t
   | Plus of arith_kind * int * Ty.t
   | UPlus of arith_kind * int
-[@@deriving show, yojson]
+[@@deriving show, yojson, eq]
 
 let pp_elem fmt =
   let str_ak = function
@@ -150,3 +150,18 @@ let pp ft t =
   in
   pp_base ft t.base;
   pp_from_base ft t.from_base
+
+(** Takes two projections of the form
+   P and P.ex and returns (P, ex) *)
+let split_extension base with_ext =
+  if not @@ (Option.equal Expr.equal) base.base with_ext.base then
+    failwith "Invalid call to split_extension";
+  let rec aux base with_ext =
+    match (base, with_ext) with
+    | _, [] -> failwith "No extension!"
+    | [], rest -> rest
+    | x :: br, y :: rr ->
+        if equal_op x y then aux br rr else failwith "Incompatible projections!"
+  in
+  let rest = aux base.from_base with_ext.from_base in
+  rest

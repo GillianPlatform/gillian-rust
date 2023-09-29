@@ -418,3 +418,56 @@ let can_fix = function
   | Missing_proj _
   | Missing_observation _ -> true
   | _ -> false
+
+let split_partially_missing_value ~tyenv ins loc missing_proj =
+  let iloc, iproj, _ity =
+    match ins with
+    | [ iloc; iproj; ity ] -> (iloc, iproj, ity)
+    | _ -> failwith "Invalid insertions for split_partially_missing_value"
+  in
+  (* Sanity check, otherwise something went wrong. *)
+  assert (Expr.equal (Expr.loc_from_loc_name loc) iloc);
+  let iproj = Projections.of_expr iproj in
+  let rest = Projections.split_extension iproj missing_proj in
+  (* For now we also only handle structure/tuple fields.
+     It doesn't mean we can't handle more, we just implement by need.
+     We'll very probably need Index for Vec! *)
+  let op_on_ty =
+    match rest with
+    | [ Field (_, ty) ] -> ty
+    | _ ->
+        failwith "Unhandled (yet): more than one op or not a field in splitting"
+  in
+  let fields = Ty.fields ~tyenv op_on_ty in
+  let new_ins =
+    List.mapi
+      (fun i field ->
+        let proj =
+          Projections.add_ops iproj [ Field (i, op_on_ty) ]
+          |> Projections.to_expr
+        in
+        [ iloc; proj; Ty.to_expr field ])
+      fields
+  in
+  let learn_out =
+    Expr.EList
+      (List.init (List.length fields) (fun i -> Expr.PVar (Fmt.str "%d:0" i)))
+  in
+  (new_ins, [ learn_out ])
+
+let split_further mem core_pred ins (err : Err.t) =
+  match (Actions.cp_of_name core_pred, err) with
+  | Value, Missing_proj (loc, missing_proj, Partially) ->
+      (* We tried consuming a tree when we had some of it but not all,
+         this is precisely what we are trying to signal. *)
+      let res =
+        split_partially_missing_value ~tyenv:mem.tyenv ins loc missing_proj
+      in
+      Logging.verbose (fun m ->
+          m "SUCCESSFULY SPLIT:@\nNEW INS: %a@\nNEW OUTs: %a"
+            Fmt.(Dump.list @@ Dump.list Expr.pp)
+            (fst res)
+            Fmt.(Dump.list Expr.pp)
+            (snd res));
+      Some (split_partially_missing_value ~tyenv:mem.tyenv ins loc missing_proj)
+  | _ -> None
