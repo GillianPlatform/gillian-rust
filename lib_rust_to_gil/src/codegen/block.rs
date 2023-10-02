@@ -49,7 +49,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 if switch_ty.is_bool() {
                     // We maintain the boolean abstraction, so we can't do a "normal" switch int.
                     // Instead, we're going to do a normal goto.
-                    assert_eq!(targets.all_targets().len(), 2, "bite");
+                    assert_eq!(targets.all_targets().len(), 2, "boolean is not 2");
                     let first_target_is_true =
                         targets.iter().next().expect("SwitchInt with no target").0 == 1;
                     let all_targets = targets.all_targets();

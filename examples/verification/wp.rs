@@ -2,13 +2,7 @@
 
 extern crate gilogic;
 
-use gilogic::{
-    macros::{
-        assertion, borrow, close_borrow, ensures, lemma, open_borrow, predicate, requires,
-        show_safety,
-    },
-    Ownable,
-};
+use gilogic::{macros::*, Ownable};
 
 struct WP<T> {
     x: *mut N<T>,
@@ -30,28 +24,20 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-#[borrow]
-fn wp_ref_mut_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
-    assertion!(|v_x: T, v_y: T|
-        (p -> WP { x, y }) *
-        wp(WP { x, y }, x, y)
-    )
-}
-
-#[lemma]
-#[requires(p.own())]
-#[ensures(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(p, x, y))]
-fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
-
 #[lemma]
 #[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(p, x, y))]
 #[ensures(|r: &mut T| (r == &mut (*x).v) * r.own())]
 fn split_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
+#[with_freeze_lemma_for_mutref(
+    lemma_name = freeze_xy,
+    predicate_name = wp_ref_mut_xy,
+    frozen_variables = [x, y],
+)]
 impl<T: Ownable> Ownable for WP<T> {
     #[predicate]
     fn own(self) {
-        assertion!(|x, y| wp(self, x, y))
+        assertion!(|x: *mut N<T>, y: *mut N<T>| wp(self, x, y))
     }
 }
 
@@ -83,7 +69,7 @@ impl<T: Ownable> WP<T> {
     #[show_safety]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
-            wp_ref_mut_pull_xy(self);
+            freeze_xy(self);
             let ret = &mut (*self.x).v;
             split_x(self);
             ret

@@ -8,6 +8,8 @@ use ::quote::ToTokens;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
+pub(crate) mod visitors;
+
 mod borrows;
 mod folding;
 mod gilogic_syn;
@@ -36,6 +38,14 @@ pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 #[proc_macro_attribute]
 pub fn lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     parse_macro_input!(input as Lemma).to_token_stream().into()
+}
+
+#[proc_macro_attribute]
+pub fn with_freeze_lemma_for_mutref(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    match FreezeMutRefOwn::parse(args, input) {
+        Ok(freeze_mut_own_ref) => freeze_mut_own_ref.to_token_stream().into(),
+        Err(err) => err.to_compile_error().into(),
+    }
 }
 
 #[proc_macro_attribute]

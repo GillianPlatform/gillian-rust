@@ -4,7 +4,8 @@ use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, Attribute, Block, Error, FnArg,
-    GenericArgument, Generics, Pat, PatType, PathArguments, Signature, Token, Type, TypePath,
+    GenericArgument, Generics, ImplItemMethod, Pat, PatType, PathArguments, Signature, Token, Type,
+    TypePath,
 };
 
 #[derive(Debug)]
@@ -160,58 +161,83 @@ pub struct Predicate {
     pub(crate) body: Option<Block>,
 }
 
-fn validate_sig(sig: &Signature) -> syn::Result<()> {
-    if let Some(token) = &sig.constness {
-        return Err(Error::new(token.span, "const on predicate"));
-    }
-    if let Some(token) = &sig.asyncness {
-        return Err(Error::new(token.span, "async on predicate"));
-    }
-    if let Some(token) = &sig.unsafety {
-        return Err(Error::new(token.span, "unsafe on predicate"));
-    }
-    if let syn::ReturnType::Type(..) = &sig.output {
-        return Err(Error::new(sig.output.span(), "Return type on predicate"));
-    }
-    if let Some(abi) = &sig.abi {
-        return Err(Error::new(abi.span(), "abi for predicate"));
-    }
-    if let Some(syn::Variadic { dots, .. }) = &sig.variadic {
-        return Err(Error::new(dots.span(), "predicate is variadic"));
+impl Predicate {
+    fn validate_sig(sig: &Signature) -> syn::Result<()> {
+        if let Some(token) = &sig.constness {
+            return Err(Error::new(token.span, "const on predicate"));
+        }
+        if let Some(token) = &sig.asyncness {
+            return Err(Error::new(token.span, "async on predicate"));
+        }
+        if let Some(token) = &sig.unsafety {
+            return Err(Error::new(token.span, "unsafe on predicate"));
+        }
+        if let syn::ReturnType::Type(..) = &sig.output {
+            return Err(Error::new(sig.output.span(), "Return type on predicate"));
+        }
+        if let Some(abi) = &sig.abi {
+            return Err(Error::new(abi.span(), "abi for predicate"));
+        }
+        if let Some(syn::Variadic { dots, .. }) = &sig.variadic {
+            return Err(Error::new(dots.span(), "predicate is variadic"));
+        }
+        Ok(())
     }
 
-    Ok(())
-}
-
-impl Parse for Predicate {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let attributes = input.call(Attribute::parse_outer)?;
-        let sig: Signature = input.parse()?;
-        validate_sig(&sig)?;
-        let name = sig.ident;
-        let args: syn::Result<Punctuated<PredParam, Token![,]>> = sig
-            .inputs
+    fn convert_args(
+        inputs: Punctuated<FnArg, Token![,]>,
+    ) -> syn::Result<Punctuated<PredParam, Token![,]>> {
+        inputs
             .into_pairs()
             .map(|x| {
                 let (arg, comma) = x.into_tuple();
                 let arg = PredParam::try_from(arg)?;
                 Ok(syn::punctuated::Pair::new(arg, comma))
             })
-            .collect();
-        let args = args?;
-        let generics = sig.generics;
-        let body = if input.lookahead1().peek(Token![;]) {
-            let _: Token![;] = input.parse().unwrap();
-            None
-        } else {
-            Some(input.parse()?)
-        };
+            .collect()
+    }
+
+    fn abstract_of_sig(sig: Signature, attributes: Vec<Attribute>) -> syn::Result<Self> {
+        Self::validate_sig(&sig)?;
+        let args = Self::convert_args(sig.inputs)?;
         Ok(Predicate {
-            name,
-            generics,
+            name: sig.ident,
+            generics: sig.generics,
             args,
-            body,
+            body: None,
             attributes,
         })
+    }
+
+    pub fn concrete_of_method(item_fn: ImplItemMethod) -> syn::Result<Self> {
+        let attributes = item_fn.attrs;
+        let sig = item_fn.sig;
+        let args = Self::convert_args(sig.inputs)?;
+        let body = item_fn.block;
+        Ok(Predicate {
+            name: sig.ident,
+            generics: sig.generics,
+            args,
+            body: Some(body),
+            attributes,
+        })
+    }
+}
+
+impl Parse for Predicate {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let item_fn = input.fork().parse::<ImplItemMethod>();
+        match item_fn {
+            Ok(_) => {
+                let item_fn = input.parse::<ImplItemMethod>()?;
+                Self::concrete_of_method(item_fn)
+            }
+            Err(_) => {
+                let attributes = input.call(Attribute::parse_outer)?;
+                let sig = input.parse::<Signature>()?;
+                let _ = input.parse::<Token![;]>()?;
+                Self::abstract_of_sig(sig, attributes)
+            }
+        }
     }
 }

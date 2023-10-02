@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{spanned::Spanned, BinOp, Error, Stmt};
+use syn::{spanned::Spanned, BinOp, Error, Signature, Stmt};
 
 use crate::gilogic_syn::*;
 
@@ -209,5 +209,48 @@ impl ToTokens for Lemma {
                 #sig #body
             }),
         }
+    }
+}
+
+impl ToTokens for FreezeMutRefOwn {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let own_impl = &self.own_impl;
+        let predicate = &self.predicate;
+        let generics = &predicate.generics;
+        let own_impl_ty = &self.own_impl.self_ty;
+        let name = &predicate.name;
+        let sig = {
+            let args = &predicate.args;
+            let tokens = quote!(fn #name #generics (#args));
+            syn::parse2::<Signature>(tokens).unwrap()
+        };
+        let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&sig);
+
+        // Then we generate the corresponding lemma.
+
+        let additional_args: Vec<_> = predicate
+            .args
+            .iter()
+            .skip(predicate.args.len() - self.args.frozen_variables.len())
+            .map(|x| match x {
+                PredParam::Receiver(..) => unreachable!(),
+                PredParam::S(s) => &s.name,
+            })
+            .collect();
+        let lemma_name = &self.args.lemma_name;
+
+        tokens.extend(quote! {
+
+            #[lemma]
+            #[requires(REFERENCE.own())]
+            #[ensures(|#(#additional_args),*| #name(REFERENCE, #(#additional_args),*))]
+            fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
+
+            #[gillian::borrow]
+            #lifetimes
+            #predicate
+
+            #own_impl
+        })
     }
 }
