@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{spanned::Spanned, BinOp, Error, Signature, Stmt};
 
-use crate::gilogic_syn::*;
+use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
 impl Formula {
     fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
@@ -85,7 +85,6 @@ impl AsrtFragment {
                 Ok(quote!(::gilogic::__stubs::observation(#observation)))
             }
             Self::PredCall(call) => Ok(call.to_token_stream()),
-            Self::__Nonexhaustive => todo!(),
         }
     }
 }
@@ -252,5 +251,17 @@ impl ToTokens for FreezeMutRefOwn {
 
             #own_impl
         })
+    }
+}
+
+impl ToTokens for ExtractLemma {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let lemma = &self.0;
+
+        quote! {
+            #[gillian::extract_lemma]
+            #lemma
+        }
+        .to_tokens(tokens);
     }
 }

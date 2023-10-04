@@ -24,10 +24,10 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-#[lemma]
+#[extract_lemma]
 #[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_xy(p, x, y))]
-#[ensures(|r: &mut T| (r == &mut (*x).v) * r.own())]
-fn split_x<'a, T: Ownable>(p: &'a mut WP<T>);
+#[ensures(Ownable::own(&mut (*x).v))]
+fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_xy,
@@ -71,7 +71,7 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.x).v;
-            split_x(self);
+            extract_x(self);
             ret
         }
     }

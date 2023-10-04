@@ -21,9 +21,21 @@ pub enum Assertion {
         ins: Vec<Expr>,
         outs: Vec<Expr>,
     },
+    Wand {
+        lhs: (String, Vec<Expr>),
+        rhs: (String, Vec<Expr>),
+    },
 }
 
 impl Assertion {
+    pub fn wand(lhs: (String, Vec<Expr>), rhs: (String, Vec<Expr>)) -> Self {
+        Self::Wand { lhs, rhs }
+    }
+
+    pub fn pred_call_of_tuple((name, params): (String, Vec<Expr>)) -> Self {
+        Self::Pred { name, params }
+    }
+
     pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         match self {
             Self::Star { left, right } => {
@@ -40,6 +52,13 @@ impl Assertion {
             Self::GA { ins, outs, .. } => {
                 ins.iter_mut().for_each(|e| e.subst_pvar(mapping));
                 outs.iter_mut().for_each(|e| e.subst_pvar(mapping));
+            }
+            Self::Wand {
+                lhs: (_, lhs_args),
+                rhs: (_, rhs_args),
+            } => {
+                lhs_args.iter_mut().for_each(|e| e.subst_pvar(mapping));
+                rhs_args.iter_mut().for_each(|e| e.subst_pvar(mapping));
             }
             Self::Emp => (),
         }
@@ -100,6 +119,20 @@ impl Display for Assertion {
                 write!(f, "; ")?;
                 separated_display(outs, ", ", f)?;
                 write!(f, ")")
+            }
+            Wand {
+                lhs: (lname, lhs_args),
+                rhs: (rname, rhs_args),
+            } => {
+                write!(f, "(")?;
+                super::print_utils::write_maybe_quoted(lname, f)?;
+                write!(f, "(")?;
+                separated_display(lhs_args, ", ", f)?;
+                write!(f, ") -* ")?;
+                super::print_utils::write_maybe_quoted(rname, f)?;
+                write!(f, "(")?;
+                separated_display(rhs_args, ", ", f)?;
+                write!(f, "))")
             }
         }
     }

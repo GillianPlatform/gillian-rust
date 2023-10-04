@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use super::{Assertion, Expr};
+use super::{
+    print_utils::{separated_display, write_maybe_quoted},
+    Assertion, Expr,
+};
 
 #[derive(Debug)]
 pub struct LogicBindings {
@@ -20,6 +23,10 @@ pub enum SLCmd {
         parameters: Vec<Expr>,
         bindings: Option<LogicBindings>,
         rec: bool,
+    },
+    Package {
+        lhs: (String, Vec<Expr>),
+        rhs: (String, Vec<Expr>),
     },
     GUnfold(String),
     ApplyLem {
@@ -92,6 +99,20 @@ impl Display for SLCmd {
                     panic!("Can't write fold with bindings for now: {:#?}", self);
                 }
                 Ok(())
+            }
+            Package {
+                lhs: (lname, largs),
+                rhs: (rname, rargs),
+            } => {
+                write!(f, "package (")?;
+                write_maybe_quoted(lname, f)?;
+                write!(f, "(")?;
+                separated_display(largs, ", ", f)?;
+                write!(f, ") -* ")?;
+                write_maybe_quoted(rname, f)?;
+                write!(f, "(")?;
+                separated_display(rargs, ", ", f)?;
+                write!(f, "))")
             }
             SepAssert {
                 assertion,

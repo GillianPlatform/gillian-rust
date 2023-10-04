@@ -1,6 +1,7 @@
 use crate::logic::core_preds::{self, alive_lft};
 use crate::prelude::*;
 use crate::{config::Config, logic::traits::TraitSolver};
+use rustc_data_structures::sync::HashMapExt;
 use rustc_middle::ty::{AdtDef, ReprOptions, SubstsRef};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -18,6 +19,8 @@ pub struct GlobalEnv<'tcx> {
     mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>,
     mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, SubstsRef<'tcx>)>,
     // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
+    inner_preds: HashMap<String, String>,
+    // Borrow preds for which an $$inner version should be derived.
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
@@ -46,7 +49,14 @@ impl<'tcx> GlobalEnv<'tcx> {
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             mut_ref_resolvers: Default::default(),
+            inner_preds: Default::default(),
         }
+    }
+
+    pub fn inner_pred(&mut self, pred: String) -> String {
+        let name = pred.clone() + "$$inner";
+        self.inner_preds.insert_same(pred, name.clone());
+        name
     }
 
     pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {

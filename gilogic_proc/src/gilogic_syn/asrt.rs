@@ -41,8 +41,6 @@ ast_enum_of_structs! {
     Pure(Formula),
     /// A pure observation
     Observation(Observation),
-    #[doc(hidden)]
-    __Nonexhaustive,
   }
 }
 

@@ -5,12 +5,14 @@
 
 extern crate proc_macro;
 use ::quote::ToTokens;
+use extract_lemmas::ExtractLemma;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
 pub(crate) mod visitors;
 
 mod borrows;
+mod extract_lemmas;
 mod folding;
 mod gilogic_syn;
 mod lifetime_hack;
@@ -38,6 +40,13 @@ pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 #[proc_macro_attribute]
 pub fn lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     parse_macro_input!(input as Lemma).to_token_stream().into()
+}
+
+#[proc_macro_attribute]
+pub fn extract_lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    parse_macro_input!(input as ExtractLemma)
+        .to_token_stream()
+        .into()
 }
 
 #[proc_macro_attribute]

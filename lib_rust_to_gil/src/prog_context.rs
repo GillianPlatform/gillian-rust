@@ -24,7 +24,7 @@ impl<'tcx> HasTyCtxt<'tcx> for ProgCtx<'tcx> {
     }
 }
 
-impl<'tcx, 'comp> ProgCtx<'tcx> {
+impl<'tcx> ProgCtx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
             prog: gillian::gil::Prog::new(runtime::imports(config.prophecies)),
@@ -38,8 +38,7 @@ impl<'tcx, 'comp> ProgCtx<'tcx> {
     }
 
     fn compile_logic(&mut self, did: DefId) {
-        let logic_item = compile_logic(did, self.tcx(), &mut self.global_env, &mut self.temp_gen);
-        if let Some(logic_item) = logic_item {
+        for logic_item in compile_logic(did, self.tcx(), &mut self.global_env, &mut self.temp_gen) {
             match logic_item {
                 LogicItem::Pred(pred) => self.prog.add_pred(pred),
                 LogicItem::Lemma(lemma) => {

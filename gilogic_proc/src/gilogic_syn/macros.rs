@@ -175,7 +175,7 @@ macro_rules! strip_attrs_pub {
     ($mac:ident!($(#[$m:meta])* $pub:ident $($t:tt)*)) => {
         check_keyword_matches!(pub $pub);
 
-        $mac!([$(#[$m])* $pub] $($t)*);
+        $mac!([$(#[$m])* #[non_exhaustive] $pub] $($t)*);
     };
 }
 

@@ -10,6 +10,7 @@ use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
 pub(crate) mod builtins;
 pub(crate) mod core_preds;
 mod dummy_pre;
+mod extract_lemma_utils;
 mod lemma;
 mod predicate;
 pub(crate) mod traits;
@@ -28,17 +29,23 @@ pub fn compile_logic<'tcx, 'genv>(
     tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
     temp_gen: &'genv mut TempGenerator,
-) -> Option<LogicItem> {
+) -> Vec<LogicItem> {
     if is_abstract_predicate(did, tcx) {
         let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, true).compile();
-        Some(LogicItem::Pred(pred))
+        vec![LogicItem::Pred(pred)]
     } else if is_predicate(did, tcx) {
         let pred = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false).compile();
-        Some(LogicItem::Pred(pred))
+        vec![LogicItem::Pred(pred)]
     } else if is_lemma(did, tcx) {
-        let lemma =
-            lemma::LemmaCtx::new(tcx, global_env, did, is_trusted_lemma(did, tcx)).compile();
-        Some(LogicItem::Lemma(lemma))
+        lemma::LemmaCtx::new(
+            tcx,
+            global_env,
+            did,
+            temp_gen,
+            is_trusted_lemma(did, tcx),
+            is_extract_lemma(did, tcx),
+        )
+        .compile()
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new(tcx, global_env, temp_gen, did, false);
@@ -63,7 +70,7 @@ pub fn compile_logic<'tcx, 'genv>(
             .into_iter()
             .map(|p| p.0)
             .collect();
-        Some(LogicItem::Precondition(id, args, definition))
+        vec![LogicItem::Precondition(id, args, definition)]
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
         log::debug!("Compiling postcondition: {:?}", did);
@@ -83,10 +90,10 @@ pub fn compile_logic<'tcx, 'genv>(
         let id = tcx
             .get_diagnostic_name(did)
             .expect("All postcondition should be diagnostic items");
-        Some(LogicItem::Postcondition(id, assertion))
+        vec![LogicItem::Postcondition(id, assertion)]
         // Has to b safe, because we know there is exactly one definition
     } else if is_fold(did, tcx) || is_unfold(did, tcx) {
-        None
+        vec![]
     } else {
         unreachable!()
     }

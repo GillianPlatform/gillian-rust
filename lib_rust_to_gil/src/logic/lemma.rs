@@ -1,12 +1,13 @@
+use super::predicate::PredCtx;
 use super::utils::get_thir;
-use gillian::gil::Lemma;
+use super::LogicItem;
+use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
 use rustc_middle::ty::{AdtDef, TyCtxt, WithOptConstParam};
 
-use gillian::gil::Assertion;
-
 use crate::codegen::typ_encoding::lifetime_param_name;
+use crate::temp_gen::TempGenerator;
 use crate::utils::polymorphism::HasGenericLifetimes;
 use crate::{
     codegen::typ_encoding::type_param_name,
@@ -24,7 +25,9 @@ pub(crate) struct LemmaCtx<'tcx, 'genv> {
     tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
+    temp_gen: &'genv mut TempGenerator,
     trusted: bool,
+    is_extract_lemma: bool,
 }
 
 impl<'tcx, 'genv> HasTyCtxt<'tcx> for LemmaCtx<'tcx, 'genv> {
@@ -57,13 +60,17 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         tcx: TyCtxt<'tcx>,
         global_env: &'genv mut GlobalEnv<'tcx>,
         did: DefId,
+        temp_gen: &'genv mut TempGenerator,
         trusted: bool,
+        is_extract_lemma: bool,
     ) -> Self {
         Self {
             tcx,
             global_env,
             did,
+            temp_gen,
             trusted,
+            is_extract_lemma,
         }
     }
 
@@ -99,7 +106,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     }
 
     fn sig(&self) -> LemmaSig {
-        get_thir!(thir, _expr, self);
+        let (thir, _) = get_thir!(self);
         let lft_params = self
             .generic_lifetimes()
             .into_iter()
@@ -116,20 +123,91 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn compile(self) -> Lemma {
+    pub(crate) fn compile(self) -> Vec<LogicItem> {
+        let mut res = Vec::with_capacity(1 + 3 * (self.is_extract_lemma as usize));
+
         let sig = self.sig();
+
+        if self.is_extract_lemma {
+            let name = sig.name.clone() + "$$extract_proof";
+
+            let wand_pre = {
+                let pre_name = crate::utils::attrs::get_pre_id(self.did, self.tcx())
+                    .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
+                let pre_did = self
+                    .tcx()
+                    .get_diagnostic_item(pre_name)
+                    .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
+
+                PredCtx::new(self.tcx(), self.global_env, self.temp_gen, pre_did, false)
+                    .into_inner_of_borrow_call(name.clone() + "$$wand_pre")
+            };
+            let pre_call = (
+                wand_pre.name.clone(),
+                wand_pre
+                    .params
+                    .iter()
+                    .map(|x| Expr::PVar(x.0.clone()))
+                    .collect(),
+            );
+            res.push(LogicItem::Pred(wand_pre));
+
+            let wand_post = {
+                let post_name = crate::utils::attrs::get_post_id(self.did, self.tcx())
+                    .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
+                let post_did = self
+                    .tcx()
+                    .get_diagnostic_item(post_name)
+                    .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
+
+                PredCtx::new(self.tcx(), self.global_env, self.temp_gen, post_did, false)
+                    .into_inner_of_borrow_call(name.clone() + "$$wand_post")
+            };
+
+            let post_call = (
+                wand_post.name.clone(),
+                wand_post
+                    .params
+                    .iter()
+                    .map(|x| Expr::PVar(x.0.clone()))
+                    .collect(),
+            );
+            res.push(LogicItem::Pred(wand_post));
+
+            let proof = Some(vec![LCmd::SL(SLCmd::Package {
+                lhs: pre_call.clone(),
+                rhs: post_call.clone(),
+            })]);
+
+            // This skips the lifetime argument.
+            let params = sig.params.iter().skip(1).map(Clone::clone).collect();
+            let proof_lemma = Lemma {
+                name,
+                params,
+                hyp: Assertion::pred_call_of_tuple(pre_call.clone()),
+                concs: vec![Assertion::pred_call_of_tuple(post_call.clone())
+                    .star(Assertion::wand(pre_call, post_call))],
+                proof,
+                variant: None,
+                existentials: Vec::new(),
+            };
+            res.push(LogicItem::Lemma(proof_lemma));
+        }
         if self.trusted {
             // We set temporary hyp and conclusion, which we be replaced later by the specs
-            Lemma {
-                name: sig.name,
+            let lemma = Lemma {
+                name: sig.name.clone(),
                 params: sig.params,
                 hyp: Assertion::Emp,
                 concs: Vec::new(),
+                proof: None,
                 variant: None,
                 existentials: Vec::new(),
-            }
+            };
+            res.push(LogicItem::Lemma(lemma));
         } else {
             fatal!(self, "Can't compile untrusted lemmas yet")
         }
+        res
     }
 }

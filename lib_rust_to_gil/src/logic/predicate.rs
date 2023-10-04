@@ -25,22 +25,22 @@ use rustc_middle::{
     ty::{AdtDef, AdtKind, WithOptConstParam},
 };
 
-struct PredSig {
-    name: String,
-    params: Vec<(String, Option<Type>)>,
-    ins: Vec<usize>,
-    facts: Vec<Formula>,
-    guard: Option<Assertion>,
+pub(crate) struct PredSig {
+    pub name: String,
+    pub params: Vec<(String, Option<Type>)>,
+    pub ins: Vec<usize>,
+    pub facts: Vec<Formula>,
+    pub guard: Option<Assertion>,
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
-    tcx: TyCtxt<'tcx>,
-    global_env: &'genv mut GlobalEnv<'tcx>,
-    temp_gen: &'genv mut TempGenerator,
-    did: DefId,
-    abstract_: bool,
-    var_map: HashMap<LocalVarId, GExpr>,
-    toplevel_asrts: Vec<Assertion>,
+    pub tcx: TyCtxt<'tcx>,
+    pub global_env: &'genv mut GlobalEnv<'tcx>,
+    pub temp_gen: &'genv mut TempGenerator,
+    pub did: DefId,
+    pub abstract_: bool,
+    pub var_map: HashMap<LocalVarId, GExpr>,
+    pub toplevel_asrts: Vec<Assertion>,
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
@@ -228,7 +228,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         })
     }
 
-    fn sig(&mut self) -> PredSig {
+    pub fn sig(&mut self) -> PredSig {
         let generic_lifetimes = self.generic_lifetimes();
         let generic_types = self.generic_types();
         let mut ins = self.get_ins();
@@ -246,7 +246,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ins.sort();
         }
-        get_thir!(thir, _expr, self);
+        let (thir, _) = get_thir!(self);
         let generic_lft_params = generic_lifetimes
             .into_iter()
             .map(|x| (lifetime_param_name(&x), None));
@@ -300,7 +300,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         super::builtins::is_formula_ty(ty, self.tcx())
     }
 
-    fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
+    pub(crate) fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
         Stubs::for_fn_def_ty(ty, self.tcx())
     }
 
@@ -330,7 +330,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_expression(&mut self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
+    pub(crate) fn compile_expression(&mut self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
@@ -816,7 +816,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn resolve_block(&self, e: ExprId, thir: &Thir<'tcx>) -> BlockId {
+    pub fn resolve_block(&self, e: ExprId, thir: &Thir<'tcx>) -> BlockId {
         let expr = &thir.exprs[e];
         match &expr.kind {
             ExprKind::Scope {
@@ -830,12 +830,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
-        let block = self.resolve_block(e, thir);
-        let block = &thir.blocks[block];
-        let expr = block
-            .expr
-            .unwrap_or_else(|| fatal!(self, "Assertion block has no expression?"));
+    pub(crate) fn add_block_lvars(&mut self, block: BlockId, thir: &Thir<'tcx>) {
+        let block = &thir[block];
         for stmt in block.stmts.iter() {
             // We could do additional check that the rhs is actually a call
             // to `gilogic::new_lvar()` but 🤷‍♂️.
@@ -867,6 +863,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 )
             }
         }
+    }
+
+    fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
+        let block = self.resolve_block(e, thir);
+        self.add_block_lvars(block, thir);
+        let block = &thir.blocks[block];
+        let expr = block
+            .expr
+            .unwrap_or_else(|| fatal!(self, "Assertion block has no expression?"));
         let inner = self.compile_assertion(expr, thir);
         let inner = self
             .toplevel_asrts
@@ -897,7 +902,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         with_lifetime_token
     }
 
-    fn resolve(e: ExprId, thir: &Thir<'tcx>) -> ExprId {
+    pub(crate) fn resolve(e: ExprId, thir: &Thir<'tcx>) -> ExprId {
         let expr = &thir.exprs[e];
         match &expr.kind {
             ExprKind::Scope {
@@ -910,7 +915,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
+    pub(crate) fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
         let expr = &thir.exprs[e];
         match &expr.kind {
             ExprKind::Scope {
@@ -934,7 +939,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn resolve_definitions(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
+    pub(crate) fn resolve_definitions(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
         let expr = &thir.exprs[e];
         match &expr.kind {
             ExprKind::Scope {
@@ -969,7 +974,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             facts,
             guard,
         } = self.sig();
-        get_thir!(thir, ret_expr, self);
+        let (thir, ret_expr) = get_thir!(self);
         // FIXME: Use the list of statements of the main block expr
         let definitions = self
             .resolve_definitions(ret_expr, &thir)

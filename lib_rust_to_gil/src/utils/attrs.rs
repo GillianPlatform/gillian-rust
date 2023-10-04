@@ -119,6 +119,14 @@ pub(crate) fn is_trusted_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
+pub(crate) fn is_extract_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "extract_lemma"],
+    )
+    .is_some()
+}
+
 pub(crate) fn is_fold(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
