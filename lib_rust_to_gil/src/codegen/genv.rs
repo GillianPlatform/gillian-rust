@@ -95,12 +95,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             .clone()
     }
 
-    pub fn flush_remaining_defs_to_prog(&mut self, prog: &mut Prog) {
-        self.add_resolvers_to_prog(prog);
-        self.add_mut_ref_owns_to_prog(prog);
-        self.add_mut_ref_inners_to_prog(prog);
-    }
-
     pub fn add_resolvers_to_prog(&mut self, prog: &mut Prog) {
         if !self.config.prophecies {
             return;
@@ -319,6 +313,44 @@ impl<'tcx> GlobalEnv<'tcx> {
             };
             prog.add_pred(pred);
         }
+    }
+
+    fn add_inner_pred_to_prog(&mut self, prog: &mut Prog) {
+        let inner_preds = std::mem::take(&mut self.inner_preds);
+        for (pred, inner_pred) in inner_preds {
+            let outer_pred = prog.preds.get(&pred).unwrap_or_else(|| {
+                fatal!(
+                    self,
+                    "Cannot find {:?} to add its inner pred not found in genv",
+                    pred
+                )
+            });
+            if outer_pred.guard.is_none() {
+                fatal!(
+                    self,
+                    "Adding inner pred for {:?}, which is not a borrow!",
+                    pred
+                )
+            }
+            let mut outer_pred: Pred = outer_pred.clone();
+            outer_pred.guard = None;
+            let zero_idx = outer_pred.ins.iter().position(|x| *x == 0).unwrap();
+            outer_pred.ins.swap_remove(zero_idx);
+            for in_ in outer_pred.ins.iter_mut() {
+                *in_ -= 1;
+            }
+            outer_pred.num_params -= 1;
+            outer_pred.params.remove(0);
+            outer_pred.name = inner_pred;
+            prog.add_pred(outer_pred);
+        }
+    }
+
+    pub fn flush_remaining_defs_to_prog(&mut self, prog: &mut Prog) {
+        self.add_resolvers_to_prog(prog);
+        self.add_mut_ref_owns_to_prog(prog);
+        self.add_mut_ref_inners_to_prog(prog);
+        self.add_inner_pred_to_prog(prog);
     }
 
     fn serialize_repr(&self, repr: &ReprOptions) -> serde_json::Value {

@@ -129,8 +129,7 @@ impl<'tcx> ProgCtx<'tcx> {
                     pre_args, proc_args
                 )
             }
-            let mapping: HashMap<_, _> = pre_args.into_iter().zip(proc_args).collect();
-            pre.subst_pvar(&mapping);
+            pre.subst_pvar(&pre_args.into_iter().zip(proc_args).collect());
             pre
         };
         let post = self

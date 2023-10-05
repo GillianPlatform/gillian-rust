@@ -1,4 +1,4 @@
-use super::print_utils::separated_display;
+use super::{print_utils::separated_display, visitors::GilVisitorMut};
 use std::{collections::HashMap, fmt::Display};
 
 use super::{Expr, Formula, Type};
@@ -36,34 +36,6 @@ impl Assertion {
         Self::Pred { name, params }
     }
 
-    pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
-        match self {
-            Self::Star { left, right } => {
-                left.subst_pvar(mapping);
-                right.subst_pvar(mapping);
-            }
-            Self::Pred { params, .. } => {
-                params.iter_mut().for_each(|p| p.subst_pvar(mapping));
-            }
-            Self::Pure(f) => f.subst_pvar(mapping),
-            Self::Types(tys) => {
-                tys.iter_mut().for_each(|(e, _)| e.subst_pvar(mapping));
-            }
-            Self::GA { ins, outs, .. } => {
-                ins.iter_mut().for_each(|e| e.subst_pvar(mapping));
-                outs.iter_mut().for_each(|e| e.subst_pvar(mapping));
-            }
-            Self::Wand {
-                lhs: (_, lhs_args),
-                rhs: (_, rhs_args),
-            } => {
-                lhs_args.iter_mut().for_each(|e| e.subst_pvar(mapping));
-                rhs_args.iter_mut().for_each(|e| e.subst_pvar(mapping));
-            }
-            Self::Emp => (),
-        }
-    }
-
     pub fn star(self, right: Self) -> Self {
         match (self, right) {
             (Assertion::Emp, x) | (x, Assertion::Emp) => x,
@@ -72,6 +44,11 @@ impl Assertion {
                 right: Box::new(y),
             },
         }
+    }
+
+    pub fn subst_pvar(&mut self, subst: &HashMap<String, Expr>) {
+        let mut visitor = super::visitors::SubstPVar::new(subst);
+        visitor.visit_assertion(self);
     }
 }
 

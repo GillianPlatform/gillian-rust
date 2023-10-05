@@ -24,6 +24,7 @@ mod slcmd;
 mod spec;
 mod typ;
 mod unop;
+pub mod visitors;
 
 pub use annot::Annot;
 pub use assertion::Assertion;

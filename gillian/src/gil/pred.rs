@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::{print_utils, Assertion, Formula, Type};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Pred {
     pub name: String,
     pub num_params: usize,

@@ -117,7 +117,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     }
 
     // We create an lvar for each argument
-    let f_args_lvars: Punctuated<LvarDecl, Token![,]> = item
+    let mut f_args_lvars: Punctuated<LvarDecl, Token![,]> = item
         .sig
         .inputs
         .iter()
@@ -133,7 +133,9 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
             _ => None,
         })
         .collect();
-    parsed_assertion.lvars.extend(f_args_lvars);
+    let lvars = std::mem::take(&mut parsed_assertion.lvars);
+    f_args_lvars.extend(lvars);
+    parsed_assertion.lvars = f_args_lvars;
 
     let assertion: TokenStream = match parsed_assertion.encode() {
         Ok(stream) => stream,

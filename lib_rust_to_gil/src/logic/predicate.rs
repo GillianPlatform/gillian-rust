@@ -830,8 +830,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn add_block_lvars(&mut self, block: BlockId, thir: &Thir<'tcx>) {
+    // Returns the list of pvars, not lvars.
+    pub(crate) fn add_block_lvars(&mut self, block: BlockId, thir: &Thir<'tcx>) -> Vec<String> {
         let block = &thir[block];
+        let mut res = Vec::with_capacity(block.stmts.len());
         for stmt in block.stmts.iter() {
             // We could do additional check that the rhs is actually a call
             // to `gilogic::new_lvar()` but 🤷‍♂️.
@@ -853,8 +855,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 ..
             } = thir.stmts[*stmt].kind
             {
-                self.var_map
-                    .insert(var, GExpr::LVar(format!("#{}", name.as_str())));
+                let lvar_name = format!("#{}", name.as_str());
+                self.var_map.insert(var, GExpr::LVar(lvar_name.clone()));
+                res.push(name.to_string());
             } else {
                 fatal!(
                     self,
@@ -863,6 +866,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 )
             }
         }
+        res
     }
 
     fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {

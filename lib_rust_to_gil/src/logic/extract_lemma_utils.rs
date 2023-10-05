@@ -1,16 +1,42 @@
 use super::traits::TraitSolver;
 use super::utils::get_thir;
 use super::{builtins::Stubs, predicate::PredCtx};
-use crate::{
-    codegen::typ_encoding::lifetime_param_name, prelude::*,
-    utils::polymorphism::HasGenericLifetimes,
-};
+use crate::prelude::*;
+use gillian::gil::visitors::GilVisitor;
 use gillian::gil::{Assertion, Pred};
 
 use rustc_middle::{
     thir::{ExprId, ExprKind, Thir},
     ty::WithOptConstParam,
 };
+
+struct ContainsPVarVisitor<'a> {
+    pvar: &'a str,
+    found: bool,
+}
+
+impl<'a> ContainsPVarVisitor<'a> {
+    fn new(pvar: &'a str) -> Self {
+        Self { pvar, found: false }
+    }
+}
+
+impl<'a> GilVisitor for ContainsPVarVisitor<'a> {
+    fn visit_expr(&mut self, expr: &Expr) {
+        match expr {
+            Expr::PVar(pvar) => {
+                self.found |= pvar == self.pvar;
+            }
+            _ => self.super_expr(expr),
+        }
+    }
+}
+
+fn contains_pvar(asrt: &Assertion, pvar: &str) -> bool {
+    let mut visitor = ContainsPVarVisitor::new(pvar);
+    visitor.visit_assertion(asrt);
+    visitor.found
+}
 
 impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
     pub fn compile_inner_pred_call_for_extract_lemma<'a>(
@@ -24,10 +50,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
                 Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir[args[0]].ty) => {
                     let name = crate::codegen::runtime::POLY_REF_MUT_OWN_INNER.to_string();
-                    let mut params = Vec::with_capacity(args.len() + 2);
-                    // FIXME: HACK: forcing the lifetime parameter
-                    let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
-                    params.push(lft_param);
+                    let mut params = Vec::with_capacity(args.len() + 1);
                     let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
                     params.push(self.encode_type(inner_ty).into());
                     for arg in args.iter() {
@@ -95,7 +118,8 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub fn into_inner_of_borrow_call(mut self, name: String) -> Pred {
+    // Returns uni/exis vars and the predicate
+    pub fn into_inner_of_borrow_call(mut self, name: String) -> (Vec<String>, Pred) {
         let sig = self.sig();
         let (thir, ret_expr) = get_thir!(self);
         let definitions = self.resolve_definitions(ret_expr, &thir);
@@ -108,20 +132,21 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
         let definition = definitions[0];
         let block = self.resolve_block(definition, &thir);
-        self.add_block_lvars(block, &thir);
+        let pvars = self.add_block_lvars(block, &thir);
         let block = &thir[block];
         let expr = block
             .expr
             .unwrap_or_else(|| fatal!(self, "No assertion in block?"));
         let assertion = self.compile_inner_pred_call_for_extract_lemma(expr, &thir);
-
         let assertion = std::mem::take(&mut self.toplevel_asrts)
             .into_iter()
-            .fold(assertion, Assertion::star);
+            .filter(|x| !contains_pvar(x, "ret"))
+            .chain(std::iter::once(assertion))
+            .collect();
         let mut params = sig.params;
         params.remove(0); // remove lifetime argument
         let ins = (0..params.len()).collect();
-        Pred {
+        let pred = Pred {
             name,
             num_params: params.len(),
             params,
@@ -131,6 +156,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             guard: None,
             abstract_: false,
             pure: false,
-        }
+        };
+        (pvars, pred)
     }
 }

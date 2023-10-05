@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Display;
 
 use super::{Assertion, Expr, Type};
@@ -55,29 +54,6 @@ pub enum Formula {
 }
 
 impl Formula {
-    pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
-        match self {
-            Self::Not(f) => f.subst_pvar(mapping),
-            Self::And { left, right } | Self::Or { left, right } => {
-                left.subst_pvar(mapping);
-                right.subst_pvar(mapping);
-            }
-            Self::Eq { left, right }
-            | Self::ILess { left, right }
-            | Self::ILessEq { left, right }
-            | Self::FLess { left, right }
-            | Self::FLessEq { left, right }
-            | Self::StrLess { left, right }
-            | Self::SetMem { left, right }
-            | Self::SetSub { left, right } => {
-                left.subst_pvar(mapping);
-                right.subst_pvar(mapping);
-            }
-            Self::ForAll { formula, .. } => formula.subst_pvar(mapping),
-            _ => (),
-        }
-    }
-
     pub fn eq(left: Expr, right: Expr) -> Self {
         Self::Eq {
             left: Box::new(left),

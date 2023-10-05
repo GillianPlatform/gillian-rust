@@ -131,7 +131,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         if self.is_extract_lemma {
             let name = sig.name.clone() + "$$extract_proof";
 
-            let wand_pre = {
+            let (pvars_pre, mut proof_pre) = {
                 let pre_name = crate::utils::attrs::get_pre_id(self.did, self.tcx())
                     .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
                 let pre_did = self
@@ -140,19 +140,40 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
 
                 PredCtx::new(self.tcx(), self.global_env, self.temp_gen, pre_did, false)
-                    .into_inner_of_borrow_call(name.clone() + "$$wand_pre")
+                    .into_inner_of_borrow_call(name.clone() + "$$proof_pre")
             };
-            let pre_call = (
-                wand_pre.name.clone(),
-                wand_pre
-                    .params
-                    .iter()
-                    .map(|x| Expr::PVar(x.0.clone()))
-                    .collect(),
-            );
-            res.push(LogicItem::Pred(wand_pre));
 
-            let wand_post = {
+            let pre_true_vars: Vec<Expr> = proof_pre
+                .params
+                .iter()
+                .map(|x| Expr::PVar(x.0.clone()))
+                .collect();
+            let mut pre_call_params = pre_true_vars.clone();
+            pre_call_params.extend(pvars_pre.iter().map(|x| Expr::LVar(format!("#{}", x))));
+
+            let pre_call = (proof_pre.name.clone(), pre_call_params);
+            // Right now the wand_pre looks like
+            // `pred(+T, +x) = P(x, #y, #z), where pvars_pre is `y`, `z`.
+            // We need to fix to expose the outs.
+            let eqs: Assertion = pvars_pre
+                .iter()
+                .map(|x| {
+                    Expr::PVar(x.clone())
+                        .eq_f(Expr::LVar(format!("#{}", x)))
+                        .into_asrt()
+                })
+                .collect();
+            let def = proof_pre.definitions.pop().unwrap(); // There is a unique assertion in the definitions
+            proof_pre.definitions.push(def.star(eqs));
+            proof_pre.num_params += pvars_pre.len();
+            proof_pre
+                .params
+                .extend(pvars_pre.into_iter().map(|x| (x, None)));
+
+            let post_params = proof_pre.params.clone();
+            res.push(LogicItem::Pred(proof_pre));
+
+            let (_, mut proof_post) = {
                 let post_name = crate::utils::attrs::get_post_id(self.did, self.tcx())
                     .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
                 let post_did = self
@@ -161,32 +182,64 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
 
                 PredCtx::new(self.tcx(), self.global_env, self.temp_gen, post_did, false)
-                    .into_inner_of_borrow_call(name.clone() + "$$wand_post")
+                    .into_inner_of_borrow_call(name.clone() + "$$proof_post")
             };
 
-            let post_call = (
-                wand_post.name.clone(),
-                wand_post
+            let post_eqs: Assertion = post_params
+                .iter()
+                .map(|x| {
+                    Expr::PVar(x.0.clone())
+                        .eq_f(Expr::LVar(format!("#{}", x.0)))
+                        .into_asrt()
+                })
+                .collect();
+            let mut def = proof_post.definitions.pop().unwrap();
+            let all_subst = post_params
+                .iter()
+                .map(|x| (x.0.clone(), Expr::LVar(format!("#{}", x.0))))
+                .collect();
+            def.subst_pvar(&all_subst);
+            proof_post.definitions.push(def.star(post_eqs));
+            proof_post.num_params = post_params.len();
+            proof_post.params = post_params;
+            proof_post.ins = (0..proof_post.num_params).collect();
+            dbg!(&proof_post.ins);
+            // We also need to fix the wand_post to use the outs from before (and ignore the ret thing)
+
+            let post_call: (String, Vec<_>) = (
+                proof_post.name.clone(),
+                proof_post
                     .params
                     .iter()
                     .map(|x| Expr::PVar(x.0.clone()))
                     .collect(),
             );
-            res.push(LogicItem::Pred(wand_post));
+            res.push(LogicItem::Pred(proof_post));
 
-            let proof = Some(vec![LCmd::SL(SLCmd::Package {
-                lhs: pre_call.clone(),
-                rhs: post_call.clone(),
-            })]);
+            let proof = {
+                let mut pre_call = pre_call.clone();
+                pre_call.1.iter_mut().for_each(|e| e.subst_pvar(&all_subst));
+                let mut post_call = post_call.clone();
+                post_call
+                    .1
+                    .iter_mut()
+                    .for_each(|e| e.subst_pvar(&all_subst));
+                Some(vec![LCmd::SL(SLCmd::Package {
+                    lhs: pre_call.clone(),
+                    rhs: post_call.clone(),
+                })])
+            };
 
+            let mut conc = Assertion::pred_call_of_tuple(post_call.clone())
+                .star(Assertion::wand(post_call, pre_call.clone()));
+            conc.subst_pvar(&all_subst);
             // This skips the lifetime argument.
             let params = sig.params.iter().skip(1).map(Clone::clone).collect();
             let proof_lemma = Lemma {
                 name,
                 params,
-                hyp: Assertion::pred_call_of_tuple(pre_call.clone()),
-                concs: vec![Assertion::pred_call_of_tuple(post_call.clone())
-                    .star(Assertion::wand(pre_call, post_call))],
+                hyp: Assertion::pred_call_of_tuple(pre_call),
+                concs: vec![conc],
                 proof,
                 variant: None,
                 existentials: Vec::new(),
