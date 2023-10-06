@@ -184,6 +184,24 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             .const_fn_def()
             .expect("func of functioncall isn't const_fn_def");
 
+        if self.tcx().is_constructor(def_id) {
+            let args = args
+                .iter()
+                .map(|x| self.push_encode_operand(x))
+                .collect::<Vec<_>>();
+            let ty_of_ctor = self.tcx().fn_sig(def_id).output().skip_binder();
+            if ty_of_ctor.is_enum() {
+                let def = ty_of_ctor.ty_adt_def().unwrap();
+                let idx = def.variant_index_with_ctor_id(def_id);
+                let value = vec![idx.as_u32().into(), args.into()].into();
+                self.push_place_write(destination, value, self.place_ty(destination).ty);
+                if let Some(bb) = target {
+                    self.push_cmd(Cmd::Goto(bb_label(bb)));
+                }
+                return;
+            }
+        }
+
         if (self
             .tcx()
             .is_diagnostic_item(Symbol::intern("gillian::ownable::own::open"), def_id)

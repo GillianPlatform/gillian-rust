@@ -92,7 +92,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         }
                     }
                     AggregateKind::Tuple => ops,
-                    _ => panic!("Unhandled agregate kind: {:#?}", kind),
+                    _ => fatal!(self, "Unhandled agregate kind: {:#?}", kind),
                 }
             }
             Rvalue::Cast(ckind, op, ty_to) => self.push_encode_cast(ckind, op, *ty_to),

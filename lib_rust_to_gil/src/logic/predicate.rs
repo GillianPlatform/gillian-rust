@@ -535,6 +535,33 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     ]
                     .into()
                 }
+                None if match ty.kind() {
+                    TyKind::FnDef(def_id, _) => self.tcx().is_constructor(*def_id),
+                    _ => false,
+                } =>
+                {
+                    let fields: Vec<GExpr> = args
+                        .iter()
+                        .map(|a| self.compile_expression(*a, thir))
+                        .collect();
+                    let (did, ty_of_ctor) = match ty.kind() {
+                        TyKind::FnDef(did, subst) => (
+                            did,
+                            self.tcx()
+                                .bound_fn_sig(*did)
+                                .subst(self.tcx(), subst)
+                                .output()
+                                .skip_binder(),
+                        ),
+                        _ => unreachable!(),
+                    };
+                    let def = ty_of_ctor.ty_adt_def().unwrap();
+                    if ty_of_ctor.is_enum() {
+                        let idx = def.variant_index_with_ctor_id(*did).index();
+                        return vec![idx.into(), fields.into()].into();
+                    }
+                    fatal!(self, "Constructor, but not for an enum: {:?}", expr)
+                }
                 _ => fatal!(self, "{:?} unsupported call in expression", expr),
             },
             _ => fatal!(
