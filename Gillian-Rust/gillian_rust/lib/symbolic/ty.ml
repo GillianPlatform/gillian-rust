@@ -35,6 +35,41 @@ type t =
    But it requires a lot of changes in Projections and Partial_layout that I'm not ready to make yet.
    However, as it is right now, nothing is unsound, simply less complete. *)
 
+let rec lvars =
+  let open Gillian.Utils.Containers in
+  function
+  | Unresolved expr -> Expr.lvars expr
+  | Scalar _ -> SS.empty
+  | Tuple l -> List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
+  | Adt (_, l) ->
+      List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
+  | Ref { ty; _ } | Ptr { ty; _ } | Array { ty; _ } | Slice ty -> lvars ty
+
+let rec sem_equal a b =
+  let open Formula.Infix in
+  match (a, b) with
+  | Scalar a, Scalar b -> Cty.equal_scalar_ty a b |> Formula.of_bool
+  | Tuple a, Tuple b ->
+      List.fold_left2
+        (fun acc tyl tyr -> acc #&& (sem_equal tyl tyr))
+        Formula.True a b
+  | Adt (name_a, args_a), Adt (name_b, args_b) ->
+      (String.equal name_a name_b |> Formula.of_bool)
+      #&& (List.fold_left2
+             (fun acc tyl tyr -> acc #&& (sem_equal tyl tyr))
+             Formula.True args_a args_b)
+  | Ref { mut = mut_a; ty = ty_a }, Ref { mut = mut_b; ty = ty_b }
+  | Ptr { mut = mut_a; ty = ty_a }, Ptr { mut = mut_b; ty = ty_b } ->
+      (mut_a = mut_b |> Formula.of_bool) #&& (sem_equal ty_a ty_b)
+  | ( Array { length = length_a; ty = ty_a },
+      Array { length = length_b; ty = ty_b } ) ->
+      (length_a = length_b |> Formula.of_bool) #&& (sem_equal ty_a ty_b)
+  | Slice a, Slice b -> sem_equal a b
+  | Unresolved left, Unresolved right -> left #== right
+  | _ -> Formula.False
+
+let syntactic_equal = equal
+
 let rec subst_params ~(subst : t list) t =
   match t with
   | Cty.Param i -> List.nth subst i

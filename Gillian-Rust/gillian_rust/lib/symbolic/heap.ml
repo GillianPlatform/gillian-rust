@@ -11,6 +11,13 @@ open Delayed_utils
 
 exception NotConcrete of string
 
+(* We let the monadic abstraction leak to avoid rewriting
+   the entirety of the Partial_layout engine *)
+let resolve_address ~tyenv ~context address =
+  let+ pc = Delayed.leak_pc_copy () in
+  Partial_layout.resolve_address_debug_access_error ~pc ~tyenv ~context address
+  |> List.rev
+
 module TypePreds = struct
   let ( .%[] ) e idx = Expr.list_nth e idx
 
@@ -47,7 +54,9 @@ module TypePreds = struct
     | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
     | Ptr _ -> valid_thin_ptr e
     | Scalar Char -> True
-    | _ -> failwith "Not a leaf type, can't express validity"
+    | _ ->
+        Fmt.failwith "Not a leaf type, can't express validity: %a of type %a"
+          Expr.pp e Ty.pp scalar_ty
 end
 
 let too_symbolic e =
@@ -99,6 +108,8 @@ module TreeBlock = struct
 
   let rec lvars t =
     let open Utils.Containers in
+    SS.union (Ty.lvars t.ty)
+    @@
     match t.content with
     | Uninit | Missing -> SS.empty
     | Symbolic e | Leaf e -> Expr.lvars e
@@ -455,7 +466,6 @@ module TreeBlock = struct
     | _ -> failwith "Type mismatch"
 
   let get_forest ~tyenv outer (proj : Projections.t) size ty copy =
-    let open Partial_layout in
     let* () =
       let base_equals =
         Formula.Infix.( #== )
@@ -467,14 +477,15 @@ module TreeBlock = struct
     in
     let t = outer.root in
     let start_address =
-      {
-        block_type = t.ty;
-        route = proj.from_base;
-        address_type = Ty.slice_elements ty;
-      }
+      Partial_layout.
+        {
+          block_type = t.ty;
+          route = proj.from_base;
+          address_type = Ty.slice_elements ty;
+        }
     in
-    let context = context_from_env tyenv in
-    let start_accesses = resolve_address ~tyenv ~context start_address in
+    let context = Partial_layout.context_from_env tyenv in
+    let* start_accesses = resolve_address ~tyenv ~context start_address in
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
@@ -508,7 +519,6 @@ module TreeBlock = struct
     (ret, { outer with root })
 
   let set_forest ~tyenv outer (proj : Projections.t) size ty values =
-    let open Partial_layout in
     let* () =
       let base_equals =
         Formula.Infix.( #== )
@@ -521,14 +531,15 @@ module TreeBlock = struct
     let t = outer.root in
     assert (List.length values = size);
     let start_address =
-      {
-        block_type = t.ty;
-        route = proj.from_base;
-        address_type = Ty.slice_elements ty;
-      }
+      Partial_layout.
+        {
+          block_type = t.ty;
+          route = proj.from_base;
+          address_type = Ty.slice_elements ty;
+        }
     in
-    let context = context_from_env tyenv in
-    let start_accesses = resolve_address ~tyenv ~context start_address in
+    let context = Partial_layout.context_from_env tyenv in
+    let* start_accesses = resolve_address ~tyenv ~context start_address in
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
@@ -554,7 +565,6 @@ module TreeBlock = struct
       ~ty
       (outer : outer)
       (proj : Projections.t) =
-    let open Partial_layout in
     Logging.tmi (fun m ->
         m "Currently in the following block: %a" pp_outer outer);
     let* () =
@@ -568,18 +578,18 @@ module TreeBlock = struct
     in
     let t = outer.root in
     let proj = proj.from_base in
-    let address = { block_type = t.ty; route = proj; address_type = ty } in
-    let context = context_from_env tyenv in
+    let address =
+      Partial_layout.{ block_type = t.ty; route = proj; address_type = ty }
+    in
+    let context = Partial_layout.context_from_env tyenv in
     Logging.verbose (fun m ->
         m "Finding address: %a" (Fmt.Dump.list Projections.pp_elem) proj);
     Logging.verbose (fun m ->
-        m "PL for %a: %a" Ty.pp t.ty pp_partial_layout
+        m "PL for %a: %a" Ty.pp t.ty Partial_layout.pp_partial_layout
           (context.partial_layouts t.ty));
-    let accesses =
-      resolve_address_debug_access_error ~tyenv ~context address |> List.rev
-    in
+    let* accesses = resolve_address ~tyenv ~context address in
     Logging.verbose (fun m ->
-        m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
+        m "Accessess: %a" (Fmt.Dump.list Partial_layout.pp_access) accesses);
     let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
     (ret, { outer with root })
 
@@ -698,9 +708,10 @@ module TreeBlock = struct
             let++ value = of_rust_value ~tyenv ~ty new_s in
             value.content
       | Uninit | Missing -> DR.ok t
-    and substitution t =
-      let++ content = substitute_content ~ty:t.ty t.content in
-      { t with content }
+    and substitution { content; ty } =
+      let ty = Ty.substitution ~subst_expr ty in
+      let++ content = substitute_content ~ty content in
+      { content; ty }
     in
     substitution t
 
@@ -896,6 +907,6 @@ let substitution ~tyenv heap subst =
         | Some tree, None ->
             MemMap.remove old_loc acc |> MemMap.add new_loc tree
         | Some tree_left, Some tree_right ->
-            Fmt.failwith "Can't merge trees yet \nLEFT: %a\nRIGHT:%a" pp_block
+            Fmt.failwith "Can't merge trees yet @\nLEFT: %a@\nRIGHT:%a" pp_block
               tree_left pp_block tree_right)
       tree_substed loc_subst

@@ -2,6 +2,16 @@ module Tyenv = Common.Tyenv
 module Adt_def = Common.Ty.Adt_def
 open Projections
 
+let equal_ty ~pc ty_a ty_b =
+  match Ty.sem_equal ty_a ty_b with
+  | True -> true
+  | False -> false
+  | f ->
+      let open Engine.Gpc in
+      Gillian.Symbolic.FO_logic.FOSolver.check_entailment
+        ~unification:pc.unification Gillian.Utils.Containers.SS.empty pc.pfs
+        [ f ] pc.gamma
+
 type variant_idx = int [@@deriving eq, show]
 type size = int [@@deriving eq, show]
 
@@ -243,13 +253,15 @@ let mod' (n : int) (m : int) =
 let signum (n : int) = if n < 0 then -1 else if n = 0 then 0 else 1
 
 let rec resolve
+    ~pc
     ~tyenv
     ~(context : context)
     (accesses : access list)
     (ty : Ty.t)
     (rs : op list)
     (index : int option) : access list =
-  let resolve = resolve ~tyenv ~context in
+  let resolve = resolve ~pc ~tyenv ~context in
+  let equal_ty = equal_ty ~pc in
   (* let dump_state () =
           (* FOR DEBUG PURPOSES, TODO REMOVE *)
           Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Ty.pp ty
@@ -307,17 +319,17 @@ let rec resolve
   in
 
   match (rs, ix) with
-  | Field (i, t) :: rs', None when t = ty ->
+  | Field (i, t) :: rs', None when equal_ty t ty ->
       (* print_string "(context.members t).(i) 243;\n"; *)
       let t' = (context.members t).(i) in
       resolve (accesses' i t') t' rs' None
   (* TODO handle invalid indices etc. *)
-  | Field (i, t) :: rs', Some 0 when Ty.equal t ty ->
+  | Field (i, t) :: rs', Some 0 when equal_ty t ty ->
       resolve accesses ty rs' (Some i)
   | Index (i, t, n) :: rs', Some ix
-    when i < n && Ty.equal (Array { length = n; ty = t }) ty ->
+    when i < n && equal_ty (Array { length = n; ty = t }) ty ->
       resolve accesses ty rs' (Some (i + ix))
-  | VField (j, t, idx) :: rs', None when Ty.equal t ty ->
+  | VField (j, t, idx) :: rs', None when equal_ty t ty ->
       (* print_string "(context.members t).(i) 253;\n"; *)
       let t' = (context.variant_members t idx).(j) in
       resolve (accesses' ~variant:idx j t') t rs' None
@@ -355,7 +367,7 @@ let rec resolve
                 match
                   distance_to_next_field partial_layout moving_over_field
                 with
-                | Some (FromCount (t', n, 0)) when t' = t ->
+                | Some (FromCount (t', n, 0)) when equal_ty t' t ->
                     (if next_ix = Array.length members then
                      up_tree_cast UpTreeDirection.Fwd accesses
                     else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
@@ -433,10 +445,12 @@ let rec zero_offset_types (context : context) (ty : Ty.t) : Ty.t list =
   | Array (_, _) -> sub_tree_types ()
   | _ -> [ ty ]
 
-let resolve_address ~tyenv ~(context : context) (address : address) :
+let resolve_address ~pc ~tyenv ~(context : context) (address : address) :
     access list =
   let reduced = reduce context address.route in
-  let accesses = resolve ~tyenv ~context [] address.block_type reduced None in
+  let accesses =
+    resolve ~pc ~tyenv ~context [] address.block_type reduced None
+  in
   let result_type = function
     | a :: _ -> a.index_type
     | _ -> address.block_type
@@ -461,7 +475,7 @@ let resolve_address ~tyenv ~(context : context) (address : address) :
         z_o_conversions
     in
     let as' = List.rev_append as_z_o accesses in
-    if Ty.equal (result_type as') address.address_type then as'
+    if equal_ty ~pc (result_type as') address.address_type then as'
     else
       raise
         (AccessError
@@ -472,10 +486,11 @@ let resolve_address ~tyenv ~(context : context) (address : address) :
              Format.sprintf "Could not resolve to correct address type" ))
 
 let resolve_address_debug_access_error
+    ~pc
     ~tyenv
     ~(context : context)
     (address : address) : access list =
-  try resolve_address ~tyenv ~context address
+  try resolve_address ~pc ~tyenv ~context address
   with AccessError (accesses, rs, ty, ix, message) ->
     Format.eprintf "%s: \n" message;
     Format.eprintf "\tty=%a\n\tix=%s\n\trs=[" Ty.pp ty
@@ -484,7 +499,7 @@ let resolve_address_debug_access_error
     Format.eprintf "]\n\taccesses=[";
     List.iter (Format.eprintf "%a;\n" pp_access) accesses;
     Format.eprintf "]\n";
-    []
+    raise (AccessError (accesses, rs, ty, ix, message))
 
 (* We return align not size as it's easier to convert this to a size than the reverse *)
 let align_scalar_ty : Ty.scalar_ty -> Partial_align.t = function

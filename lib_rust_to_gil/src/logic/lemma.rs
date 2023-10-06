@@ -199,7 +199,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 .map(|x| (x.0.clone(), Expr::LVar(format!("#{}", x.0))))
                 .collect();
             def.subst_pvar(&all_subst);
-            proof_post.definitions.push(def.star(post_eqs));
+            proof_post.definitions.push(post_eqs.star(def));
             proof_post.num_params = post_params.len();
             proof_post.params = post_params;
             proof_post.ins = (0..proof_post.num_params).collect();
@@ -225,8 +225,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .iter_mut()
                     .for_each(|e| e.subst_pvar(&all_subst));
                 Some(vec![LCmd::SL(SLCmd::Package {
-                    lhs: pre_call.clone(),
-                    rhs: post_call.clone(),
+                    lhs: post_call,
+                    rhs: pre_call,
                 })])
             };
 

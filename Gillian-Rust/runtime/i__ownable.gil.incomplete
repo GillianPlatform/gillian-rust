@@ -5,7 +5,7 @@ pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self):
   "$POLYMORPHIC::own"(pty, #v);
 guard: <lft>(lft; true);
   
-pred "$POLYMOPRHIC::ref_mut_own$$inner"(+pty, +self):
+pred "$POLYMORPHIC::ref_mut_own$$inner"(+pty, +self):
   <value>(l-nth(self, 0i), l-nth(self, 1i), pty; #v) *
   "$POLYMORPHIC::own"(pty, #v);
   
