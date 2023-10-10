@@ -20,6 +20,24 @@ fn check_just_call(asrt: &Assertion) -> bool {
     asrt.def.len() == 1 && matches!(asrt.def[0], AsrtFragment::PredCall(..))
 }
 
+fn check_just_call_and_pure(asrt: &Assertion) -> bool {
+    let (call_seen, valid) =
+        asrt.def
+            .iter()
+            .fold((false, true), |(call_seen, valid), frag| {
+                match (valid, call_seen, frag) {
+                    (false, _, _)
+                    | (_, _, AsrtFragment::PointsTo(..) | AsrtFragment::Observation(..)) => {
+                        (false, false)
+                    }
+                    (true, false, AsrtFragment::PredCall(..)) => (true, true),
+                    (true, true, AsrtFragment::PredCall(..)) => (false, false),
+                    (true, b, AsrtFragment::Pure(..) | AsrtFragment::Emp(..)) => (b, true),
+                }
+            });
+    valid && call_seen
+}
+
 fn parse_asrt_in_parens(input: ParseStream) -> syn::Result<Assertion> {
     let content;
     parenthesized!(content in input);
@@ -33,7 +51,7 @@ impl Parse for ExtractLemma {
             .ok_or_else(|| syn::Error::new(lemma.sig.span(), "Lemma doesn't have a `requires`"))?;
         let span = requires_attr.span();
         let require_asrt = syn::parse::Parser::parse2(parse_asrt_in_parens, requires_attr.tokens)?;
-        if !check_just_call(&require_asrt) {
+        if !check_just_call_and_pure(&require_asrt) {
             return Err(syn::Error::new(
                 span,
                 "extract_lemma's `requires` must be a single predicate call",

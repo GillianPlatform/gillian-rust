@@ -151,6 +151,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         types.star(e.eq_f([loc, proj]).into_asrt())
     }
 
+    fn make_is_nonnull_asrt(&mut self, e: GExpr) -> Assertion {
+        let loc = self.temp_lvar();
+        let proj = self.temp_lvar();
+        let types = Assertion::Types(vec![
+            (loc.clone(), Type::ObjectType),
+            (proj.clone(), Type::ListType),
+        ]);
+        types.star(e.eq_f([Expr::EList(vec![loc, proj])]).into_asrt())
+    }
+
     fn make_is_ref_asrt(&mut self, e: GExpr) -> Assertion {
         let loc = self.temp_lvar();
         let proj = self.temp_lvar();
@@ -199,6 +209,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     } else {
                         self.make_is_ptr_asrt(lvar)
                     };
+                    self.toplevel_asrts.push(type_knowledge);
+                } else if self.is_nonnull(ty) {
+                    let type_knowledge = self.make_is_nonnull_asrt(lvar);
                     self.toplevel_asrts.push(type_knowledge);
                 }
                 (name, ty)
@@ -562,6 +575,29 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     fatal!(self, "Constructor, but not for an enum: {:?}", expr)
                 }
+                None => {
+                    let (did, subst) = match ty.kind() {
+                        TyKind::FnDef(did, subst) => (*did, *subst),
+                        _ => fatal!(self, "Not an FnDef? {:?}", ty),
+                    };
+                    let mut params: Vec<_> = subst
+                        .iter()
+                        .filter_map(|x| self.encode_generic_arg(x))
+                        .map(|x| x.into())
+                        .collect();
+                    params.extend(args.iter().map(|e| self.compile_expression(*e, thir)));
+
+                    let out_var = self.temp_lvar();
+                    params.push(out_var.clone());
+
+                    let pred_call = Assertion::Pred {
+                        name: self.tcx().def_path_str(did),
+                        params,
+                    };
+
+                    self.toplevel_asrts.push(pred_call);
+                    out_var
+                }
                 _ => fatal!(self, "{:?} unsupported call in expression", expr),
             },
             _ => fatal!(
@@ -660,10 +696,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let left_ty = thir.exprs[args[0]].ty;
         // If the type is a box or a nonnull, we need to access its pointer.
         let (left, pfs) = if left_ty.is_box() {
-            // boxes have to be block pointers
+            // boxes have to be block pointers.
+            // We don't have that at the moment however, we need to encode
+            // The idea of a "freeable" resource.
             let loc = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), vec![].into()].into();
-            let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
+            let proj = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), proj.clone()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
             let box_ = self.make_box(ptr.clone());
             let eq = Formula::Eq {
                 left: Box::new(box_),
@@ -676,8 +715,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             // FIXME: this is technically not correct,
             // we would need to annotate the pointsTo to make sure that's true.
             let loc = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), vec![].into()].into();
-            let typing = Assertion::Types(vec![(loc, Type::ObjectType)]);
+            let proj = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), proj.clone()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
             let non_null = self.make_nonnull(ptr.clone());
             let eq = Formula::Eq {
                 left: Box::new(non_null),
@@ -694,7 +734,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Assertion::star(pfs, super::core_preds::value(left, ty, right))
     }
 
-    fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
+    pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let expr = &thir.exprs[e];
         if !self.is_assertion_ty(expr.ty) {
             fatal!(self, "{:?} is not the assertion type", expr.ty)
@@ -805,7 +845,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 );
                                 (name, substs)
                             } else {
+                                log::info!("Resolving candidate for {:?} which is a {:?}", self.tcx().def_path_str(*def_id), self.tcx().def_kind());
                                 let (def_id, substs) = self.resolve_candidate(*def_id, substs);
+                                log::info!("Obtained {:?}", self.tcx().def_path_str(def_id));
                                 let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
                                     .tcx()
                                     .def_path_str(def_id));
@@ -868,12 +910,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 pattern:
                     box Pat {
                         kind:
-                            PatKind::Binding { name, var, .. }
+                            PatKind::Binding { name, var, ty, .. }
                             | PatKind::AscribeUserType {
                                 ascription: _,
                                 subpattern:
                                     box Pat {
-                                        kind: PatKind::Binding { name, var, .. },
+                                        kind: PatKind::Binding { name, var, ty, .. },
                                         ..
                                     },
                             },
@@ -882,8 +924,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 ..
             } = thir.stmts[*stmt].kind
             {
-                let lvar_name = format!("#{}", name.as_str());
-                self.var_map.insert(var, GExpr::LVar(lvar_name.clone()));
+                let lvar_expr = GExpr::LVar(format!("#{}", name.as_str()));
+                if ty.is_any_ptr() {
+                    let type_knowledge = if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
+                        self.make_is_ref_asrt(lvar_expr.clone())
+                    } else {
+                        self.make_is_ptr_asrt(lvar_expr.clone())
+                    };
+                    self.toplevel_asrts.push(type_knowledge);
+                } else if self.is_nonnull(ty) {
+                    let type_knowledge = self.make_is_nonnull_asrt(lvar_expr.clone());
+                    self.toplevel_asrts.push(type_knowledge);
+                }
+                self.var_map.insert(var, lvar_expr);
                 res.push(name.to_string());
             } else {
                 fatal!(

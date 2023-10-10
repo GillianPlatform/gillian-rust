@@ -1,3 +1,5 @@
+(* PROCS *)
+
 proc "core::slice::<impl [T]>::len"(T, p) { (* First param is ignored *)
        goto [(typeOf l-nth(p, 0i)) = List] ctn err;
   ctn: ret := l-nth(p, 1i);
@@ -15,6 +17,12 @@ proc "std::ptr::NonNull::<T>::as_ptr"(T, p) {
      return
 };
 
+proc "std::ptr::NonNull::<T>::as_mut"(T, p) {
+        r := [load_value](l-nth(p, 0i), l-nth(p, 1i), {{ "adt", "NonNull", {{ T }} }}, true);
+        ret := l-nth(l-nth(r, 0i), 0i);
+        return
+};
+
 proc "std::boxed::Box::<T>::new"(T, v) {
      global := {{}};
      ptr := [alloc](T);
@@ -27,6 +35,24 @@ proc "std::boxed::Box::<T>::new"(T, v) {
      return
 };
 
+proc "std::option::Option::<T>::as_mut"(T, p) {
+         discr := [load_discr](l-nth(p, 0i), l-nth(p, 1i), {{ "adt", "Option", {{ T }} }});
+         discr := l-nth(discr, 0i);
+         goto [discr = 0i] nn ot;
+     nn: ret := {{ 0i, {{ }} }};
+         return;
+     ot: goto [discr = 1i] sm er;
+     sm: ref := {{
+               l-nth(p, 0i),
+               l+ (
+                    l-nth(p, 1i),
+                    {{ {{ "vf", 0i, {{ "adt", "Option", {{ T }} }}, 1i }} }}
+               )
+          }};
+          ret := {{ 1i, {{ ref }} }};
+         return;
+     er: fail[TYPERR]("Invalid discr")
+};
 
 proc "std::boxed::Box::<T>::from_raw"(T, ptr) {
      global := {{}};
@@ -52,3 +78,8 @@ proc "std::ptr::null_mut"(T) {
      ret := {{ $l_null, {{ }} }};
      return
 };
+
+(* PREDS *)
+
+pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):
+     out == l-nth(nn, 0i);

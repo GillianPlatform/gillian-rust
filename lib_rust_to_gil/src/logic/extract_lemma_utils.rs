@@ -39,12 +39,72 @@ fn contains_pvar(asrt: &Assertion, pvar: &str) -> bool {
 }
 
 impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
+    fn check_only_pure(&self, e: ExprId, thir: &Thir<'tcx>) -> bool {
+        let e = Self::resolve(e, thir);
+        let expr = &thir[e];
+        match &expr.kind {
+            ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
+                Some(Stubs::AssertEmp | Stubs::AssertPure) => true,
+                Some(Stubs::AssertStar) => {
+                    self.check_only_pure(args[0], thir) && self.check_only_pure(args[1], thir)
+                }
+                _ => false,
+            },
+            _ => fatal!(self, "Unexpected assertion: {:?}", expr),
+        }
+    }
+
+    fn separate_pred_and_pure(&self, e: ExprId, thir: &Thir<'tcx>) -> (ExprId, Vec<ExprId>) {
+        let e: ExprId = Self::resolve(e, thir);
+        let expr = &thir[e];
+        match &expr.kind {
+            ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
+                Some(Stubs::OwnPred) | None => (e, vec![]),
+                Some(Stubs::AssertStar) => {
+                    let el = args[0];
+                    let er = args[1];
+                    let (ell, mut ers) = self.separate_pred_and_pure(el, thir);
+                    let exprl = &thir[ell];
+                    if !self.check_only_pure(er, thir) {
+                        fatal!(
+                            self,
+                            "Not well-formed extract_lemma! Side cond isn't pure: {:?}",
+                            &thir[er]
+                        );
+                    };
+                    match &exprl.kind {
+                        ExprKind::Call { ty, .. }
+                            if matches!(self.get_stub(*ty), Some(Stubs::OwnPred) | None) =>
+                        {
+                            ers.push(er);
+                            (ell, ers)
+                        }
+                        _ => fatal!(self, "Not well-formed extract_lemma! Cannot compile, left isn't predicate: {:?}", exprl),
+                    }
+                }
+                _ => fatal!(self, "Canot separate pred and pure: {:?}", expr),
+            },
+            _ => fatal!(self, "Canot separate pred and pure: {:?}", expr),
+        }
+    }
+
     pub fn compile_inner_pred_call_for_extract_lemma<'a>(
         &'a mut self,
         e: ExprId,
         thir: &'a Thir<'tcx>,
+        allow_pure_side: bool,
     ) -> Assertion {
-        let e = Self::resolve(e, thir);
+        let (e, pure) = self.separate_pred_and_pure(e, thir);
+        if !(pure.is_empty() || allow_pure_side) {
+            fatal!(
+                self,
+                "Pure side condition not allowed in post of extract lemma"
+            )
+        }
+        for e in pure {
+            let pure = self.compile_assertion(e, thir);
+            self.toplevel_asrts.push(pure)
+        }
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
@@ -114,12 +174,20 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     expr
                 ),
             },
-            _ => fatal!(self, "extract_lemma pre/post is not just a predicate"),
+            _ => fatal!(
+                self,
+                "extract_lemma pre/post is not just a predicate {:?}",
+                expr
+            ),
         }
     }
 
     // Returns uni/exis vars and the predicate
-    pub fn into_inner_of_borrow_call(mut self, name: String) -> (Vec<String>, Pred) {
+    pub fn into_inner_of_borrow_call(
+        mut self,
+        name: String,
+        allow_pure_side: bool,
+    ) -> (Vec<String>, Pred) {
         let sig = self.sig();
         let (thir, ret_expr) = get_thir!(self);
         let definitions = self.resolve_definitions(ret_expr, &thir);
@@ -137,7 +205,8 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let expr = block
             .expr
             .unwrap_or_else(|| fatal!(self, "No assertion in block?"));
-        let assertion = self.compile_inner_pred_call_for_extract_lemma(expr, &thir);
+        let assertion =
+            self.compile_inner_pred_call_for_extract_lemma(expr, &thir, allow_pure_side);
         let assertion = std::mem::take(&mut self.toplevel_asrts)
             .into_iter()
             .filter(|x| !contains_pvar(x, "ret"))

@@ -374,17 +374,18 @@ module TreeBlock = struct
   let rec partially_missing t =
     match t.content with
     | Missing -> true
-    | Array fields | Fields fields -> List.exists partially_missing fields
-    | Symbolic _ | Uninit | Enum _ | Leaf _ -> false
+    | Array fields | Fields fields | Enum { fields; _ } ->
+        List.exists partially_missing fields
+    | Symbolic _ | Uninit | Leaf _ -> false
 
   let rec missing_qty t =
     match t.content with
     | Missing -> Some Err.Totally
-    | Array fields | Fields fields ->
+    | Array fields | Fields fields | Enum { fields; _ } ->
         if List.exists (fun f -> Option.is_some (missing_qty f)) fields then
           Some Partially
         else None
-    | Symbolic _ | Uninit | Enum _ | Leaf _ -> None
+    | Symbolic _ | Uninit | Leaf _ -> None
 
   let totally_missing t =
     match t.content with
@@ -462,7 +463,9 @@ module TreeBlock = struct
                   path);
             let this_block = structural_missing ~tyenv ty in
             rec_call this_block path
-        | _ -> Fmt.failwith "Invalid node")
+        | _ ->
+            Fmt.failwith "Invalid node: (content: %a, variant: %a)" pp_content
+              content (Fmt.Dump.option Fmt.int) variant)
     | _ -> failwith "Type mismatch"
 
   let get_forest ~tyenv outer (proj : Projections.t) size ty copy =

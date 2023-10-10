@@ -334,10 +334,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
                 let call_ret_ty = self.place_ty(destination).ty;
                 self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
-                if let Some(bb) = target {
-                    self.push_cmd(Cmd::Goto(bb_label(bb)));
-                }
             }
+        }
+        if let Some(bb) = target {
+            self.push_cmd(Cmd::Goto(bb_label(bb)));
         }
     }
 }

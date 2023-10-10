@@ -1,9 +1,6 @@
 extern crate gilogic;
 
-use gilogic::{
-    macros::{assertion, close_borrow, ensures, open_borrow, predicate, requires, show_safety},
-    Ownable,
-};
+use gilogic::{macros::*, Ownable};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -59,17 +56,31 @@ fn dll_seg<T: Ownable>(
     )
 }
 
+#[extract_lemma]
+#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, p: NonNull<Node<T>>|
+    list_ref_mut_ht(list, head, tail) * (head == Some(p))
+)]
+#[ensures(Ownable::own(&mut (*p.as_ptr()).element))]
+fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
+
+#[with_freeze_lemma_for_mutref(
+    lemma_name = freeze_ht,
+    predicate_name = list_ref_mut_ht,
+    frozen_variables = [head, tail],
+)]
 impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {
-        assertion!(|head, tail, len| (self
-            == LinkedList {
-                head,
-                tail,
-                len,
-                marker: PhantomData
-            })
-            * dll_seg(head, None, tail, None, len));
+        assertion!(
+            |head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize| (self
+                == LinkedList {
+                    head,
+                    tail,
+                    len,
+                    marker: PhantomData
+                })
+                * dll_seg(head, None, tail, None, len)
+        );
     }
 }
 
@@ -140,6 +151,19 @@ impl<T: Ownable> LinkedList<T> {
     #[show_safety]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
+    }
+
+    #[show_safety]
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        freeze_ht(self);
+        match self.head.as_mut() {
+            None => None,
+            Some(node) => unsafe {
+                let ret = Some(&mut node.as_mut().element);
+                extract_head(self);
+                ret
+            },
+        }
     }
 
     // #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]

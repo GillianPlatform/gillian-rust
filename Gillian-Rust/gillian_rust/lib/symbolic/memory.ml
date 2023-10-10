@@ -416,17 +416,16 @@ let can_fix = function
   | Missing_pcy _
   | Missing_lifetime _
   | Missing_proj _
-  | Missing_observation _ -> true
+  | Missing_observation _
+  | Invalid_loc _ -> true
   | _ -> false
 
-let split_partially_missing_value ~tyenv ins loc missing_proj =
+let split_partially_missing_value ~tyenv ins _loc missing_proj =
   let iloc, iproj, _ity =
     match ins with
     | [ iloc; iproj; ity ] -> (iloc, iproj, ity)
     | _ -> failwith "Invalid insertions for split_partially_missing_value"
   in
-  (* Sanity check, otherwise something went wrong. *)
-  assert (Expr.equal (Expr.loc_from_loc_name loc) iloc);
   let iproj = Projections.of_expr iproj in
   let rest = Projections.split_extension iproj missing_proj in
   (* For now we also only handle structure/tuple fields.

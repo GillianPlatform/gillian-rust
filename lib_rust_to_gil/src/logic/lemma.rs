@@ -140,7 +140,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
 
                 PredCtx::new(self.tcx(), self.global_env, self.temp_gen, pre_did, false)
-                    .into_inner_of_borrow_call(name.clone() + "$$proof_pre")
+                    .into_inner_of_borrow_call(name.clone() + "$$proof_pre", true)
             };
 
             let pre_true_vars: Vec<Expr> = proof_pre
@@ -182,7 +182,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
 
                 PredCtx::new(self.tcx(), self.global_env, self.temp_gen, post_did, false)
-                    .into_inner_of_borrow_call(name.clone() + "$$proof_post")
+                    .into_inner_of_borrow_call(name.clone() + "$$proof_post", false)
             };
 
             let post_eqs: Assertion = post_params
@@ -203,7 +203,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             proof_post.num_params = post_params.len();
             proof_post.params = post_params;
             proof_post.ins = (0..proof_post.num_params).collect();
-            dbg!(&proof_post.ins);
             // We also need to fix the wand_post to use the outs from before (and ignore the ret thing)
 
             let post_call: (String, Vec<_>) = (
