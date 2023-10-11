@@ -2,7 +2,7 @@ use crate::logic::core_preds::{self, alive_lft};
 use crate::prelude::*;
 use crate::{config::Config, logic::traits::TraitSolver};
 use rustc_data_structures::sync::HashMapExt;
-use rustc_middle::ty::{AdtDef, ReprOptions, SubstsRef};
+use rustc_middle::ty::{AdtDef, GenericArgsRef, ReprOptions};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
@@ -14,7 +14,7 @@ struct QueueOnce<K> {
     done: HashSet<K>,
 }
 
-impl<T> Default for QueueOnce<T> {
+impl<K> Default for QueueOnce<K> {
     fn default() -> Self {
         Self {
             queue: Default::default(),
@@ -23,17 +23,17 @@ impl<T> Default for QueueOnce<T> {
     }
 }
 
-impl<T> QueueOnce<T>
+impl<K> QueueOnce<K>
 where
-    T: Eq + Hash + Clone,
+    K: Eq + Hash + Clone,
 {
-    fn push(&mut self, v: T) {
+    fn push(&mut self, v: K) {
         if !(self.done.contains(&v) || self.queue.contains(&v)) {
             self.queue.push_back(v);
         }
     }
 
-    fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<K> {
         let elem = self.queue.pop_front();
         if let Some(elem) = &elem {
             self.done.insert(elem.clone());
@@ -50,7 +50,7 @@ pub struct GlobalEnv<'tcx> {
     adt_queue: QueueOnce<AdtDef<'tcx>>,
     mut_ref_owns: HashMap<Ty<'tcx>, String>,
     mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>,
-    mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, SubstsRef<'tcx>)>,
+    mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, GenericArgsRef<'tcx>)>,
     // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
     inner_preds: HashMap<String, String>,
     // Borrow preds for which an $$inner version should be derived.
@@ -93,19 +93,17 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
+    pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> (DefId, GenericArgsRef<'tcx>) {
         let symbol = crate::logic::builtins::Stubs::OwnPred.symbol(self.config.prophecies);
         let general_own = self
             .tcx()
             .get_diagnostic_item(symbol)
             .expect("Could not find gilogic::Ownable");
-        let subst = self
-            .tcx()
-            .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[ty]));
+        let subst = self.tcx().mk_args(&[ty.into()]);
         self.resolve_candidate(general_own, subst)
     }
 
-    pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, SubstsRef<'tcx>) {
+    pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
         let inner_ty = crate::utils::ty::mut_ref_inner(mutref_ty).unwrap();
         let (_, subst) = self.get_own_pred_for(inner_ty);
         let mutref_own_name = format!("<{} as gilogic::prophecies::Ownable>::own", mutref_ty);
@@ -188,11 +186,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .tcx()
                 .get_diagnostic_item(symbol)
                 .expect("Could not find gilogic::Ownable");
-            let subst =
-                self.tcx()
-                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[
-                        *inner_ty,
-                    ]));
+            let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
             let (own_instance_did, own_instance_subst) = self.resolve_candidate(own, subst);
             let slf = Expr::PVar("self".to_string());
             let pointer = slf.clone().lnth(0);
@@ -223,7 +217,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             let pred = Pred {
                 name: name.to_string(),
                 num_params: all_params.len(),
-                ins: (0..all_params.len()).into_iter().collect(),
+                ins: (0..all_params.len()).collect(),
                 params: all_params,
                 definitions,
                 pure: false,
@@ -252,11 +246,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
                 _ => unreachable!("Something that isn't a mutref was added to the mutrefs in genv"),
             };
-            let subst =
-                self.tcx()
-                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(&[
-                        *inner_ty,
-                    ]));
+            let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
 
             let (did, subst) = self.resolve_candidate(own, subst);
             let generic_params = std::iter::once(("lft".to_string(), None)).chain(
@@ -336,9 +326,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 name: name.clone(),
                 num_params,
                 params,
-                ins: (0..num_params - (self.config.prophecies as usize))
-                    .into_iter()
-                    .collect(),
+                ins: (0..num_params - (self.config.prophecies as usize)).collect(),
                 definitions,
                 pure: false,
                 abstract_: false,
@@ -409,7 +397,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .all_fields()
                 .map(|field| {
                     let field_name = self.tcx.item_name(field.did).to_string();
-                    let typ = self.tcx.type_of(field.did);
+                    let typ = self.tcx.type_of(field.did).instantiate_identity();
                     let typ = self.serialize_type(typ);
                     json!([field_name, typ])
                 })
@@ -429,7 +417,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                         .fields
                         .iter()
                         .map(|field| {
-                            let typ = self.tcx.type_of(field.did);
+                            let typ = self.tcx.type_of(field.did).instantiate_identity();
                             self.serialize_type(typ)
                         })
                         .collect();

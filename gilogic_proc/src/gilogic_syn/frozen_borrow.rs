@@ -156,7 +156,7 @@ impl FreezeMutRefOwn {
         let frozen_args = args
             .frozen_variables
             .iter()
-            .zip(mutator.into_inner().frozen_vars_ty.into_iter());
+            .zip(mutator.into_inner().frozen_vars_ty);
         for (ident, ty) in frozen_args {
             let pred_param = PredParam::S(PredParamS {
                 name: ident.clone(),

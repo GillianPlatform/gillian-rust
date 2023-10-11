@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
+use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 use rustc_middle::ty::GenericParamDefKind;
 
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
@@ -47,9 +47,9 @@ pub trait HasGenericLifetimes<'tcx>: HasDefId + HasTyCtxt<'tcx> {
         match attr {
             None => vec![],
             Some(attr) => {
-                if let MacArgs::Eq(
+                if let AttrArgs::Eq(
                     _,
-                    MacArgsEq::Hir(Lit {
+                    AttrArgsEq::Hir(MetaItemLit {
                         kind: LitKind::Str(sym, StrStyle::Cooked),
                         ..
                     }),

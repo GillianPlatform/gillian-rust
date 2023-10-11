@@ -1,5 +1,5 @@
+use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 use rustc_ast::{AttrItem, AttrKind};
-use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Attribute;
 use rustc_span::{def_id::DefId, Symbol};
@@ -32,9 +32,9 @@ pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a 
 }
 
 fn extract_string_arg(attr: &AttrItem) -> Symbol {
-    if let MacArgs::Eq(
+    if let AttrArgs::Eq(
         _,
-        MacArgsEq::Hir(Lit {
+        AttrArgsEq::Hir(MetaItemLit {
             kind: LitKind::Str(sym, StrStyle::Cooked),
             ..
         }),

@@ -1,10 +1,10 @@
 use crate::prelude::*;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_target::abi::Size;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    pub fn const_value_is_zst(val: &ConstValue) -> bool {
+    pub fn const_value_is_zst(val: ConstValue) -> bool {
         match val {
             ConstValue::Scalar(Scalar::Int(sci)) => sci.size() == Size::ZERO,
             _ => false,

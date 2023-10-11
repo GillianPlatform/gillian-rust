@@ -1,6 +1,6 @@
 use super::attrs::is_logic;
 use crate::prelude::*;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 
 fn make_loop(_tcx: TyCtxt) -> IndexVec<BasicBlock, BasicBlockData> {
     let mut body = IndexVec::new();

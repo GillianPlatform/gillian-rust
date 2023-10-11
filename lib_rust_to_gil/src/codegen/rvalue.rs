@@ -2,8 +2,9 @@ use super::memory::MemoryAction;
 use super::place::GilPlace;
 use crate::codegen::runtime;
 use crate::prelude::*;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{self, adjustment::PointerCast, AdtKind, Const, ConstKind};
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, AdtKind, ConstKind};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -108,12 +109,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) -> Expr {
         let enc_op = self.push_encode_operand(op);
         match kind {
-            CastKind::Pointer(PointerCast::Unsize) => {
+            CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                 match (self.operand_ty(op).kind(), ty_to.kind()) {
                     (TyKind::Ref(_, left, _), TyKind::Ref(_, right, _)) => {
                         match (left.kind(), right.kind()) {
                            (TyKind::Array(element_ty , cst), TyKind::Slice(..)) => {
-                                let vtsz = cst.kind().try_to_value().expect("Array size is not a value");
+                                let vtsz = cst.to_valtree();
                                 let sz = self.encode_valtree(&vtsz, cst.ty());
                                 let element_pointer = self.push_cast_array_to_element_pointer(enc_op, *left, *element_ty);
                                 vec![element_pointer, sz.into()].into()
@@ -160,7 +161,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     _ => fatal!(self, "Cannot encode cast from {:#?} to {:#?}", opty, ty_to),
                 }
             }
-            CastKind::Pointer(k) => fatal!(
+            CastKind::PointerCoercion(k) => fatal!(
                 self,
                 "Cannot encode this kind of pointer cast yet: {:#?}, from {:#?} to {:#?}",
                 k,
@@ -174,7 +175,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             | CastKind::DynStar
             | CastKind::FloatToFloat
             | CastKind::FloatToInt
-            | CastKind::IntToFloat => fatal!(
+            | CastKind::IntToFloat
+            | CastKind::Transmute => fatal!(
                 self,
                 "Cannot encode PointerExposeAddress and PointerFromExposedAddress yet"
             ),
@@ -195,7 +197,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         match binop {
             Add if left_ty.is_integral() && left_ty == right_ty => {
                 let max_val = left_ty.numeric_max_val(self.tcx()).unwrap();
-                let max_val = self.encode_const(&max_val);
+                let max_val = self.encode_ty_const(max_val);
                 let temp = self.temp_var();
                 self.push_cmd(runtime::checked_add(
                     temp.clone(),
@@ -253,51 +255,48 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn encode_constant(&self, constant: &mir::Constant<'tcx>) -> Literal {
-        self.encode_constant_kind(&constant.literal)
-    }
-
-    pub fn encode_constant_kind(&self, ckind: &mir::ConstantKind<'tcx>) -> Literal {
-        match ckind {
-            ConstantKind::Ty(cst) => self.encode_const(cst),
-            ConstantKind::Val(val, ty) => self.encode_value(val, *ty),
-            ConstantKind::Unevaluated(..) => fatal!(self, "Can't encode unevaluated constants yet"),
+    pub fn encode_constant(&self, constant: &mir::ConstOperand<'tcx>) -> Literal {
+        match constant.const_ {
+            Const::Ty(cst) => self.encode_ty_const(cst),
+            Const::Val(val, ty) => self.encode_value(val, ty),
+            Const::Unevaluated(..) => fatal!(self, "Can't encode unevaluated constants yet"),
         }
     }
 
-    pub fn encode_value(&self, val: &ConstValue<'tcx>, ty: Ty<'tcx>) -> Literal {
+    pub fn encode_value(&self, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Literal {
         if Self::const_value_is_zst(val) {
             return self.zst_value_of_type(ty);
         };
         match val {
-            ConstValue::ByRef {
-                alloc: _,
+            ConstValue::Indirect {
+                alloc_id: _,
                 offset: _,
             } => match ty.kind() {
-                TyKind::Tuple(..) => {
-                    let contents = self.tcx().destructure_mir_constant(
-                        ty::ParamEnv::reveal_all(),
-                        ConstantKind::Val(*val, ty),
-                    );
-                    let fields: Vec<Literal> = contents
-                        .fields
-                        .iter()
-                        .map(|x| self.encode_constant_kind(x))
-                        .collect();
-                    // let mut curr_offset = offset;
-                    fields.into()
-                }
-                _ => fatal!(self, "Cannot encode ByRef value yet"),
+                // TyKind::Tuple(..) => {
+                //     let ty_const = self.tcx().eval_to_valtree(ty::ParamEnvAnd { param_env:ParamEnv::(), value: () })
+                //     let constant = self
+                //         .tcx()
+                //         .mk_ct_from_kind(ConstKind::Value(val.to_valtree()), ty);
+                //     let contents = self.tcx().destructure_const(ConstantKind::Val(*val, ty));
+                //     let fields: Vec<Literal> = contents
+                //         .fields
+                //         .iter()
+                //         .map(|x| self.encode_constant_kind(x))
+                //         .collect();
+                //     // let mut curr_offset = offset;
+                //     fields.into()
+                // }
+                _ => fatal!(self, "Cannot encode Indirect value yet: {:?}", val),
             },
             ConstValue::Scalar(Scalar::Int(scalar_int)) => {
-                self.encode_valtree(&ValTree::Leaf(*scalar_int), ty)
+                self.encode_valtree(&ValTree::Leaf(scalar_int), ty)
             }
             ConstValue::ZeroSized => self.zst_value_of_type(ty),
             _ => fatal!(self, "Cannot encode value yet: {:#?}", val),
         }
     }
 
-    pub fn encode_const(&self, cst: &Const<'tcx>) -> Literal {
+    pub fn encode_ty_const(&self, cst: ty::Const<'tcx>) -> Literal {
         match cst.kind() {
             ConstKind::Value(vt) => self.encode_valtree(&vt, cst.ty()),
             // Const {

@@ -31,7 +31,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 expected,
                 msg: _,
                 target,
-                cleanup: _,
+                unwind: _,
             } => {
                 let msg = "Ugly assert message for now".to_string();
                 let cond = self.push_encode_operand(op);
@@ -40,11 +40,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(assert_call);
                 self.push_cmd(Cmd::Goto(bb_label(*target)));
             }
-            TerminatorKind::SwitchInt {
-                discr,
-                switch_ty,
-                targets,
-            } => {
+            TerminatorKind::SwitchInt { discr, targets } => {
+                let switch_ty = self.operand_ty(discr);
                 let discr_expr = self.push_encode_operand(discr);
                 if switch_ty.is_bool() {
                     // We maintain the boolean abstraction, so we can't do a "normal" switch int.
@@ -93,21 +90,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
             TerminatorKind::Drop { place, target, .. } => {
                 log::warn!("Not handling drop properly yet: {:?}", place);
-                let goto = Cmd::Goto(bb_label(*target));
-                self.push_cmd(goto);
-            }
-            TerminatorKind::DropAndReplace {
-                place,
-                value,
-                target,
-                unwind: _,
-            } => {
-                log::warn!(
-                    "Not handling the drop part of DropAndReplace yet: {:?}",
-                    place
-                );
-                let compiled_operand = self.push_encode_operand(value);
-                self.push_place_write(*place, compiled_operand, self.operand_ty(value));
                 let goto = Cmd::Goto(bb_label(*target));
                 self.push_cmd(goto);
             }

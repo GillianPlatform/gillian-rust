@@ -1,9 +1,6 @@
 use crate::prelude::*;
 
-use rustc_middle::{
-    mir::Place,
-    ty::{ProjectionTy, Ty},
-};
+use rustc_middle::{mir::Place, ty::Ty};
 use rustc_span::Symbol;
 
 use gillian::gil::Expr;
@@ -52,12 +49,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         //     .tcx
         //     .trait_of_item(repr_ty_id)
         //     .expect("Ty is not in a trait??");
-        let t_subst = self.tcx().intern_substs(&[ty.into()]);
+        let t_subst = self.tcx().mk_args(&[ty.into()]);
         // let trait_ref = Binder::dummy(TraitRef::new(trait_id, t_subst));
-        let associated_type = self.tcx().mk_ty(TyKind::Projection(ProjectionTy {
-            substs: t_subst,
-            item_def_id: repr_ty_id,
-        }));
+        let associated_type = self.tcx().mk_ty_from_kind(TyKind::Alias(
+            rustc_type_ir::AliasKind::Projection,
+            self.tcx().mk_alias_ty(repr_ty_id, t_subst),
+        ));
         self.push_alloc_prophecy(associated_type)
     }
 }

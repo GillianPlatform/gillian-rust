@@ -2,10 +2,12 @@
 
 extern crate rustc_driver;
 extern crate rustc_interface;
+extern crate rustc_session;
 
 use std::process::Command;
 
 use lib_rtg::*;
+use rustc_session::{config::ErrorOutputType, EarlyErrorHandler};
 
 fn sysroot_path() -> String {
     let toolchain: toml::Value = toml::from_str(include_str!("../../rust-toolchain.toml")).unwrap();
@@ -24,10 +26,11 @@ fn sysroot_path() -> String {
 }
 
 fn main() {
+    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
     // TODO: Custom ICE hook
-    rustc_driver::install_ice_hook();
+    rustc_driver::install_ice_hook("https://github.com/GillianPlatform/rust-to-gil", |_| ());
 
-    rustc_driver::init_rustc_env_logger();
+    rustc_driver::init_rustc_env_logger(&handler);
 
     let mut args: Vec<_> = std::env::args().collect();
 

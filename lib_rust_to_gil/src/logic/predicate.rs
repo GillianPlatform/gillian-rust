@@ -14,16 +14,14 @@ use crate::{
     utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
-use rustc_ast::{Lit, LitKind, MacArgs, MacArgsEq, StrStyle};
+use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 
 use rustc_middle::{
-    mir::{
-        interpret::{ConstValue, Scalar},
-        BinOp, BorrowKind, Field,
-    },
+    mir::{interpret::Scalar, BinOp, BorrowKind},
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtKind, WithOptConstParam},
+    ty::AdtKind,
 };
+use rustc_target::abi::FieldIdx;
 
 pub(crate) struct PredSig {
     pub name: String,
@@ -113,9 +111,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         )
         .expect("Predicate must have an ins attribute");
 
-        let str_arg = if let MacArgs::Eq(
+        let str_arg = if let AttrArgs::Eq(
             _,
-            MacArgsEq::Hir(Lit {
+            AttrArgsEq::Hir(MetaItemLit {
                 kind: LitKind::Str(sym, StrStyle::Cooked),
                 ..
             }),
@@ -359,13 +357,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 variant_index,
                 fields,
                 base,
-                substs: _,
+                args: _,
                 user_ty: _,
             }) => {
                 if base.is_some() {
                     fatal!(self, "Illegal base in logic ADT expression")
                 }
-                let mut fields_with_idx: Vec<(Field, GExpr)> = fields
+                let mut fields_with_idx: Vec<(FieldIdx, GExpr)> = fields
                     .iter()
                     .map(|f| (f.name, self.compile_expression(f.expr, thir)))
                     .collect();
@@ -384,10 +382,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::NamedConst {
                 def_id,
-                substs,
+                args,
                 user_ty: _,
             } => {
-                if !substs.is_empty() {
+                if !args.is_empty() {
                     fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id);
                 };
                 let cst = self.tcx().const_eval_poly(*def_id).unwrap_or_else(|_| {
@@ -560,8 +558,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         TyKind::FnDef(did, subst) => (
                             did,
                             self.tcx()
-                                .bound_fn_sig(*did)
-                                .subst(self.tcx(), subst)
+                                .fn_sig(*did)
+                                .instantiate(self.tcx(), subst)
                                 .output()
                                 .skip_binder(),
                         ),
@@ -840,7 +838,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 // That is the only thing we need here.
                                 let (_, substs) = self.resolve_candidate(
                                     def_id,
-                                    self.tcx().intern_substs(&[inner_ty.into()]),
+                                    self.tcx().mk_args(&[inner_ty.into()]),
                                 );
                                 (name, substs)
                             } else {

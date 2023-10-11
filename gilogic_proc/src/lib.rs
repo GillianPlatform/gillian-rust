@@ -1,3 +1,4 @@
+#![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![feature(register_tool)]
 #![register_tool(gillian)]

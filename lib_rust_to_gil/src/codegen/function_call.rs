@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::utils::polymorphism::HasGenericLifetimes;
 use names::bb_label;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::SubstsRef;
+use rustc_middle::ty::{GenericArg, GenericArgsRef};
 
 use super::typ_encoding::lifetime_param_name;
 
@@ -16,7 +16,7 @@ enum Shim {
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    fn shim(&self, did: DefId, substs: SubstsRef<'tcx>, arg_tys: &[Ty<'tcx>]) -> Option<Shim> {
+    fn shim(&self, did: DefId, substs: GenericArgsRef<'tcx>, arg_tys: &[Ty<'tcx>]) -> Option<Shim> {
         // The matching should probably be perfomed on the `def_path`
         // instead of the `def_path_str`.
         // This is a quick hack for now.
@@ -52,12 +52,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             }
             "gilogic::Ownable::own_____unfold" => {
-                let arg_tys = self
-                    .tcx()
-                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(arg_tys));
+                let generic_args: Vec<GenericArg<'_>> =
+                    arg_tys.iter().map(|x| (*x).into()).collect();
+                let arg_tys = self.tcx().mk_args(&generic_args);
                 let name = self
                     .tcx()
-                    .def_path_str_with_substs(did, arg_tys)
+                    .def_path_str_with_args(did, arg_tys)
                     .strip_suffix("_____unfold")
                     .unwrap()
                     .to_string();
@@ -65,12 +65,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
 
             "gilogic::Ownable::own_____fold" => {
-                let arg_tys = self
-                    .tcx()
-                    .intern_substs(rustc_middle::ty::subst::ty_slice_as_generic_args(arg_tys));
+                let generic_args: Vec<GenericArg<'_>> =
+                    arg_tys.iter().map(|x| (*x).into()).collect();
+                let arg_tys = self.tcx().mk_args(&generic_args);
                 let name = self
                     .tcx()
-                    .def_path_str_with_substs(did, arg_tys)
+                    .def_path_str_with_args(did, arg_tys)
                     .strip_suffix("_____fold")
                     .unwrap()
                     .to_string();
@@ -111,7 +111,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let own_pred_call = Assertion::Pred {
             name: own_pred_name,
             params: generic_args
-                .chain([pointee, Expr::LVar(new_repr.clone())].into_iter())
+                .chain([pointee, Expr::LVar(new_repr.clone())])
                 .collect(),
         };
         let asrt_cmd = Cmd::slcmd(SLCmd::SepAssert {
@@ -189,7 +189,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .iter()
                 .map(|x| self.push_encode_operand(x))
                 .collect::<Vec<_>>();
-            let ty_of_ctor = self.tcx().fn_sig(def_id).output().skip_binder();
+            let ty_of_ctor = self
+                .tcx()
+                .fn_sig(def_id)
+                .instantiate(self.tcx(), substs)
+                .output()
+                .skip_binder();
             if ty_of_ctor.is_enum() {
                 let def = ty_of_ctor.ty_adt_def().unwrap();
                 let idx = def.variant_index_with_ctor_id(def_id);
@@ -218,7 +223,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
                 .expect("You need to import gilogic");
             let (_, substs) =
-                self.resolve_candidate(own_did, self.tcx().intern_substs(&[inner_ty.into()]));
+                self.resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]));
             let mut gil_args = vec![Expr::PVar(lifetime_param_name(
                 &self.generic_lifetimes()[0],
             ))];

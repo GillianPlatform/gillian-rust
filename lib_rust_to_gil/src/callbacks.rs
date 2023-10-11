@@ -18,11 +18,11 @@ impl ToGil {
 impl Callbacks for ToGil {
     fn config(&mut self, config: &mut rustc_interface::Config) {
         let _ = self.opts;
-        config.override_queries = Some(|_sess, providers, _external_providers| {
-            providers.mir_built = |tcx, def_id| {
+        config.override_queries = Some(|_sess, providers| {
+            providers.mir_built = |tcx, def_id: rustc_span::def_id::LocalDefId| {
                 let mir = (rustc_interface::DEFAULT_QUERY_PROVIDERS.mir_built)(tcx, def_id);
                 let mut mir = mir.steal();
-                cleanup_logic(tcx, def_id.def_id_for_type_of(), &mut mir);
+                cleanup_logic(tcx, def_id.to_def_id(), &mut mir);
                 tcx.alloc_steal_mir(mir)
             }
         })
@@ -34,8 +34,7 @@ impl Callbacks for ToGil {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         compiler.session().abort_if_errors();
-        queries.prepare_outputs().unwrap();
-        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+        queries.global_ctxt().unwrap().enter(|tcx| {
             let prog = super::prog_context::ProgCtx::compile_prog(tcx, self.opts.clone());
             let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);
             log::debug!("Writing to {:#?}", &tmp_file);

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::WithOptConstParam;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
@@ -79,12 +78,7 @@ impl<'tcx> ProgCtx<'tcx> {
             rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
         let body = match self.tcx().def_kind(did) {
             DefKind::Ctor(..) => self.tcx().optimized_mir(did),
-            _ => std::cell::Ref::leak(
-                self.tcx()
-                    .mir_promoted(WithOptConstParam::unknown(did.expect_local()))
-                    .0
-                    .borrow(),
-            ),
+            _ => std::cell::Ref::leak(self.tcx().mir_promoted(did.expect_local()).0.borrow()),
         };
         let ctx = GilCtxt::new(self.tcx(), body, &mut self.global_env);
         match (pre_id, post_id) {

@@ -1,3 +1,4 @@
+#![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![feature(never_type)]
 #![feature(register_tool)]

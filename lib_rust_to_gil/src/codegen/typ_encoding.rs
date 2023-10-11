@@ -1,5 +1,8 @@
 use crate::prelude::*;
-use rustc_middle::ty::{AdtDef, Const, ConstKind, GenericArg, GenericArgKind};
+use rustc_middle::ty::{
+    AdtDef, AliasTy, Const, ConstKind, GenericArg, GenericArgKind, ParamTy, TypeAndMut,
+};
+use rustc_type_ir::{AliasKind, IntTy, UintTy};
 use serde_json::json;
 
 /// This type is use to type-check that we're indeed using a
@@ -49,10 +52,13 @@ pub trait TypeEncoder<'tcx>:
         match arg.unpack() {
             // We don't make use of Lifetime arguments for now
             GenericArgKind::Lifetime(..) => None,
-            GenericArgKind::Const(..) => fatal!(
-                self,
-                "unhandled yet: Cannot compile function with const param"
-            ),
+            GenericArgKind::Const(..) => {
+                log::warn!(
+                    "warning: Cannot compile function with const param: {:?}",
+                    arg
+                );
+                None
+            }
             GenericArgKind::Type(ty) => Some(self.serialize_type(ty)),
         }
     }
@@ -146,34 +152,36 @@ pub trait TypeEncoder<'tcx>:
         match arg.unpack() {
             // We don't make use of Lifetime arguments for now
             GenericArgKind::Lifetime(..) => None,
-            GenericArgKind::Const(..) => fatal!(
-                self,
-                "unhandled yet: Cannot compile function with const param"
-            ),
+            GenericArgKind::Const(..) => {
+                log::warn!(
+                    "warning: Cannot compile function with const param: {:?}",
+                    arg
+                );
+                None
+            }
             GenericArgKind::Type(ty) => Some(self.encode_type(ty)),
         }
     }
 
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
-        use rustc_middle::ty::*;
         match ty.kind() {
-            Never => panic!("Should not encode never for memory"),
-            Bool => "bool".into(),
-            Char => "char".into(),
-            Int(IntTy::Isize) => "isize".into(),
-            Int(IntTy::I8) => "i8".into(),
-            Int(IntTy::I16) => "i16".into(),
-            Int(IntTy::I32) => "i32".into(),
-            Int(IntTy::I64) => "i64".into(),
-            Int(IntTy::I128) => "i128".into(),
-            Uint(UintTy::Usize) => "usize".into(),
-            Uint(UintTy::U8) => "u8".into(),
-            Uint(UintTy::U16) => "u16".into(),
-            Uint(UintTy::U32) => "u32".into(),
-            Uint(UintTy::U64) => "u64".into(),
-            Uint(UintTy::U128) => "u128".into(),
+            TyKind::Never => panic!("Should not encode never for memory"),
+            TyKind::Bool => "bool".into(),
+            TyKind::Char => "char".into(),
+            TyKind::Int(IntTy::Isize) => "isize".into(),
+            TyKind::Int(IntTy::I8) => "i8".into(),
+            TyKind::Int(IntTy::I16) => "i16".into(),
+            TyKind::Int(IntTy::I32) => "i32".into(),
+            TyKind::Int(IntTy::I64) => "i64".into(),
+            TyKind::Int(IntTy::I128) => "i128".into(),
+            TyKind::Uint(UintTy::Usize) => "usize".into(),
+            TyKind::Uint(UintTy::U8) => "u8".into(),
+            TyKind::Uint(UintTy::U16) => "u16".into(),
+            TyKind::Uint(UintTy::U32) => "u32".into(),
+            TyKind::Uint(UintTy::U64) => "u64".into(),
+            TyKind::Uint(UintTy::U128) => "u128".into(),
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
-            Tuple(_) => EncodedType(
+            TyKind::Tuple(_) => EncodedType(
                 [
                     Expr::from("tuple"),
                     ty.tuple_fields()
@@ -188,7 +196,7 @@ pub trait TypeEncoder<'tcx>:
             // We'll have to change this later when we start
             // caring about the aliasing model,
             // but we don't at the moment
-            RawPtr(TypeAndMut {
+            TyKind::RawPtr(TypeAndMut {
                 ty,
                 mutbl: mutability,
             }) => {
@@ -205,7 +213,7 @@ pub trait TypeEncoder<'tcx>:
                     .into(),
                 )
             }
-            Ref(_, ty, mutability) => {
+            TyKind::Ref(_, ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
@@ -219,7 +227,7 @@ pub trait TypeEncoder<'tcx>:
                     .into(),
                 )
             }
-            Adt(def, subst) => {
+            TyKind::Adt(def, subst) => {
                 let name = self.adt_def_name(def);
                 let args: Vec<_> = subst
                     .iter()
@@ -230,8 +238,10 @@ pub trait TypeEncoder<'tcx>:
                 self.add_adt_to_genv(*def);
                 EncodedType([Expr::from("adt"), name.into(), args.into()].into())
             }
-            Slice(ty) => EncodedType([Expr::from("slice"), self.encode_type(*ty).into()].into()),
-            Array(ty, sz) => {
+            TyKind::Slice(ty) => {
+                EncodedType([Expr::from("slice"), self.encode_type(*ty).into()].into())
+            }
+            TyKind::Array(ty, sz) => {
                 let sz_i = self.array_size_value(sz);
                 EncodedType(
                     [
@@ -243,15 +253,12 @@ pub trait TypeEncoder<'tcx>:
                 )
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
-            Param(ParamTy { index, name }) => {
+            TyKind::Param(ParamTy { index, name }) => {
                 EncodedType(Expr::PVar(type_param_name(*index, *name)))
             }
-            Projection(ProjectionTy {
-                substs,
-                item_def_id,
-            }) => {
-                let name = self.tcx().item_name(*item_def_id);
-                let args: Vec<_> = substs
+            TyKind::Alias(AliasKind::Projection, AliasTy { args, def_id, .. }) => {
+                let name = self.tcx().item_name(*def_id);
+                let args: Vec<_> = args
                     .iter()
                     .filter_map(|a| self.encode_generic_arg(a))
                     .map(|a| a.0)

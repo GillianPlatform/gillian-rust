@@ -5,10 +5,7 @@ use crate::prelude::*;
 use gillian::gil::visitors::GilVisitor;
 use gillian::gil::{Assertion, Pred};
 
-use rustc_middle::{
-    thir::{ExprId, ExprKind, Thir},
-    ty::WithOptConstParam,
-};
+use rustc_middle::thir::{ExprId, ExprKind, Thir};
 
 struct ContainsPVarVisitor<'a> {
     pvar: &'a str,
@@ -137,7 +134,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                                     // That is the only thing we need here.
                                     let (_, substs) = self.resolve_candidate(
                                         *def_id,
-                                        self.tcx().intern_substs(&[inner_ty.into()]),
+                                        self.tcx().mk_args(&[inner_ty.into()]),
                                     );
                                     (name, substs)
                                 } else {

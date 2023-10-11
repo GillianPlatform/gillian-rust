@@ -1,10 +1,10 @@
 use super::predicate::PredCtx;
 use super::utils::get_thir;
 use super::LogicItem;
+use crate::prelude::*;
 use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
-use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 
 use crate::codegen::genv::HasGlobalEnv;
 use crate::codegen::typ_encoding::lifetime_param_name;
