@@ -845,9 +845,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 );
                                 (name, substs)
                             } else {
-                                log::info!("Resolving candidate for {:?} which is a {:?}", self.tcx().def_path_str(*def_id), self.tcx().def_kind());
                                 let (def_id, substs) = self.resolve_candidate(*def_id, substs);
-                                log::info!("Obtained {:?}", self.tcx().def_path_str(def_id));
                                 let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
                                     .tcx()
                                     .def_path_str(def_id));
