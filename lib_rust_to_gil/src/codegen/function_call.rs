@@ -103,9 +103,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let pointer = mutref.clone().lnth(0);
         let pcy = mutref.lnth(1);
         let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
-        let (own_instance_did, own_instance_subst) = self.global_env.get_own_pred_for(inner_ty);
-        let own_pred_name = self.tcx().def_path_str(own_instance_did);
-        let generic_args = own_instance_subst
+        let instance = self.global_env.get_own_pred_for(inner_ty);
+        let own_pred_name = self.tcx().def_path_str(instance.def_id());
+        let generic_args = instance
+            .args
             .into_iter()
             .filter_map(|arg| self.encode_generic_arg(arg).map(|x| x.into()));
         let own_pred_call = Assertion::Pred {
@@ -145,11 +146,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mutref = &args[0];
         let mutref_ty = self.operand_ty(mutref);
         let mutref = self.push_encode_operand(mutref);
-        let (resolver, subst) = self.global_env.add_resolver(mutref_ty);
+        let (resolver, args) = self.global_env.add_resolver(mutref_ty);
         let parameters: Vec<_> = std::iter::once(lft_param)
             .chain(
-                subst
-                    .iter()
+                args.iter()
                     .filter_map(|arg| self.encode_generic_arg(arg).map(|x| x.into())),
             )
             .chain(std::iter::once(mutref))
@@ -222,12 +222,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .tcx()
                 .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
                 .expect("You need to import gilogic");
-            let (_, substs) =
-                self.resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]));
+            let instance = self.resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]));
             let mut gil_args = vec![Expr::PVar(lifetime_param_name(
                 &self.generic_lifetimes()[0],
             ))];
-            for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
+            for tyarg in instance
+                .args
+                .iter()
+                .filter_map(|a| self.encode_generic_arg(a))
+            {
                 gil_args.push(tyarg.into())
             }
             for arg in args {

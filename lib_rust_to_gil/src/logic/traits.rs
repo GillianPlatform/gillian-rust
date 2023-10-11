@@ -13,24 +13,16 @@ use rustc_trait_selection::traits::{translate_args, SelectionContext, TraitEngin
 pub trait TraitSolver<'tcx> {
     // Returns Some if there is an implementation that was found (ImplSource::UserDefined or not a trait member),
     // and None if it's a parameter. (ImplSource::Param)
-    fn resolve_candidate(
-        &self,
-        def_id: DefId,
-        substs: GenericArgsRef<'tcx>,
-    ) -> (DefId, GenericArgsRef<'tcx>);
+    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> Instance<'tcx>;
 
     fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Ty<'tcx>;
 }
 
 impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
-    fn resolve_candidate(
-        &self,
-        def_id: DefId,
-        substs: GenericArgsRef<'tcx>,
-    ) -> (DefId, GenericArgsRef<'tcx>) {
+    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> Instance<'tcx> {
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
-            None => (def_id, substs),
+            None => Instance::new(def_id, substs),
             Some(trait_id) => {
                 log::debug!(
                     "Resolving candidate for trait {:?}",
@@ -96,7 +88,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                             substs,
                             leaf_def.defining_node,
                         );
-                        (leaf_def.item.def_id, substs)
+                        Instance::new(leaf_def.item.def_id, substs)
                     }
                     _ => fatal!(self, "unsupported param source!"),
                 }

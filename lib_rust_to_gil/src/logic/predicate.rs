@@ -638,7 +638,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             let right = Box::new(self.compile_expression(args[1], thir));
                             Formula::ILessEq { left, right }
                         } else {
-                            fatal!(self, "Used <= in formula for unknown type: {}", ty);
+                            fatal!(self, "Used <= in formula for unknown type: {}", ty)
                         }
                     }
                     Some(Stubs::FormulaLess) => {
@@ -649,11 +649,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             let right = Box::new(self.compile_expression(args[1], thir));
                             Formula::ILess { left, right }
                         } else {
-                            fatal!(self, "Used < in formula for unknown type: {}", ty);
+                            fatal!(self, "Used < in formula for unknown type: {}", ty)
                         }
                     }
                     _ => {
-                        fatal!(self, "{:?} unsupported call in formula", expr);
+                        fatal!(self, "{:?} unsupported call in formula", expr)
                     }
                 }
             }
@@ -836,17 +836,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
                                 // We use the subst of the own predicate for the inner type.
                                 // That is the only thing we need here.
-                                let (_, substs) = self.resolve_candidate(
+                                let instance = self.resolve_candidate(
                                     def_id,
                                     self.tcx().mk_args(&[inner_ty.into()]),
                                 );
-                                (name, substs)
+                                (name, instance.args)
                             } else {
-                                let (def_id, substs) = self.resolve_candidate(def_id, substs);
+                                let instance = self.resolve_candidate(def_id, substs);
                                 let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
                                     .tcx()
-                                    .def_path_str(def_id));
-                                (name, substs)
+                                    .def_path_str(instance.def_id()));
+                                (name, instance.args)
                             }
                         };
 

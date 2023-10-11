@@ -93,7 +93,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> (DefId, GenericArgsRef<'tcx>) {
+    pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> Instance<'tcx> {
         let symbol = crate::logic::builtins::Stubs::OwnPred.symbol(self.config.prophecies);
         let general_own = self
             .tcx()
@@ -105,13 +105,13 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
         let inner_ty = crate::utils::ty::mut_ref_inner(mutref_ty).unwrap();
-        let (_, subst) = self.get_own_pred_for(inner_ty);
+        let instance = self.get_own_pred_for(inner_ty);
         let mutref_own_name = format!("<{} as gilogic::prophecies::Ownable>::own", mutref_ty);
         let name = format!("{}::$resolver", mutref_ty);
         self.encode_type(mutref_ty); // Encoding is a way to make sure that the type is recorded in the env.
         self.mut_ref_resolvers
-            .insert(mutref_ty, (name.clone(), mutref_own_name, subst));
-        (name, subst)
+            .insert(mutref_ty, (name.clone(), mutref_own_name, instance.args));
+        (name, instance.args)
     }
 
     pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
@@ -187,7 +187,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .get_diagnostic_item(symbol)
                 .expect("Could not find gilogic::Ownable");
             let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
-            let (own_instance_did, own_instance_subst) = self.resolve_candidate(own, subst);
+            let instance = self.resolve_candidate(own, subst);
             let slf = Expr::PVar("self".to_string());
             let pointer = slf.clone().lnth(0);
             let pointee = Expr::LVar("#value".to_string());
@@ -196,12 +196,12 @@ impl<'tcx> GlobalEnv<'tcx> {
                 core_preds::value(pointer, self.encode_type(*inner_ty), pointee.clone());
             let controller =
                 core_preds::controller(slf.lnth(1), self.encode_type(*repr_ty), repr.clone());
-            let params = own_instance_subst.iter().enumerate().map(|(i, k)| {
+            let params = instance.args.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
             });
             let own_call = Assertion::Pred {
-                name: self.tcx().def_path_str(own_instance_did),
+                name: self.tcx().def_path_str(instance.def_id()),
                 params: params
                     .clone()
                     .map(Expr::PVar)
@@ -246,11 +246,11 @@ impl<'tcx> GlobalEnv<'tcx> {
                 TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
                 _ => unreachable!("Something that isn't a mutref was added to the mutrefs in genv"),
             };
-            let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
+            let old_subst = self.tcx().mk_args(&[(*inner_ty).into()]);
 
-            let (did, subst) = self.resolve_candidate(own, subst);
+            let instance = self.resolve_candidate(own, old_subst);
             let generic_params = std::iter::once(("lft".to_string(), None)).chain(
-                subst.iter().enumerate().map(|(i, k)| {
+                instance.args.iter().enumerate().map(|(i, k)| {
                     let name = k.to_string();
                     let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
                     (name, None)
@@ -260,7 +260,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .clone()
                 .chain([("self".to_string(), Some(Type::ListType))].into_iter())
                 .collect();
-            let mut num_params = subst.len() + 2;
+            let mut num_params = instance.args.len() + 2;
 
             let slf: Expr = Expr::PVar("self".to_string());
             let (definitions, guard) = if self.config.prophecies {
@@ -315,7 +315,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .chain(std::iter::once(v))
                     .collect();
                 let own = Assertion::Pred {
-                    name: self.tcx().def_path_str(did),
+                    name: self.tcx().def_path_str(instance.def_id()),
                     params,
                 };
                 let guard = crate::logic::core_preds::alive_lft(Expr::PVar("lft".to_string()));

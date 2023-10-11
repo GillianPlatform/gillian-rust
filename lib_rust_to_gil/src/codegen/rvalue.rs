@@ -268,26 +268,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             return self.zst_value_of_type(ty);
         };
         match val {
-            ConstValue::Indirect {
-                alloc_id: _,
-                offset: _,
-            } => match ty.kind() {
-                // TyKind::Tuple(..) => {
-                //     let ty_const = self.tcx().eval_to_valtree(ty::ParamEnvAnd { param_env:ParamEnv::(), value: () })
-                //     let constant = self
-                //         .tcx()
-                //         .mk_ct_from_kind(ConstKind::Value(val.to_valtree()), ty);
-                //     let contents = self.tcx().destructure_const(ConstantKind::Val(*val, ty));
-                //     let fields: Vec<Literal> = contents
-                //         .fields
-                //         .iter()
-                //         .map(|x| self.encode_constant_kind(x))
-                //         .collect();
-                //     // let mut curr_offset = offset;
-                //     fields.into()
-                // }
-                _ => fatal!(self, "Cannot encode Indirect value yet: {:?}", val),
-            },
             ConstValue::Scalar(Scalar::Int(scalar_int)) => {
                 self.encode_valtree(&ValTree::Leaf(scalar_int), ty)
             }
