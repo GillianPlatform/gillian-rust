@@ -1,10 +1,12 @@
 [workspace]
 
+resolver = "2"
+
 members = [
   "lib_rust_to_gil",
   "gillian",
   "rust_to_gil",
   "gilogic_proc",
   "gilogic",
-  "creusillian"
+  "creusillian",
 ]

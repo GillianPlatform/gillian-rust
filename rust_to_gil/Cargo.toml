@@ -3,7 +3,7 @@ name = "rust_to_gil"
 version = "0.1.0"
 authors = ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
 description = "Library of a compiler from Rust to GIL, for analysis with Gillian"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
