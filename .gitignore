@@ -4,3 +4,4 @@
 output
 lib
 rustc-ice-*
+open_doc.sh
