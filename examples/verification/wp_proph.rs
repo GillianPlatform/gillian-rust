@@ -42,19 +42,19 @@ fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *m
     )
 }
 
-#[lemma]
-#[requires(|model, pcy|  p.own((model, pcy)))]
-#[ensures(|x, y|
-    (pcy == p.prophecy().value()) *
-    observer(p.prophecy(), model) *
-    wp_ref_mut_inner_xy(p, x, y)
-)]
-fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
+// #[lemma]
+// #[requires(|model, pcy|  p.own((model, pcy)))]
+// #[ensures(|x, y|
+//     (pcy == p.prophecy().value()) *
+//     observer(p.prophecy(), model) *
+//     wp_ref_mut_inner_xy(p, x, y)
+// )]
+// fn wp_ref_mut_pull_xy<'a, T: Ownable>(p: &'a mut WP<T>);
 
-#[lemma]
-#[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_inner_xy(p, x, y))]
-#[ensures(|r: &mut T, rp: &mut T| (r == &mut (*x).v) * Ownable::ref_mut_inner(r.with_prophecy(k)))]
-fn split_x<'a, T: Ownable>(p: &'a mut WP<T>, k: Prophecy<T::RepresentationTy>);
+// #[lemma]
+// #[requires(|x: *mut N<T>, y: *mut N<T>| wp_ref_mut_inner_xy(p, x, y))]
+// #[ensures(|r: &mut T, rp: &mut T| (r == &mut (*x).v) * Ownable::ref_mut_inner(r.with_prophecy(k)))]
+// fn split_x<'a, T: Ownable>(p: &'a mut WP<T>, k: Prophecy<T::RepresentationTy>);
 
 impl<T: Ownable> Ownable for WP<T> {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);

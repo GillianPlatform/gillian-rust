@@ -32,7 +32,10 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         match tcx.trait_of_item(def_id) {
             None => (def_id, substs),
             Some(trait_id) => {
-                log::debug!("Resolving candidate for trait {:?}", trait_id);
+                log::debug!(
+                    "Resolving candidate for trait {:?}",
+                    self.tcx().def_path_str_with_args(trait_id, substs)
+                );
                 // FIXME:
                 // The following is extremely disgusting and will be cleaned up and factored out as soon as possible.
                 // But right now it works and I have priorities.
@@ -52,7 +55,11 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                 let selection = match select_ctx.select(&obligation) {
                     Ok(Some(selection)) => selection,
                     Ok(None) => panic!("Ambiguous!"),
-                    Err(Unimplemented) => panic!("Unimplemented!"),
+                    Err(Unimplemented) => fatal!(
+                        self,
+                        "Got unimplemented when resolving {:?}",
+                        self.tcx().def_path_str_with_args(def_id, substs)
+                    ),
                     Err(e) => panic!("Error: {:?}", e),
                 };
                 let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infer_ctx);
@@ -71,7 +78,12 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                             .unwrap()
                             .leaf_def(tcx, assoc.def_id)
                             .unwrap_or_else(|| {
-                                panic!("{:?} not found in {:?}", assoc, impl_data.impl_def_id);
+                                fatal!(
+                                    self,
+                                    "{:?} not found in {:?}",
+                                    assoc,
+                                    impl_data.impl_def_id
+                                );
                             });
                         let infer_ctx = tcx.infer_ctxt().build();
 
@@ -112,7 +124,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         let selection = match select_ctx.select(&obligation) {
             Ok(Some(selection)) => selection,
             Ok(None) => panic!("Ambiguous!"),
-            Err(Unimplemented) => panic!("Unimplemented!"),
+            Err(Unimplemented) => fatal!(self, "Unimplemented trait!"),
             Err(e) => panic!("Error: {:?}", e),
         };
         let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infer_ctx);

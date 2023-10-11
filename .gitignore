@@ -3,3 +3,4 @@
 *.DS_Store
 output
 lib
+rustc-ice-*
