@@ -5,16 +5,49 @@ use rustc_data_structures::sync::HashMapExt;
 use rustc_middle::ty::{AdtDef, ReprOptions, SubstsRef};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hash;
 
 use super::typ_encoding::type_param_name;
+
+struct QueueOnce<K> {
+    queue: VecDeque<K>,
+    done: HashSet<K>,
+}
+
+impl<T> Default for QueueOnce<T> {
+    fn default() -> Self {
+        Self {
+            queue: Default::default(),
+            done: Default::default(),
+        }
+    }
+}
+
+impl<T> QueueOnce<T>
+where
+    T: Eq + Hash + Clone,
+{
+    fn push(&mut self, v: T) {
+        if !(self.done.contains(&v) || self.queue.contains(&v)) {
+            self.queue.push_back(v);
+        }
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        let elem = self.queue.pop_front();
+        if let Some(elem) = &elem {
+            self.done.insert(elem.clone());
+        }
+        elem
+    }
+}
 
 pub struct GlobalEnv<'tcx> {
     // Things that are global to compilation
     tcx: TyCtxt<'tcx>,
     pub config: Config,
     /// The types that should be encoded for the GIL global env
-    types_in_queue: VecDeque<AdtDef<'tcx>>,
-    encoded_adts: HashSet<AdtDef<'tcx>>,
+    adt_queue: QueueOnce<AdtDef<'tcx>>,
     mut_ref_owns: HashMap<Ty<'tcx>, String>,
     mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>,
     mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, SubstsRef<'tcx>)>,
@@ -29,23 +62,24 @@ impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {
-    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
-        self.add_adt(def);
-    }
+pub trait HasGlobalEnv<'tcx> {
+    fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx>;
+}
 
-    fn adt_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did()).to_string()
+impl<'tcx> HasGlobalEnv<'tcx> for GlobalEnv<'tcx> {
+    fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
+        self
     }
 }
+
+impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {}
 
 impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
             config,
             tcx,
-            types_in_queue: Default::default(),
-            encoded_adts: Default::default(),
+            adt_queue: Default::default(),
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             mut_ref_resolvers: Default::default(),
@@ -369,7 +403,6 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     // Panics if not called with an ADT
     fn serialize_adt_decl(&mut self, def: AdtDef<'tcx>) -> (String, serde_json::Value) {
-        self.encoded_adts.insert(def);
         if def.is_struct() {
             let name = self.tcx.item_name(def.did()).to_string();
             let fields: Vec<serde_json::Value> = def
@@ -411,10 +444,8 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    pub fn add_adt(&mut self, def: AdtDef<'tcx>) {
-        if !(self.encoded_adts.contains(&def) || self.types_in_queue.contains(&def)) {
-            self.types_in_queue.push_back(def);
-        }
+    pub fn register_adt(&mut self, def: AdtDef<'tcx>) {
+        self.adt_queue.push(def);
     }
 
     // This takes a self, because it's the last thing that should be done with the global env.
@@ -423,9 +454,8 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
         use serde_json::{Map, Value};
         let mut obj: Map<String, Value> = Map::new();
-        while !self.types_in_queue.is_empty() {
-            let ty = self.types_in_queue.pop_front().unwrap();
-            let (name, ser_decl) = self.serialize_adt_decl(ty);
+        while let Some(adt) = self.adt_queue.pop() {
+            let (name, ser_decl) = self.serialize_adt_decl(adt);
             let previous_entry = obj.insert(name.clone(), ser_decl.clone());
             if let Some(previous_entry) = previous_entry {
                 if previous_entry != ser_decl {

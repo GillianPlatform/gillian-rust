@@ -8,6 +8,8 @@ use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{translate_substs, SelectionContext, TraitEngineExt};
 
 pub trait TraitSolver<'tcx> {
+    // Returns Some if there is an implementation that was found (ImplSource::UserDefined or not a trait member),
+    // and None if it's a parameter. (ImplSource::Param)
     fn resolve_candidate(&self, def_id: DefId, substs: SubstsRef<'tcx>)
         -> (DefId, SubstsRef<'tcx>);
 
@@ -20,7 +22,6 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> (DefId, SubstsRef<'tcx>) {
-        log::debug!("Resolving candidate for {:?}<{:?}>", def_id, substs);
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
             None => (def_id, substs),
@@ -78,13 +79,9 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                             substs,
                             leaf_def.defining_node,
                         );
-                        let leaf_substs = infer_ctx.tcx.erase_regions(substs);
-                        (leaf_def.item.def_id, leaf_substs)
+                        (leaf_def.item.def_id, substs)
                     }
-                    _ => {
-                        log::debug!("Unhandled Implementation source {:?}", impl_source);
-                        unimplemented!()
-                    }
+                    _ => fatal!(self, "unsupported param source!"),
                 }
             }
         }

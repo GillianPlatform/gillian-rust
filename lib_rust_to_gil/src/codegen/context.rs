@@ -31,6 +31,14 @@ impl<'tcx, 'body> HasDefId for GilCtxt<'tcx, 'body> {
     }
 }
 
+impl<'tcx, 'body> HasGlobalEnv<'tcx> for GilCtxt<'tcx, 'body> {
+    fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
+        self.global_env
+    }
+}
+
+impl<'tcx> TypeEncoder<'tcx> for GilCtxt<'tcx, '_> {}
+
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
         ty_ctxt: TyCtxt<'tcx>,

@@ -4,8 +4,9 @@ use super::LogicItem;
 use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
-use rustc_middle::ty::{AdtDef, TyCtxt, WithOptConstParam};
+use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 
+use crate::codegen::genv::HasGlobalEnv;
 use crate::codegen::typ_encoding::lifetime_param_name;
 use crate::temp_gen::TempGenerator;
 use crate::utils::polymorphism::HasGenericLifetimes;
@@ -42,18 +43,15 @@ impl HasDefId for LemmaCtx<'_, '_> {
     }
 }
 
-impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
-impl<'tcx> HasGenericLifetimes<'tcx> for LemmaCtx<'tcx, '_> {}
-
-impl<'tcx, 'genv> TypeEncoder<'tcx> for LemmaCtx<'tcx, 'genv> {
-    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
-        self.global_env.add_adt(def);
-    }
-
-    fn adt_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did()).to_string()
+impl<'tcx> HasGlobalEnv<'tcx> for LemmaCtx<'tcx, '_> {
+    fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
+        self.global_env
     }
 }
+
+impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
+impl<'tcx> HasGenericLifetimes<'tcx> for LemmaCtx<'tcx, '_> {}
+impl<'tcx> TypeEncoder<'tcx> for LemmaCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub fn new(
@@ -148,7 +146,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 .iter()
                 .map(|x| Expr::PVar(x.0.clone()))
                 .collect();
-            let mut pre_call_params = pre_true_vars.clone();
+            let mut pre_call_params = pre_true_vars;
             pre_call_params.extend(pvars_pre.iter().map(|x| Expr::LVar(format!("#{}", x))));
 
             let pre_call = (proof_pre.name.clone(), pre_call_params);

@@ -27,9 +27,16 @@ pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
 }
 
-pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
-    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>);
-    fn adt_def_name(&self, def: &AdtDef) -> String;
+pub trait TypeEncoder<'tcx>:
+    crate::utils::tcx_utils::HasTyCtxt<'tcx> + crate::codegen::genv::HasGlobalEnv<'tcx>
+{
+    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
+        self.global_env_mut().register_adt(def);
+    }
+
+    fn adt_def_name(&self, def: &AdtDef) -> String {
+        self.tcx().item_name(def.did()).to_string()
+    }
 
     fn array_size_value(&self, sz: &Const) -> i128 {
         match sz.kind() {
@@ -253,15 +260,5 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> {
             }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }
-    }
-}
-
-impl<'tcx, 'body> TypeEncoder<'tcx> for GilCtxt<'tcx, 'body> {
-    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
-        self.global_env.add_adt(def);
-    }
-
-    fn adt_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did()).to_string()
     }
 }

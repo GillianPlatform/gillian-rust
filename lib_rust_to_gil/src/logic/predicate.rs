@@ -22,7 +22,7 @@ use rustc_middle::{
         BinOp, BorrowKind, Field,
     },
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtDef, AdtKind, WithOptConstParam},
+    ty::{AdtKind, WithOptConstParam},
 };
 
 pub(crate) struct PredSig {
@@ -46,20 +46,19 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
 impl<'tcx> HasGenericLifetimes<'tcx> for PredCtx<'tcx, '_> {}
 
-impl<'tcx, 'genv> TypeEncoder<'tcx> for PredCtx<'tcx, 'genv> {
-    fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
-        self.global_env.add_adt(def);
-    }
-
-    fn adt_def_name(&self, def: &AdtDef) -> String {
-        self.tcx.item_name(def.did()).to_string()
+impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
+    fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
+        self.global_env
     }
 }
+
 impl<'tcx> HasTyCtxt<'tcx> for PredCtx<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
+
+impl<'tcx> TypeEncoder<'tcx> for PredCtx<'tcx, '_> {}
 
 impl HasDefId for PredCtx<'_, '_> {
     fn did(&self) -> DefId {
@@ -822,7 +821,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 }
                 _ => {
                     let (def_id, substs) = match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (def_id, substs),
+                        TyKind::FnDef(def_id, substs) => (*def_id, substs),
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
 
@@ -830,9 +829,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let (name, substs) = {
                             if (self.tcx().is_diagnostic_item(
                                 Symbol::intern("gillian::pcy::ownable::own"),
-                                *def_id,
+                                def_id,
                             ) ||
-                            self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), *def_id)
+                            self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), def_id)
                             ) && ty_utils::is_mut_ref(arg_ty)
                             {
                                 let name = self.global_env.add_mut_ref_own(arg_ty);
@@ -840,12 +839,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 // We use the subst of the own predicate for the inner type.
                                 // That is the only thing we need here.
                                 let (_, substs) = self.resolve_candidate(
-                                    *def_id,
+                                    def_id,
                                     self.tcx().intern_substs(&[inner_ty.into()]),
                                 );
                                 (name, substs)
                             } else {
-                                let (def_id, substs) = self.resolve_candidate(*def_id, substs);
+                                let (def_id, substs) = self.resolve_candidate(def_id, substs);
                                 let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
                                     .tcx()
                                     .def_path_str(def_id));
@@ -857,12 +856,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     {
                         let self_lifetimes = self.generic_lifetimes();
                         let callee_lifetimes =
-                            if (self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), *def_id)
-                                || self.tcx().is_diagnostic_item(Symbol::intern("gillian::pcy::ownable::own"), *def_id) )
+                            if (self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), def_id)
+                                || self.tcx().is_diagnostic_item(Symbol::intern("gillian::pcy::ownable::own"), def_id) )
                                && ty_utils::is_mut_ref(arg_ty) {
                             vec!["a".to_string()]
                         } else {
-                            (*def_id, self.tcx()).generic_lifetimes()
+                            (def_id, self.tcx()).generic_lifetimes()
                         };
                         if self_lifetimes.len() == 1 && callee_lifetimes.len() == 1 {
                             params.push(Expr::PVar(lifetime_param_name(&self_lifetimes[0])));
