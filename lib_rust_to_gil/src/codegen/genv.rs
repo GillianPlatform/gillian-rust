@@ -64,10 +64,16 @@ impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
 
 pub trait HasGlobalEnv<'tcx> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx>;
+
+    fn global_env(&self) -> &GlobalEnv<'tcx>;
 }
 
 impl<'tcx> HasGlobalEnv<'tcx> for GlobalEnv<'tcx> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
+        self
+    }
+
+    fn global_env(&self) -> &GlobalEnv<'tcx> {
         self
     }
 }

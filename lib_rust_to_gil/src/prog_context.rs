@@ -80,7 +80,7 @@ impl<'tcx> ProgCtx<'tcx> {
             DefKind::Ctor(..) => self.tcx().optimized_mir(did),
             _ => std::cell::Ref::leak(self.tcx().mir_promoted(did.expect_local()).0.borrow()),
         };
-        let ctx = GilCtxt::new(self.tcx(), body, &mut self.global_env);
+        let ctx = GilCtxt::new(body, &mut self.global_env);
         match (pre_id, post_id) {
             (Some(pre_id), Some(post_id)) => {
                 self.spec_tbl.insert(proc_name, (pre_id, post_id));

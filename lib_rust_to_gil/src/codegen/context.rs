@@ -9,7 +9,6 @@ use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
     locals_in_memory: HashSet<Local>,
-    pub(crate) tcx: TyCtxt<'tcx>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
     lvar_temp_counter: usize,
@@ -21,7 +20,7 @@ pub struct GilCtxt<'tcx, 'body> {
 
 impl<'tcx, 'body> HasTyCtxt<'tcx> for GilCtxt<'tcx, 'body> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.global_env.tcx()
     }
 }
 
@@ -35,18 +34,17 @@ impl<'tcx, 'body> HasGlobalEnv<'tcx> for GilCtxt<'tcx, 'body> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
         self.global_env
     }
+
+    fn global_env(&self) -> &GlobalEnv<'tcx> {
+        self.global_env
+    }
 }
 
 impl<'tcx> TypeEncoder<'tcx> for GilCtxt<'tcx, '_> {}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    pub fn new(
-        ty_ctxt: TyCtxt<'tcx>,
-        mir: &'body Body<'tcx>,
-        global_env: &'body mut GlobalEnv<'tcx>,
-    ) -> Self {
+    pub fn new(mir: &'body Body<'tcx>, global_env: &'body mut GlobalEnv<'tcx>) -> Self {
         GilCtxt {
-            tcx: ty_ctxt,
             locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,

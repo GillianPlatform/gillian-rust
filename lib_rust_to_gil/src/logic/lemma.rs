@@ -24,7 +24,6 @@ struct LemmaSig {
 }
 
 pub(crate) struct LemmaCtx<'tcx, 'genv> {
-    tcx: TyCtxt<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
     temp_gen: &'genv mut TempGenerator,
@@ -34,7 +33,7 @@ pub(crate) struct LemmaCtx<'tcx, 'genv> {
 
 impl<'tcx, 'genv> HasTyCtxt<'tcx> for LemmaCtx<'tcx, 'genv> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.global_env.tcx()
     }
 }
 
@@ -48,6 +47,10 @@ impl<'tcx> HasGlobalEnv<'tcx> for LemmaCtx<'tcx, '_> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
         self.global_env
     }
+
+    fn global_env(&self) -> &GlobalEnv<'tcx> {
+        self.global_env
+    }
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
@@ -56,7 +59,6 @@ impl<'tcx> TypeEncoder<'tcx> for LemmaCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         global_env: &'genv mut GlobalEnv<'tcx>,
         did: DefId,
         temp_gen: &'genv mut TempGenerator,
@@ -64,7 +66,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         is_extract_lemma: bool,
     ) -> Self {
         Self {
-            tcx,
             global_env,
             did,
             temp_gen,
@@ -139,7 +140,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .get_diagnostic_item(pre_name)
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
 
-                PredCtx::new(self.tcx(), self.global_env, self.temp_gen, pre_did, false)
+                PredCtx::new(self.global_env, self.temp_gen, pre_did)
                     .into_inner_of_borrow_call(name.clone() + "$$proof_pre", true)
             };
 
@@ -181,7 +182,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .get_diagnostic_item(post_name)
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
 
-                PredCtx::new(self.tcx(), self.global_env, self.temp_gen, post_did, false)
+                PredCtx::new(self.global_env, self.temp_gen, post_did)
                     .into_inner_of_borrow_call(name.clone() + "$$proof_post", false)
             };
 

@@ -32,11 +32,9 @@ pub(crate) struct PredSig {
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
-    pub tcx: TyCtxt<'tcx>,
     pub global_env: &'genv mut GlobalEnv<'tcx>,
     pub temp_gen: &'genv mut TempGenerator,
     pub did: DefId,
-    pub abstract_: bool,
     pub var_map: HashMap<LocalVarId, GExpr>,
     pub toplevel_asrts: Vec<Assertion>,
 }
@@ -48,11 +46,15 @@ impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
         self.global_env
     }
+
+    fn global_env(&self) -> &GlobalEnv<'tcx> {
+        self.global_env
+    }
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for PredCtx<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.global_env.tcx()
     }
 }
 
@@ -68,18 +70,14 @@ impl HasDefId for PredCtx<'_, '_> {
 //        that would allow to not resolve everything every time. Also, it would be reused for other logic items.
 impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
         did: DefId,
-        abstract_: bool,
     ) -> Self {
         PredCtx {
-            tcx,
             temp_gen,
             global_env,
             did,
-            abstract_,
             var_map: HashMap::new(),
             toplevel_asrts: Vec::new(),
         }
@@ -278,27 +276,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             params,
             ins,
             facts: vec![],
-            guard,
-        }
-    }
-
-    fn compile_abstract(mut self) -> Pred {
-        let PredSig {
-            name,
-            params,
-            ins,
-            facts,
-            guard,
-        } = self.sig();
-        Pred {
-            name,
-            num_params: params.len(),
-            params,
-            abstract_: true,
-            facts,
-            definitions: vec![],
-            ins,
-            pure: false,
             guard,
         }
     }
@@ -589,7 +566,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     params.push(out_var.clone());
 
                     let pred_call = Assertion::Pred {
-                        name: self.tcx.def_path_str(did),
+                        name: self.tcx().def_path_str(did),
                         params,
                     };
 
@@ -1046,7 +1023,28 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_concrete(mut self) -> Pred {
+    pub fn compile_abstract(mut self) -> Pred {
+        let PredSig {
+            name,
+            params,
+            ins,
+            facts,
+            guard,
+        } = self.sig();
+        Pred {
+            name,
+            num_params: params.len(),
+            params,
+            abstract_: true,
+            facts,
+            definitions: vec![],
+            ins,
+            pure: false,
+            guard,
+        }
+    }
+
+    pub fn compile_concrete(mut self) -> Pred {
         let PredSig {
             name,
             params,
@@ -1072,14 +1070,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ins,
             pure: false,
             guard,
-        }
-    }
-
-    pub(crate) fn compile(self) -> Pred {
-        if self.abstract_ {
-            self.compile_abstract()
-        } else {
-            self.compile_concrete()
         }
     }
 }
