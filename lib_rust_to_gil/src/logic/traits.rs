@@ -20,6 +20,10 @@ pub trait TraitSolver<'tcx> {
 
 impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
     fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> Instance<'tcx> {
+        log::debug!(
+            "Resolving candidate for {:?}",
+            self.tcx().def_path_str_with_args(def_id, substs)
+        );
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
             None => Instance::new(def_id, substs),

@@ -77,7 +77,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Some(Shim::Fold(name))
             }
             _ if crate::utils::attrs::is_lemma(did, self.tcx()) => {
-                Some(Shim::Lemma(fname.to_string()))
+                let lemma_name = self.global_env.pred_name_for(did, substs);
+                Some(Shim::Lemma(lemma_name))
             }
             other => other
                 .strip_suffix("_____unfold")
@@ -104,7 +105,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let pcy = mutref.lnth(1);
         let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
         let instance = self.global_env.get_own_pred_for(inner_ty);
-        let own_pred_name = self.tcx().def_path_str(instance.def_id());
+        let own_pred_name = self.global_env_mut().pred_name_for_instance(instance);
         let generic_args = instance
             .args
             .into_iter()

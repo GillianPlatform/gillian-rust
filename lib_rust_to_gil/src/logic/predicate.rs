@@ -19,7 +19,7 @@ use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 use rustc_middle::{
     mir::{interpret::Scalar, BinOp, BorrowKind},
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::AdtKind,
+    ty::{AdtKind, GenericArgs},
 };
 use rustc_target::abi::FieldIdx;
 
@@ -135,7 +135,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn pred_name(&self) -> String {
-        self.tcx().def_path_str(self.did)
+        let args = GenericArgs::identity_for_item(self.tcx(), self.did);
+        self.global_env.pred_name_for(self.did, args)
     }
 
     fn make_is_ptr_asrt(&mut self, e: GExpr) -> Assertion {
@@ -588,7 +589,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     params.push(out_var.clone());
 
                     let pred_call = Assertion::Pred {
-                        name: self.tcx().def_path_str(did),
+                        name: self.tcx.def_path_str(did),
                         params,
                     };
 
@@ -843,9 +844,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 (name, instance.args)
                             } else {
                                 let instance = self.resolve_candidate(def_id, substs);
-                                let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
-                                    .tcx()
-                                    .def_path_str(instance.def_id()));
+                                let name = self
+                                    .global_env
+                                    .pred_name_for_instance(instance);
                                 (name, instance.args)
                             }
                         };

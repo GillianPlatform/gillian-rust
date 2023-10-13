@@ -5,6 +5,7 @@ use crate::prelude::*;
 use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
+use rustc_middle::ty::GenericArgs;
 
 use crate::codegen::genv::HasGlobalEnv;
 use crate::codegen::typ_encoding::lifetime_param_name;
@@ -100,7 +101,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     }
 
     fn lemma_name(&self) -> String {
-        self.tcx.def_path_str(self.did)
+        let args = GenericArgs::identity_for_item(self.tcx(), self.did());
+        self.global_env.pred_name_for(self.did, args)
     }
 
     fn sig(&self) -> LemmaSig {

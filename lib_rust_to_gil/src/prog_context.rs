@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use rustc_hir::def::DefKind;
+use rustc_middle::ty::GenericArgs;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
@@ -43,9 +44,8 @@ impl<'tcx> ProgCtx<'tcx> {
                 LogicItem::Lemma(lemma) => {
                     let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
                     let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
-                    let name = rustc_middle::ty::print::with_no_trimmed_paths!(self
-                        .tcx()
-                        .def_path_str(did));
+                    let args = GenericArgs::identity_for_item(self.tcx(), did);
+                    let name = self.global_env.pred_name_for(did, args);
                     match (pre_id, post_id) {
                         (Some(pre_id), Some(post_id)) => {
                             self.spec_tbl.insert(name, (pre_id, post_id));
@@ -162,7 +162,11 @@ impl<'tcx> ProgCtx<'tcx> {
             .remove(&post_id)
             .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
 
-        let lemma = self.prog.lemmas.get_mut(&key).unwrap();
+        let lemma = self
+            .prog
+            .lemmas
+            .get_mut(&key)
+            .unwrap_or_else(|| panic!("Not lemma found for key {:?}", key));
         lemma.hyp = pre;
         lemma.concs = vec![post];
     }

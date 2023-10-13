@@ -87,6 +87,14 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
+    pub fn pred_name_for(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
+        self.tcx().def_path_str_with_args(did, args)
+    }
+
+    pub fn pred_name_for_instance(&self, instance: Instance<'tcx>) -> String {
+        self.pred_name_for(instance.def_id(), instance.args)
+    }
+
     pub fn inner_pred(&mut self, pred: String) -> String {
         let name = pred.clone() + "$$inner";
         self.inner_preds.insert_same(pred, name.clone());
@@ -201,7 +209,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
             });
             let own_call = Assertion::Pred {
-                name: self.tcx().def_path_str(instance.def_id()),
+                name: self.pred_name_for_instance(instance),
                 params: params
                     .clone()
                     .map(Expr::PVar)
@@ -315,7 +323,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .chain(std::iter::once(v))
                     .collect();
                 let own = Assertion::Pred {
-                    name: self.tcx().def_path_str(instance.def_id()),
+                    name: self.pred_name_for_instance(instance),
                     params,
                 };
                 let guard = crate::logic::core_preds::alive_lft(Expr::PVar("lft".to_string()));
