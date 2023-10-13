@@ -7,14 +7,14 @@ use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 
-use super::typ_encoding::type_param_name;
+use crate::codegen::typ_encoding::type_param_name;
 
-struct QueueOnce<K> {
-    queue: VecDeque<K>,
+struct QueueOnce<K, V> {
+    queue: VecDeque<(K, V)>,
     done: HashSet<K>,
 }
 
-impl<K> Default for QueueOnce<K> {
+impl<K, V> Default for QueueOnce<K, V> {
     fn default() -> Self {
         Self {
             queue: Default::default(),
@@ -23,31 +23,35 @@ impl<K> Default for QueueOnce<K> {
     }
 }
 
-impl<K> QueueOnce<K>
+impl<K, V> QueueOnce<K, V>
 where
-    K: Eq + Hash + Clone,
+    K: Eq + Clone + Hash,
 {
-    fn push(&mut self, v: K) {
-        if !(self.done.contains(&v) || self.queue.contains(&v)) {
-            self.queue.push_back(v);
+    fn contains(&self, k: &K) -> bool {
+        self.done.contains(k) || self.queue.iter().any(|(kk, _)| k == kk)
+    }
+
+    fn push(&mut self, k: K, v: V) {
+        if !self.contains(&k) {
+            self.queue.push_back((k, v));
         }
     }
 
-    fn pop(&mut self) -> Option<K> {
+    fn pop(&mut self) -> Option<(K, V)> {
         let elem = self.queue.pop_front();
         if let Some(elem) = &elem {
-            self.done.insert(elem.clone());
+            self.done.insert(elem.0.clone());
         }
         elem
     }
 }
 
+/// Things that are global to the compilation of a rust program for Gillian-Rust.
 pub struct GlobalEnv<'tcx> {
-    // Things that are global to compilation
     tcx: TyCtxt<'tcx>,
     pub config: Config,
     /// The types that should be encoded for the GIL global env
-    adt_queue: QueueOnce<AdtDef<'tcx>>,
+    adt_queue: QueueOnce<AdtDef<'tcx>, ()>,
     mut_ref_owns: HashMap<Ty<'tcx>, String>,
     mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>,
     mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, GenericArgsRef<'tcx>)>,
@@ -447,7 +451,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub fn register_adt(&mut self, def: AdtDef<'tcx>) {
-        self.adt_queue.push(def);
+        self.adt_queue.push(def, ());
     }
 
     // This takes a self, because it's the last thing that should be done with the global env.
@@ -456,7 +460,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
         use serde_json::{Map, Value};
         let mut obj: Map<String, Value> = Map::new();
-        while let Some(adt) = self.adt_queue.pop() {
+        while let Some((adt, ())) = self.adt_queue.pop() {
             let (name, ser_decl) = self.serialize_adt_decl(adt);
             let previous_entry = obj.insert(name.clone(), ser_decl.clone());
             if let Some(previous_entry) = previous_entry {

@@ -8,7 +8,6 @@ mod statement;
 mod typ;
 
 pub mod context;
-pub mod genv;
 pub mod names;
 pub mod place;
 pub mod runtime;

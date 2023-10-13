@@ -7,13 +7,12 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
 use rustc_middle::ty::GenericArgs;
 
-use crate::codegen::genv::HasGlobalEnv;
 use crate::codegen::typ_encoding::lifetime_param_name;
 use crate::temp_gen::TempGenerator;
 use crate::utils::polymorphism::HasGenericLifetimes;
 use crate::{
     codegen::typ_encoding::type_param_name,
-    codegen::{genv::GlobalEnv, typ_encoding::TypeEncoder},
+    codegen::typ_encoding::TypeEncoder,
     prelude::{fatal, HasDefId, HasTyCtxt},
     utils::polymorphism::HasGenericArguments,
 };

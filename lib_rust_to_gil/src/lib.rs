@@ -25,9 +25,9 @@ extern crate rustc_type_ir;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
-    pub(crate) use crate::codegen::genv::*;
     pub(crate) use crate::codegen::typ_encoding::{EncodedType, TypeEncoder};
     pub(crate) use crate::codegen::{names, runtime};
+    pub(crate) use crate::global_env::*;
     pub(crate) use crate::utils::tcx_utils::*;
     pub(crate) use gillian::gil::*;
     // pub(crate) use rustc_data_structures::fx::FxHashMap;
@@ -36,11 +36,12 @@ mod prelude {
     pub(crate) use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind, ValTree};
     pub(crate) use rustc_span::{def_id::DefId, Symbol};
 }
-mod temp_gen;
 
 mod codegen;
+mod global_env;
 mod logic;
 mod prog_context;
+mod temp_gen;
 pub mod utils;
 
 pub mod callbacks;
