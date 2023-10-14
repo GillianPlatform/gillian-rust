@@ -33,6 +33,8 @@ macro_rules! stubbed_ownable {
 }
 
 impl<T: Ownable> Ownable for &mut T {
+    #[rustc_diagnostic_item = "gillian::ownable::mut_ref_own"]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }

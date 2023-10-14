@@ -16,6 +16,8 @@ mod predicate;
 pub(crate) mod traits;
 mod utils;
 
+pub(crate) use predicate::PredCtx;
+
 #[derive(Debug)]
 pub enum LogicItem {
     Pred(Pred),
@@ -31,10 +33,12 @@ pub fn compile_logic<'tcx, 'genv>(
     temp_gen: &'genv mut TempGenerator,
 ) -> Vec<LogicItem> {
     if is_abstract_predicate(did, tcx) {
-        let pred = predicate::PredCtx::new(global_env, temp_gen, did).compile_abstract();
+        let pred = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did)
+            .compile_abstract();
         vec![LogicItem::Pred(pred)]
     } else if is_predicate(did, tcx) {
-        let pred = predicate::PredCtx::new(global_env, temp_gen, did).compile_concrete();
+        let pred = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did)
+            .compile_concrete();
         vec![LogicItem::Pred(pred)]
     } else if is_lemma(did, tcx) {
         lemma::LemmaCtx::new(
@@ -47,7 +51,7 @@ pub fn compile_logic<'tcx, 'genv>(
         .compile()
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
-        let pred_ctx = predicate::PredCtx::new(global_env, temp_gen, did);
+        let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
         let generic_amounts = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile_concrete();
         assert!(
@@ -73,7 +77,7 @@ pub fn compile_logic<'tcx, 'genv>(
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
         log::debug!("Compiling postcondition: {:?}", did);
-        let pred_ctx = predicate::PredCtx::new(global_env, temp_gen, did);
+        let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
         let generics_amount = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
         let mut pred = pred_ctx.compile_concrete();
         let mut map = HashMap::new();

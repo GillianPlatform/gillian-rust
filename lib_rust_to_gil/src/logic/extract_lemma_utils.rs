@@ -132,17 +132,18 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                                     let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
                                     // We use the subst of the own predicate for the inner type.
                                     // That is the only thing we need here.
-                                    let Instance { args, .. } = self.resolve_candidate(
-                                        *def_id,
-                                        self.tcx().mk_args(&[inner_ty.into()]),
-                                    );
+                                    let Instance { args, .. } = self
+                                        .resolve_candidate(
+                                            *def_id,
+                                            self.tcx().mk_args(&[inner_ty.into()]),
+                                        )
+                                        .expect_impl(self.global_env());
                                     (name, args)
                                 } else {
-                                    let instance = self.resolve_candidate(*def_id, substs);
-                                    let name =
-                                        rustc_middle::ty::print::with_no_trimmed_paths!(self
-                                            .global_env
-                                            .pred_name_for_instance(instance));
+                                    let instance = self
+                                        .resolve_candidate(*def_id, substs)
+                                        .expect_impl(self.global_env());
+                                    let name = self.global_env.just_pred_name_instance(instance);
                                     (name, instance.args)
                                 }
                             };

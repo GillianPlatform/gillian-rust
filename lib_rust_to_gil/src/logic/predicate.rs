@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use super::builtins::Stubs;
-use super::traits::TraitSolver;
 use super::utils::get_thir;
 use crate::{
     codegen::{
@@ -19,7 +18,7 @@ use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 use rustc_middle::{
     mir::{interpret::Scalar, BinOp, BorrowKind},
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtKind, GenericArgs},
+    ty::AdtKind,
 };
 use rustc_target::abi::FieldIdx;
 
@@ -35,6 +34,7 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     pub global_env: &'genv mut GlobalEnv<'tcx>,
     pub temp_gen: &'genv mut TempGenerator,
     pub did: DefId,
+    pub args: GenericArgsRef<'tcx>,
     pub var_map: HashMap<LocalVarId, GExpr>,
     pub toplevel_asrts: Vec<Assertion>,
 }
@@ -73,14 +73,25 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
         did: DefId,
+        args: GenericArgsRef<'tcx>,
     ) -> Self {
         PredCtx {
             temp_gen,
             global_env,
             did,
+            args,
             var_map: HashMap::new(),
             toplevel_asrts: Vec::new(),
         }
+    }
+
+    pub fn new_with_identity_args(
+        global_env: &'genv mut GlobalEnv<'tcx>,
+        temp_gen: &'genv mut TempGenerator,
+        did: DefId,
+    ) -> Self {
+        let args = GenericArgs::identity_for_item(global_env.tcx(), did);
+        Self::new(global_env, temp_gen, did, args)
     }
 
     pub fn prophecies_enabled(&self) -> bool {
@@ -103,11 +114,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn get_ins(&self) -> Vec<usize> {
-        let ins_attr = crate::utils::attrs::get_attr(
+        // Special case for items that are in gilogic.
+        // This code yeets as soon as we can do multi-crate.
+
+        match Stubs::of_def_id(self.did(), self.tcx()) {
+            Some(Stubs::OwnPred) if self.prophecies_enabled() => {
+                return vec![0, 1];
+            }
+            Some(Stubs::OwnPred | Stubs::RefMutInner) => return vec![0],
+            _ => (),
+        }
+
+        let Some(ins_attr) = crate::utils::attrs::get_attr(
             self.tcx().get_attrs_unchecked(self.did),
             &["gillian", "decl", "pred_ins"],
-        )
-        .expect("Predicate must have an ins attribute");
+        ) else {
+            fatal!(
+                self,
+                "Predicate {:?} doesn't have ins attribute",
+                self.pred_name()
+            )
+        };
 
         let str_arg = if let AttrArgs::Eq(
             _,
@@ -132,9 +159,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .collect()
     }
 
-    fn pred_name(&self) -> String {
-        let args = GenericArgs::identity_for_item(self.tcx(), self.did);
-        self.global_env.pred_name_for(self.did, args)
+    pub fn pred_name(&self) -> String {
+        self.global_env
+            .just_pred_name_with_args(self.did, self.args)
     }
 
     fn make_is_ptr_asrt(&mut self, e: GExpr) -> Assertion {
@@ -255,17 +282,37 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ins.sort();
         }
-        let (thir, _) = get_thir!(self);
         let generic_lft_params = generic_lifetimes
             .into_iter()
             .map(|x| (lifetime_param_name(&x), None));
         let generic_type_params = generic_types
             .into_iter()
             .map(|x| (type_param_name(x.0, x.1), None));
-        let arguments = thir.params.iter().map(|p| {
-            let (name, _ty) = self.extract_param(p);
-            (name, None)
-        });
+        // There are two caes:
+        // - either there is a thir body, in which case we can use "extract_params"
+        // - or there is not thir body, in which case we don't have param names and we just create arbitrary names
+        //   with the right type
+        let thir_body = self
+            .did()
+            .as_local()
+            .and_then(|did| self.tcx().thir_body(did).ok().map(|x| x.0));
+        let arguments: Vec<_> = match thir_body {
+            Some(thir_body) => thir_body
+                .borrow()
+                .params
+                .iter()
+                .map(|p| {
+                    let (name, _ty) = self.extract_param(p);
+                    (name, None)
+                })
+                .collect(),
+            None => {
+                let sig = self.tcx().fn_sig(self.did()).instantiate_identity();
+                (0..sig.inputs().skip_binder().len())
+                    .map(|i| (format!("param_{}", i), None))
+                    .collect()
+            }
+        };
         let params: Vec<_> = generic_lft_params
             .chain(generic_type_params)
             .chain(arguments)
@@ -745,28 +792,28 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                Some(Stubs::OwnPred) if ty_utils::is_ty_param(thir.exprs[args[0]].ty) => {
-                    let name = crate::codegen::runtime::POLY_OWN_PRED.to_string();
-                    let mut params = Vec::with_capacity(args.len() + 1);
-                    params.push(self.encode_type(thir.exprs[args[0]].ty).into());
-                    for arg in args.iter() {
-                        params.push(self.compile_expression(*arg, thir));
-                    }
-                    Assertion::Pred { name, params }
-                }
-                Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) => {
-                    let name = crate::codegen::runtime::POLY_REF_MUT_OWN.to_string();
-                    let mut params = Vec::with_capacity(args.len() + 2);
-                    // FIXME: HACK: forcing the lifetime parameter
-                    let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
-                    params.push(lft_param);
-                    let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
-                    params.push(self.encode_type(inner_ty).into());
-                    for arg in args.iter() {
-                        params.push(self.compile_expression(*arg, thir));
-                    }
-                    Assertion::Pred { name, params }
-                }
+                // Some(Stubs::OwnPred) if ty_utils::is_ty_param(thir.exprs[args[0]].ty) => {
+                //     let name = crate::codegen::runtime::POLY_OWN_PRED.to_string();
+                //     let mut params = Vec::with_capacity(args.len() + 1);
+                //     params.push(self.encode_type(thir.exprs[args[0]].ty).into());
+                //     for arg in args.iter() {
+                //         params.push(self.compile_expression(*arg, thir));
+                //     }
+                //     Assertion::Pred { name, params }
+                // }
+                // Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) => {
+                //     let name = crate::codegen::runtime::POLY_REF_MUT_OWN.to_string();
+                //     let mut params = Vec::with_capacity(args.len() + 2);
+                //     // FIXME: HACK: forcing the lifetime parameter
+                //     let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
+                //     params.push(lft_param);
+                //     let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
+                //     params.push(self.encode_type(inner_ty).into());
+                //     for arg in args.iter() {
+                //         params.push(self.compile_expression(*arg, thir));
+                //     }
+                //     Assertion::Pred { name, params }
+                // }
                 Some(Stubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
                 if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) =>
                 {
@@ -801,32 +848,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
 
-                    let arg_ty = thir.exprs[args[0]].ty;
-                    let (name, substs) = {
-                            if (self.tcx().is_diagnostic_item(
-                                Symbol::intern("gillian::pcy::ownable::own"),
-                                def_id,
-                            ) ||
-                            self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), def_id)
-                            ) && ty_utils::is_mut_ref(arg_ty)
-                            {
-                                let name = self.global_env.add_mut_ref_own(arg_ty);
-                                let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
-                                // We use the subst of the own predicate for the inner type.
-                                // That is the only thing we need here.
-                                let instance = self.resolve_candidate(
-                                    def_id,
-                                    self.tcx().mk_args(&[inner_ty.into()]),
-                                );
-                                (name, instance.args)
-                            } else {
-                                let instance = self.resolve_candidate(def_id, substs);
-                                let name = self
-                                    .global_env
-                                    .pred_name_for_instance(instance);
-                                (name, instance.args)
-                            }
-                        };
+                    let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
 
                     let mut params = Vec::with_capacity(args.len() + substs.len() + 1);
                     {
@@ -834,7 +856,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         let callee_lifetimes =
                             if (self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), def_id)
                                 || self.tcx().is_diagnostic_item(Symbol::intern("gillian::pcy::ownable::own"), def_id) )
-                               && ty_utils::is_mut_ref(arg_ty) {
+                               && ty_utils::is_mut_ref(thir[args[0]].ty) {
                             vec!["a".to_string()]
                         } else {
                             (def_id, self.tcx()).generic_lifetimes()
@@ -1031,6 +1053,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             facts,
             guard,
         } = self.sig();
+        self.global_env_mut().mark_pred_as_compiled(name.clone());
         Pred {
             name,
             num_params: params.len(),
@@ -1059,6 +1082,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .iter()
             .map(|e| self.compile_assertion_outer(*e, &thir))
             .collect();
+        self.global_env_mut().mark_pred_as_compiled(name.clone());
 
         Pred {
             name,

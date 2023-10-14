@@ -10,23 +10,37 @@ use rustc_middle::{
 use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{translate_args, SelectionContext, TraitEngineExt};
 
+pub enum ResolvedImpl<'tcx> {
+    Param,
+    Impl(Instance<'tcx>),
+}
+
+impl<'tcx> ResolvedImpl<'tcx> {
+    pub fn expect_impl(self, global_env: &GlobalEnv<'tcx>) -> Instance<'tcx> {
+        match self {
+            Self::Param => fatal!(global_env, "Expected existing implementation!"),
+            Self::Impl(imp) => imp,
+        }
+    }
+}
+
 pub trait TraitSolver<'tcx> {
     // Returns Some if there is an implementation that was found (ImplSource::UserDefined or not a trait member),
     // and None if it's a parameter. (ImplSource::Param)
-    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> Instance<'tcx>;
+    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> ResolvedImpl<'tcx>;
 
     fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Ty<'tcx>;
 }
 
 impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
-    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> Instance<'tcx> {
+    fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> ResolvedImpl<'tcx> {
         log::debug!(
             "Resolving candidate for {:?}",
             self.tcx().def_path_str_with_args(def_id, substs)
         );
         let tcx = self.tcx();
         match tcx.trait_of_item(def_id) {
-            None => Instance::new(def_id, substs),
+            None => ResolvedImpl::Impl(Instance::new(def_id, substs)),
             Some(trait_id) => {
                 log::debug!(
                     "Resolving candidate for trait {:?}",
@@ -92,8 +106,9 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                             substs,
                             leaf_def.defining_node,
                         );
-                        Instance::new(leaf_def.item.def_id, substs)
+                        ResolvedImpl::Impl(Instance::new(leaf_def.item.def_id, substs))
                     }
+                    ImplSource::Param(..) => ResolvedImpl::Param,
                     _ => fatal!(self, "unsupported param source!"),
                 }
             }

@@ -18,7 +18,7 @@ pub(crate) fn is_formula_ty<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub(crate) enum Stubs {
     PredDefs,
     AssertStar,
@@ -41,6 +41,7 @@ pub(crate) enum Stubs {
     SeqConcat,
     SeqLen,
     OwnPred,
+    MutRefOwnPred,
     RefMutInner,
 }
 
@@ -77,46 +78,60 @@ impl Stubs {
                     Symbol::intern("gillian::ownable::own")
                 }
             }
+            Self::MutRefOwnPred => {
+                if prophecies_enabled {
+                    Symbol::intern("gillian::pcy::ownable::mut_ref_own")
+                } else {
+                    Symbol::intern("gillian::ownable::mut_ref_own")
+                }
+            }
         }
+    }
+
+    pub(crate) fn of_def_id(def_id: DefId, tcx: TyCtxt) -> Option<Self> {
+        crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
+            match name.as_str() {
+                "gillian::pred::defs" => Some(Self::PredDefs),
+                "gillian::asrt::star" => Some(Self::AssertStar),
+                "gillian::asrt::pure" => Some(Self::AssertPure),
+                "gillian::asrt::observation" => Some(Self::AssertObservation),
+                "gillian::asrt::emp" => Some(Self::AssertEmp),
+                "gillian::asrt::points_to" => Some(Self::AssertPointsTo),
+                "gillian::formula::equal" => Some(Self::FormulaEqual),
+                "gillian::formula::less_eq" => Some(Self::FormulaLessEq),
+                "gillian::formula::less" => Some(Self::FormulaLess),
+                "gillian::mut_ref::get_prophecy" => Some(Self::MutRefGetProphecy),
+                "gillian::mut_ref::set_prophecy" => Some(Self::MutRefSetProphecy),
+                "gillian::prophecy::get_value" => Some(Self::ProphecyGetValue),
+                "gillian::prophecy::observer" => Some(Self::ProphecyObserver),
+                "gillian::prophecy::controller" => Some(Self::ProphecyController),
+                "gillian::seq::empty" | "gillian::seq::nil" => Some(Self::SeqNil),
+                "gillian::seq::append" => Some(Self::SeqAppend),
+                "gillian::seq::prepend" => Some(Self::SeqPrepend),
+                "gillian::seq::concat" => Some(Self::SeqConcat),
+                "gillian::seq::len" => Some(Self::SeqLen),
+                "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Self::OwnPred),
+                "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
+                    Some(Self::MutRefOwnPred)
+                }
+                "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
+                _ => {
+                    if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
+                        let mut iter = fields.split("::");
+                        iter.next(); // skip "arity"
+                        let field = iter.next().unwrap().parse().unwrap();
+                        Some(Self::ProphecyField(field))
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
     }
 
     pub(crate) fn for_fn_def_ty<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         if let TyKind::FnDef(did, _) = ty.kind() {
-            crate::utils::attrs::diagnostic_item_string(*did, tcx).and_then(|name| {
-                match name.as_str() {
-                    "gillian::pred::defs" => Some(Stubs::PredDefs),
-                    "gillian::asrt::star" => Some(Stubs::AssertStar),
-                    "gillian::asrt::pure" => Some(Stubs::AssertPure),
-                    "gillian::asrt::observation" => Some(Stubs::AssertObservation),
-                    "gillian::asrt::emp" => Some(Stubs::AssertEmp),
-                    "gillian::asrt::points_to" => Some(Stubs::AssertPointsTo),
-                    "gillian::formula::equal" => Some(Stubs::FormulaEqual),
-                    "gillian::formula::less_eq" => Some(Stubs::FormulaLessEq),
-                    "gillian::formula::less" => Some(Stubs::FormulaLess),
-                    "gillian::mut_ref::get_prophecy" => Some(Stubs::MutRefGetProphecy),
-                    "gillian::mut_ref::set_prophecy" => Some(Stubs::MutRefSetProphecy),
-                    "gillian::prophecy::get_value" => Some(Stubs::ProphecyGetValue),
-                    "gillian::prophecy::observer" => Some(Stubs::ProphecyObserver),
-                    "gillian::prophecy::controller" => Some(Stubs::ProphecyController),
-                    "gillian::seq::empty" | "gillian::seq::nil" => Some(Stubs::SeqNil),
-                    "gillian::seq::append" => Some(Stubs::SeqAppend),
-                    "gillian::seq::prepend" => Some(Stubs::SeqPrepend),
-                    "gillian::seq::concat" => Some(Stubs::SeqConcat),
-                    "gillian::seq::len" => Some(Stubs::SeqLen),
-                    "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Stubs::OwnPred),
-                    "gillian::pcy::ownable::ref_mut_inner" => Some(Stubs::RefMutInner),
-                    _ => {
-                        if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
-                            let mut iter = fields.split("::");
-                            iter.next(); // skip "arity"
-                            let field = iter.next().unwrap().parse().unwrap();
-                            Some(Stubs::ProphecyField(field))
-                        } else {
-                            None
-                        }
-                    }
-                }
-            })
+            Self::of_def_id(*did, tcx)
         } else {
             None
         }

@@ -1,15 +1,17 @@
+use super::auto_items::{AutoItem, Resolver};
 use crate::logic::core_preds::{self, alive_lft};
+use crate::logic::traits::ResolvedImpl;
 use crate::prelude::*;
 use crate::{config::Config, logic::traits::TraitSolver};
 use rustc_data_structures::sync::HashMapExt;
-use rustc_middle::ty::{AdtDef, GenericArgsRef, ReprOptions};
+use rustc_middle::ty::{AdtDef, GenericArgs, GenericArgsRef, ReprOptions};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 
 use crate::codegen::typ_encoding::type_param_name;
 
-struct QueueOnce<K, V> {
+pub(super) struct QueueOnce<K, V> {
     queue: VecDeque<(K, V)>,
     done: HashSet<K>,
 }
@@ -37,26 +39,43 @@ where
         }
     }
 
+    fn mark_as_done(&mut self, k: K) {
+        self.done.insert(k);
+    }
+
     fn pop(&mut self) -> Option<(K, V)> {
-        let elem = self.queue.pop_front();
-        if let Some(elem) = &elem {
-            self.done.insert(elem.0.clone());
+        loop {
+            match self.queue.pop_front() {
+                None => return None,
+                Some((k, v)) => {
+                    if self.done.insert(k.clone()) {
+                        return Some((k, v));
+                    }
+                }
+            }
         }
-        elem
     }
 }
 
 /// Things that are global to the compilation of a rust program for Gillian-Rust.
+/// It contains 3 main queues (and some that should be converted into one of these)
+/// corresponding to three stages of compilation:
+/// 1) Item queue: A list of items that should be encoded. Encoding each one might generate other items to encode.
+/// 2) GIL post-processing: A list of post-processing to operate at the GIL level on the created program.
+/// 3) Global level: adt_queue. This is to be encoded into a GIL `init_data` json record at the very end of compilation.
+///    After we have seen all the types that participate in execution.
 pub struct GlobalEnv<'tcx> {
     tcx: TyCtxt<'tcx>,
     pub config: Config,
+
     /// The types that should be encoded for the GIL global env
-    adt_queue: QueueOnce<AdtDef<'tcx>, ()>,
-    mut_ref_owns: HashMap<Ty<'tcx>, String>,
-    mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>,
-    mut_ref_resolvers: HashMap<Ty<'tcx>, (String, String, GenericArgsRef<'tcx>)>,
+    pub(super) adt_queue: QueueOnce<AdtDef<'tcx>, ()>,
+
+    pub(super) item_queue: QueueOnce<String, AutoItem<'tcx>>,
+    pub(super) mut_ref_owns: HashMap<Ty<'tcx>, String>, // TODO: convert to item.
+    pub(super) mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>, // TODO: convert to item.
     // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
-    inner_preds: HashMap<String, String>,
+    pub(super) inner_preds: HashMap<String, String>,
     // Borrow preds for which an $$inner version should be derived.
 }
 
@@ -90,19 +109,49 @@ impl<'tcx> GlobalEnv<'tcx> {
             config,
             tcx,
             adt_queue: Default::default(),
+            item_queue: Default::default(),
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
-            mut_ref_resolvers: Default::default(),
             inner_preds: Default::default(),
         }
     }
 
-    pub fn pred_name_for(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
-        self.tcx().def_path_str_with_args(did, args)
+    pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
+        self.tcx.def_path_str_with_args(did, args)
     }
 
-    pub fn pred_name_for_instance(&self, instance: Instance<'tcx>) -> String {
-        self.pred_name_for(instance.def_id(), instance.args)
+    pub fn just_pred_name(&self, did: DefId) -> String {
+        let args = GenericArgs::identity_for_item(self.tcx, did);
+        self.just_pred_name_with_args(did, args)
+    }
+
+    pub fn just_pred_name_instance(&self, instance: Instance<'tcx>) -> String {
+        self.just_pred_name_with_args(instance.def_id(), instance.args)
+    }
+
+    pub fn mark_pred_as_compiled(&mut self, pred_name: String) {
+        self.item_queue.mark_as_done(pred_name);
+    }
+
+    pub fn resolve_predicate(
+        &mut self,
+        did: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> (String, GenericArgsRef<'tcx>) {
+        let (instance, item) = match self.resolve_candidate(did, args) {
+            ResolvedImpl::Param => {
+                let instance = Instance::new(did, args);
+                let item = AutoItem::ParamPred(instance);
+                (instance, item)
+            }
+            ResolvedImpl::Impl(instance) => {
+                let item = AutoItem::MonoPred(instance);
+                (instance, item)
+            }
+        };
+        let name = self.just_pred_name_instance(instance);
+        self.item_queue.push(name.clone(), item);
+        (name, instance.args)
     }
 
     pub fn inner_pred(&mut self, pred: String) -> String {
@@ -118,7 +167,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             .get_diagnostic_item(symbol)
             .expect("Could not find gilogic::Ownable");
         let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_candidate(general_own, subst)
+        self.resolve_candidate(general_own, subst).expect_impl(self)
     }
 
     pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
@@ -127,8 +176,9 @@ impl<'tcx> GlobalEnv<'tcx> {
         let mutref_own_name = format!("<{} as gilogic::prophecies::Ownable>::own", mutref_ty);
         let name = format!("{}::$resolver", mutref_ty);
         self.encode_type(mutref_ty); // Encoding is a way to make sure that the type is recorded in the env.
-        self.mut_ref_resolvers
-            .insert(mutref_ty, (name.clone(), mutref_own_name, instance.args));
+        let resolver = Resolver::new(name.clone(), mutref_own_name, instance.args);
+        let item = AutoItem::Resolver(resolver);
+        self.item_queue.push(name.clone(), item);
         (name, instance.args)
     }
 
@@ -145,47 +195,9 @@ impl<'tcx> GlobalEnv<'tcx> {
             .clone()
     }
 
-    pub fn add_resolvers_to_prog(&mut self, prog: &mut Prog) {
-        if !self.config.prophecies {
-            return;
-        }
-        let mut_ref_resolvers = std::mem::take(&mut self.mut_ref_resolvers);
-        for (_, (name, own_name, subst)) in mut_ref_resolvers {
-            let current = Expr::LVar("#current".to_string());
-            let future = Expr::LVar("#future".to_string());
-            let mut_ref = "mut_ref".to_string();
-            let pred_params = subst
-                .iter()
-                .enumerate()
-                .map(|(i, k)| {
-                    let name = k.to_string();
-                    type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
-                })
-                .chain(std::iter::once(mut_ref));
-            let pred_params = std::iter::once(String::from("lft")).chain(pred_params);
-            let own_params = pred_params
-                .clone()
-                .map(Expr::PVar)
-                .chain(std::iter::once(
-                    vec![current.clone(), future.clone()].into(),
-                ))
-                .collect();
-            let pre = Assertion::Pred {
-                name: own_name,
-                params: own_params,
-            };
-            let resolved_observation = core_preds::observation(current.eq_f(future));
-            let posts = vec![resolved_observation];
-            let spec = Spec {
-                name,
-                params: pred_params.collect(),
-                sspecs: vec![SingleSpec {
-                    pre,
-                    posts,
-                    flag: Flag::Normal,
-                }],
-            };
-            prog.add_only_spec(spec);
+    pub fn add_items_to_prog(&mut self, prog: &mut Prog) {
+        while let Some((_, item)) = self.item_queue.pop() {
+            item.add_to_prog(prog, self)
         }
     }
 
@@ -205,7 +217,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .get_diagnostic_item(symbol)
                 .expect("Could not find gilogic::Ownable");
             let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
-            let instance = self.resolve_candidate(own, subst);
+            let instance = self.resolve_candidate(own, subst).expect_impl(self);
             let slf = Expr::PVar("self".to_string());
             let pointer = slf.clone().lnth(0);
             let pointee = Expr::LVar("#value".to_string());
@@ -219,7 +231,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
             });
             let own_call = Assertion::Pred {
-                name: self.pred_name_for_instance(instance),
+                name: self.just_pred_name_instance(instance),
                 params: params
                     .clone()
                     .map(Expr::PVar)
@@ -266,7 +278,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             };
             let old_subst = self.tcx().mk_args(&[(*inner_ty).into()]);
 
-            let instance = self.resolve_candidate(own, old_subst);
+            let instance = self.resolve_candidate(own, old_subst).expect_impl(self);
             let generic_params = std::iter::once(("lft".to_string(), None)).chain(
                 instance.args.iter().enumerate().map(|(i, k)| {
                     let name = k.to_string();
@@ -333,7 +345,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                     .chain(std::iter::once(v))
                     .collect();
                 let own = Assertion::Pred {
-                    name: self.pred_name_for_instance(instance),
+                    name: self.just_pred_name_instance(instance),
                     params,
                 };
                 let guard = crate::logic::core_preds::alive_lft(Expr::PVar("lft".to_string()));
@@ -387,7 +399,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub fn flush_remaining_defs_to_prog(&mut self, prog: &mut Prog) {
-        self.add_resolvers_to_prog(prog);
+        self.add_items_to_prog(prog);
         self.add_mut_ref_owns_to_prog(prog);
         self.add_mut_ref_inners_to_prog(prog);
         self.add_inner_pred_to_prog(prog);

@@ -54,6 +54,7 @@ macro_rules! own_int {
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
 
+    #[rustc_diagnostic_item = "gillian::pcy::ownable::mut_ref_own"]
     fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }

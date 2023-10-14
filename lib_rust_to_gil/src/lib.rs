@@ -33,7 +33,9 @@ mod prelude {
     // pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use crate::utils::ty as ty_utils;
     pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind, ValTree};
+    pub(crate) use rustc_middle::ty::{
+        GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TyKind, ValTree,
+    };
     pub(crate) use rustc_span::{def_id::DefId, Symbol};
 }
 

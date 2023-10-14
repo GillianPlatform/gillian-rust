@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::GenericArgs;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
@@ -44,8 +43,7 @@ impl<'tcx> ProgCtx<'tcx> {
                 LogicItem::Lemma(lemma) => {
                     let pre_id = crate::utils::attrs::get_pre_id(did, self.tcx());
                     let post_id = crate::utils::attrs::get_post_id(did, self.tcx());
-                    let args = GenericArgs::identity_for_item(self.tcx(), did);
-                    let name = self.global_env.pred_name_for(did, args);
+                    let name = self.global_env.just_pred_name(did);
                     match (pre_id, post_id) {
                         (Some(pre_id), Some(post_id)) => {
                             self.spec_tbl.insert(name, (pre_id, post_id));

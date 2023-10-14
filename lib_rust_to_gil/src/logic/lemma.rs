@@ -102,7 +102,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn lemma_name(&self) -> String {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-        self.global_env.pred_name_for(self.did, args)
+        self.global_env.just_pred_name_with_args(self.did, args)
     }
 
     fn sig(&self) -> LemmaSig {
@@ -139,7 +139,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .get_diagnostic_item(pre_name)
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
 
-                PredCtx::new(self.global_env, self.temp_gen, pre_did)
+                PredCtx::new_with_identity_args(self.global_env, self.temp_gen, pre_did)
                     .into_inner_of_borrow_call(name.clone() + "$$proof_pre", true)
             };
 
@@ -181,7 +181,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     .get_diagnostic_item(post_name)
                     .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
 
-                PredCtx::new(self.global_env, self.temp_gen, post_did)
+                PredCtx::new_with_identity_args(self.global_env, self.temp_gen, post_did)
                     .into_inner_of_borrow_call(name.clone() + "$$proof_post", false)
             };
 

@@ -77,7 +77,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Some(Shim::Fold(name))
             }
             _ if crate::utils::attrs::is_lemma(did, self.tcx()) => {
-                let lemma_name = self.global_env.pred_name_for(did, substs);
+                let lemma_name = self.global_env.just_pred_name_with_args(did, substs);
                 Some(Shim::Lemma(lemma_name))
             }
             other => other
@@ -105,7 +105,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let pcy = mutref.lnth(1);
         let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
         let instance = self.global_env.get_own_pred_for(inner_ty);
-        let own_pred_name = self.global_env_mut().pred_name_for_instance(instance);
+        let own_pred_name = self.global_env_mut().just_pred_name_instance(instance);
         let generic_args = instance
             .args
             .into_iter()
@@ -223,7 +223,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .tcx()
                 .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
                 .expect("You need to import gilogic");
-            let instance = self.resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]));
+            let instance = self
+                .resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]))
+                .expect_impl(self.global_env());
             let mut gil_args = vec![Expr::PVar(lifetime_param_name(
                 &self.generic_lifetimes()[0],
             ))];

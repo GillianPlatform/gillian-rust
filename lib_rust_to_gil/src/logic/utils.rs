@@ -4,9 +4,13 @@ macro_rules! get_thir {
     };
 
     ($s:expr, $did:expr) => {{
-        let ___thir = $s
-            .tcx()
-            .thir_body($did.as_local().expect("non-local predicate"));
+        let ___thir = $s.tcx().thir_body($did.as_local().unwrap_or_else(|| {
+            fatal!(
+                $s,
+                "non-local predicate {:?}",
+                $s.global_env().just_pred_name($did)
+            )
+        }));
         if let Ok((___thir, ___expr)) = ___thir {
             (___thir.borrow(), ___expr)
         } else {

@@ -1,13 +1,6 @@
-abstract pred "$POLYMORPHIC::own"(+pty, +self);
-
-pred "$POLYMORPHIC::ref_mut_own"(+lft, +pty, +self):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), pty; #v) *
-  "$POLYMORPHIC::own"(pty, #v);
-guard: <lft>(lft; true);
-  
 pred "$POLYMORPHIC::ref_mut_own$$inner"(+pty, +self):
   <value>(l-nth(self, 0i), l-nth(self, 1i), pty; #v) *
-  "$POLYMORPHIC::own"(pty, #v);
+  "<T as gilogic::Ownable>::own"(pty, #v);
   
 pred "<() as gilogic::Ownable>::own"(+self): self == {{ }};
 
@@ -15,4 +8,6 @@ pred "<() as gilogic::Ownable>::own"(+self): self == {{ }};
 pred "<std::option::Option<T> as gilogic::Ownable>::own"(+pty, +self):
   (self == {{ 0i, {{ }} }}),
   (self == {{ 1i, {{ #x }} }}) *
-    "$POLYMORPHIC::own"(pty, #x);
+    "<T as gilogic::Ownable>::own"(pty, #x);
+
+abstract pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pty, +self);
