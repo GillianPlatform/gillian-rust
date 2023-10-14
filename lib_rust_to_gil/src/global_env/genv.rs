@@ -43,6 +43,15 @@ where
         self.done.insert(k);
     }
 
+    fn mark_as_done_iter<I>(&mut self, ks: I)
+    where
+        I: IntoIterator<Item = K>,
+    {
+        for k in ks {
+            self.mark_as_done(k)
+        }
+    }
+
     fn pop(&mut self) -> Option<(K, V)> {
         loop {
             match self.queue.pop_front() {
@@ -105,15 +114,56 @@ impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {}
 
 impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
+        // A few things are already implemented in GIL directly.
+        let mut item_queue = QueueOnce::default();
+        item_queue.mark_as_done_iter([
+            "<() as gilogic::Ownable>::own".to_owned(),
+            "<u8 as gilogic::Ownable>::own".to_owned(),
+            "<u16 as gilogic::Ownable>::own".to_owned(),
+            "<u32 as gilogic::Ownable>::own".to_owned(),
+            "<u64 as gilogic::Ownable>::own".to_owned(),
+            "<u128 as gilogic::Ownable>::own".to_owned(),
+            "<usize as gilogic::Ownable>::own".to_owned(),
+            "<i8 as gilogic::Ownable>::own".to_owned(),
+            "<i16 as gilogic::Ownable>::own".to_owned(),
+            "<i32 as gilogic::Ownable>::own".to_owned(),
+            "<i64 as gilogic::Ownable>::own".to_owned(),
+            "<i128 as gilogic::Ownable>::own".to_owned(),
+            "<isize as gilogic::Ownable>::own".to_owned(),
+        ]);
         Self {
             config,
             tcx,
             adt_queue: Default::default(),
-            item_queue: Default::default(),
+            item_queue,
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             inner_preds: Default::default(),
         }
+    }
+
+    pub fn get_own_def_did(&self) -> DefId {
+        let symbol = if self.config.prophecies {
+            Symbol::intern("gillian::pcy::ownable::own")
+        } else {
+            Symbol::intern("gillian::ownable::own")
+        };
+
+        self.tcx()
+            .get_diagnostic_item(symbol)
+            .expect("Could not find gilogic::Ownable")
+    }
+
+    pub fn get_ref_mut_inner_did(&self) -> DefId {
+        self.tcx()
+            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::ref_mut_inner"))
+            .expect("Couldn't find gillian::pcy::ownable::ref_mut_inner")
+    }
+
+    pub fn get_repr_ty_did(&self) -> DefId {
+        self.tcx()
+            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
+            .expect("Couldn't find gillian::ownable::representation_ty")
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -160,26 +210,21 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for(&self, ty: Ty<'tcx>) -> Instance<'tcx> {
-        let symbol = crate::logic::builtins::Stubs::OwnPred.symbol(self.config.prophecies);
-        let general_own = self
-            .tcx()
-            .get_diagnostic_item(symbol)
-            .expect("Could not find gilogic::Ownable");
+    pub fn get_own_pred_for(&mut self, ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
+        let general_own = self.get_own_def_did();
         let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_candidate(general_own, subst).expect_impl(self)
+        self.resolve_predicate(general_own, subst)
     }
 
     pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
         let inner_ty = crate::utils::ty::mut_ref_inner(mutref_ty).unwrap();
-        let instance = self.get_own_pred_for(inner_ty);
+        let (name, args) = self.get_own_pred_for(inner_ty);
         let mutref_own_name = format!("<{} as gilogic::prophecies::Ownable>::own", mutref_ty);
-        let name = format!("{}::$resolver", mutref_ty);
         self.encode_type(mutref_ty); // Encoding is a way to make sure that the type is recorded in the env.
-        let resolver = Resolver::new(name.clone(), mutref_own_name, instance.args);
+        let resolver = Resolver::new(name.clone(), mutref_own_name, args);
         let item = AutoItem::Resolver(resolver);
         self.item_queue.push(name.clone(), item);
-        (name, instance.args)
+        (name, args)
     }
 
     pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
@@ -261,16 +306,7 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     fn add_mut_ref_owns_to_prog(&mut self, prog: &mut Prog) {
         let mut_ref_owns = std::mem::take(&mut self.mut_ref_owns);
-        let symbol = if self.config.prophecies {
-            Symbol::intern("gillian::pcy::ownable::own")
-        } else {
-            Symbol::intern("gillian::ownable::own")
-        };
-
-        let own = self
-            .tcx()
-            .get_diagnostic_item(symbol)
-            .expect("Could not find gilogic::Ownable");
+        let own = self.get_own_def_did();
         for (ty, name) in mut_ref_owns.iter() {
             let inner_ty = match ty.kind() {
                 TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,

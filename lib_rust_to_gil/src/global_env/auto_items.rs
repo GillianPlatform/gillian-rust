@@ -1,7 +1,9 @@
+use rustc_middle::ty::ParamTy;
+
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::builtins::Stubs;
 use crate::logic::traits::TraitSolver;
-use crate::logic::PredCtx;
+use crate::logic::{param_collector, PredCtx};
 use crate::{prelude::*, temp_gen};
 /// Corresponds to a spec of the form
 /// ```gil
@@ -72,7 +74,7 @@ impl<'tcx> Resolver<'tcx> {
 // Hopefully in the future, we can do multi-crate compilation that keeps track of logic, like Creusot.
 // At which point, this code will yeet.
 // This corresponds to the predicate [&mut inner_ty].own
-pub(super) struct MutRefOwn<'tcx> {
+struct MutRefOwn<'tcx> {
     pred_name: String,
     inner_ty: Ty<'tcx>,
 }
@@ -83,7 +85,6 @@ impl<'tcx> MutRefOwn<'tcx> {
         if let Some(Stubs::MutRefOwnPred) = stub {
             // If the first argument is a region, then we have
             let ty = instance.args.type_at(1);
-            log::debug!("TY? {:?}", ty);
             let name = global_env.just_pred_name_instance(instance);
             return Some(Self {
                 pred_name: name,
@@ -94,16 +95,7 @@ impl<'tcx> MutRefOwn<'tcx> {
     }
 
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
-        let symbol = if global_env.config.prophecies {
-            Symbol::intern("gillian::pcy::ownable::own")
-        } else {
-            Symbol::intern("gillian::ownable::own")
-        };
-
-        let own = global_env
-            .tcx()
-            .get_diagnostic_item(symbol)
-            .expect("Could not find gilogic::Ownable");
+        let own = global_env.get_own_def_did();
 
         let Self {
             pred_name,
@@ -137,10 +129,7 @@ impl<'tcx> MutRefOwn<'tcx> {
             let current = Expr::LVar("#current".to_string());
             let model = Expr::PVar("model".to_string());
             let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
-            let repr_ty_id = global_env
-                .tcx()
-                .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
-                .expect("Couldn't find gillian::ownable::representation_ty");
+            let repr_ty_id = global_env.get_repr_ty_did();
             let model_type = global_env.resolve_associated_type(repr_ty_id, inner_ty);
             let encoded_model_type = global_env.encode_type(model_type);
             let pcy_value = crate::logic::core_preds::pcy_value(
@@ -150,10 +139,7 @@ impl<'tcx> MutRefOwn<'tcx> {
             );
             let observer =
                 crate::logic::core_preds::observer(full_pcy, encoded_model_type, current);
-            let ref_mut_inner_def_did = global_env
-                .tcx()
-                .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::ref_mut_inner"))
-                .expect("Couldn't find gillian::pcy::ownable::ref_mut_inner");
+            let ref_mut_inner_def_did = global_env.get_ref_mut_inner_did();
             let (ref_mut_inner_pred_name, _) =
                 global_env.resolve_predicate(ref_mut_inner_def_did, old_subst);
             let ref_mut_inner_call = Assertion::Pred {
@@ -203,6 +189,91 @@ impl<'tcx> MutRefOwn<'tcx> {
     }
 }
 
+struct OptionOwn<'tcx> {
+    pred_name: String,
+    ty: Ty<'tcx>,
+}
+
+impl<'tcx> OptionOwn<'tcx> {
+    fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
+        let stub = Stubs::of_def_id(instance.def_id(), global_env.tcx());
+        if let Some(Stubs::OptionOwnPred) = stub {
+            // If the first argument is a region, then we have
+            let ty = instance.args.type_at(0);
+            let name = global_env.just_pred_name_instance(instance);
+            return Some(Self {
+                pred_name: name,
+                ty,
+            });
+        }
+        None
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        if global_env.config.prophecies {
+            fatal!(
+                global_env,
+                "Option::own not yet implemented with prophecies"
+            )
+        }
+        let slf = Expr::PVar("self".into());
+        // first_def is `self == [ 0i, [] ]`
+        let first_def = slf
+            .clone()
+            .eq_f([0.into(), Expr::EList(vec![])])
+            .into_asrt();
+        let second_def = {
+            let lvar_x = Expr::LVar("#x".into());
+            let eq = slf
+                .eq_f([1.into(), Expr::EList(vec![lvar_x.clone()])])
+                .into_asrt();
+            let own = global_env.get_own_pred_for(self.ty);
+            let ty_params = param_collector::collect_params_on_args(own.1);
+            let mut params =
+                Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + 1);
+            if ty_params.regions {
+                params.push(Expr::PVar("lft".into()));
+            }
+            for ty in ty_params.parameters {
+                params.push(global_env.encode_type(ty).into())
+            }
+            params.push(lvar_x);
+            let own_call = Assertion::Pred {
+                name: own.0,
+                params,
+            };
+            eq.star(own_call)
+        };
+        let ty_params = crate::logic::param_collector::collect_params(self.ty)
+            .with_consider_arguments([self.ty].into_iter());
+        let mut params: Vec<(String, Option<_>)> =
+            Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + 1);
+        if ty_params.regions {
+            params.push(("lft".into(), None));
+        }
+        for tyarg in ty_params.parameters {
+            let tyarg = match *tyarg.kind() {
+                TyKind::Param(ParamTy { index, name }) => type_param_name(index, name),
+                _ => fatal!(global_env, "unreachable!"),
+            };
+            params.push((tyarg, None));
+        }
+        params.push(("self".into(), None));
+        let pred = gillian::gil::Pred {
+            name: self.pred_name,
+            num_params: params.len(),
+            ins: (0..params.len()).collect(),
+            params,
+            definitions: vec![first_def, second_def],
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: None,
+        };
+        prog.add_pred(pred);
+    }
+}
+
 pub(super) enum AutoItem<'tcx> {
     Resolver(Resolver<'tcx>),
     ParamPred(Instance<'tcx>),
@@ -228,11 +299,11 @@ impl<'tcx> AutoItem<'tcx> {
                     mut_ref_own.add_to_prog(prog, global_env);
                     return;
                 }
-                log::warn!(
-                    "Should be adding {:?} to program, substs is: {:?}",
-                    global_env.just_pred_name_instance(instance),
-                    instance.args,
-                );
+                if let Some(option_own) = OptionOwn::of_instance(instance, global_env) {
+                    option_own.add_to_prog(prog, global_env);
+                    return;
+                }
+                fatal!(global_env, "Unsupported MonoPred! {:?}", instance)
             }
         }
     }

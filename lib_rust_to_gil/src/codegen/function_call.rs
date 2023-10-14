@@ -104,10 +104,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let pointer = mutref.clone().lnth(0);
         let pcy = mutref.lnth(1);
         let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
-        let instance = self.global_env.get_own_pred_for(inner_ty);
-        let own_pred_name = self.global_env_mut().just_pred_name_instance(instance);
-        let generic_args = instance
-            .args
+        let (own_pred_name, instance_args) = self.global_env.get_own_pred_for(inner_ty);
+        let generic_args = instance_args
             .into_iter()
             .filter_map(|arg| self.encode_generic_arg(arg).map(|x| x.into()));
         let own_pred_call = Assertion::Pred {
@@ -120,10 +118,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             assertion: value_cp.star(own_pred_call),
             existentials: vec![new_repr.clone()],
         });
-        let repr_ty_id = self
-            .tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
-            .expect("Couldn't find gillian::ownable::representation_ty");
+        let repr_ty_id = self.global_env().get_repr_ty_did();
         let repr_ty = self.resolve_associated_type(repr_ty_id, inner_ty);
         let pcy_assign = crate::codegen::memory::MemoryAction::PcyAssign {
             pcy,
@@ -216,13 +211,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .is_diagnostic_item(Symbol::intern("gillian::ownable::own::close"), def_id))
             && ty_utils::is_mut_ref(self.operand_ty(&args[0]))
         {
+            fatal!(self, "this needs to be fixed before submission");
             let arg_ty = self.operand_ty(&args[0]);
             let name = self.global_env.add_mut_ref_own(arg_ty);
             let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
-            let own_did = self
-                .tcx()
-                .get_diagnostic_item(Symbol::intern("gillian::ownable::own"))
-                .expect("You need to import gilogic");
+            let own_did = self.global_env().get_own_def_did();
             let instance = self
                 .resolve_candidate(own_did, self.tcx().mk_args(&[inner_ty.into()]))
                 .expect_impl(self.global_env());

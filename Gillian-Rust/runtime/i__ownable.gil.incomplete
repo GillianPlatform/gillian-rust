@@ -3,11 +3,3 @@ pred "$POLYMORPHIC::ref_mut_own$$inner"(+pty, +self):
   "<T as gilogic::Ownable>::own"(pty, #v);
   
 pred "<() as gilogic::Ownable>::own"(+self): self == {{ }};
-
-
-pred "<std::option::Option<T> as gilogic::Ownable>::own"(+pty, +self):
-  (self == {{ 0i, {{ }} }}),
-  (self == {{ 1i, {{ #x }} }}) *
-    "<T as gilogic::Ownable>::own"(pty, #x);
-
-abstract pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pty, +self);

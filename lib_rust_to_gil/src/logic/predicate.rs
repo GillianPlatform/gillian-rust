@@ -7,7 +7,7 @@ use crate::{
         place::{GilPlace, GilProj},
         typ_encoding::{lifetime_param_name, type_param_name},
     },
-    logic::core_preds,
+    logic::{core_preds, param_collector},
     prelude::*,
     temp_gen::TempGenerator,
     utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
@@ -792,28 +792,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                // Some(Stubs::OwnPred) if ty_utils::is_ty_param(thir.exprs[args[0]].ty) => {
-                //     let name = crate::codegen::runtime::POLY_OWN_PRED.to_string();
-                //     let mut params = Vec::with_capacity(args.len() + 1);
-                //     params.push(self.encode_type(thir.exprs[args[0]].ty).into());
-                //     for arg in args.iter() {
-                //         params.push(self.compile_expression(*arg, thir));
-                //     }
-                //     Assertion::Pred { name, params }
-                // }
-                // Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) => {
-                //     let name = crate::codegen::runtime::POLY_REF_MUT_OWN.to_string();
-                //     let mut params = Vec::with_capacity(args.len() + 2);
-                //     // FIXME: HACK: forcing the lifetime parameter
-                //     let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
-                //     params.push(lft_param);
-                //     let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
-                //     params.push(self.encode_type(inner_ty).into());
-                //     for arg in args.iter() {
-                //         params.push(self.compile_expression(*arg, thir));
-                //     }
-                //     Assertion::Pred { name, params }
-                // }
                 Some(Stubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
                 if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) =>
                 {
@@ -849,26 +827,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     };
 
                     let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
-
-                    let mut params = Vec::with_capacity(args.len() + substs.len() + 1);
-                    {
-                        let self_lifetimes = self.generic_lifetimes();
-                        let callee_lifetimes =
-                            if (self.tcx().is_diagnostic_item(Symbol::intern("gillian::ownable::own"), def_id)
-                                || self.tcx().is_diagnostic_item(Symbol::intern("gillian::pcy::ownable::own"), def_id) )
-                               && ty_utils::is_mut_ref(thir[args[0]].ty) {
-                            vec!["a".to_string()]
-                        } else {
-                            (def_id, self.tcx()).generic_lifetimes()
-                        };
-                        if self_lifetimes.len() == 1 && callee_lifetimes.len() == 1 {
-                            params.push(Expr::PVar(lifetime_param_name(&self_lifetimes[0])));
-                        } else if callee_lifetimes.is_empty() {} else {
-                            fatal!(self, "Cannot handle lifetimes in function call properly")
-                        }
+                    let ty_params = param_collector::collect_params_on_args(substs).with_consider_arguments(args.iter().map(|id| thir[*id].ty));
+                    let mut params = Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + args.len());
+                    if ty_params.regions {
+                        let generic_lifetimes = self.generic_lifetimes();
+                        let lifetime = generic_lifetimes.get(0).unwrap_or_else(|| fatal!(self, "predicate calling another one, it has a lifetime param but not self?? {:?}", self.pred_name())).as_str();
+                        params.push(Expr::PVar(lifetime_param_name(lifetime)));
                     }
-                    for tyarg in substs.iter().filter_map(|a| self.encode_generic_arg(a)) {
-                        params.push(tyarg.into())
+                    for tyarg in ty_params.parameters{
+                        let tyarg = self.encode_type(tyarg);
+                        params.push(tyarg.into());
                     }
                     for arg in args.iter() {
                         params.push(self.compile_expression(*arg, thir));

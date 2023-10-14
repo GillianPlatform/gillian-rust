@@ -40,8 +40,11 @@ pub(crate) enum Stubs {
     SeqPrepend,
     SeqConcat,
     SeqLen,
+    // The following are actually part of gilogic and would disappear
+    // as soon as we support cross-crate compilation.
     OwnPred,
     MutRefOwnPred,
+    OptionOwnPred,
     RefMutInner,
 }
 
@@ -85,6 +88,7 @@ impl Stubs {
                     Symbol::intern("gillian::ownable::mut_ref_own")
                 }
             }
+            Self::OptionOwnPred => Symbol::intern("gillian::ownable::option_own"),
         }
     }
 
@@ -114,6 +118,7 @@ impl Stubs {
                 "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
                     Some(Self::MutRefOwnPred)
                 }
+                "gillian::ownable::option_own" => Some(Self::OptionOwnPred),
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 _ => {
                     if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
