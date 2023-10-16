@@ -31,8 +31,6 @@ const CHECKED_SUB: &str = "i__binop_checked_sub";
 const LANG_ASSERT: &str = "i__lang_assert";
 const _INT_OF_BOOL: &str = "i__lang_int_of_bool";
 const _BOOL_OF_INT: &str = "i__bool_of_lang_int";
-pub const POLY_REF_MUT_OWN_INNER: &str = "$POLYMORPHIC::ref_mut_own$$inner";
-pub const POLY_REF_MUT_INNER: &str = "$POLYMORPHIC::ref_mut_inner";
 
 pub fn checked_add(variable: String, e1: Expr, e2: Expr, max_val: Expr) -> Cmd {
     Cmd::Call {

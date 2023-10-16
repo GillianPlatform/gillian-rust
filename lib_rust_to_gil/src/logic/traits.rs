@@ -67,7 +67,8 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                     Ok(None) => panic!("Ambiguous!"),
                     Err(Unimplemented) => fatal!(
                         self,
-                        "Got unimplemented when resolving {:?}",
+                        "Got unimplemented when resolving {:?}.\n\
+                         Please check that you have enabled --prophecies if working with prophecies.",
                         self.tcx().def_path_str_with_args(def_id, substs)
                     ),
                     Err(e) => panic!("Error: {:?}", e),
@@ -163,8 +164,14 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                     .instantiate_identity()
             }
             _ => {
-                log::debug!("Unhandled Implementation source {:?}", impl_source);
-                unimplemented!()
+                fatal!(
+                    self,
+                    "Unhandled Implementation source {:?} when resolving associated type {:?} for {:?}.\n
+                    If you are verifying only type safety, make sure --prophecies is disabled",
+                    impl_source,
+                    self.tcx().def_path_str(assoc_id),
+                    for_ty
+                );
             }
         }
     }

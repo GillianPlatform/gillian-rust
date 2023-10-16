@@ -784,20 +784,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                Some(LogicStubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
-                if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) =>
-                {
-                    let name = crate::codegen::runtime::POLY_REF_MUT_INNER.to_string();
-                    let mut params = Vec::with_capacity(args.len() + 2);
-                    let lft_param = Expr::PVar(lifetime_param_name(&self.generic_lifetimes()[0]));
-                    params.push(lft_param);
-                    let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
-                    params.push(self.encode_type(inner_ty).into());
-                    for arg in args.iter() {
-                        params.push(self.compile_expression(*arg, thir));
-                    }
-                    Assertion::Pred { name, params }
-                }
                 Some(LogicStubs::ProphecyObserver) => {
                     self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);
@@ -819,14 +805,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     };
 
                     let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
-                    let ty_params = param_collector::collect_params_on_args(substs).with_consider_arguments(args.iter().map(|id| thir[*id].ty));
-                    let mut params = Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + args.len());
+                    let ty_params = param_collector::collect_params_on_args(substs)
+                        .with_consider_arguments(args.iter().map(|id| thir[*id].ty));
+                    let mut params = Vec::with_capacity(
+                        ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
+                    );
                     if ty_params.regions {
                         let generic_lifetimes = self.generic_lifetimes();
                         let lifetime = generic_lifetimes.get(0).unwrap_or_else(|| fatal!(self, "predicate calling another one, it has a lifetime param but not self?? {:?}", self.pred_name())).as_str();
                         params.push(Expr::PVar(lifetime_param_name(lifetime)));
                     }
-                    for tyarg in ty_params.parameters{
+                    for tyarg in ty_params.parameters {
                         let tyarg = self.encode_type(tyarg);
                         params.push(tyarg.into());
                     }

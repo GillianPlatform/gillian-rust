@@ -221,10 +221,19 @@ impl<'tcx> GlobalEnv<'tcx> {
         (name, instance.args)
     }
 
-    pub fn inner_pred(&mut self, pred: String) -> String {
+    fn inner_pred(&mut self, pred: String) -> String {
         let name = pred.clone() + "$$inner";
         self.inner_preds.insert_same(pred, name.clone());
         name
+    }
+
+    pub fn resolve_inner_of_predicate(
+        &mut self,
+        did: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> (String, GenericArgsRef<'tcx>) {
+        let (name, args) = self.resolve_predicate(did, args);
+        (self.inner_pred(name), args)
     }
 
     pub fn get_own_pred_for(&mut self, ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
@@ -247,19 +256,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.item_queue
             .push(name.clone(), PcyAutoUpdate::new(name.clone(), args).into());
         name
-    }
-
-    pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {
-        self.mut_ref_owns
-            .entry(ty)
-            .or_insert_with(|| {
-                if self.config.prophecies {
-                    format!("<{} as gilogic::prophecies::Ownable>::own", ty)
-                } else {
-                    format!("<{} as gilogic::Ownable>::own", ty)
-                }
-            })
-            .clone()
     }
 
     pub fn add_items_to_prog(&mut self, prog: &mut Prog) {

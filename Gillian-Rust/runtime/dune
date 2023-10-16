@@ -1,22 +1,3 @@
-(executables
- (names i__ownable i__ownable_pcy))
-
-(rule
- (deps i__ownable.exe i__ownable.gil.incomplete)
- (target i__ownable.gil)
- (action
-  (with-stdout-to
-   %{target}
-   (run ./i__ownable.exe))))
-
-(rule
- (deps i__ownable_pcy.exe i__ownable_pcy.gil.incomplete)
- (target i__ownable_pcy.gil)
- (action
-  (with-stdout-to
-   %{target}
-   (run ./i__ownable_pcy.exe))))
-
 (install
  (section share)
  (files

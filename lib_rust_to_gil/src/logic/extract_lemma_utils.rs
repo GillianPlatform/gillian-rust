@@ -1,4 +1,4 @@
-use super::traits::TraitSolver;
+use super::param_collector;
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, predicate::PredCtx};
 use crate::prelude::*;
@@ -104,73 +104,24 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
         let expr = &thir[e];
         match &expr.kind {
-            ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
-                Some(LogicStubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir[args[0]].ty) => {
-                    let name = crate::codegen::runtime::POLY_REF_MUT_OWN_INNER.to_string();
-                    let mut params = Vec::with_capacity(args.len() + 1);
-                    let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
-                    params.push(self.encode_type(inner_ty).into());
+            ExprKind::Call { ty, args, .. } => match ty.kind() {
+                TyKind::FnDef(def_id, substs) => {
+                    let (name, substs) = self
+                        .global_env_mut()
+                        .resolve_inner_of_predicate(*def_id, substs);
+                    let ty_params = param_collector::collect_params_on_args(substs)
+                        .with_consider_arguments(args.iter().map(|id| thir[*id].ty));
+                    let mut params = Vec::with_capacity(ty_params.parameters.len() + args.len());
+                    for tyarg in ty_params.parameters {
+                        let tyarg = self.encode_type(tyarg);
+                        params.push(tyarg.into());
+                    }
                     for arg in args.iter() {
                         params.push(self.compile_expression(*arg, thir));
                     }
                     Assertion::Pred { name, params }
                 }
-                None | Some(LogicStubs::OwnPred) => {
-                    match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => {
-                            let arg_ty = thir.exprs[args[0]].ty;
-                            let (name, substs) = {
-                                if (self.tcx().is_diagnostic_item(
-                                    Symbol::intern("gillian::pcy::ownable::own"),
-                                    *def_id,
-                                ) || self.tcx().is_diagnostic_item(
-                                    Symbol::intern("gillian::ownable::own"),
-                                    *def_id,
-                                )) && ty_utils::is_mut_ref(arg_ty)
-                                {
-                                    let name = self.global_env.add_mut_ref_own(arg_ty);
-                                    let inner_ty = ty_utils::mut_ref_inner(arg_ty).unwrap();
-                                    // We use the subst of the own predicate for the inner type.
-                                    // That is the only thing we need here.
-                                    let Instance { args, .. } = self
-                                        .resolve_candidate(
-                                            *def_id,
-                                            self.tcx().mk_args(&[inner_ty.into()]),
-                                        )
-                                        .expect_impl(self.global_env());
-                                    (name, args)
-                                } else {
-                                    let instance = self
-                                        .resolve_candidate(*def_id, substs)
-                                        .expect_impl(self.global_env());
-                                    let name = self.global_env.just_pred_name_instance(instance);
-                                    (name, instance.args)
-                                }
-                            };
-                            let mut params: Vec<Expr> =
-                                Vec::with_capacity(substs.len() + args.len());
-                            for subst in substs.iter() {
-                                if let Some(arg) = self.encode_generic_arg(subst) {
-                                    params.push(arg.into());
-                                }
-                            }
-                            for arg in args.iter() {
-                                params.push(self.compile_expression(*arg, thir));
-                            }
-                            let inner_name = self.global_env.inner_pred(name);
-                            Assertion::Pred {
-                                name: inner_name,
-                                params,
-                            }
-                        }
-                        _ => fatal!(self, "Expected a function definition for predicate type"),
-                    }
-                }
-                _ => fatal!(
-                    self,
-                    "extract_lemma pre/post, expected a predicate got {:?}",
-                    expr
-                ),
+                _ => fatal!(self, "Expected a function definition for predicate type"),
             },
             _ => fatal!(
                 self,
