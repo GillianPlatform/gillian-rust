@@ -4,7 +4,7 @@ proc "std::boxed::Box::<T, A>::leak"(T, A, b) {
      return
 };
 
-proc "<&mut T std::convert::Into<U>>::into"(pLft_a, T, U, ref) {
+proc "<&mut T std::convert::Into<U>>::into"(pLft_a, mutT, U, ref) {
      ret := {{ l-nth(ref, 0i) }};
      return
 };
