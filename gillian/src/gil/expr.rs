@@ -94,6 +94,20 @@ impl From<Vec<Expr>> for Expr {
 }
 
 impl Expr {
+    pub fn lvar<S>(s: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Expr::LVar(s.into())
+    }
+
+    pub fn pvar<S>(s: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Expr::PVar(s.into())
+    }
+
     pub fn string(str: String) -> Self {
         str.into()
     }

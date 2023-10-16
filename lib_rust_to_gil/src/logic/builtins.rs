@@ -106,10 +106,19 @@ pub enum FnStubs {
     MutRefProphecyAutoUpdate,
     UnfoldSomething,
     FoldSomething,
+    Into,
 }
 
 impl FnStubs {
     pub(crate) fn of_def_id(def_id: DefId, tcx: TyCtxt) -> Option<Self> {
+        let is_into = tcx
+            .trait_of_item(def_id)
+            .is_some_and(|trait_id| tcx.is_diagnostic_item(Symbol::intern("Into"), trait_id));
+
+        if is_into {
+            return Some(Self::Into);
+        }
+
         crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
             match name.as_str() {
                 "gillian::mut_ref::prophecy_auto_update" => Some(Self::MutRefProphecyAutoUpdate),

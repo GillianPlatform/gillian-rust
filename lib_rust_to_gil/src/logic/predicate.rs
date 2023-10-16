@@ -686,14 +686,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn is_nonnull(&self, ty: Ty<'tcx>) -> bool {
-        if let Some(adt_def) = ty.ty_adt_def() {
-            if let "core::ptr::NonNull" | "std::ptr::NonNull" =
-                self.tcx().def_path_str(adt_def.did()).as_str()
-            {
-                return true;
-            }
-        }
-        false
+        crate::utils::ty::is_nonnull(ty, self.tcx())
     }
 
     fn make_nonnull(&self, ptr: GExpr) -> GExpr {

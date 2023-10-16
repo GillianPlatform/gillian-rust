@@ -3,7 +3,7 @@ proc "std::boxed::Box::<T, A>::leak"(T, A, b) {
      return
 };
 
-proc mut_ref_to_nonnull_ptr(T, U, ref) {
+proc "<&mut T std::convert::Into<U>>::into"(pLft_a, mutT, U, ref) {
      ret := {{ ref }};
      return
 };

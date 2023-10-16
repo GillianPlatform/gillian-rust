@@ -17,7 +17,70 @@ impl<'tcx> PcyAutoUpdate<'tcx> {
     }
 
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
-        fatal!(global_env, "Unimplemented: add pcy_auto_update to prog")
+        let mutref = Expr::pvar("mut_ref");
+        let mutref_ty = self.args[0]
+            .as_type()
+            .expect("Invalid substs for prophecy_auto_update?");
+        let inner_ty = ty_utils::mut_ref_inner(mutref_ty)
+            .expect("Calling prophecy_auto_update on something that isn't a mutref");
+        let pointee = Expr::lvar("#pointee");
+        let new_repr = "#new_repr".to_owned();
+        let pointer = mutref.clone().lnth(0);
+        let pcy = mutref.lnth(1);
+        let value_cp =
+            core_preds::value(pointer, global_env.encode_type(inner_ty), pointee.clone());
+        let (own_pred_name, instance_args) = global_env.get_own_pred_for(inner_ty);
+        let collected_params = param_collector::collect_params_on_args(instance_args);
+        let ty_params = collected_params
+            .parameters
+            .iter()
+            .map(|ty| global_env.encode_type(*ty).into());
+        let own_pred_call = Assertion::Pred {
+            name: own_pred_name,
+            params: ty_params
+                .chain([pointee, Expr::LVar(new_repr.clone())])
+                .collect(),
+        };
+        let asrt_cmd = Cmd::slcmd(SLCmd::SepAssert {
+            assertion: value_cp.star(own_pred_call),
+            existentials: vec![new_repr.clone()],
+        });
+        let repr_ty = global_env.get_repr_ty_for(inner_ty);
+        let repr_ty = global_env.encode_type(repr_ty).into();
+        let assign = Cmd::Action {
+            variable: "u".to_owned(),
+            action_name: crate::codegen::memory::action_names::PCY_ASSIGN.to_string(),
+            parameters: vec![
+                pcy.clone().lnth(0),
+                pcy.lnth(1),
+                repr_ty,
+                Expr::LVar(new_repr),
+            ],
+        };
+        let mut params = Vec::with_capacity(collected_params.parameters.len() + 2);
+        params.push("pLft_a".to_owned());
+        for ty_param in collected_params.parameters {
+            let ParamTy { index, name } = crate::utils::ty::extract_param_ty(ty_param);
+            let name = type_param_name(index, name);
+            params.push(name);
+        }
+        params.push("mut_ref".to_owned());
+        let proc = Proc {
+            name: self.updater_name,
+            body: vec![
+                asrt_cmd.into(),
+                assign.into(),
+                Cmd::Assignment {
+                    variable: "ret".into(),
+                    assigned_expr: vec![].into(),
+                }
+                .into(),
+                Cmd::ReturnNormal.into(),
+            ],
+            spec: None,
+            params,
+        };
+        prog.add_proc(proc);
     }
 }
 
@@ -26,46 +89,6 @@ impl<'tcx> From<PcyAutoUpdate<'tcx>> for AutoItem<'tcx> {
         Self::PcyAutoUpdate(value)
     }
 }
-
-// fn push_prophecy_auto_update(&mut self, args: &[Operand<'tcx>], destination: Place<'tcx>) {
-//     assert_eq!(args.len(), 1);
-//     assert!(self.global_env.config.prophecies);
-//     let mutref = &args[0];
-//     let mutref_ty = self.operand_ty(mutref);
-//     let inner_ty = ty_utils::mut_ref_inner(mutref_ty)
-//         .expect("Calling prophecy_auto_update on something that isn't a mutref");
-//     let pointee = Expr::LVar(self.temp_lvar());
-//     let new_repr = self.temp_lvar();
-//     let mutref = self.push_encode_operand(mutref);
-//     let pointer = mutref.clone().lnth(0);
-//     let pcy = mutref.lnth(1);
-//     let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
-//     let (own_pred_name, instance_args) = self.global_env.get_own_pred_for(inner_ty);
-//     let generic_args = instance_args
-//         .into_iter()
-//         .filter_map(|arg| self.encode_generic_arg(arg).map(|x| x.into()));
-//     let own_pred_call = Assertion::Pred {
-//         name: own_pred_name,
-//         params: generic_args
-//             .chain([pointee, Expr::LVar(new_repr.clone())])
-//             .collect(),
-//     };
-//     let asrt_cmd = Cmd::slcmd(SLCmd::SepAssert {
-//         assertion: value_cp.star(own_pred_call),
-//         existentials: vec![new_repr.clone()],
-//     });
-//     let repr_ty_id = self.global_env().get_repr_ty_did();
-//     let repr_ty = self.resolve_associated_type(repr_ty_id, inner_ty);
-//     let pcy_assign = crate::codegen::memory::MemoryAction::PcyAssign {
-//         pcy,
-//         repr_ty,
-//         value: Expr::LVar(new_repr),
-//     };
-//     let pcy_temp = self.temp_var();
-//     self.push_cmd(asrt_cmd);
-//     self.push_action(pcy_temp, pcy_assign);
-//     self.push_place_write(destination, vec![].into(), self.place_ty(destination).ty);
-// }
 
 /// Corresponds to a spec of the form
 /// ```gil
@@ -92,13 +115,16 @@ impl<'tcx> Resolver<'tcx> {
         let future = Expr::LVar("#future".to_string());
         let mut_ref = "mut_ref".to_string();
         let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(self.args.type_at(0));
-        let pred_params = inner_subst
-            .iter()
-            .skip(1) // We skip the region
-            .enumerate()
-            .map(|(i, k)| {
-                let name = k.to_string();
-                type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
+        let inner_subst_params = param_collector::collect_params_on_args(inner_subst);
+        let pred_params = inner_subst_params
+            .parameters
+            .into_iter()
+            .map(|ty| {
+                let TyKind::Param(ParamTy { index, name }) = *ty.kind() else {
+                    panic!("unexpected parameter type??")
+                };
+                let name = name.to_string();
+                type_param_name(index, Symbol::intern(&name))
             })
             .chain(std::iter::once(mut_ref));
         let pred_params = std::iter::once(String::from("lft")).chain(pred_params);

@@ -1,7 +1,7 @@
 mod block;
 mod body;
 mod function_call;
-mod memory;
+pub mod memory;
 mod prophecies;
 mod rvalue;
 mod statement;

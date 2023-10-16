@@ -1,18 +1,12 @@
+use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
-use crate::logic::{builtins::FnStubs, core_preds};
 use crate::prelude::*;
 use crate::utils::polymorphism::HasGenericLifetimes;
 use names::bb_label;
-use rustc_middle::ty::{GenericArg, GenericArgsRef};
+use rustc_middle::ty::GenericArgsRef;
 use rustc_target::abi::VariantIdx;
 
 use super::typ_encoding::lifetime_param_name;
-
-enum SubstKind {
-    All,
-    ParamOnly,
-    None,
-}
 
 enum ConstructorKind {
     Enum(VariantIdx),
@@ -34,6 +28,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let stub = FnStubs::of_def_id(did, self.tcx());
         log::debug!("Shimming {}, stub is {:?}", fname, stub);
         match stub {
+            Some(FnStubs::Into)
+                if substs.type_at(0).is_ref()
+                    && crate::utils::ty::is_nonnull(substs.type_at(1), self.tcx()) =>
+            {
+                CallKind::PolyFn("<&mut T std::convert::Into<U>>::into".into())
+            }
             // "std::convert::Into::into" => {
             //     if let TyKind::Ref(_, ty, Mutability::Mut) = substs[0].expect_ty().kind() {
             //         if let TyKind::Adt(adt_def, subst) = substs[1].expect_ty().kind() {
@@ -87,7 +87,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     );
                 }
             }
-            None => CallKind::PolyFn(self.tcx().def_path_str(did)),
+            _ => CallKind::PolyFn(self.tcx().def_path_str(did)),
         }
     }
 
