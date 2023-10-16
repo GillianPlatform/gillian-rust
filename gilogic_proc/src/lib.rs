@@ -51,8 +51,19 @@ pub fn extract_lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro_attribute]
-pub fn with_freeze_lemma_for_mutref(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    match FreezeMutRefOwn::parse(args, input) {
+pub fn with_freeze_lemma_for_mutref_no_pcy(
+    args: TokenStream_,
+    input: TokenStream_,
+) -> TokenStream_ {
+    match frozen_borrow::FreezeMutRefOwn::parse(args, input) {
+        Ok(freeze_mut_own_ref) => freeze_mut_own_ref.to_token_stream().into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn with_freeze_lemma_for_mutref_pcy(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    match frozen_borrow_pcy::FreezeMutRefOwn::parse(args, input) {
         Ok(freeze_mut_own_ref) => freeze_mut_own_ref.to_token_stream().into(),
         Err(err) => err.to_compile_error().into(),
     }

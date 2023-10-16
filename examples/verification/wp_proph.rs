@@ -3,7 +3,10 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, borrow, ensures, lemma, predicate, requires},
+    macros::{
+        assertion, borrow, ensures, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        requires,
+    },
     mutref_auto_resolve,
     prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
 };
@@ -42,12 +45,18 @@ fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *m
     )
 }
 
+#[with_freeze_lemma_for_mutref(
+    lemma_name = freeze_xy,
+    predicate_name = wp_ref_mut_xy2,
+    frozen_variables = [x, y],
+    inner_predicate_name = wp_ref_mut_inner_xy2
+)]
 impl<T: Ownable> Ownable for WP<T> {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
-        assertion!(|x, y| wp(self, x, y, model))
+        assertion!(|x: *mut N<T>, y: *mut N<T>| wp(self, x, y, model))
     }
 }
 
@@ -85,16 +94,13 @@ impl<T: Ownable> WP<T> {
         }
     }
 
-    // #[requires(|cself: (T::RepresentationTy, T::RepresentationTy), pself: (T::RepresentationTy, T::RepresentationTy)| self.own((cself, pself)))]
-    // #[ensures(|c, p| ret.own((c, p)) * (cself.1 == pself.1))]
-    // fn first_mut<'a>(&'a mut self) -> &'a mut T {
-    //     unsafe {
-    //         let prophecy = self.prophecy();
-    //         wp_ref_mut_pull_xy(self);
-    //         let ret = &mut (*self.x).v;
-    //         prophecy.field_1().resolve();
-    //         split_x(self, ret.prophecy());
-    //         ret
-    //     }
-    // }
+    #[requires(|cself: (T::RepresentationTy, T::RepresentationTy), pself: (T::RepresentationTy, T::RepresentationTy)| self.own((cself, pself)))]
+    #[ensures(|c, p| ret.own((c, p)) * $cself.1 == pself.1$)]
+    fn first_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            freeze_xy(self);
+            let ret = &mut (*self.x).v;
+            ret
+        }
+    }
 }

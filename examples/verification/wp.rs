@@ -1,8 +1,9 @@
-#![feature(concat_idents)]
-
 extern crate gilogic;
 
-use gilogic::{macros::*, Ownable};
+use gilogic::{
+    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+    Ownable,
+};
 
 struct WP<T> {
     x: *mut N<T>,

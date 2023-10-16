@@ -41,20 +41,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             fatal!(self, "Prophecies are not enabled, something is wrong");
         }
         let ty = self.place_ty(place).ty;
-        let repr_ty_id = self
-            .tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
-            .expect("Couldn't find gillian::ownable::representation_ty");
-        // let trait_id = self
-        //     .tcx
-        //     .trait_of_item(repr_ty_id)
-        //     .expect("Ty is not in a trait??");
-        let t_subst = self.tcx().mk_args(&[ty.into()]);
-        // let trait_ref = Binder::dummy(TraitRef::new(trait_id, t_subst));
-        let associated_type = self.tcx().mk_ty_from_kind(TyKind::Alias(
-            rustc_type_ir::AliasKind::Projection,
-            self.tcx().mk_alias_ty(repr_ty_id, t_subst),
-        ));
-        self.push_alloc_prophecy(associated_type)
+        let repr_ty = self.global_env().get_repr_ty_for(ty);
+        self.push_alloc_prophecy(repr_ty)
     }
 }

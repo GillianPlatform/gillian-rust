@@ -1,5 +1,3 @@
-#![feature(concat_idents)]
-
 extern crate gilogic;
 
 use gilogic::{

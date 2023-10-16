@@ -163,6 +163,10 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                     .type_of(associated_ty.def_id)
                     .instantiate_identity()
             }
+            ImplSource::Param(..) => self.tcx().mk_ty_from_kind(TyKind::Alias(
+                rustc_type_ir::AliasKind::Projection,
+                self.tcx().mk_alias_ty(assoc_id, t_subst),
+            )),
             _ => {
                 fatal!(
                     self,

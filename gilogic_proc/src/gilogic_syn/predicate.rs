@@ -8,12 +8,13 @@ use syn::{
     TypePath,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParamMode {
     In,
     Out,
 }
 
+#[derive(Clone)]
 pub struct PredParamS {
     pub name: Ident,
     pub colon_token: Token![:],
@@ -21,6 +22,7 @@ pub struct PredParamS {
     pub mode: ParamMode,
 }
 
+#[derive(Clone)]
 pub enum PredParam {
     S(PredParamS),
     Receiver(Token![self]),
@@ -153,6 +155,7 @@ impl TryFrom<FnArg> for PredParam {
     }
 }
 
+#[derive(Clone)]
 pub struct Predicate {
     pub(crate) attributes: Vec<Attribute>,
     pub(crate) name: Ident,

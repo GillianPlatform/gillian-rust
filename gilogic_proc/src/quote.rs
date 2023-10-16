@@ -211,7 +211,7 @@ impl ToTokens for Lemma {
     }
 }
 
-impl ToTokens for FreezeMutRefOwn {
+impl ToTokens for frozen_borrow::FreezeMutRefOwn {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let own_impl = &self.own_impl;
         let predicate = &self.predicate;
@@ -246,6 +246,58 @@ impl ToTokens for FreezeMutRefOwn {
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
             #[gillian::borrow]
+            #lifetimes
+            #predicate
+
+            #own_impl
+        })
+    }
+}
+
+impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let own_impl = &self.own_impl;
+        let predicate = &self.predicate;
+        let generics = &predicate.generics;
+        let inner_predicate = &self.inner_predicate;
+        // let own_impl_ty = &self.own_impl.self_ty;
+        let inner_name = &inner_predicate.name;
+        let sig = {
+            let args = &inner_predicate.args;
+            let tokens = quote!(fn #inner_name #generics (#args));
+            syn::parse2::<Signature>(tokens).unwrap()
+        };
+        let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&sig);
+
+        // Then we generate the corresponding lemma.
+
+        let own_impl_ty = &self.own_impl.self_ty;
+        let additional_args: Vec<_> = predicate
+            .args
+            .iter()
+            .skip(predicate.args.len() - self.args.frozen_variables.len())
+            .map(|x| match x {
+                PredParam::Receiver(..) => {
+                    unreachable!()
+                }
+                PredParam::S(s) => &s.name,
+            })
+            .collect();
+        let lemma_name = &self.args.lemma_name;
+        let outer_name = &predicate.name;
+
+        tokens.extend(quote! {
+
+            #[lemma]
+            #[requires(|MODEL: <&mut #own_impl_ty as ::gilogic::prophecies::Ownable>::RepresentationTy| REFERENCE.own(MODEL))]
+            #[ensures(|#(#additional_args),*| #outer_name(REFERENCE, MODEL, #(#additional_args),*))]
+            fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
+
+            #[gillian::borrow]
+            #lifetimes
+            #inner_predicate
+
+
             #lifetimes
             #predicate
 

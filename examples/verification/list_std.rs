@@ -1,6 +1,9 @@
 extern crate gilogic;
 
-use gilogic::{macros::*, Ownable};
+use gilogic::{
+    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+    Ownable,
+};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
