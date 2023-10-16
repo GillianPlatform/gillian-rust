@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::builtins::Stubs;
+use super::builtins::LogicStubs;
 use super::utils::get_thir;
 use crate::{
     codegen::{
@@ -117,12 +117,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         // Special case for items that are in gilogic.
         // This code yeets as soon as we can do multi-crate.
 
-        match Stubs::of_def_id(self.did(), self.tcx()) {
-            Some(Stubs::OwnPred) if self.prophecies_enabled() => {
-                return vec![0, 1];
-            }
-            Some(Stubs::OwnPred | Stubs::RefMutInner) => return vec![0],
-            _ => (),
+        if let Some(LogicStubs::OwnPred | LogicStubs::RefMutInner | LogicStubs::OptionOwnPred) =
+            LogicStubs::of_def_id(self.did(), self.tcx())
+        {
+            return vec![0];
         }
 
         let Some(ins_attr) = crate::utils::attrs::get_attr(
@@ -268,6 +266,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let generic_lifetimes = self.generic_lifetimes();
         let generic_types = self.generic_types();
         let mut ins = self.get_ins();
+        log::debug!("Ins obtained for {:?} : {:?}", self.pred_name(), &ins);
         let generics_amount = generic_types.len() + generic_lifetimes.len();
         if generics_amount > 0 {
             // Ins known info is only about non-type params.
@@ -335,8 +334,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         super::builtins::is_formula_ty(ty, self.tcx())
     }
 
-    pub(crate) fn get_stub(&self, ty: Ty<'tcx>) -> Option<Stubs> {
-        Stubs::for_fn_def_ty(ty, self.tcx())
+    pub(crate) fn get_stub(&self, ty: Ty<'tcx>) -> Option<LogicStubs> {
+        LogicStubs::for_fn_def_ty(ty, self.tcx())
     }
 
     fn unwrap_prophecy_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -512,43 +511,43 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Call {
                 ty, fun: _, args, ..
             } => match self.get_stub(*ty) {
-                Some(Stubs::SeqNil) => {
+                Some(LogicStubs::SeqNil) => {
                     assert!(args.is_empty());
                     GExpr::EList(vec![])
                 }
-                Some(Stubs::SeqAppend) => {
+                Some(LogicStubs::SeqAppend) => {
                     let list = self.compile_expression(args[0], thir);
                     let elem = self.compile_expression(args[1], thir);
                     let elem = vec![elem].into();
                     Expr::lst_concat(list, elem)
                 }
-                Some(Stubs::SeqPrepend) => {
+                Some(LogicStubs::SeqPrepend) => {
                     let list = self.compile_expression(args[0], thir);
                     let elem = self.compile_expression(args[1], thir);
                     let elem = vec![elem].into();
                     Expr::lst_concat(elem, list)
                 }
-                Some(Stubs::SeqConcat) => {
+                Some(LogicStubs::SeqConcat) => {
                     let left = self.compile_expression(args[0], thir);
                     let right = self.compile_expression(args[1], thir);
                     Expr::lst_concat(left, right)
                 }
-                Some(Stubs::SeqLen) => {
+                Some(LogicStubs::SeqLen) => {
                     let list = self.compile_expression(args[0], thir);
                     list.lst_len()
                 }
-                Some(Stubs::MutRefGetProphecy) => {
+                Some(LogicStubs::MutRefGetProphecy) => {
                     self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                     let mut_ref = self.compile_expression(args[0], thir);
                     mut_ref.lnth(1)
                 }
-                Some(Stubs::MutRefSetProphecy) => {
+                Some(LogicStubs::MutRefSetProphecy) => {
                     self.assert_prophecies_enabled("using `Prophecised::assign`");
                     let mut_ref = self.compile_expression(args[0], thir);
                     let pcy = self.compile_expression(args[1], thir);
                     [mut_ref.lnth(0), pcy].into()
                 }
-                Some(Stubs::ProphecyGetValue) => {
+                Some(LogicStubs::ProphecyGetValue) => {
                     self.assert_prophecies_enabled("using `Prophecy::value`");
                     let prophecy = self.compile_expression(args[0], thir);
                     let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
@@ -558,7 +557,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         .push(core_preds::pcy_value(prophecy, ty, value.clone()));
                     value
                 }
-                Some(Stubs::ProphecyField(i)) => {
+                Some(LogicStubs::ProphecyField(i)) => {
                     self.assert_prophecies_enabled("using `Prophecy::field`");
                     let proph = self.compile_expression(args[0], thir);
                     let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
@@ -649,13 +648,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             } => {
                 let stub = self.get_stub(*ty);
                 match stub {
-                    Some(Stubs::FormulaEqual) => {
+                    Some(LogicStubs::FormulaEqual) => {
                         assert!(args.len() == 2, "Equal call must have two arguments");
                         let left = Box::new(self.compile_expression(args[0], thir));
                         let right = Box::new(self.compile_expression(args[1], thir));
                         Formula::Eq { left, right }
                     }
-                    Some(Stubs::FormulaLessEq) => {
+                    Some(LogicStubs::FormulaLessEq) => {
                         assert!(args.len() == 2, "LessEq call must have two arguments");
                         let ty = thir.exprs[args[0]].ty;
                         if thir.exprs[args[0]].ty.is_integral() {
@@ -666,7 +665,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             fatal!(self, "Used <= in formula for unknown type: {}", ty)
                         }
                     }
-                    Some(Stubs::FormulaLess) => {
+                    Some(LogicStubs::FormulaLess) => {
                         assert!(args.len() == 2, "Less call must have two arguments");
                         let ty = thir.exprs[args[0]].ty;
                         if thir.exprs[args[0]].ty.is_integral() {
@@ -771,28 +770,28 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Call {
                 ty, fun: _, args, ..
             } => match self.get_stub(*ty) {
-                Some(Stubs::AssertPure) => {
+                Some(LogicStubs::AssertPure) => {
                     assert!(args.len() == 1, "Pure call must have one argument");
                     let formula = self.compile_formula(args[0], thir);
                     Assertion::Pure(formula)
                 }
-                Some(Stubs::AssertObservation) => {
+                Some(LogicStubs::AssertObservation) => {
                     assert!(args.len() == 1, "Observation call must have one argment");
                     let formula = self.compile_formula(args[0], thir);
                     super::core_preds::observation(formula)
                 }
-                Some(Stubs::AssertStar) => {
+                Some(LogicStubs::AssertStar) => {
                     assert!(args.len() == 2, "Pure call must have one argument");
                     let left = self.compile_assertion(args[0], thir);
                     let right = self.compile_assertion(args[1], thir);
                     Assertion::star(left, right)
                 }
-                Some(Stubs::AssertEmp) => {
+                Some(LogicStubs::AssertEmp) => {
                     assert!(args.len() == 0, "Emp call must have no arguments");
                     Assertion::Emp
                 }
-                Some(Stubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                Some(Stubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
+                Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
+                Some(LogicStubs::RefMutInner) // We provide the stub for POLY::ref_mut_inner
                 if ty_utils::is_mut_ref_of_param_ty(thir.exprs[args[0]].ty) =>
                 {
                     let name = crate::codegen::runtime::POLY_REF_MUT_INNER.to_string();
@@ -806,14 +805,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     Assertion::Pred { name, params }
                 }
-                Some(Stubs::ProphecyObserver) => {
+                Some(LogicStubs::ProphecyObserver) => {
                     self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);
                     let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
                     let model = self.compile_expression(args[1], thir);
                     super::core_preds::observer(prophecy, typ, model)
                 }
-                Some(Stubs::ProphecyController) => {
+                Some(LogicStubs::ProphecyController) => {
                     self.assert_prophecies_enabled("using prophecy::controller");
                     let prophecy = self.compile_expression(args[0], thir);
                     let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
@@ -1005,7 +1004,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 None => fatal!(self, "Definition block has no expression when resolving the main expression of a predicate"),
             }
             }
-            ExprKind::Call { ty, args, .. } if self.get_stub(*ty) == Some(Stubs::PredDefs) => {
+            ExprKind::Call { ty, args, .. } if self.get_stub(*ty) == Some(LogicStubs::PredDefs) => {
                 assert!(args.len() == 1, "Defs call must have one argument");
                 self.resolve_array(args[0], thir)
             }

@@ -19,7 +19,7 @@ pub(crate) fn is_formula_ty<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub(crate) enum Stubs {
+pub(crate) enum LogicStubs {
     PredDefs,
     AssertStar,
     AssertPure,
@@ -48,50 +48,7 @@ pub(crate) enum Stubs {
     RefMutInner,
 }
 
-impl Stubs {
-    pub(crate) fn symbol(&self, prophecies_enabled: bool) -> Symbol {
-        match self {
-            Self::PredDefs => Symbol::intern("gillian::pred::defs"),
-            Self::AssertStar => Symbol::intern("gillian::asrt::star"),
-            Self::AssertPure => Symbol::intern("gillian::asrt::pure"),
-            Self::AssertObservation => Symbol::intern("gillian::asrt::observation"),
-            Self::AssertEmp => Symbol::intern("gillian::asrt::emp"),
-            Self::AssertPointsTo => Symbol::intern("gillian::asrt::points_to"),
-            Self::FormulaEqual => Symbol::intern("gillian::formula::equal"),
-            Self::FormulaLessEq => Symbol::intern("gillian::formula::less_eq"),
-            Self::FormulaLess => Symbol::intern("gillian::formula::less"),
-            Self::MutRefGetProphecy => Symbol::intern("gillian::mut_ref::get_prophecy"),
-            Self::MutRefSetProphecy => Symbol::intern("gillian::mut_ref::set_prophecy"),
-            Self::ProphecyGetValue => Symbol::intern("gillian::prophecy::get_value"),
-            Self::ProphecyField(_field) => {
-                panic!("Cannot get prophecy field without arity")
-            }
-            Self::ProphecyObserver => Symbol::intern("gillian::prophecy::observer"),
-            Self::ProphecyController => Symbol::intern("gillian::prophecy::controller"),
-            Self::SeqNil => Symbol::intern("gillian::seq::nil"),
-            Self::SeqAppend => Symbol::intern("gillian::seq::append"),
-            Self::SeqPrepend => Symbol::intern("gillian::seq::prepend"),
-            Self::SeqConcat => Symbol::intern("gillian::seq::concat"),
-            Self::SeqLen => Symbol::intern("gillian::seq::len"),
-            Self::RefMutInner => Symbol::intern("gillian::pcy::ownable::ref_mut_inner"),
-            Self::OwnPred => {
-                if prophecies_enabled {
-                    Symbol::intern("gillian::pcy::ownable::own")
-                } else {
-                    Symbol::intern("gillian::ownable::own")
-                }
-            }
-            Self::MutRefOwnPred => {
-                if prophecies_enabled {
-                    Symbol::intern("gillian::pcy::ownable::mut_ref_own")
-                } else {
-                    Symbol::intern("gillian::ownable::mut_ref_own")
-                }
-            }
-            Self::OptionOwnPred => Symbol::intern("gillian::ownable::option_own"),
-        }
-    }
-
+impl LogicStubs {
     pub(crate) fn of_def_id(def_id: DefId, tcx: TyCtxt) -> Option<Self> {
         crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
             match name.as_str() {
@@ -140,5 +97,29 @@ impl Stubs {
         } else {
             None
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum FnStubs {
+    MutRefResolve,
+    MutRefProphecyAutoUpdate,
+    UnfoldSomething,
+    FoldSomething,
+}
+
+impl FnStubs {
+    pub(crate) fn of_def_id(def_id: DefId, tcx: TyCtxt) -> Option<Self> {
+        crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
+            match name.as_str() {
+                "gillian::mut_ref::prophecy_auto_update" => Some(Self::MutRefProphecyAutoUpdate),
+                "gillian::mut_ref::resolve" => Some(Self::MutRefResolve),
+                x if x.len() >= 17 && &x[..17] == "gillian::unfold::" => {
+                    Some(Self::UnfoldSomething)
+                }
+                x if x.len() >= 15 && &x[..15] == "gillian::fold::" => Some(Self::FoldSomething),
+                _ => None,
+            }
+        })
     }
 }

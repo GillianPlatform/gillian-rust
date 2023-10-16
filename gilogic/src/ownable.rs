@@ -5,12 +5,12 @@ pub trait Ownable {
     #[rustc_diagnostic_item = "gillian::ownable::own"]
     fn own(self) -> RustAssertion;
 
-    #[rustc_diagnostic_item = "gillian::ownable::own::open"]
+    #[rustc_diagnostic_item = "gillian::unfold::own::open"]
     fn own_____unfold(&mut self) {
         unreachable!("Implemented in GIL")
     }
 
-    #[rustc_diagnostic_item = "gillian::ownable::own::close"]
+    #[rustc_diagnostic_item = "gillian::fold::own::close"]
     fn own_____fold(&mut self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }

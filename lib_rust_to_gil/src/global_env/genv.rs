@@ -1,4 +1,4 @@
-use super::auto_items::{AutoItem, Resolver};
+use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::traits::ResolvedImpl;
 use crate::prelude::*;
@@ -166,6 +166,23 @@ impl<'tcx> GlobalEnv<'tcx> {
             .expect("Couldn't find gillian::ownable::representation_ty")
     }
 
+    pub fn get_prophecy_resolve_did(&self) -> DefId {
+        self.tcx()
+            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::resolve"))
+            .expect("Couldn't find gillian::mut_ref::resolve")
+    }
+
+    pub fn get_prophecy_auto_update_did(&self) -> DefId {
+        self.tcx()
+            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::prophecy_auto_update"))
+            .expect("Couldn't find gillian::mut_ref::prophecy_auto_update")
+    }
+
+    pub fn get_repr_ty_for(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let repr_ty_id = self.get_repr_ty_did();
+        self.resolve_associated_type(repr_ty_id, ty)
+    }
+
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
         self.tcx.def_path_str_with_args(did, args)
     }
@@ -216,15 +233,20 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.resolve_predicate(general_own, subst)
     }
 
-    pub fn add_resolver(&mut self, mutref_ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
-        let inner_ty = crate::utils::ty::mut_ref_inner(mutref_ty).unwrap();
-        let (name, args) = self.get_own_pred_for(inner_ty);
-        let mutref_own_name = format!("<{} as gilogic::prophecies::Ownable>::own", mutref_ty);
-        self.encode_type(mutref_ty); // Encoding is a way to make sure that the type is recorded in the env.
-        let resolver = Resolver::new(name.clone(), mutref_own_name, args);
-        let item = AutoItem::Resolver(resolver);
-        self.item_queue.push(name.clone(), item);
-        (name, args)
+    pub fn register_resolver(&mut self, args: GenericArgsRef<'tcx>) -> String {
+        let def_id = self.get_prophecy_resolve_did();
+        let name = self.tcx().def_path_str_with_args(def_id, args);
+        self.item_queue
+            .push(name.clone(), Resolver::new(name.clone(), args).into());
+        name
+    }
+
+    pub fn register_pcy_auto_update(&mut self, args: GenericArgsRef<'tcx>) -> String {
+        let def_id = self.get_prophecy_auto_update_did();
+        let name = self.tcx().def_path_str_with_args(def_id, args);
+        self.item_queue
+            .push(name.clone(), PcyAutoUpdate::new(name.clone(), args).into());
+        name
     }
 
     pub fn add_mut_ref_own(&mut self, ty: Ty<'tcx>) -> String {

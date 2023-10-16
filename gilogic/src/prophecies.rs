@@ -23,13 +23,13 @@ pub trait Ownable {
         unreachable!("Implemented in GIL")
     }
 
-    #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner::open"]
-    fn ref_mut_inner_____open(&mut self) -> RustAssertion {
+    #[rustc_diagnostic_item = "gillian::unfold::pcy::ownable::ref_mut_inner"]
+    fn ref_mut_inner_____unfold(&mut self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }
 
-    #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner::close"]
-    fn ref_mut_inner_____close(&mut self) -> RustAssertion {
+    #[rustc_diagnostic_item = "gillian::fold::pcy::ownable::ref_mut_inner"]
+    fn ref_mut_inner_____fold(&mut self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }
 }
@@ -81,12 +81,8 @@ pub trait Prophecised {
     #[rustc_diagnostic_item = "gillian::mut_ref::set_prophecy"]
     fn with_prophecy(self, pcy: Self::ProphecyTy) -> Self;
 
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::mut_ref::prophecy_auto_update"]
     fn prophecy_auto_update(self);
 
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::mut_ref::resolve"]
     fn prophecy_resolve(self);
 }
 
@@ -101,10 +97,14 @@ impl<T: Ownable> Prophecised for &mut T {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::prophecy_auto_update"]
     fn prophecy_auto_update(self) {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::resolve"]
     fn prophecy_resolve(self) {
         unreachable!("Implemented in GIL")
     }

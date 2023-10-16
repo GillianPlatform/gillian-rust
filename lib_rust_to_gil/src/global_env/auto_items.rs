@@ -1,10 +1,72 @@
 use rustc_middle::ty::ParamTy;
 
 use crate::codegen::typ_encoding::type_param_name;
-use crate::logic::builtins::Stubs;
+use crate::logic::builtins::LogicStubs;
 use crate::logic::traits::TraitSolver;
-use crate::logic::{param_collector, PredCtx};
+use crate::logic::{core_preds, param_collector, PredCtx};
 use crate::{prelude::*, temp_gen};
+
+pub(super) struct PcyAutoUpdate<'tcx> {
+    updater_name: String,
+    args: GenericArgsRef<'tcx>,
+}
+
+impl<'tcx> PcyAutoUpdate<'tcx> {
+    pub fn new(updater_name: String, args: GenericArgsRef<'tcx>) -> Self {
+        Self { updater_name, args }
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        fatal!(global_env, "Unimplemented: add pcy_auto_update to prog")
+    }
+}
+
+impl<'tcx> From<PcyAutoUpdate<'tcx>> for AutoItem<'tcx> {
+    fn from(value: PcyAutoUpdate<'tcx>) -> Self {
+        Self::PcyAutoUpdate(value)
+    }
+}
+
+// fn push_prophecy_auto_update(&mut self, args: &[Operand<'tcx>], destination: Place<'tcx>) {
+//     assert_eq!(args.len(), 1);
+//     assert!(self.global_env.config.prophecies);
+//     let mutref = &args[0];
+//     let mutref_ty = self.operand_ty(mutref);
+//     let inner_ty = ty_utils::mut_ref_inner(mutref_ty)
+//         .expect("Calling prophecy_auto_update on something that isn't a mutref");
+//     let pointee = Expr::LVar(self.temp_lvar());
+//     let new_repr = self.temp_lvar();
+//     let mutref = self.push_encode_operand(mutref);
+//     let pointer = mutref.clone().lnth(0);
+//     let pcy = mutref.lnth(1);
+//     let value_cp = core_preds::value(pointer, self.encode_type(inner_ty), pointee.clone());
+//     let (own_pred_name, instance_args) = self.global_env.get_own_pred_for(inner_ty);
+//     let generic_args = instance_args
+//         .into_iter()
+//         .filter_map(|arg| self.encode_generic_arg(arg).map(|x| x.into()));
+//     let own_pred_call = Assertion::Pred {
+//         name: own_pred_name,
+//         params: generic_args
+//             .chain([pointee, Expr::LVar(new_repr.clone())])
+//             .collect(),
+//     };
+//     let asrt_cmd = Cmd::slcmd(SLCmd::SepAssert {
+//         assertion: value_cp.star(own_pred_call),
+//         existentials: vec![new_repr.clone()],
+//     });
+//     let repr_ty_id = self.global_env().get_repr_ty_did();
+//     let repr_ty = self.resolve_associated_type(repr_ty_id, inner_ty);
+//     let pcy_assign = crate::codegen::memory::MemoryAction::PcyAssign {
+//         pcy,
+//         repr_ty,
+//         value: Expr::LVar(new_repr),
+//     };
+//     let pcy_temp = self.temp_var();
+//     self.push_cmd(asrt_cmd);
+//     self.push_action(pcy_temp, pcy_assign);
+//     self.push_place_write(destination, vec![].into(), self.place_ty(destination).ty);
+// }
+
 /// Corresponds to a spec of the form
 /// ```gil
 ///  spec [resolver_name](lft, T, U, mut_ref):
@@ -14,30 +76,25 @@ use crate::{prelude::*, temp_gen};
 /// where `mut_ref_own_name` corresponds to `[&'lft mut TY<T, U>]::own`
 pub(super) struct Resolver<'tcx> {
     resolver_name: String,
-    mut_ref_own_name: String,
-    inner_subst: GenericArgsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
 }
 
 impl<'tcx> Resolver<'tcx> {
-    pub fn new(
-        resolver_name: String,
-        mut_ref_own_name: String,
-        inner_subst: GenericArgsRef<'tcx>,
-    ) -> Self {
+    pub fn new(resolver_name: String, args: GenericArgsRef<'tcx>) -> Self {
         Self {
             resolver_name,
-            mut_ref_own_name,
-            inner_subst,
+            args,
         }
     }
 
-    pub fn add_to_prog(self, prog: &mut Prog) {
+    pub fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
         let current = Expr::LVar("#current".to_string());
         let future = Expr::LVar("#future".to_string());
         let mut_ref = "mut_ref".to_string();
-        let pred_params = self
-            .inner_subst
+        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(self.args.type_at(0));
+        let pred_params = inner_subst
             .iter()
+            .skip(1) // We skip the region
             .enumerate()
             .map(|(i, k)| {
                 let name = k.to_string();
@@ -53,7 +110,7 @@ impl<'tcx> Resolver<'tcx> {
             ))
             .collect();
         let pre = Assertion::Pred {
-            name: self.mut_ref_own_name,
+            name: mut_ref_own_name,
             params: own_params,
         };
         let resolved_observation = crate::logic::core_preds::observation(current.eq_f(future));
@@ -81,8 +138,8 @@ struct MutRefOwn<'tcx> {
 
 impl<'tcx> MutRefOwn<'tcx> {
     fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
-        let stub = Stubs::of_def_id(instance.def_id(), global_env.tcx());
-        if let Some(Stubs::MutRefOwnPred) = stub {
+        let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
+        if let Some(LogicStubs::MutRefOwnPred) = stub {
             // If the first argument is a region, then we have
             let ty = instance.args.type_at(1);
             let name = global_env.just_pred_name_instance(instance);
@@ -196,8 +253,8 @@ struct OptionOwn<'tcx> {
 
 impl<'tcx> OptionOwn<'tcx> {
     fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
-        let stub = Stubs::of_def_id(instance.def_id(), global_env.tcx());
-        if let Some(Stubs::OptionOwnPred) = stub {
+        let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
+        if let Some(LogicStubs::OptionOwnPred) = stub {
             // If the first argument is a region, then we have
             let ty = instance.args.type_at(0);
             let name = global_env.just_pred_name_instance(instance);
@@ -274,16 +331,97 @@ impl<'tcx> OptionOwn<'tcx> {
     }
 }
 
+pub struct MutRefInner<'tcx> {
+    pred_name: String,
+    inner_ty: Ty<'tcx>,
+}
+
+impl<'tcx> MutRefInner<'tcx> {
+    fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
+        let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
+        if let Some(LogicStubs::RefMutInner) = stub {
+            // If the first argument is a region, then we have
+            let ty = instance.args.type_at(0);
+            let name = global_env.just_pred_name_instance(instance);
+            return Some(Self {
+                pred_name: name,
+                inner_ty: ty,
+            });
+        }
+        None
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        if !global_env.config.prophecies {
+            fatal!(
+                global_env,
+                "Please use --prophecies to use prophetic features"
+            )
+        }
+        let own = global_env.get_own_pred_for(self.inner_ty);
+        let repr_ty = global_env.get_repr_ty_for(self.inner_ty);
+        let slf = Expr::PVar("self".to_string());
+        let pointer = slf.clone().lnth(0);
+        let pointee = Expr::LVar("#value".to_string());
+        let repr = Expr::LVar("#repr".to_string());
+        let points_to = core_preds::value(
+            pointer,
+            global_env.encode_type(self.inner_ty),
+            pointee.clone(),
+        );
+        let controller =
+            core_preds::controller(slf.lnth(1), global_env.encode_type(repr_ty), repr.clone());
+        let params = own.1.iter().enumerate().map(|(i, k)| {
+            let name = k.to_string();
+            type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
+        });
+        let own_call = Assertion::Pred {
+            name: own.0,
+            params: params
+                .clone()
+                .map(Expr::PVar)
+                .chain([pointee, repr])
+                .collect(),
+        };
+        let definitions = vec![points_to.star(controller).star(own_call)];
+        let all_params: Vec<_> = std::iter::once("lft".to_string())
+            .chain(params)
+            .chain(std::iter::once("self".to_string()))
+            .map(|x| (x, None))
+            .collect();
+        let pred = Pred {
+            name: self.pred_name,
+            num_params: all_params.len(),
+            ins: (0..all_params.len()).collect(),
+            params: all_params,
+            definitions,
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: Some(core_preds::alive_lft(Expr::PVar("lft".to_string()))),
+        };
+        prog.add_pred(pred);
+    }
+}
+
 pub(super) enum AutoItem<'tcx> {
+    PcyAutoUpdate(PcyAutoUpdate<'tcx>),
     Resolver(Resolver<'tcx>),
     ParamPred(Instance<'tcx>),
     MonoPred(Instance<'tcx>),
 }
 
+impl<'tcx> From<Resolver<'tcx>> for AutoItem<'tcx> {
+    fn from(resolver: Resolver<'tcx>) -> Self {
+        Self::Resolver(resolver)
+    }
+}
+
 impl<'tcx> AutoItem<'tcx> {
     pub fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
         match self {
-            Self::Resolver(resolver) => resolver.add_to_prog(prog),
+            Self::PcyAutoUpdate(pcy_auto_update) => pcy_auto_update.add_to_prog(prog, global_env),
+            Self::Resolver(resolver) => resolver.add_to_prog(prog, global_env),
             Self::ParamPred(instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
                 let pred = PredCtx::new(global_env, temp_gen, instance.def_id(), instance.args)
@@ -301,6 +439,10 @@ impl<'tcx> AutoItem<'tcx> {
                 }
                 if let Some(option_own) = OptionOwn::of_instance(instance, global_env) {
                     option_own.add_to_prog(prog, global_env);
+                    return;
+                }
+                if let Some(mut_ref_inner) = MutRefInner::of_instance(instance, global_env) {
+                    mut_ref_inner.add_to_prog(prog, global_env);
                     return;
                 }
                 fatal!(global_env, "Unsupported MonoPred! {:?}", instance)

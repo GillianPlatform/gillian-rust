@@ -1,6 +1,6 @@
 use super::traits::TraitSolver;
 use super::utils::get_thir;
-use super::{builtins::Stubs, predicate::PredCtx};
+use super::{builtins::LogicStubs, predicate::PredCtx};
 use crate::prelude::*;
 use gillian::gil::visitors::GilVisitor;
 use gillian::gil::{Assertion, Pred};
@@ -41,8 +41,8 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
-                Some(Stubs::AssertEmp | Stubs::AssertPure) => true,
-                Some(Stubs::AssertStar) => {
+                Some(LogicStubs::AssertEmp | LogicStubs::AssertPure) => true,
+                Some(LogicStubs::AssertStar) => {
                     self.check_only_pure(args[0], thir) && self.check_only_pure(args[1], thir)
                 }
                 _ => false,
@@ -56,8 +56,8 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
-                Some(Stubs::OwnPred) | None => (e, vec![]),
-                Some(Stubs::AssertStar) => {
+                Some(LogicStubs::OwnPred) | None => (e, vec![]),
+                Some(LogicStubs::AssertStar) => {
                     let el = args[0];
                     let er = args[1];
                     let (ell, mut ers) = self.separate_pred_and_pure(el, thir);
@@ -71,7 +71,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     };
                     match &exprl.kind {
                         ExprKind::Call { ty, .. }
-                            if matches!(self.get_stub(*ty), Some(Stubs::OwnPred) | None) =>
+                            if matches!(self.get_stub(*ty), Some(LogicStubs::OwnPred) | None) =>
                         {
                             ers.push(er);
                             (ell, ers)
@@ -105,7 +105,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
-                Some(Stubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir[args[0]].ty) => {
+                Some(LogicStubs::OwnPred) if ty_utils::is_mut_ref_of_param_ty(thir[args[0]].ty) => {
                     let name = crate::codegen::runtime::POLY_REF_MUT_OWN_INNER.to_string();
                     let mut params = Vec::with_capacity(args.len() + 1);
                     let inner_ty = ty_utils::mut_ref_inner(thir.exprs[args[0]].ty).unwrap();
@@ -115,7 +115,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     Assertion::Pred { name, params }
                 }
-                None | Some(Stubs::OwnPred) => {
+                None | Some(LogicStubs::OwnPred) => {
                     match ty.kind() {
                         TyKind::FnDef(def_id, substs) => {
                             let arg_ty = thir.exprs[args[0]].ty;

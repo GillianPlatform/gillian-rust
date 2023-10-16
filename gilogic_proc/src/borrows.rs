@@ -58,11 +58,13 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 
     // The opening lemma signature, it is not the same as the tokens, because it only requires the ins.
     let unfold_ident = format_ident!("{}_____unfold", &name);
+    let unfold_ident_diag = "gillian::unfold::".to_string() + &name.to_string();
     let mut unfolder_sig = sig_without_in_annot.clone();
     unfolder_sig.ident = unfold_ident;
 
     // The closing lemma signature
     let fold_ident = format_ident!("{}_____fold", &name);
+    let fold_ident_diag = "gillian::fold::".to_string() + &name.to_string();
     let mut folder_sig = sig_without_in_annot;
     folder_sig.ident = fold_ident;
 
@@ -73,12 +75,14 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
       #item
 
       #[gillian::predicate::fold]
+      #[rustc_diagnostic_item = #fold_ident_diag]
       #lifetimes
       #folder_sig {
         unreachable!()
       }
 
       #[gillian::predicate::unfold]
+      #[rustc_diagnostic_item = #unfold_ident_diag]
       #lifetimes
       #unfolder_sig {
         unreachable!()
