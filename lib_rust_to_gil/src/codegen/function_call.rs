@@ -1,7 +1,7 @@
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use crate::utils::polymorphism::HasGenericLifetimes;
+use crate::utils::polymorphism::HasGenericArguments;
 use names::bb_label;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_target::abi::VariantIdx;
@@ -100,7 +100,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
-            if self.generic_lifetimes().is_empty() {
+            if !self.has_generic_lifetimes() {
                 fatal!(
                     self,
                     "{:?} doesn't have generic lifetimes, but makes a call which does. subst is {:?}, operands are {:?}",
@@ -108,9 +108,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     substs, operands
                 )
             }
-            args.push(Expr::PVar(lifetime_param_name(
-                &self.generic_lifetimes()[0],
-            )))
+            args.push(Expr::PVar(lifetime_param_name("a")))
         }
         for ty_arg in substs {
             if let Some(e) = self.encode_generic_arg(ty_arg) {
@@ -136,9 +134,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
         if callee_has_regions {
-            args.push(Expr::PVar(lifetime_param_name(
-                &self.generic_lifetimes()[0],
-            )))
+            args.push(Expr::PVar(lifetime_param_name("a")))
         }
         for ty_arg in params.parameters {
             args.push(self.encode_type(ty_arg).into())

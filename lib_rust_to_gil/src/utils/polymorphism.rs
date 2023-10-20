@@ -1,6 +1,5 @@
 use crate::prelude::*;
-use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
-use rustc_middle::ty::{GenericParamDefKind, Generics};
+use rustc_middle::ty::{BoundVariableKind, GenericParamDefKind, Generics};
 
 fn fill_item(args: &mut Vec<(u32, Symbol)>, tcx: TyCtxt, defs: &Generics) {
     if let Some(def_id) = defs.parent {
@@ -13,10 +12,12 @@ fn fill_item(args: &mut Vec<(u32, Symbol)>, tcx: TyCtxt, defs: &Generics) {
 fn fill_single(args: &mut Vec<(u32, Symbol)>, defs: &Generics) {
     args.reserve(defs.params.len());
     for param in &defs.params {
-        if let GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } = param.kind {
-            panic!("I have consts or Lifetimes for some reason");
+        if let GenericParamDefKind::Const { .. } = param.kind {
+            panic!("Const Generics are not handled for now");
         }
-        assert_eq!(param.index as usize, args.len(), "{args:#?}, {defs:#?}");
+        if let GenericParamDefKind::Lifetime = param.kind {
+            continue;
+        }
         args.push((param.index, param.name));
     }
 }
@@ -24,6 +25,18 @@ fn fill_single(args: &mut Vec<(u32, Symbol)>, defs: &Generics) {
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // TODO: refactor all this, I should only go through it once.
     // Plus, I could just build a nice iterator.
+
+    fn has_generic_lifetimes(&self) -> bool {
+        let sig = dbg!(self.tcx().fn_sig(self.did()));
+        let self_has_lifetimes = sig
+            .instantiate_identity()
+            .bound_vars()
+            .iter()
+            .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Region(..)));
+        self_has_lifetimes
+            || crate::utils::attrs::get_pre_for_post(self.did(), self.tcx())
+                .is_some_and(|did| (did, self.tcx()).has_generic_lifetimes())
+    }
 
     fn generic_types(&self) -> Vec<(u32, Symbol)> {
         let defs = self.tcx().generics_of(self.did());
@@ -33,45 +46,4 @@ pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     }
 }
 
-pub trait HasGenericLifetimes<'tcx>: HasDefId + HasTyCtxt<'tcx> {
-    fn generic_lifetimes(&self) -> Vec<String> {
-        if let Some(v) = crate::utils::attrs::diagnostic_item_string(self.did(), self.tcx()) {
-            if let "gillian::ownable::own::open"
-            | "gillian::ownable::own::close"
-            | "gillian::pcy::ownable::ref_mut_inner"
-            | "gillian::pcy::ownable::ref_mut_inner::close"
-            | "gillian::pcy::ownable::ref_mut_inner::open" = v.as_str()
-            {
-                return vec!["a".to_string()];
-            }
-        };
-        let attr = crate::utils::attrs::get_attr(
-            self.tcx().get_attrs_unchecked(self.did()),
-            &["gillian", "parameters", "lifetimes"],
-        );
-        match attr {
-            None => vec![],
-            Some(attr) => {
-                if let AttrArgs::Eq(
-                    _,
-                    AttrArgsEq::Hir(MetaItemLit {
-                        kind: LitKind::Str(sym, StrStyle::Cooked),
-                        ..
-                    }),
-                ) = &attr.args
-                {
-                    let str = sym.as_str();
-                    if str.is_empty() {
-                        vec![]
-                    } else {
-                        str.split(',').map(|s| s.to_string()).collect()
-                    }
-                } else {
-                    panic!("Ill-formed gillian::pred::lifetime_tokens attribute")
-                }
-            }
-        }
-    }
-}
-
-impl<'tcx> HasGenericLifetimes<'tcx> for (DefId, TyCtxt<'tcx>) {}
+impl<'tcx> HasGenericArguments<'tcx> for (DefId, TyCtxt<'tcx>) {}

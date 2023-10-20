@@ -5,7 +5,7 @@ use gillian::gil::Pred;
 use crate::prelude::*;
 use crate::temp_gen::TempGenerator;
 use crate::utils::attrs::*;
-use crate::utils::polymorphism::{HasGenericArguments, HasGenericLifetimes};
+use crate::utils::polymorphism::HasGenericArguments;
 
 pub(crate) mod builtins;
 pub(crate) mod core_preds;
@@ -53,7 +53,8 @@ pub fn compile_logic<'tcx, 'genv>(
     } else if is_precondition(did, tcx) {
         log::debug!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
-        let generic_amounts = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
+        let generic_amounts =
+            pred_ctx.generic_types().len() + (pred_ctx.has_generic_lifetimes() as usize);
         let mut pred = pred_ctx.compile_concrete();
         assert!(
             pred.definitions.len() == 1,
@@ -79,7 +80,8 @@ pub fn compile_logic<'tcx, 'genv>(
     } else if is_postcondition(did, tcx) {
         log::debug!("Compiling postcondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
-        let generics_amount = pred_ctx.generic_types().len() + pred_ctx.generic_lifetimes().len();
+        let generics_amount =
+            pred_ctx.generic_types().len() + (pred_ctx.has_generic_lifetimes() as usize);
         let mut pred = pred_ctx.compile_concrete();
         let mut map = HashMap::new();
         for (name, _) in pred.params.iter().take(generics_amount) {

@@ -67,6 +67,19 @@ pub(crate) fn get_post_id(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
     .map(extract_string_arg)
 }
 
+pub(crate) fn get_pre_for_post(def_id: DefId, tcx: TyCtxt) -> Option<DefId> {
+    let result = get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "spec", "postcondition", "pre_id"],
+    )
+    .and_then(|x| {
+        let id = extract_string_arg(x);
+        tcx.get_diagnostic_item(id)
+    });
+    log::debug!("Got pre for: {:?} -> {:?}", def_id, result);
+    result
+}
+
 pub(crate) fn is_abstract_predicate(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),

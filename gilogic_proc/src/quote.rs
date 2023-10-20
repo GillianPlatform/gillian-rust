@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{spanned::Spanned, BinOp, Error, Signature, Stmt};
+use syn::{spanned::Spanned, BinOp, Error, Stmt};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -194,8 +194,8 @@ impl ToTokens for Lemma {
             None => tokens.extend(quote! {
                 #[cfg(gillian)]
                 #(#attributes)*
-                #[gillian::lemma::trusted]
                 #[gillian::decl::lemma]
+                #[gillian::lemma::trusted]
                 #sig {
                     unreachable!()
                 }
@@ -218,13 +218,6 @@ impl ToTokens for frozen_borrow::FreezeMutRefOwn {
         let generics = &predicate.generics;
         let own_impl_ty = &self.own_impl.self_ty;
         let name = &predicate.name;
-        let sig = {
-            let args = &predicate.args;
-            let tokens = quote!(fn #name #generics (#args));
-            syn::parse2::<Signature>(tokens).unwrap()
-        };
-        let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&sig);
-
         // Then we generate the corresponding lemma.
 
         let additional_args: Vec<_> = predicate
@@ -246,7 +239,7 @@ impl ToTokens for frozen_borrow::FreezeMutRefOwn {
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
             #[gillian::borrow]
-            #lifetimes
+            // #lifetimes
             #predicate
 
             #own_impl
@@ -260,16 +253,6 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
         let predicate = &self.predicate;
         let generics = &predicate.generics;
         let inner_predicate = &self.inner_predicate;
-        // let own_impl_ty = &self.own_impl.self_ty;
-        let inner_name = &inner_predicate.name;
-        let sig = {
-            let args = &inner_predicate.args;
-            let tokens = quote!(fn #inner_name #generics (#args));
-            syn::parse2::<Signature>(tokens).unwrap()
-        };
-        let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&sig);
-
-        // Then we generate the corresponding lemma.
 
         let own_impl_ty = &self.own_impl.self_ty;
         let additional_args: Vec<_> = predicate
@@ -294,11 +277,8 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
             #[gillian::borrow]
-            #lifetimes
             #inner_predicate
 
-
-            #lifetimes
             #predicate
 
             #own_impl

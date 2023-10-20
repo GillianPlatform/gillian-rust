@@ -9,7 +9,6 @@ use rustc_middle::ty::GenericArgs;
 
 use crate::codegen::typ_encoding::lifetime_param_name;
 use crate::temp_gen::TempGenerator;
-use crate::utils::polymorphism::HasGenericLifetimes;
 use crate::{
     codegen::typ_encoding::type_param_name,
     codegen::typ_encoding::TypeEncoder,
@@ -53,7 +52,6 @@ impl<'tcx> HasGlobalEnv<'tcx> for LemmaCtx<'tcx, '_> {
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
-impl<'tcx> HasGenericLifetimes<'tcx> for LemmaCtx<'tcx, '_> {}
 impl<'tcx> TypeEncoder<'tcx> for LemmaCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
@@ -107,10 +105,11 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn sig(&self) -> LemmaSig {
         let (thir, _) = get_thir!(self);
-        let lft_params = self
-            .generic_lifetimes()
-            .into_iter()
-            .map(|x| lifetime_param_name(&x));
+        let lft_params = if self.has_generic_lifetimes() {
+            Some(lifetime_param_name("a")).into_iter()
+        } else {
+            None.into_iter()
+        };
         let type_params = self
             .generic_types()
             .into_iter()

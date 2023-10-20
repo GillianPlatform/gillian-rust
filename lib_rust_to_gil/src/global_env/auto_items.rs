@@ -471,7 +471,12 @@ impl<'tcx> AutoItem<'tcx> {
                     mut_ref_inner.add_to_prog(prog, global_env);
                     return;
                 }
-                fatal!(global_env, "Unsupported MonoPred! {:?}", instance)
+                fatal!(
+                    global_env,
+                    "Unsupported MonoPred! {:?}, args: {:?}",
+                    global_env.just_pred_name_instance(instance),
+                    instance.args
+                );
             }
         }
     }

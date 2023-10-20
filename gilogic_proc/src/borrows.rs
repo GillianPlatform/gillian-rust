@@ -44,7 +44,6 @@ fn strip_ins(sig: &mut Signature) {
 // so until then, we really just need to annotate the predicate with some attribute.
 pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     let item = parse_macro_input!(input as ImplItemMethod);
-
     // The name of the borrow predicate
     let name = item.sig.ident.clone();
 
@@ -53,8 +52,6 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         strip_ins(&mut sig);
         sig
     };
-
-    let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&sig_without_in_annot);
 
     // The opening lemma signature, it is not the same as the tokens, because it only requires the ins.
     let unfold_ident = format_ident!("{}_____unfold", &name);
@@ -71,19 +68,19 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     let res: TokenStream = quote! {
       #[gillian::borrow]
       #[::gilogic::macros::predicate]
-      #lifetimes
+    //   #lifetimes
       #item
 
       #[gillian::predicate::fold]
       #[rustc_diagnostic_item = #fold_ident_diag]
-      #lifetimes
+    //   #lifetimes
       #folder_sig {
         unreachable!()
       }
 
       #[gillian::predicate::unfold]
       #[rustc_diagnostic_item = #unfold_ident_diag]
-      #lifetimes
+    //   #lifetimes
       #unfolder_sig {
         unreachable!()
       }

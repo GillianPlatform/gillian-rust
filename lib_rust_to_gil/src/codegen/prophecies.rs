@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 use rustc_middle::{mir::Place, ty::Ty};
-use rustc_span::Symbol;
 
 use gillian::gil::Expr;
 

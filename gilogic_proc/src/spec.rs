@@ -55,7 +55,8 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
     // However, an `FnItem` is just `ImplItemMethod` that cannot have the `default` keyword,
     // so I'm expecting this to work in any context.
-    let item = parse_macro_input!(input as ImplItemMethod);
+    let mut item = parse_macro_input!(input as ImplItemMethod);
+    let item_attrs = std::mem::take(&mut item.attrs);
     let parsed_assertion = parse_macro_input!(args as Assertion);
     let assertion: TokenStream = match parsed_assertion.encode() {
         Ok(stream) => stream,
@@ -71,11 +72,11 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
     let inputs = &item.sig.inputs;
     let generics = &item.sig.generics;
 
-    let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
+    // let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
 
     let lvar_list = parsed_assertion.lvars.to_token_stream().to_string();
 
-    let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
+    let for_lemma = if get_attr(&item_attrs, &["gillian", "decl", "lemma"]).is_some() {
         Some(quote!(#[gillian::for_lemma]))
     } else {
         None
@@ -87,14 +88,16 @@ pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ 
         #for_lemma
         #[gillian::decl::precondition]
         #[gillian::decl::pred_ins=""]
-        #lifetimes
+        // #lifetimes
         fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
            ::gilogic::__stubs::defs([#assertion])
         }
 
+
+        #(#item_attrs)*
         #[gillian::spec::precondition=#name_string]
         #[gillian::spec::precondition::lvars=#lvar_list]
-        #lifetimes
+        // #lifetimes
         #item
     };
     result.into()
@@ -106,6 +109,10 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // so I'm expecting this to work in any context.
     let item = parse_macro_input!(input as ImplItemMethod);
     let mut parsed_assertion = parse_macro_input!(args as Assertion);
+    let pre_id = get_attr(&item.attrs, &["gillian", "spec", "precondition"]).map(|attr| {
+        let tokens = &attr.tokens;
+        quote!(#[gillian::spec::postcondition::pre_id #tokens])
+    });
 
     // We create an lvar for each lvar already declared in the pre
     if let Some(lvars_attr) = get_attr(&item.attrs, &["gillian", "spec", "precondition", "lvars"]) {
@@ -155,7 +162,7 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         ReturnType::Type(_token, ty) => quote! { #ty },
     };
     let generics = &item.sig.generics;
-    let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
+    // let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
 
     let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
         Some(quote!(#[gillian::for_lemma]))
@@ -167,9 +174,10 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #for_lemma
+        #pre_id
         #[gillian::decl::postcondition]
         #[gillian::decl::pred_ins=#ins]
-        #lifetimes
+        // #lifetimes
         fn #name #generics (ret: #ret_ty) -> ::gilogic::RustAssertion {
            ::gilogic::__stubs::defs([#assertion])
         }

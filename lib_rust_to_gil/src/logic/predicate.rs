@@ -10,7 +10,7 @@ use crate::{
     logic::{core_preds, param_collector},
     prelude::*,
     temp_gen::TempGenerator,
-    utils::polymorphism::{HasGenericArguments, HasGenericLifetimes},
+    utils::polymorphism::HasGenericArguments,
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
@@ -40,7 +40,6 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
-impl<'tcx> HasGenericLifetimes<'tcx> for PredCtx<'tcx, '_> {}
 
 impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
@@ -247,27 +246,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             &["gillian", "borrow"],
         )
         .map(|_| {
-            let mut lfts: Vec<_> = self
-                .generic_lifetimes()
-                .into_iter()
-                .map(|x| lifetime_param_name(x.as_str()))
-                .collect();
-            if lfts.len() != 1 {
-                fatal!(
-                    self,
-                    "Borrow predicates must have exactly one lifetime parameter, for now."
-                );
+            if !self.has_generic_lifetimes() {
+                fatal!(self, "Borrow without a lifetime? {:?}", self.pred_name());
             }
-            core_preds::alive_lft(Expr::PVar(lfts.pop().unwrap()))
+            core_preds::alive_lft(Expr::PVar(lifetime_param_name("a")))
         })
     }
 
     pub fn sig(&mut self) -> PredSig {
-        let generic_lifetimes = self.generic_lifetimes();
+        let has_generic_lifetimes = self.has_generic_lifetimes();
         let generic_types = self.generic_types();
         let mut ins = self.get_ins();
         log::debug!("Ins obtained for {:?} : {:?}", self.pred_name(), &ins);
-        let generics_amount = generic_types.len() + generic_lifetimes.len();
+        let generics_amount = generic_types.len() + (has_generic_lifetimes as usize);
         if generics_amount > 0 {
             // Ins known info is only about non-type params.
             // If there are generic types args,
@@ -281,9 +272,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ins.sort();
         }
-        let generic_lft_params = generic_lifetimes
-            .into_iter()
-            .map(|x| (lifetime_param_name(&x), None));
+        let generic_lft_params = if has_generic_lifetimes {
+            Some((lifetime_param_name("a"), None)).into_iter()
+        } else {
+            None.into_iter()
+        };
         let generic_type_params = generic_types
             .into_iter()
             .map(|x| (type_param_name(x.0, x.1), None));
@@ -508,6 +501,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     ),
                 }
             }
+            ExprKind::Field {
+                lhs,
+                variant_index: _,
+                name,
+            } => match thir[*lhs].ty.ty_adt_def() {
+                Some(adt) => {
+                    if adt.is_struct() {
+                        let lhs = self.compile_expression(*lhs, thir);
+                        lhs.lnth(name.as_usize())
+                    } else {
+                        fatal!(self, "Can't use field access on enums in assertions.")
+                    }
+                }
+                None => fatal!(self, "Field access on non-adt in assertion?"),
+            },
             ExprKind::Call {
                 ty, fun: _, args, ..
             } => match self.get_stub(*ty) {
@@ -811,9 +819,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
                     );
                     if ty_params.regions {
-                        let generic_lifetimes = self.generic_lifetimes();
-                        let lifetime = generic_lifetimes.get(0).unwrap_or_else(|| fatal!(self, "predicate calling another one, it has a lifetime param but not self?? {:?}", self.pred_name())).as_str();
-                        params.push(Expr::PVar(lifetime_param_name(lifetime)));
+                        if !self.has_generic_lifetimes() {
+                            fatal!(self, "predicate calling another one, it has a lifetime param but not self?? {:?}", self.pred_name())
+                        };
+                        params.push(Expr::PVar(lifetime_param_name("a")));
                     }
                     for tyarg in ty_params.parameters {
                         let tyarg = self.encode_type(tyarg);
@@ -906,28 +915,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
 
-        let generic_lifetimes = self.generic_lifetimes();
-        let with_lifetime_token =
-            if (!crate::logic::is_function_specification(self.did(), self.tcx()))
-                || generic_lifetimes.is_empty()
-            {
-                inner
-            } else {
-                if generic_lifetimes.len() > 1 {
-                    fatal!(
-                        self,
-                        "Multiple generic lifetimes not supported yet in specs"
-                    )
-                };
-                generic_lifetimes.iter().fold(inner, |acc, lft| {
-                    let lft_name = lifetime_param_name(lft);
-                    Assertion::star(
-                        acc,
-                        super::core_preds::alive_lft(Expr::LVar(format!("#{lft_name}"))),
-                    )
-                })
-            };
-        with_lifetime_token
+        if (!crate::logic::is_function_specification(self.did(), self.tcx()))
+            || (!self.has_generic_lifetimes())
+        {
+            inner
+        } else {
+            let lft_param = lifetime_param_name("a");
+            Assertion::star(
+                inner,
+                super::core_preds::alive_lft(Expr::LVar(format!("#{lft_param}"))),
+            )
+        }
     }
 
     pub(crate) fn resolve(e: ExprId, thir: &Thir<'tcx>) -> ExprId {

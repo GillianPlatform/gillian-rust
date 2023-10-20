@@ -16,7 +16,6 @@ mod borrows;
 mod extract_lemmas;
 mod folding;
 mod gilogic_syn;
-mod lifetime_hack;
 mod quote;
 mod spec;
 
