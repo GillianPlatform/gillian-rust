@@ -22,20 +22,31 @@ fn fill_single(args: &mut Vec<(u32, Symbol)>, defs: &Generics) {
     }
 }
 
+fn has_lifetimes_generics(did: DefId, tcx: TyCtxt) -> bool {
+    let defs = tcx.generics_of(did);
+    for param in &defs.params {
+        if let GenericParamDefKind::Lifetime = param.kind {
+            return true;
+        }
+    }
+    defs.parent
+        .is_some_and(|def_id| has_lifetimes_generics(def_id, tcx))
+}
+
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // TODO: refactor all this, I should only go through it once.
     // Plus, I could just build a nice iterator.
 
     fn has_generic_lifetimes(&self) -> bool {
-        let sig = dbg!(self.tcx().fn_sig(self.did()));
-        let self_has_lifetimes = sig
+        self.tcx()
+            .fn_sig(self.did())
             .instantiate_identity()
             .bound_vars()
             .iter()
-            .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Region(..)));
-        self_has_lifetimes
+            .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Region(..)))
             || crate::utils::attrs::get_pre_for_post(self.did(), self.tcx())
                 .is_some_and(|did| (did, self.tcx()).has_generic_lifetimes())
+            || has_lifetimes_generics(self.did(), self.tcx())
     }
 
     fn generic_types(&self) -> Vec<(u32, Symbol)> {

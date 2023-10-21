@@ -173,7 +173,7 @@ impl<'tcx> ProgCtx<'tcx> {
     fn add_specs(&mut self) {
         let spec_tbl = std::mem::take(&mut self.spec_tbl);
         for (key, (pre_id, post_id)) in spec_tbl {
-            log::debug!("adding spec for {}", &key);
+            log::trace!("adding spec for {}", &key);
             if self.prog.procs.contains_key(&key) {
                 self.add_spec_to_proc(key, pre_id, post_id)
             } else {

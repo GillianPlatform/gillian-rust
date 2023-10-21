@@ -257,7 +257,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let has_generic_lifetimes = self.has_generic_lifetimes();
         let generic_types = self.generic_types();
         let mut ins = self.get_ins();
-        log::debug!("Ins obtained for {:?} : {:?}", self.pred_name(), &ins);
         let generics_amount = generic_types.len() + (has_generic_lifetimes as usize);
         if generics_amount > 0 {
             // Ins known info is only about non-type params.

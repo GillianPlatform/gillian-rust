@@ -34,7 +34,7 @@ pub trait TraitSolver<'tcx> {
 
 impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
     fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> ResolvedImpl<'tcx> {
-        log::debug!(
+        log::trace!(
             "Resolving candidate for {:?}",
             self.tcx().def_path_str_with_args(def_id, substs)
         );
@@ -42,7 +42,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         match tcx.trait_of_item(def_id) {
             None => ResolvedImpl::Impl(Instance::new(def_id, substs)),
             Some(trait_id) => {
-                log::debug!(
+                log::trace!(
                     "Resolving candidate for trait {:?}",
                     self.tcx().def_path_str_with_args(trait_id, substs)
                 );
