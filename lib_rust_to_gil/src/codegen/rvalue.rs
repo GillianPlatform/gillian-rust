@@ -2,11 +2,29 @@ use super::memory::MemoryAction;
 use super::place::GilPlace;
 use crate::codegen::runtime;
 use crate::prelude::*;
+use num_bigint::BigInt;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, AdtKind, ConstKind};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    pub fn int_bounds(&self, ty: Ty<'tcx>) -> (BigInt, BigInt) {
+        match ty.kind() {
+            TyKind::Uint(uint) => (
+                BigInt::from(0),
+                BigInt::from(1) << (uint.bit_width().unwrap_or(64)),
+            ),
+            TyKind::Int(int) => {
+                // For now we assume 64 bit for usize.
+                let width = int.bit_width().unwrap_or(64);
+                let lb = BigInt::from(1) << (width - 1);
+                let hb = lb.clone() - 1;
+                (-lb, hb)
+            }
+            _ => fatal!(self, "Invalid type for int_bounds: {:#?}", ty),
+        }
+    }
+
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
         match rvalue {
             Rvalue::Use(operand) => self.push_encode_operand(operand),
@@ -161,6 +179,25 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     _ => fatal!(self, "Cannot encode cast from {:#?} to {:#?}", opty, ty_to),
                 }
             }
+            // These two operations do nothing in our semantics.
+            // It will lead to some failures, but it's ok, it's sound and it supports a large
+            // set of programs.
+            CastKind::PointerExposeAddress | CastKind::PointerFromExposedAddress => enc_op,
+            CastKind::IntToInt => {
+                let (low, high) = self.int_bounds(ty_to);
+                let low_comp = Formula::ILessEq {
+                    left: Box::new(Expr::int(low)),
+                    right: Box::new(enc_op.clone()),
+                };
+                let high_comp = Formula::ILessEq {
+                    left: Box::new(enc_op.clone()),
+                    right: Box::new(Expr::int(high)),
+                };
+                let both = low_comp.and(high_comp);
+                let asrt = Cmd::Logic(LCmd::Assert(both));
+                self.push_cmd(asrt);
+                enc_op
+            }
             CastKind::PointerCoercion(k) => fatal!(
                 self,
                 "Cannot encode this kind of pointer cast yet: {:#?}, from {:#?} to {:#?}",
@@ -169,17 +206,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 ty_to
             ),
             CastKind::FnPtrToPtr
-            | CastKind::IntToInt
-            | CastKind::PointerExposeAddress
-            | CastKind::PointerFromExposedAddress
             | CastKind::DynStar
             | CastKind::FloatToFloat
             | CastKind::FloatToInt
             | CastKind::IntToFloat
-            | CastKind::Transmute => fatal!(
-                self,
-                "Cannot encode PointerExposeAddress and PointerFromExposedAddress yet"
-            ),
+            | CastKind::Transmute => fatal!(self, "Cannot encode {:?} cast yet", kind),
         }
     }
 
@@ -227,6 +258,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     Expr::f_lt(e1, e2)
                 }
             }
+            Shl if left_ty.is_integral() && right_ty.is_integral() => Expr::i_shl(e1, e2),
+            Eq if left_ty.is_numeric() && left_ty == right_ty => Expr::eq_expr(e1, e2),
             _ => fatal!(
                 self,
                 "Cannot yet encode binop {:#?} with operands {:#?} and {:#?}",
@@ -249,17 +282,54 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     /// name of the variable that will contain the place in the end.
     pub fn push_encode_operand(&mut self, operand: &Operand<'tcx>) -> Expr {
         match operand {
-            Operand::Constant(box cst) => Expr::Lit(self.encode_constant(cst)),
+            Operand::Constant(box cst) => self.push_encode_constant(cst),
             Operand::Move(place) => self.push_place_read(*place, false),
             Operand::Copy(place) => self.push_place_read(*place, true),
         }
     }
 
-    pub fn encode_constant(&self, constant: &mir::ConstOperand<'tcx>) -> Literal {
+    pub fn push_encode_constant(&mut self, constant: &mir::ConstOperand<'tcx>) -> Expr {
         match constant.const_ {
-            Const::Ty(cst) => self.encode_ty_const(cst),
-            Const::Val(val, ty) => self.encode_value(val, ty),
-            Const::Unevaluated(..) => fatal!(self, "Can't encode unevaluated constants yet"),
+            Const::Ty(cst) => self.encode_ty_const(cst).into(),
+            Const::Val(val, ty) => self.encode_value(val, ty).into(),
+            Const::Unevaluated(
+                UnevaluatedConst {
+                    def,
+                    args,
+                    promoted,
+                },
+                ty,
+            ) => match promoted {
+                None => {
+                    let proc_ident = self.tcx().def_path_str_with_args(def, args);
+                    let parameters = self.only_param_args_for_fn_call(args, &[]);
+                    let variable = self.temp_var();
+                    let fn_call = Cmd::Call {
+                        variable: variable.clone(),
+                        proc_ident: proc_ident.into(),
+                        parameters,
+                        error_lab: None,
+                        bindings: None,
+                    };
+                    self.push_cmd(fn_call);
+                    Expr::PVar(variable)
+                }
+                Some(..) => {
+                    if crate::utils::ty::is_ref_of_zst(ty, self.tcx()) {
+                        return Expr::EList(vec![
+                            Literal::Loc("$l_dangling".into()).into(),
+                            vec![].into(),
+                        ]);
+                    }
+                    fatal!(
+                        self,
+                        "Can't encode unevaluated promoted constants yet: {:?} {:?} {:?}",
+                        self.tcx().def_path_str_with_args(def, args),
+                        promoted,
+                        ty
+                    )
+                }
+            },
         }
     }
 
@@ -272,6 +342,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.encode_valtree(&ValTree::Leaf(scalar_int), ty)
             }
             ConstValue::ZeroSized => self.zst_value_of_type(ty),
+            ConstValue::Slice { .. } => {
+                let bytes = val.try_get_slice_bytes_for_diagnostics(self.tcx());
+                Literal::string(String::from_utf8_lossy(bytes.unwrap()))
+            }
             _ => fatal!(self, "Cannot encode value yet: {:#?}", val),
         }
     }

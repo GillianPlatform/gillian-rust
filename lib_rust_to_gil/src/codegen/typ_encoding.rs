@@ -178,6 +178,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
             TyKind::Uint(UintTy::U32) => "u32".into(),
             TyKind::Uint(UintTy::U64) => "u64".into(),
             TyKind::Uint(UintTy::U128) => "u128".into(),
+            TyKind::Str => "str".into(),
             // (i32, i32) -> ["tuple", ["i32", "i32"]]
             TyKind::Tuple(_) => EncodedType(
                 [

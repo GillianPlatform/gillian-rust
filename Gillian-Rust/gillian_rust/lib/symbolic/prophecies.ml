@@ -167,7 +167,8 @@ let proj_on_var pcy_var (proj : Projections.t) =
     | None -> ()
   in
   let apply_op e = function
-    | Projections.Field (i, _) | Index (i, _, _) -> Expr.list_nth e i
+    | Projections.Field (i, _) -> Expr.list_nth e i
+    | Index (i, _, _) -> Expr.list_nth_e e i
     | VField (i, _, _) -> Expr.list_nth (Expr.list_nth e 0) i
     | _ ->
         failwith

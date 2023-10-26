@@ -60,7 +60,21 @@ impl<T: Ownable> Ownable for &mut T {
     }
 }
 
-own_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+own_int!(
+    (),
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    isize
+);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     type RepresentationTy = (T::RepresentationTy, U::RepresentationTy);

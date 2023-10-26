@@ -53,6 +53,12 @@ pub fn less<T>(_: T, _: T) -> RustFormula {
 }
 
 #[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::neg"]
+pub fn neg(_: RustFormula) -> RustFormula {
+    unreachable!()
+}
+
+#[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::pure"]
 pub fn pure(_: RustFormula) -> RustAssertion {
     unreachable!()
@@ -78,6 +84,22 @@ impl<T> PointsTo<T> for *const T {}
 impl<T> PointsTo<T> for *mut T {}
 impl<T> PointsTo<T> for Box<T> {}
 impl<T> PointsTo<T> for NonNull<T> {}
+
+pub trait PointsToMaybeUninit<T>: Sized {
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::asrt::uninit"]
+    fn uninit(self) -> RustAssertion {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::asrt::many_uninits"]
+    fn many_uninits(self, _: usize) -> RustAssertion {
+        unreachable!()
+    }
+}
+impl<T> PointsToMaybeUninit<T> for *const T {}
+impl<T> PointsToMaybeUninit<T> for *mut T {}
 
 pub trait InstantiateLVar {
     fn instantiate_lvar() -> Self;

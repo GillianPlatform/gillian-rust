@@ -27,6 +27,7 @@ type t =
   | Ref of { mut : bool; ty : t }
   | Ptr of { mut : bool; ty : t }
   | Array of { length : int; ty : t }
+  | SymArray of { length : Expr.t; ty : t } (* Array that comes from dynamic allocation, not from the type system *)
   | Slice of t
   | Unresolved of Expr.t
       (** A parameter in an ADT def, should be substituted before used *)
@@ -43,6 +44,7 @@ let rec lvars =
   | Tuple l -> List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
   | Adt (_, l) ->
       List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
+  | SymArray { length; ty } -> SS.union (Expr.lvars length) (lvars ty)
   | Ref { ty; _ } | Ptr { ty; _ } | Array { ty; _ } | Slice ty -> lvars ty
 
 let rec sem_equal a b =
@@ -64,6 +66,9 @@ let rec sem_equal a b =
   | ( Array { length = length_a; ty = ty_a },
       Array { length = length_b; ty = ty_b } ) ->
       (length_a = length_b |> Formula.of_bool) #&& (sem_equal ty_a ty_b)
+  | ( SymArray { length = length_a; ty = ty_a },
+      SymArray { length = length_b; ty = ty_b } ) ->
+      length_a #== length_b #&& (sem_equal ty_a ty_b)
   | Slice a, Slice b -> sem_equal a b
   | Unresolved left, Unresolved right -> left #== right
   | _ -> Formula.False
@@ -157,6 +162,8 @@ let rec to_expr = function
   | Ptr { mut; ty } -> EList [ Lit (String "ptr"); Lit (Bool mut); to_expr ty ]
   | Array { length; ty } ->
       EList [ Lit (String "array"); to_expr ty; Lit (Int (Z.of_int length)) ]
+  | SymArray { length; ty } ->
+      Expr.EList [ Lit (String "sym_array"); to_expr ty; length ]
   | Slice ty -> EList [ Lit (String "slice"); to_expr ty ]
   | Unresolved e -> e
 
@@ -171,6 +178,7 @@ let rec pp ft t =
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
+  | SymArray { length; ty } -> Fmt.pf ft "[%a;? %a]" Expr.pp length pp ty
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
   | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
 
@@ -183,6 +191,8 @@ let rec substitution ~subst_expr t =
   | Ref { mut; ty } -> Ref { mut; ty = rec_call ty }
   | Ptr { mut; ty } -> Ptr { mut; ty = rec_call ty }
   | Array { length; ty } -> Array { length; ty = rec_call ty }
+  | SymArray { length; ty } ->
+      SymArray { length = subst_expr length; ty = rec_call ty }
   | Slice t -> Slice (rec_call t)
   | Unresolved e -> Unresolved (subst_expr e)
 

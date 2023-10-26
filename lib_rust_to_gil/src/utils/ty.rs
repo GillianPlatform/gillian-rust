@@ -1,4 +1,4 @@
-use rustc_middle::ty::ParamTy;
+use rustc_middle::ty::{ParamEnv, ParamTy};
 use rustc_type_ir::TyKind;
 
 use crate::prelude::*;
@@ -32,6 +32,16 @@ pub fn is_mut_ref_of_param_ty(ty: Ty) -> bool {
     } else {
         false
     }
+}
+
+pub fn is_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+    tcx.layout_of(ParamEnv::reveal_all().and(ty))
+        .unwrap()
+        .is_zst()
+}
+
+pub fn is_ref_of_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+    matches!(ty.kind(), TyKind::Ref(_, ty, _) if is_zst(*ty, tcx))
 }
 
 pub fn is_nonnull<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {

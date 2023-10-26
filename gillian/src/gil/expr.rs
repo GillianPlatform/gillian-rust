@@ -2,6 +2,7 @@ use super::print_utils::separated_display;
 use super::visitors::GilVisitorMut;
 use super::{BinOp, Literal, NOp, UnOp};
 use num_bigint::BigInt;
+use num_traits::cast::ToPrimitive;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -108,8 +109,11 @@ impl Expr {
         Expr::PVar(s.into())
     }
 
-    pub fn string(str: String) -> Self {
-        str.into()
+    pub fn string<S>(s: S) -> Self
+    where
+        S: ToString,
+    {
+        s.to_string().into()
     }
 
     pub fn bool(b: bool) -> Self {
@@ -160,6 +164,19 @@ impl Expr {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
                 operator: BinOp::ILessThan,
+            },
+        }
+    }
+
+    pub fn i_shl(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => {
+                Expr::int(i << j.to_u128().unwrap())
+            }
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::LeftShift,
             },
         }
     }

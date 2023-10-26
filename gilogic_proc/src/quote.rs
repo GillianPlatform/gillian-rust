@@ -27,6 +27,18 @@ impl Formula {
                       ::gilogic::__stubs::less(#left, #right)
                     ));
                 }
+                BinOp::Gt(tok) => {
+                    let span = tok.span();
+                    tokens.extend(quote_spanned!(span=>
+                      ::gilogic::__stubs::less(#right, #left)
+                    ));
+                }
+                BinOp::Ge(tok) => {
+                    let span = tok.span();
+                    tokens.extend(quote_spanned!(span=>
+                        ::gilogic::__stubs::less(#right, #left)
+                    ));
+                }
                 _ => {
                     return Err(Error::new(
                         op.span(),

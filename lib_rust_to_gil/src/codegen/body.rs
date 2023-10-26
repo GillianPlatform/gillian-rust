@@ -75,7 +75,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let proc_name =
             rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(self.did()));
 
-        log::debug!("Compiling {}", proc_name);
+        log::debug!(
+            "Compiling {}, defkind: {:?}",
+            proc_name,
+            self.tcx().def_kind(self.did())
+        );
         // If body_ctx is mutable, we might as well add currently compiled gil body to it and create only one vector
         // We can then shrink it to size when needed.
         // log::debug!("{} : {:#?}", proc_name, mir_body);

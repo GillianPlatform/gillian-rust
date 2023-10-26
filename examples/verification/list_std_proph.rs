@@ -22,6 +22,21 @@ struct Node<T> {
     element: T,
 }
 
+trait ShallowModel: Ownable {
+    type ModelTy;
+    
+    fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
+}
+
+impl ShallowModel for usize {
+    type ModelTy = Self;
+    
+    #[predicate]
+    fn shallow_model(self_: In<Self::RepresentationTy>, v: Self::ModelTy) {
+        assertion!((self_ == v))
+    }
+}
+
 impl<T> Node<T> {
     fn new(element: T) -> Self {
         Node {
@@ -67,6 +82,17 @@ impl<T: Ownable> Ownable for LinkedList<T> {
     }
 }
 
+impl<T: Ownable> ShallowModel for LinkedList<T> {
+    type ModelTy = Self::RepresentationTy;
+    
+    #[predicate]
+    fn shallow_model(self_: In<Self::RepresentationTy>, v: Self::ModelTy) {
+        assertion!((self_ == v))
+    }
+}
+
+
+
 impl<T: Ownable> LinkedList<T> {
     #[requires(emp)]
     #[ensures(ret.own(Seq::nil()))]
@@ -108,10 +134,22 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    #[requires(|current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, velem: T::RepresentationTy|
-        self.own((current, proph)) * elt.own(velem) * (current.len() < usize::MAX)
+    
+    // #[requires(|current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, velem: T::RepresentationTy|
+    //     self.own((current, proph)) * elt.own(velem) * (current.len() < usize::MAX)
+    // )]
+    #[requires(
+        |current: Seq<T::RepresentationTy>,
+         proph: Seq<T::RepresentationTy>,
+         vec_repr_model: Seq<T::RepresentationTy>, usize_max_model: usize, elt_repr: T::RepresentationTy|
+            self.own((current, proph)) *
+            <LinkedList<T> as ShallowModel>::shallow_model(current, vec_repr_model) *
+            <usize as ShallowModel>::shallow_model(usize::MAX, usize_max_model) *
+            (vec_repr_model.len() < usize_max_model) *
+            elt.own(elt_repr)
     )]
-    #[ensures($proph == current.prepend(velem)$)]
+    #[ensures(|ret_v, vec_repr_model_proph| ret.own(ret_v) * <LinkedList<T> as ShallowModel>::shallow_model(proph, vec_repr_model_proph) *  $vec_repr_model_proph == vec_repr_model.prepend(elt_repr)$)]
+    // #[ensures($proph == current.prepend(velem)$)]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
     }

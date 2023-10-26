@@ -4,7 +4,9 @@ use crate::logic::traits::ResolvedImpl;
 use crate::prelude::*;
 use crate::{config::Config, logic::traits::TraitSolver};
 use rustc_data_structures::sync::HashMapExt;
-use rustc_middle::ty::{AdtDef, GenericArgs, GenericArgsRef, ReprOptions};
+use rustc_middle::ty::{
+    AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ReprOptions,
+};
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
@@ -130,6 +132,19 @@ impl<'tcx> GlobalEnv<'tcx> {
             "<i64 as gilogic::Ownable>::own".to_owned(),
             "<i128 as gilogic::Ownable>::own".to_owned(),
             "<isize as gilogic::Ownable>::own".to_owned(),
+            "<() as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<u8 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<u16 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<u32 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<u64 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<u128 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<usize as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<i8 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<i16 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<i32 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<i64 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<i128 as gilogic::prophecies::Ownable>::own".to_owned(),
+            "<isize as gilogic::prophecies::Ownable>::own".to_owned(),
         ]);
         Self {
             config,
@@ -184,6 +199,14 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
+        let args: Vec<GenericArg> = args
+            .iter()
+            .map(|k| match k.unpack() {
+                GenericArgKind::Lifetime(..) => self.tcx().lifetimes.re_erased.into(),
+                _ => k,
+            })
+            .collect();
+        let args = self.tcx().mk_args(&args);
         self.tcx.def_path_str_with_args(did, args)
     }
 

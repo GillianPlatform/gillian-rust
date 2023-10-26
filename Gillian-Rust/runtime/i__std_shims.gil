@@ -79,7 +79,119 @@ proc "std::ptr::null_mut"(T) {
      return
 };
 
+proc "std::ptr::Unique::<T>::dangling"(T) {
+     ret := {{ {{ {{ $l_dangling, {{ }} }} }}, {{ }} }};
+     return
+};
+
+proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
+     rep := [is_zst](T);
+     ret := l-nth(rep, 0i);
+     return
+};
+
+proc "std::alloc::Layout::from_size_align_unchecked"(size, align) {
+     ret := {{ size, align }};
+     return
+};
+
+proc "std::alloc::Layout::array"(T, n) {
+     (* We don't handle alignment yet. Not because it's not possible, it works exactly like size.
+        But because it requires more research into Rust's current rules regarding alignment that I know less of. *)
+     (* We also simplify things: we could encode requirements on size proportionally to total allocable memory etc...
+        However, we do not do so for now, because there again it is beside the point of what we are trying to show
+        with this prototype. *)
+          align := 1i;
+          size := [size_of](T);
+          size := l-nth(size, 0i);
+          goto [(size = 0i) or (n i<= ((2i << 63i) i- align))] ok err;
+     ok:  layout := "std::alloc::Layout::from_size_align_unchecked"(n i* size, align);
+          ret := {{ 0i, {{ layout }} }};
+          return;
+     err: ret := {{ 1i, {{ {{ }} }} }};
+          return
+     (* This is the proper behaviour. That way, we could also check that passing something wrong would actually fail with the right behaviour *)
+};
+
+proc "std::alloc::Layout::size"(lft, layout) {
+     reader_ptr := l-nth(layout, 0i);
+     reader_proj := l+ (
+          l-nth(layout, 1i),
+          {{ {{ "f", 0i, {{ "adt", "Layout", {{  }} }} }} }});
+     ret := [load_value](reader_ptr, reader_proj, "usize", true);
+     return
+};
+
+proc "std::rt::begin_panic"(lft, ty, str) {
+     fail[panicked](str)
+};
+
+proc "core::num::<impl usize>::BITS"() {
+     ret := 64i;
+     return
+};
+
+proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
+     size := l-nth(layout, 0i);
+     assert(!(size == 0)); (* We should never use allocate on zero-sized allocations *)
+     ptr := [alloc_raw](size);
+     (* The following corresponds to Ok(NonNull::slice_from_raw_parts(ptr, size)) *)
+     ret := {{ 0i, {{ 
+          {{ {{ ptr, size }} }}
+     }} }};
+     return
+};
+
+proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
+            new_proj := {{ "c", old_ty, new_ty }};
+            old_is_unsized := "i__ty_is_unsized"(old_ty);
+            new_is_unsized := "i__ty_is_unsized"(new_ty);
+            goto [old_is_unsized] ou os;
+     ou:    goto [new_is_unsized] ounu ouns;
+     ounu:  (* Old is unsized and new is unsized *)
+            fat_ptr := l-nth(nn, 0i);
+            ptr := l-nth(fat_ptr, 0i);
+            size := l-nth(fat_ptr, 1i);
+            loc := l-nth(ptr, 0i);
+            proj := l+(l-nth(ptr, 1i), {{ new_proj }});
+            fail[CAST]("TODO: Cast from unsized to unsized: be careful with size, it needs to be recomputed actually... See i__std_shims");
+            ret := {{ {{ {{ loc, proj }}, size }} }};
+            return;
+     ouns: (* Old is unsized and new is sized, we just get rid of the size in addition to casting. *)
+           fat_ptr := l-nth(nn, 0i);
+           ptr := l-nth(fat_ptr, 0i);
+           loc := l-nth(ptr, 0i);
+           proj := l+(l-nth(ptr, 1i), {{ new_proj }});
+           ret := {{ {{ loc, proj }} }};
+           return;
+     os:   goto [new_is_unsized] osnu osns;
+     osnu: (* Old is sized and new is unsized: impossible, cannot get size! *)
+           fail[CAST]("cannot cast from sized to unsized");
+     osns: (* Old is sized and new is sized *)
+           ptr := l-nth(nn, 0i);
+           loc := l-nth(ptr, 0i);
+           proj := l+(l-nth(ptr, 1i), {{ new_proj }});
+           ret := {{ {{ loc, proj }} }};
+           return
+};
+
+proc "std::ptr::Unique::<T>::new_unchecked"(T, ptr) {
+     ret := {{ {{ ptr }},  {{ }} }};
+     return
+};
+
+proc "std::ptr::Unique::<T>::as_ptr"(T, ptr) {
+     ret := "std::ptr::NonNull::<T>::as_ptr"(T, l-nth(ptr, 0i));
+     return
+};
+
 (* PREDS *)
 
 pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):
      out == l-nth(nn, 0i);
+     
+pred "std::ptr::Unique::<T>::as_ptr"(+T, +ptr, out):
+     "std::ptr::NonNull::<T>::as_ptr"(T, l-nth(ptr, 0i), out);
+     
+pred "std::ptr::mut_ptr::<impl *mut T>::offset"(+T, +ptr, +ofs, out):
+     out == {{ l-nth(ptr, 0i), l+ (l-nth(ptr, 1i), {{ {{ "+", false, ofs, T }} }}) }};

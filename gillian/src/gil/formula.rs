@@ -61,6 +61,13 @@ impl Formula {
         }
     }
 
+    pub fn and(self, right: Self) -> Self {
+        Self::And {
+            left: Box::new(self),
+            right: Box::new(right),
+        }
+    }
+
     pub fn into_asrt(self) -> Assertion {
         self.into()
     }

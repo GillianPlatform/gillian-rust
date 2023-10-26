@@ -6,10 +6,10 @@ type arith_kind = Wrap | Overflow [@@deriving show, yojson, eq]
 type op =
   | VField of int * Ty.t * int
   | Field of int * Ty.t
-  | Index of int * Ty.t * int
+  | Index of Expr.t * Ty.t * int
   | Cast of Ty.t * Ty.t
-  | Plus of arith_kind * int * Ty.t
-  | UPlus of arith_kind * int
+  | Plus of arith_kind * Expr.t * Ty.t
+  | UPlus of arith_kind * Expr.t
 [@@deriving show, yojson, eq]
 
 let pp_elem fmt =
@@ -20,10 +20,10 @@ let pp_elem fmt =
   function
   | Field (i, ty) -> Fmt.pf fmt ".%d<%a>" i Ty.pp ty
   | VField (i, ty, vidx) -> Fmt.pf fmt ".%d<%a.%d>" i Ty.pp ty vidx
-  | Index (i, ty, sz) -> Fmt.pf fmt "[%d]<[%a; %d]>" i Ty.pp ty sz
+  | Index (i, ty, sz) -> Fmt.pf fmt "[%a]<[%a; %d]>" Expr.pp i Ty.pp ty sz
   | Cast (from_ty, into_ty) -> Fmt.pf fmt "%a>%a" Ty.pp from_ty Ty.pp into_ty
-  | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%d)<%a>" (str_ak k) i Ty.pp ty
-  | UPlus (k, i) -> Fmt.pf fmt "u+%s(%d)" (str_ak k) i
+  | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%a)<%a>" (str_ak k) Expr.pp i Ty.pp ty
+  | UPlus (k, i) -> Fmt.pf fmt "u+%s(%a)" (str_ak k) Expr.pp i
 
 type t = { base : Expr.t option; from_base : op list } [@@deriving yojson]
 
@@ -45,12 +45,12 @@ let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
   | LList [ String "vf"; Int i; ty; Int idx ] ->
       VField (Z.to_int i, Ty.of_lit ty, Z.to_int idx)
-  | LList [ String "i"; Int i; ty; Int sz ] ->
-      Index (Z.to_int i, Ty.of_lit ty, Z.to_int sz)
+  | LList [ String "i"; (Int _ as i); ty; Int sz ] ->
+      Index (Expr.Lit i, Ty.of_lit ty, Z.to_int sz)
   | LList [ String "c"; ty_from; ty_into ] ->
       Cast (Ty.of_lit ty_from, Ty.of_lit ty_into)
-  | LList [ String "+"; Bool b; Int i; ty ] ->
-      Plus ((if b then Wrap else Overflow), Z.to_int i, Ty.of_lit ty)
+  | LList [ String "+"; Bool b; (Int _ as i); ty ] ->
+      Plus ((if b then Wrap else Overflow), Expr.Lit i, Ty.of_lit ty)
   | l -> Fmt.failwith "invalid projection literal element %a" Literal.pp l
 
 let op_of_expr : Expr.t -> op = function
@@ -59,12 +59,12 @@ let op_of_expr : Expr.t -> op = function
       Field (Z.to_int i, Ty.of_expr ty)
   | EList [ Lit (String "vf"); Lit (Int i); ty; Lit (Int idx) ] ->
       VField (Z.to_int i, Ty.of_expr ty, Z.to_int idx)
-  | EList [ Lit (String "i"); Lit (Int i); ty; Lit (Int sz) ] ->
-      Index (Z.to_int i, Ty.of_expr ty, Z.to_int sz)
+  | EList [ Lit (String "i"); i; ty; Lit (Int sz) ] ->
+      Index (i, Ty.of_expr ty, Z.to_int sz)
   | EList [ Lit (String "c"); ty_from; ty_into ] ->
       Cast (Ty.of_expr ty_from, Ty.of_expr ty_into)
-  | EList [ Lit (String "+"); Lit (Bool b); Lit (Int i); ty ] ->
-      Plus ((if b then Wrap else Overflow), Z.to_int i, Ty.of_expr ty)
+  | EList [ Lit (String "+"); Lit (Bool b); i; ty ] ->
+      Plus ((if b then Wrap else Overflow), i, Ty.of_expr ty)
   | e -> Fmt.failwith "invalid projection expression element %a" Expr.pp e
 
 let of_lit_list lst : t = { base = None; from_base = List.map op_of_lit lst }
@@ -87,20 +87,11 @@ let expr_of_elem : op -> Expr.t =
           Lit (Int (Z.of_int idx));
         ]
   | Index (i, ty, sz) ->
-      EList
-        [
-          Lit (String "i");
-          Lit (Int (Z.of_int i));
-          Ty.to_expr ty;
-          Lit (Int (Z.of_int sz));
-        ]
+      EList [ Lit (String "i"); i; Ty.to_expr ty; Expr.int sz ]
   | Cast (from_ty, into_ty) ->
       EList [ Lit (String "c"); Ty.to_expr from_ty; Ty.to_expr into_ty ]
-  | Plus (k, i, ty) ->
-      EList
-        [ Lit (String "+"); is_wrap k; Lit (Int (Z.of_int i)); Ty.to_expr ty ]
-  | UPlus (k, i) ->
-      EList [ Lit (String "u+"); is_wrap k; Lit (Int (Z.of_int i)) ]
+  | Plus (k, i, ty) -> EList [ Lit (String "+"); is_wrap k; i; Ty.to_expr ty ]
+  | UPlus (k, i) -> EList [ Lit (String "u+"); is_wrap k; i ]
 
 let to_expr_list t : Expr.t list = List.map expr_of_elem t
 

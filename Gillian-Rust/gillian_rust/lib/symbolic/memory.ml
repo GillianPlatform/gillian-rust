@@ -14,6 +14,7 @@ type err_t = Err.t [@@deriving yojson, show]
 
 type t = {
   tyenv : Common.Tyenv.t;
+  lk : Layout_knowledge.t;
   pcies : Prophecies.t;
   heap : Heap.t;
   lfts : Lft_ctx.t;
@@ -51,6 +52,7 @@ let init tyenv =
     lfts = Lft_ctx.empty;
     pcies = Prophecies.empty;
     obs_ctx = Obs_ctx.empty;
+    lk = Layout_knowledge.none;
   }
 
 let sure_is_nonempty { heap; lfts; pcies; _ } =
@@ -74,6 +76,18 @@ let execute_alloc mem args =
            ~rets:[ Expr.ALoc loc; EList [] ]
            ())
   | _ -> Fmt.failwith "Invalid arguments for alloc"
+
+let execute_alloc_raw mem args =
+  let { heap; tyenv; _ } = mem in
+  match args with
+  | [ size ] ->
+      let loc, new_heap = Heap.alloc_raw ~tyenv heap size in
+      DR.ok
+        (make_branch
+           ~mem:{ mem with heap = new_heap }
+           ~rets:[ Expr.ALoc loc; EList [] ]
+           ())
+  | _ -> Fmt.failwith "Invalid arguments for alloc_raw"
 
 let execute_store mem args =
   let { heap; tyenv; _ } = mem in
@@ -173,8 +187,13 @@ let is_overlapping_asrt _ = false
 let copy t = t
 
 let pp ft t =
-  Fmt.pf ft "@[<v 2>Heap:@,%a@]@ @[<v 2>Lifetimes:@,%a@]@ %a" Heap.pp t.heap
-    Lft_ctx.pp t.lfts Prophecies.pp t.pcies
+  Fmt.pf ft
+    "@[<v 2>Heap:@,\
+     %a@]@ @[<v 2>Lifetimes:@,\
+     %a@]@ %a@ @[<v 2>Layout knowledge:@,\
+     %a@]"
+    Heap.pp t.heap Lft_ctx.pp t.lfts Prophecies.pp t.pcies Layout_knowledge.pp
+    t.lk
 
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"
@@ -186,11 +205,14 @@ let lvars t =
   |> SS.union (Heap.lvars t.heap)
   |> SS.union (Lft_ctx.lvars t.lfts)
   |> SS.union (Obs_ctx.lvars t.obs_ctx)
+  |> SS.union (Layout_knowledge.lvars t.lk)
 
 let alocs _ = failwith "alocs: Not yet implemented"
 
-let assertions ?to_keep:_ { heap; tyenv; lfts; pcies; obs_ctx } =
-  Obs_ctx.assertions obs_ctx
+let assertions ?to_keep:_ { heap; tyenv; lfts; pcies; obs_ctx; lk } =
+  (* At worst this is over-approximating *)
+  Layout_knowledge.assertions lk
+  @ Obs_ctx.assertions obs_ctx
   @ Prophecies.assertions ~tyenv pcies
   @ Lft_ctx.assertions lfts
   @ Heap.assertions ~tyenv heap
@@ -337,6 +359,62 @@ let execute_prod_pcy_value mem args =
       { mem with pcies }
   | _ -> Fmt.failwith "Invalid arguments for pcy_set_value"
 
+let execute_size_of mem args =
+  match args with
+  | [ ty ] ->
+      let param =
+        match Ty.of_expr ty with
+        | Unresolved param -> param
+        | _ -> failwith "ty_size with non-param type, need to implement"
+      in
+      let+ ret, new_lk = Layout_knowledge.size_of ~lk:mem.lk param in
+      Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
+  | _ -> Fmt.failwith "Invalid arguments for size_of"
+
+let execute_is_zst mem args =
+  match args with
+  | [ ty ] ->
+      let ty = Ty.of_expr ty in
+      let+ formula, new_lk =
+        Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
+      in
+      let expr = Formula.to_expr formula |> Option.get in
+      Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
+  | _ -> Fmt.failwith "Invalid arguments for is_zst"
+
+let execute_cons_ty_size mem args =
+  match args with
+  | [ ty ] ->
+      let param =
+        match Ty.of_expr ty with
+        | Unresolved param -> param
+        | _ -> failwith "ty_size with non-param type, need to implement"
+      in
+      let+ ret, new_lk = Layout_knowledge.consume_ty_size ~lk:mem.lk param in
+      Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
+  | _ -> Fmt.failwith "Invalid arguments for consuming ty_size"
+
+let execute_prod_ty_size mem args =
+  match args with
+  | [ ty; size ] ->
+      let param =
+        match Ty.of_expr ty with
+        | Unresolved param -> param
+        | _ -> failwith "ty_size with non-param type, need to implement"
+      in
+      let+ new_lk = Layout_knowledge.produce_ty_size ~lk:mem.lk param size in
+      { mem with lk = new_lk }
+  | _ -> Fmt.failwith "Invalid arguments for producing ty_size"
+
+let execute_ty_is_unsized mem args =
+  match args with
+  | [ ty ] -> (
+      let ty = Ty.of_expr ty in
+      match ty with
+      | Ty.Slice _ -> DR.ok (make_branch ~mem ~rets:[ Expr.bool true ] ())
+      | _ -> DR.ok (make_branch ~mem ~rets:[ Expr.bool false ] ()))
+  | _ -> Fmt.failwith "Invalid arguments for ty_is_unsized"
+
 let pp_branch fmt branch =
   let _, values = branch in
   Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
@@ -344,15 +422,15 @@ let pp_branch fmt branch =
 let consume ~core_pred mem args =
   Logging.verbose (fun m -> m "Executing consumer for %s" core_pred);
   let+ res =
-    let core_pred = Actions.cp_of_name core_pred in
-    match core_pred with
+    match Actions.cp_of_name core_pred with
     | Value -> execute_cons_value mem args
     | Lft -> execute_cons_lft mem args
+    | Ty_size -> execute_cons_ty_size mem args
     | Pcy_value -> execute_cons_pcy_value mem args
     | Pcy_controller -> execute_cons_pcy_controller mem args
     | Value_observer -> execute_cons_value_observer mem args
     | Observation -> execute_cons_observation mem args
-    | Freed -> Fmt.failwith "Unimplemented: Consume Freed"
+    | _ -> Fmt.failwith "Unimplemented: Consume %s" core_pred
   in
   Logging.verbose (fun m ->
       m "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:Err.pp) res);
@@ -361,15 +439,15 @@ let consume ~core_pred mem args =
 let produce ~core_pred mem args =
   Logging.verbose (fun m -> m "Executing producer for %s" core_pred);
   let+ res =
-    let core_pred = Actions.cp_of_name core_pred in
-    match core_pred with
+    match Actions.cp_of_name core_pred with
     | Value -> execute_prod_value mem args
     | Lft -> execute_prod_lft mem args
+    | Ty_size -> execute_prod_ty_size mem args
     | Pcy_value -> execute_prod_pcy_value mem args
     | Pcy_controller -> execute_prod_pcy_controller mem args
     | Value_observer -> execute_prod_value_observer mem args
     | Observation -> execute_prod_observation mem args
-    | Freed -> Fmt.failwith "Unimplemented: Produce Freed"
+    | _ -> Fmt.failwith "Unimplemented: Produce %s" core_pred
   in
   Logging.verbose (fun m -> m "Resulting in: %a" pp res);
   res
@@ -383,13 +461,17 @@ let execute_action ~action_name mem args =
   let+ res =
     match action with
     | Alloc -> execute_alloc mem args
+    | Alloc_raw -> execute_alloc_raw mem args
     | Load_value -> execute_load mem args
     | Store_value -> execute_store mem args
     | Load_discr -> execute_load_discr mem args
     | Free -> execute_free mem args
+    | Size_of -> execute_size_of mem args
+    | Is_zst -> execute_is_zst mem args
     | Pcy_alloc -> execute_pcy_alloc mem args
     | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args
+    | Ty_is_unsized -> execute_ty_is_unsized mem args
     | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
   in
   Logging.verbose (fun fmt ->
@@ -409,7 +491,10 @@ let substitution_in_place s mem =
   let+ pcies =
     Prophecies.substitution ~tyenv:mem.tyenv mem.pcies s |> get_oks
   in
-  { mem with heap; pcies; lfts = Lft_ctx.substitution s mem.lfts }
+  let lfts = Lft_ctx.substitution s mem.lfts in
+  let lk = Layout_knowledge.substitution s mem.lk in
+  let obs_ctx = Obs_ctx.substitution s mem.obs_ctx in
+  { heap; pcies; lfts; lk; obs_ctx; tyenv = mem.tyenv }
 
 let can_fix = function
   | Err.MissingBlock _

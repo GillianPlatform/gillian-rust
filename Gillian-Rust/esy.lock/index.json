@@ -1,5 +1,5 @@
 {
-  "checksum": "16c049338ce11c4b10fb19bd06ac8fe8",
+  "checksum": "24b5a4573f0965538212adb7ca7d5e04",
   "root": "gillian-rust@link-dev:./esy.json",
   "node": {
     "ocaml@4.14.1000@d41d8cd9": {
@@ -24,7 +24,7 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.1000@d41d8cd9",
-        "gillian@github:GillianPlatform/Gillian:gillian.json#af7fd5bafd862a693072cbdf3f7cc98ba508fa20@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9",
         "@opam/yojson@opam:2.1.1@ad5e299c",
         "@opam/printbox-text@opam:0.6.1@66ef1874",
         "@opam/ppxlib@opam:0.25.1@bd0b93cc",
@@ -39,16 +39,16 @@
         "@opam/ocaml-lsp-server@opam:1.14.2@98e2df4b"
       ]
     },
-    "gillian@github:GillianPlatform/Gillian:gillian.json#af7fd5bafd862a693072cbdf3f7cc98ba508fa20@d41d8cd9": {
+    "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9": {
       "id":
-        "gillian@github:GillianPlatform/Gillian:gillian.json#af7fd5bafd862a693072cbdf3f7cc98ba508fa20@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9",
       "name": "gillian",
       "version":
-        "github:GillianPlatform/Gillian:gillian.json#af7fd5bafd862a693072cbdf3f7cc98ba508fa20",
+        "github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465",
       "source": {
         "type": "install",
         "source": [
-          "github:GillianPlatform/Gillian:gillian.json#af7fd5bafd862a693072cbdf3f7cc98ba508fa20"
+          "github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465"
         ]
       },
       "overrides": [],

@@ -118,8 +118,14 @@ let execute_action act_name mem args =
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Load_discr -> protect execute_load_discr mem args
-  | Pcy_resolve | Pcy_alloc | Pcy_assign ->
-      failwith "Prophecies not yet implemented in concrete execution"
+  | Pcy_resolve
+  | Pcy_alloc
+  | Pcy_assign
+  | Size_of
+  | Is_zst
+  | Alloc_raw
+  | Ty_is_unsized ->
+      Fmt.failwith "%s yet implemented in concrete execution" act_name
 
 let copy { heap; tyenv } = { heap = Heap.copy heap; tyenv }
 (* We don't need to copy tyenv, because it's immutable *)

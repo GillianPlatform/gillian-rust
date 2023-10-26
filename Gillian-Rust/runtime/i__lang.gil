@@ -24,3 +24,9 @@ proc i__lang_int_of_bool(b) {
   zer: ret := 0i;
        return
 };
+
+proc i__ty_is_unsized(ty) {
+     r := [ty_is_unsized](ty);
+     ret := l-nth(r, 0i);
+     return
+};

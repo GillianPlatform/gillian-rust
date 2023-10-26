@@ -18,9 +18,10 @@ use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 use rustc_middle::{
     mir::{interpret::Scalar, BinOp, BorrowKind},
     thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::AdtKind,
+    ty::{AdtKind, EarlyBinder},
 };
 use rustc_target::abi::FieldIdx;
+use rustc_type_ir::fold::TypeFoldable;
 
 pub(crate) struct PredSig {
     pub name: String,
@@ -36,7 +37,8 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     pub did: DefId,
     pub args: GenericArgsRef<'tcx>,
     pub var_map: HashMap<LocalVarId, GExpr>,
-    pub toplevel_asrts: Vec<Assertion>,
+    pub local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
+    pub global_toplevel_asrts: Vec<Assertion>, // Assertion that are global to all definitions
 }
 
 impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
@@ -80,7 +82,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             did,
             args,
             var_map: HashMap::new(),
-            toplevel_asrts: Vec::new(),
+            local_toplevel_asrts: Vec::new(),
+            global_toplevel_asrts: Vec::new(),
         }
     }
 
@@ -95,6 +98,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub fn prophecies_enabled(&self) -> bool {
         self.global_env.config.prophecies
+    }
+
+    pub fn subst<F: TypeFoldable<TyCtxt<'tcx>>>(&self, foldable: F) -> F {
+        EarlyBinder::bind(foldable).instantiate(self.tcx(), self.args)
+    }
+
+    pub fn encode_type_with_args(&mut self, ty: Ty<'tcx>) -> EncodedType {
+        self.encode_type(self.subst(ty))
     }
 
     pub fn assert_prophecies_enabled(&self, msg: &str) {
@@ -211,7 +222,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }) => {
                 // When memory implements mutability, the information should probably be used.
                 let name = name.to_string();
-                let ty = param.ty;
+                let ty = self.subst(param.ty);
                 if !is_primary {
                     fatal!(self, "Predicate parameters must be primary");
                 }
@@ -221,7 +232,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let lvar = GExpr::LVar(format!("#{name}"));
 
                 self.var_map.insert(*var, lvar.clone());
-                self.toplevel_asrts
+                self.global_toplevel_asrts
                     .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
                 if ty.is_any_ptr() {
                     let type_knowledge = if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
@@ -229,10 +240,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     } else {
                         self.make_is_ptr_asrt(lvar)
                     };
-                    self.toplevel_asrts.push(type_knowledge);
+                    self.global_toplevel_asrts.push(type_knowledge);
                 } else if self.is_nonnull(ty) {
                     let type_knowledge = self.make_is_nonnull_asrt(lvar);
-                    self.toplevel_asrts.push(type_knowledge);
+                    self.global_toplevel_asrts.push(type_knowledge);
                 }
                 (name, ty)
             }
@@ -293,7 +304,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .params
                 .iter()
                 .map(|p| {
-                    let (name, _ty) = self.extract_param(p);
+                    let (name, _substed_ty) = self.extract_param(p);
                     (name, None)
                 })
                 .collect(),
@@ -338,6 +349,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn compile_constant(&self, cst: ConstValue<'tcx>, ty: Ty<'tcx>) -> GExpr {
+        let ty = self.subst(ty);
         match (cst, ty.kind()) {
             (ConstValue::ZeroSized, _) => vec![].into(),
             (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Int(..)) => {
@@ -421,7 +433,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Binary { op, lhs, rhs } => {
                 let left = self.compile_expression(*lhs, thir);
                 let right = self.compile_expression(*rhs, thir);
-                let ty = thir.exprs[*lhs].ty;
+                let ty = self.subst(thir.exprs[*lhs].ty);
                 match op {
                     BinOp::Add => {
                         if ty.is_integral() {
@@ -435,6 +447,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             GExpr::minus(left, right)
                         } else {
                             fatal!(self, "Unsupported type for substraction {:?}", ty)
+                        }
+                    }
+                    BinOp::Shl => {
+                        if ty.is_integral() {
+                            GExpr::i_shl(left, right)
+                        } else {
+                            fatal!(self, "Unsupported type for << {:?}", ty);
                         }
                     }
                     _ => fatal!(self, "Unsupported binary operator {:?}", op),
@@ -451,7 +470,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 lhs,
                 variant_index: _,
                 name,
-            } if matches!(&thir[*lhs].ty.kind(), TyKind::Tuple(..)) => {
+            } if matches!(self.subst(thir[*lhs].ty).kind(), TyKind::Tuple(..)) => {
                 self.compile_expression(*lhs, thir).lnth(name.as_u32())
             }
             ExprKind::Borrow {
@@ -475,14 +494,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                                 // Expression is of the form `& (*derefed).field`
                                 // Derefed should be a pointer, and we offset it by the field, adding the right projection.
                                 let gil_derefed = self.compile_expression(derefed, thir);
-                                let ty = lhs.ty;
+                                let ty = self.subst(lhs.ty);
                                 let mut place = GilPlace::base(gil_derefed, ty);
                                 if ty.is_enum() {
                                     panic!("enum field, need to handle")
                                 }
-                                place
-                                    .proj
-                                    .push(GilProj::Field(name.as_u32(), self.encode_type(ty)));
+                                place.proj.push(GilProj::Field(
+                                    name.as_u32(),
+                                    self.encode_type_with_args(ty),
+                                ));
                                 if self.prophecies_enabled() {
                                     [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()]
                                         .into()
@@ -504,7 +524,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 lhs,
                 variant_index: _,
                 name,
-            } => match thir[*lhs].ty.ty_adt_def() {
+            } => match self.subst(thir[*lhs].ty).ty_adt_def() {
                 Some(adt) => {
                     if adt.is_struct() {
                         let lhs = self.compile_expression(*lhs, thir);
@@ -557,17 +577,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 Some(LogicStubs::ProphecyGetValue) => {
                     self.assert_prophecies_enabled("using `Prophecy::value`");
                     let prophecy = self.compile_expression(args[0], thir);
-                    let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
+                    let ty = self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty));
                     let ty = self.encode_type(ty);
                     let value = self.temp_lvar();
-                    self.toplevel_asrts
-                        .push(core_preds::pcy_value(prophecy, ty, value.clone()));
+                    self.local_toplevel_asrts.push(core_preds::pcy_value(
+                        prophecy,
+                        ty,
+                        value.clone(),
+                    ));
                     value
                 }
                 Some(LogicStubs::ProphecyField(i)) => {
                     self.assert_prophecies_enabled("using `Prophecy::field`");
                     let proph = self.compile_expression(args[0], thir);
-                    let ty = self.unwrap_prophecy_ty(thir.exprs[args[0]].ty);
+                    let ty = self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty));
                     [
                         proph.clone().lnth(0),
                         proph.lnth(1).lst_concat(
@@ -623,7 +646,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         params,
                     };
 
-                    self.toplevel_asrts.push(pred_call);
+                    self.local_toplevel_asrts.push(pred_call);
                     out_var
                 }
                 _ => fatal!(self, "{:?} unsupported call in expression", expr),
@@ -639,8 +662,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn compile_formula(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
         let expr = &thir.exprs[e];
-        if !self.is_formula_ty(expr.ty) {
-            fatal!(self, "{:?} is not the formula type", expr.ty)
+        if !self.is_formula_ty(self.subst(expr.ty)) {
+            fatal!(self, "{:?} is not the formula type", self.subst(expr.ty))
         }
 
         match &expr.kind {
@@ -663,8 +686,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     Some(LogicStubs::FormulaLessEq) => {
                         assert!(args.len() == 2, "LessEq call must have two arguments");
-                        let ty = thir.exprs[args[0]].ty;
-                        if thir.exprs[args[0]].ty.is_integral() {
+                        let ty = self.subst(thir.exprs[args[0]].ty);
+                        if ty.is_integral() {
                             let left = Box::new(self.compile_expression(args[0], thir));
                             let right = Box::new(self.compile_expression(args[1], thir));
                             Formula::ILessEq { left, right }
@@ -674,14 +697,18 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     Some(LogicStubs::FormulaLess) => {
                         assert!(args.len() == 2, "Less call must have two arguments");
-                        let ty = thir.exprs[args[0]].ty;
-                        if thir.exprs[args[0]].ty.is_integral() {
+                        let ty = self.subst(thir.exprs[args[0]].ty);
+                        if ty.is_integral() {
                             let left = Box::new(self.compile_expression(args[0], thir));
                             let right = Box::new(self.compile_expression(args[1], thir));
                             Formula::ILess { left, right }
                         } else {
                             fatal!(self, "Used < in formula for unknown type: {}", ty)
                         }
+                    }
+                    Some(LogicStubs::FormulaNeg) => {
+                        let inner = Box::new(self.compile_formula(args[0], thir));
+                        Formula::Not(inner)
                     }
                     _ => {
                         fatal!(self, "{:?} unsupported call in formula", expr)
@@ -708,13 +735,48 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         [unique, global].into()
     }
 
+    fn compile_uninit(
+        &mut self,
+        args: &[ExprId],
+        fn_def_ty: Ty<'tcx>,
+        thir: &Thir<'tcx>,
+    ) -> Assertion {
+        let ty = match fn_def_ty.kind() {
+            TyKind::FnDef(_, substs) => substs[1].expect_ty(),
+            _ => panic!("compile_uninit went wrong"),
+        };
+
+        let pointer = self.compile_expression(args[0], thir);
+        let typ = self.encode_type_with_args(ty);
+
+        super::core_preds::uninit(pointer, typ)
+    }
+
+    fn compile_many_uninits(
+        &mut self,
+        args: &[ExprId],
+        fn_def_ty: Ty<'tcx>,
+        thir: &Thir<'tcx>,
+    ) -> Assertion {
+        let ty = match fn_def_ty.kind() {
+            TyKind::FnDef(_, substs) => substs[1].expect_ty(),
+            _ => panic!("compile_uninit went wrong"),
+        };
+
+        let pointer = self.compile_expression(args[0], thir);
+        let size = self.compile_expression(args[1], thir);
+        let typ = self.encode_type_with_args(ty);
+
+        super::core_preds::many_uninits(pointer, typ, size)
+    }
+
     fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {
         assert!(args.len() == 2, "Pure call must have one argument");
         // The type in the points_to is the type of the pointee.
-        let ty = self.encode_type(thir.exprs[args[1]].ty);
+        let ty = self.encode_type_with_args(thir.exprs[args[1]].ty);
         let left = self.compile_expression(args[0], thir);
         let right = self.compile_expression(args[1], thir);
-        let left_ty = thir.exprs[args[0]].ty;
+        let left_ty = self.subst(thir.exprs[args[0]].ty);
         // If the type is a box or a nonnull, we need to access its pointer.
         let (left, pfs) = if left_ty.is_box() {
             // boxes have to be block pointers.
@@ -757,8 +819,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let expr = &thir.exprs[e];
-        if !self.is_assertion_ty(expr.ty) {
-            fatal!(self, "{:?} is not the assertion type", expr.ty)
+        if !self.is_assertion_ty(self.subst(expr.ty)) {
+            fatal!(self, "{:?} is not the assertion type", self.subst(expr.ty))
         }
         match &expr.kind {
             ExprKind::Scope {
@@ -791,17 +853,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
+                Some(LogicStubs::AssertUninit) => self.compile_uninit(args, *ty, thir),
+                Some(LogicStubs::AssertManyUninits) => self.compile_many_uninits(args, *ty, thir),
                 Some(LogicStubs::ProphecyObserver) => {
                     self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);
-                    let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
+                    let typ = self
+                        .encode_type(self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty)));
                     let model = self.compile_expression(args[1], thir);
                     super::core_preds::observer(prophecy, typ, model)
                 }
                 Some(LogicStubs::ProphecyController) => {
                     self.assert_prophecies_enabled("using prophecy::controller");
                     let prophecy = self.compile_expression(args[0], thir);
-                    let typ = self.encode_type(self.unwrap_prophecy_ty(thir.exprs[args[0]].ty));
+                    let typ = self
+                        .encode_type(self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty)));
                     let model = self.compile_expression(args[1], thir);
                     super::core_preds::controller(prophecy, typ, model)
                 }
@@ -810,10 +876,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         TyKind::FnDef(def_id, substs) => (*def_id, substs),
                         _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
                     };
-
+                    let substs = self.subst(*substs);
                     let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
                     let ty_params = param_collector::collect_params_on_args(substs)
-                        .with_consider_arguments(args.iter().map(|id| thir[*id].ty));
+                        .with_consider_arguments(args.iter().map(|id| self.subst(thir[*id].ty)));
                     let mut params = Vec::with_capacity(
                         ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
                     );
@@ -883,10 +949,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     } else {
                         self.make_is_ptr_asrt(lvar_expr.clone())
                     };
-                    self.toplevel_asrts.push(type_knowledge);
+                    self.local_toplevel_asrts.push(type_knowledge);
                 } else if self.is_nonnull(ty) {
                     let type_knowledge = self.make_is_nonnull_asrt(lvar_expr.clone());
-                    self.toplevel_asrts.push(type_knowledge);
+                    self.local_toplevel_asrts.push(type_knowledge);
                 }
                 self.var_map.insert(var, lvar_expr);
                 res.push(name.to_string());
@@ -910,9 +976,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .unwrap_or_else(|| fatal!(self, "Assertion block has no expression?"));
         let inner = self.compile_assertion(expr, thir);
         let inner = self
-            .toplevel_asrts
+            .global_toplevel_asrts
             .iter()
             .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
+        let inner = std::mem::take(&mut self.local_toplevel_asrts)
+            .into_iter()
+            .fold(inner, Assertion::star);
 
         if (!crate::logic::is_function_specification(self.did(), self.tcx()))
             || (!self.has_generic_lifetimes())

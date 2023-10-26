@@ -100,15 +100,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
-            if !self.has_generic_lifetimes() {
-                fatal!(
-                    self,
-                    "{:?} doesn't have generic lifetimes, but makes a call which does. subst is {:?}, operands are {:?}",
-                    self.tcx().def_path_str(self.did()),
-                    substs, operands
-                )
+            if self.has_generic_lifetimes() {
+                args.push(Expr::PVar(lifetime_param_name("a")))
+            } else {
+                args.push(Expr::null())
             }
-            args.push(Expr::PVar(lifetime_param_name("a")))
         }
         for ty_arg in substs {
             if let Some(e) = self.encode_generic_arg(ty_arg) {
@@ -122,7 +118,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
-    fn only_param_args_for_fn_call(
+    pub fn only_param_args_for_fn_call(
         &mut self,
         substs: GenericArgsRef<'tcx>,
         operands: &[Operand<'tcx>],

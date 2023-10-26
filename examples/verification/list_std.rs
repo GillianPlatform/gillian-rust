@@ -7,6 +7,7 @@ use gilogic::{
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
+// 0 modification, although since I copied it, the allocator API was added
 pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
@@ -45,10 +46,10 @@ impl<T> Node<T> {
 #[predicate]
 fn dll_seg<T: Ownable>(
     head: In<Option<NonNull<Node<T>>>>,
-    tail_next: In<Option<NonNull<Node<T>>>>,
+    tail_next: Option<NonNull<Node<T>>>,
     tail: In<Option<NonNull<Node<T>>>>,
-    head_prev: In<Option<NonNull<Node<T>>>>,
-    len: usize,
+    head_prev: Option<NonNull<Node<T>>>,
+    len: In<usize>,
 ) {
     assertion!((head == tail_next) * (tail == head_prev) * (len == 0));
     assertion!(|hptr, head_next, head_prev, element|
@@ -60,30 +61,34 @@ fn dll_seg<T: Ownable>(
 }
 
 #[extract_lemma]
-#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, p: NonNull<Node<T>>|
-    list_ref_mut_ht(list, head, tail) * (head == Some(p))
+#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize, p: NonNull<Node<T>>|
+    list_ref_mut_htl(list, head, tail, len) * (head == Some(p))
 )]
 #[ensures(Ownable::own(&mut (*p.as_ptr()).element))]
 fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
 
 #[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_ht,
-    predicate_name = list_ref_mut_ht,
-    frozen_variables = [head, tail],
+    lemma_name = freeze_htl,
+    predicate_name = list_ref_mut_htl,
+    frozen_variables = [head, tail, len],
 )]
 impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {
-        assertion!(
-            |head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize| (self
-                == LinkedList {
-                    head,
-                    tail,
-                    len,
-                    marker: PhantomData
-                })
-                * dll_seg(head, None, tail, None, len)
-        );
+        assertion!(|head: Option<NonNull<Node<T>>>,
+                    tail: Option<NonNull<Node<T>>>,
+                    len: usize,
+                    p: Option<NonNull<Node<T>>>,
+                    n: Option<NonNull<Node<T>>>| (self
+            == LinkedList {
+                head,
+                tail,
+                len,
+                marker: PhantomData
+            })
+            * dll_seg(head, p, tail, n, len)
+            * (p == None)
+            * (n == None));
     }
 }
 
@@ -158,7 +163,7 @@ impl<T: Ownable> LinkedList<T> {
 
     #[show_safety]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        freeze_ht(self);
+        freeze_htl(self);
         match self.head.as_mut() {
             None => None,
             Some(node) => unsafe {
@@ -169,9 +174,56 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    // #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]
-    // #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * vdll.shallow_repr(vdata))]
-    // pub fn len(&self) -> usize {
-    //     self.len
-    // }
+    // #[show_safety]
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+        IterMut {
+            head: self.head,
+            tail: self.tail,
+            len: self.len,
+            marker: PhantomData,
+        }
+    }
 }
+
+pub struct IterMut<'a, T: 'a> {
+    head: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
+    len: usize,
+    marker: PhantomData<&'a mut Node<T>>,
+}
+
+#[extract_lemma]
+#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize|
+    list_ref_mut_htl(list, head, tail, len)
+)]
+#[ensures(Ownable::own(IterMut { head, tail, len, marker: PhantomData }))]
+fn extract_iter_mut<T: Ownable>(list: &mut LinkedList<T>);
+
+impl<'a, T: 'a> Ownable for IterMut<'a, T>
+where
+    T: Ownable,
+{
+    #[borrow]
+    fn own(self) {
+        assertion!(|n, p| dll_seg(self.head, n, self.tail, p, self.len))
+    }
+}
+
+// impl<'a, T> Iterator for IterMut<'a, T> {
+//     type Item = &'a mut T;
+
+//     #[show_safety]
+//     fn next(&mut self) -> Option<&'a mut T> {
+//         if self.len == 0 {
+//             None
+//         } else {
+//             self.head.map(|node| unsafe {
+//                 // Need an unbound lifetime to get 'a
+//                 let node = &mut *node.as_ptr();
+//                 self.len -= 1;
+//                 self.head = node.next;
+//                 &mut node.element
+//             })
+//         }
+//     }
+// }

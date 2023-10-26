@@ -30,3 +30,9 @@ let assertions (t : t) =
 let lvars (t : t) =
   let open Utils.Containers in
   List.fold_left (fun acc f -> SS.union acc (Formula.lvars f)) SS.empty t
+
+let substitution s lk =
+  let subst_formula =
+    Gillian.Symbolic.Subst.substitute_formula s ~partial:true
+  in
+  List.map subst_formula lk

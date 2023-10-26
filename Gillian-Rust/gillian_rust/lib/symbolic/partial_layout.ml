@@ -1,9 +1,10 @@
 module Tyenv = Common.Tyenv
 module Adt_def = Common.Ty.Adt_def
 open Projections
+open Gillian.Gil_syntax
 
-let equal_ty ~pc ty_a ty_b =
-  match Ty.sem_equal ty_a ty_b with
+let sure_side_cond ~pc (cond : Formula.t) =
+  match cond with
   | True -> true
   | False -> false
   | f ->
@@ -11,6 +12,12 @@ let equal_ty ~pc ty_a ty_b =
       Gillian.Symbolic.FO_logic.FOSolver.check_entailment
         ~unification:pc.unification Gillian.Utils.Containers.SS.empty pc.pfs
         [ f ] pc.gamma
+
+let equal_ty ~pc ty_a ty_b = sure_side_cond ~pc (Ty.sem_equal ty_a ty_b)
+
+let sure_less_than ~pc i n =
+  let open Formula.Infix in
+  sure_side_cond ~pc i #< n
 
 type variant_idx = int [@@deriving eq, show]
 type size = int [@@deriving eq, show]
@@ -122,34 +129,36 @@ type context = {
   variant_members : Ty.t -> variant_idx -> Ty.t array;
 }
 
-let rec contextualise (context : context) (route : op list) : op list =
+let rec contextualise ~pc (context : context) (route : op list) : op list =
+  let contextualise = contextualise ~pc context in
   match route with
   | Plus (w, i, t) :: rs -> (
       match (context.partial_layouts t).size with
-      | Exactly sz -> UPlus (w, sz * i) :: contextualise context rs
-      | _ -> Plus (w, i, t) :: contextualise context rs)
-  | Index (i, t, n) :: rs when i < n ->
+      | Exactly sz ->
+          UPlus (w, Expr.Infix.( * ) (Expr.int sz) i) :: contextualise rs
+      | _ -> Plus (w, i, t) :: contextualise rs)
+  | Index (i, t, n) :: rs when sure_less_than ~pc i (Expr.int n) ->
       Cast (Ty.Array { length = n; ty = t }, t)
-      :: contextualise context (Plus (Overflow, i, t) :: rs)
+      :: contextualise (Plus (Overflow, i, t) :: rs)
   | Field (i, t) :: rs -> (
-      let t' = (context.members t).(i) and rs' = contextualise context rs in
+      let t' = (context.members t).(i) and rs' = contextualise rs in
       match (context.partial_layouts t).fields with
       | Arbitrary os -> (
           match os.(i) with
-          | Bytes n -> Cast (t, t') :: UPlus (Overflow, n) :: rs'
+          | Bytes n -> Cast (t, t') :: UPlus (Overflow, Expr.int n) :: rs'
           | FromIndex (i', n) ->
               Field (i', t)
               :: Cast ((context.members t).(i'), t')
-              :: UPlus (Overflow, n)
+              :: UPlus (Overflow, Expr.int n)
               :: rs'
           | FromCount (t'', n, n') ->
               Cast (t, t'')
-              :: Plus (Overflow, n, t'')
+              :: Plus (Overflow, Expr.int n, t'')
               :: Cast (t'', t')
-              :: UPlus (Overflow, n')
+              :: UPlus (Overflow, Expr.int n')
               :: rs')
-      | _ -> Field (i, t) :: contextualise context rs)
-  | r :: rs -> r :: contextualise context rs
+      | _ -> Field (i, t) :: contextualise rs)
+  | r :: rs -> r :: contextualise rs
   | [] -> []
 
 let reorder : op list -> op list =
@@ -164,32 +173,51 @@ let reorder : op list -> op list =
 
 let rec simplify : op list -> op list = function
   (* We have to handle 0s/Identity casts removed from the next element, since they could lead to two elements being next to each other and simplifying *)
-  | r :: Plus (_, 0, _) :: rs -> simplify (r :: rs)
-  | r :: UPlus (_, 0) :: rs -> simplify (r :: rs)
+  | r :: Plus (_, e, _) :: rs when Expr.is_concrete_zero_i e ->
+      simplify (r :: rs)
+  | r :: UPlus (_, e) :: rs when Expr.is_concrete_zero_i e -> simplify (r :: rs)
   | r :: Cast (t, t') :: rs when t = t' -> simplify (r :: rs)
   | Plus (Wrap, i, t) :: Plus (Wrap, i', t') :: rs when t = t' ->
-      simplify (Plus (Wrap, i + i', t) :: rs)
+      simplify (Plus (Wrap, Expr.Infix.( + ) i i', t) :: rs)
   | UPlus (Wrap, i) :: UPlus (Wrap, i') :: rs ->
-      simplify (UPlus (Wrap, i + i') :: rs)
+      simplify (UPlus (Wrap, Expr.Infix.( + ) i i') :: rs)
   | Plus (Overflow, i, t) :: Plus (Overflow, i', t') :: rs
-    when i * i' > 0 && t = t' -> simplify (Plus (Overflow, i + i', t) :: rs)
-  | UPlus (Overflow, i) :: UPlus (Overflow, i') :: rs when i * i' > 0 ->
-      simplify (UPlus (Overflow, i + i') :: rs)
+    when (not @@ Expr.is_concrete_zero_i i)
+         && (not @@ Expr.is_concrete_zero_i i')
+         && t = t' -> simplify (Plus (Overflow, Expr.Infix.( + ) i i', t) :: rs)
+  | UPlus (Overflow, i) :: UPlus (Overflow, i') :: rs
+    when (not @@ Expr.is_concrete_zero_i i)
+         && (not @@ Expr.is_concrete_zero_i i') ->
+      simplify (UPlus (Overflow, Expr.Infix.( + ) i i') :: rs)
   | Cast (t, t'') :: Cast (t''', t') :: rs when t'' = t''' ->
       simplify (Cast (t, t') :: rs)
   (* We also have to handle 0s if they're at the front, from other rules or as the last element *)
-  | Plus (_, 0, _) :: rs -> simplify rs
-  | UPlus (_, 0) :: rs -> simplify rs
+  | Plus (_, i, _) :: rs when Expr.is_concrete_zero_i i -> simplify rs
+  | UPlus (_, i) :: rs when Expr.is_concrete_zero_i i -> simplify rs
   | Cast (t, t') :: rs when t = t' -> simplify rs
   | r :: rs -> r :: simplify rs
   | [] -> []
 
-let reduce context rs = simplify @@ reorder @@ contextualise context rs
+let reduce ~pc context rs = simplify @@ reorder @@ contextualise ~pc context rs
 
 type address = { block_type : Ty.t; route : op list; address_type : Ty.t }
+type index = CI of int | SI of Expr.t [@@deriving eq, show]
+
+let add_index i i' =
+  match (i, i') with
+  | CI i, CI i' -> CI (i + i')
+  | CI i, SI i' | SI i', CI i -> SI (Expr.Infix.( + ) (Expr.int i) i')
+  | SI i, SI i' -> SI (Expr.Infix.( + ) i i')
+
+let add_exp_and_idx exp idx =
+  match (exp, idx) with
+  | Expr.Lit (Int i), CI i' -> CI (Z.to_int i + i')
+  | Expr.Lit (Int i), SI (Lit (Int i')) -> CI (Z.to_int i + Z.to_int i')
+  | exp, SI expr -> SI (Expr.Infix.( + ) expr exp)
+  | exp, CI i -> SI (Expr.Infix.( + ) (Expr.int i) exp)
 
 type access = {
-  index : int;
+  index : index;
   index_type : Ty.t;
   against : Ty.t;
   variant : variant_idx option;
@@ -214,7 +242,7 @@ let distance_to_next_field (partial_layout : partial_layout) (a : int) =
       | _, _ -> None)
   | _ -> None
 
-exception AccessError of access list * op list * Ty.t * int option * string
+exception AccessError of access list * op list * Ty.t * index option * string
 
 let () =
   Printexc.register_printer (function
@@ -222,7 +250,8 @@ let () =
         let open Fmt in
         Some
           (str "AccessError(%a, %a, %a, %a, %s)" (Dump.list pp_access) accesses
-             Projections.pp_from_base ops Ty.pp ty (Dump.option int) idx msg)
+             Projections.pp_from_base ops Ty.pp ty (Dump.option pp_index) idx
+             msg)
     | _ -> None)
 
 module UpTreeDirection = struct
@@ -259,7 +288,7 @@ let rec resolve
     (accesses : access list)
     (ty : Ty.t)
     (rs : op list)
-    (index : int option) : access list =
+    (index : index option) : access list =
   let resolve = resolve ~pc ~tyenv ~context in
   let equal_ty = equal_ty ~pc in
   (* let dump_state () =
@@ -280,8 +309,8 @@ let rec resolve
       | Arbitrary [||] -> None
       | Arbitrary offsets
         when (* print_string "offsets.(0) 210;\n"; *)
-             offsets.(0) = Bytes 0 -> Some 0
-      | Array (_, _) -> Some 0
+             offsets.(0) = Bytes 0 -> Some (CI 0)
+      | Array (_, _) -> Some (CI 0)
       | _ -> None
   and accesses' ?variant index index_type =
     { index; index_type; against = ty; variant } :: accesses
@@ -289,31 +318,33 @@ let rec resolve
   let access_error message =
     raise (AccessError (accesses, rs, ty, ix, message))
   in
-  (* Both `tree_cast`s are currently invalid, not checking if moving forwards/backwards is allowed with respect to padding*)
+  (* Both `tree_cast`s are currently over-approx, not checking if moving forwards/backwards is allowed with respect to padding*)
   let down_tree_cast (dir : DownTreeDirection.t) =
     match ix with
-    | Some ix ->
+    | Some (CI ix) ->
         let ix' = ix + DownTreeDirection.magnitude dir in
         (* Format.printf "(context.members ty).(ix') 219 : %d\n" ix'; *)
         let ix'_type = (context.members ty).(ix') in
         let casted_ix =
           match dir with
           | DownTreeDirection.Bkwd ->
-              Some (Array.length (context.members ix'_type))
+              Some (CI (Array.length (context.members ix'_type)))
               (* We can't guarantee we should be using indices for the previous index *)
           | DownTreeDirection.Curr -> None
         in
-        resolve (accesses' ix' ix'_type) ix'_type rs casted_ix
-    | None -> access_error "Can't down-tree cast from no known index"
+        resolve (accesses' (CI ix') ix'_type) ix'_type rs casted_ix
+    | Some (SI _) -> failwith "down_tree_cast with SI index"
+    | _ -> access_error "Can't down-tree cast from no known index"
   in
   let rec up_tree_cast dir accesses' rs' =
     match accesses' with
     (* We're not checking whether the type cast to is meant to have indices, but this should be fine as it won't be able to progress once there *)
-    | { index; index_type = _; against; variant = _ } :: as' ->
-        let max_ix = Array.length (context.members against) - 1
-        and ix' = index + UpTreeDirection.magnitude dir in
-        if ix' <= max_ix then resolve as' against rs' (Some ix')
+    | { index = CI index; index_type = _; against; variant = _ } :: as' ->
+        let max_ix = Array.length (context.members against) - 1 in
+        let ix' = index + UpTreeDirection.magnitude dir in
+        if ix' <= max_ix then resolve as' against rs' (Some (CI ix'))
         else up_tree_cast dir as' rs'
+    | { index = SI _; _ } :: _ -> failwith "up_tree_cast with non-CI index"
     | [] ->
         access_error "Could not up tree cast from beyond top of access stack"
   in
@@ -322,41 +353,47 @@ let rec resolve
   | Field (i, t) :: rs', None when equal_ty t ty ->
       (* print_string "(context.members t).(i) 243;\n"; *)
       let t' = (context.members t).(i) in
-      resolve (accesses' i t') t' rs' None
+      resolve (accesses' (CI i) t') t' rs' None
   (* TODO handle invalid indices etc. *)
-  | Field (i, t) :: rs', Some 0 when equal_ty t ty ->
-      resolve accesses ty rs' (Some i)
+  | Field (i, t) :: rs', Some (CI 0) when equal_ty t ty ->
+      resolve accesses ty rs' (Some (CI i))
   | Index (i, t, n) :: rs', Some ix
-    when i < n && equal_ty (Array { length = n; ty = t }) ty ->
-      resolve accesses ty rs' (Some (i + ix))
+    when sure_less_than ~pc i (Expr.int n)
+         && equal_ty (Array { length = n; ty = t }) ty ->
+      resolve accesses ty rs' (Some (add_index (SI i) ix))
   | VField (j, t, idx) :: rs', None when equal_ty t ty ->
       (* print_string "(context.members t).(i) 253;\n"; *)
       let t' = (context.variant_members t idx).(j) in
-      resolve (accesses' ~variant:idx j t') t rs' None
+      resolve (accesses' ~variant:idx (CI j) t') t rs' None
   | Cast (_, _) :: rs', ix -> resolve accesses ty rs' ix
-  | Plus (_, 0, _) :: _, _ ->
+  | Plus (_, z, _) :: _, _ when Expr.is_concrete_zero_i z ->
       access_error "Invalid +^t 0 should not exist at resolution stage"
   | Plus (w, i, t) :: rs', Some ix -> (
-      let i' = i + ix
-      and modify_plus_eliminating_zero new_i =
-        if new_i = 0 then rs' else Plus (w, new_i, t) :: rs'
-      and partial_layout = context.partial_layouts ty in
+      let modify_plus_eliminating_zero new_i =
+        if new_i = 0 then rs' else Plus (w, Expr.int new_i, t) :: rs'
+      in
+      let partial_layout = context.partial_layouts ty in
       match ty with
-      | Ty.Array { ty = tElem; length = n } when tElem = t ->
-          if i' < 0 then
-            up_tree_cast UpTreeDirection.Curr accesses
-              (modify_plus_eliminating_zero i')
-          else if i' < n then resolve accesses ty rs' @@ Some i'
-          else
-            up_tree_cast UpTreeDirection.Fwd accesses
-              (modify_plus_eliminating_zero @@ (i' - n))
+      | Ty.Array { ty = tElem; length = n } when tElem = t -> (
+          let i' = add_exp_and_idx i ix in
+          match i' with
+          | CI i' when i' < 0 ->
+              up_tree_cast UpTreeDirection.Curr accesses
+                (modify_plus_eliminating_zero i')
+          | CI i' when i' < n -> resolve accesses ty rs' @@ Some (CI i')
+          | CI i' ->
+              up_tree_cast UpTreeDirection.Fwd accesses
+                (modify_plus_eliminating_zero @@ (i' - n))
+          | SI _ -> failwith "Not implemented yet!")
       | Adt (name, _args) -> (
-          match Tyenv.adt_def ~tyenv name with
-          | Struct _ -> (
+          match (Tyenv.adt_def ~tyenv name, i, ix) with
+          | Struct _, Expr.Lit (Int i), CI ix -> (
+              let i = Z.to_int i in
               let moving_over_field, next_i, next_ix =
                 if i < 0 then (ix - 1, ( + ) i, ix - 1)
                 else (ix, ( - ) i, ix + 1)
-              and members = context.members ty in
+              in
+              let members = context.members ty in
               if i < 0 && ix = 0 then
                 (* We can up-tree cast directly since we're at field ix 0 *)
                 up_tree_cast UpTreeDirection.Curr accesses rs
@@ -370,21 +407,29 @@ let rec resolve
                 | Some (FromCount (t', n, 0)) when equal_ty t' t ->
                     (if next_ix = Array.length members then
                      up_tree_cast UpTreeDirection.Fwd accesses
-                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                    else fun rs'' ->
+                      resolve accesses ty rs'' @@ Some (CI next_ix))
                       (modify_plus_eliminating_zero (next_i n))
                 | _ -> down_tree_cast (DownTreeDirection.from_int i))
-          | _ -> down_tree_cast (DownTreeDirection.from_int i))
-      | _ -> down_tree_cast (DownTreeDirection.from_int i))
-  | UPlus (_, 0) :: _, _ ->
+          | _, Expr.Lit (Int i), CI _ ->
+              down_tree_cast (DownTreeDirection.from_int (Z.to_int i))
+          | _, _, _ -> failwith "adt with non-concrete index")
+      | _ -> (
+          match i with
+          | Expr.Lit (Int i) ->
+              down_tree_cast (DownTreeDirection.from_int (Z.to_int i))
+          | _ -> failwith "Non-concrete index in non-adt/non-array type"))
+  | UPlus (_, z) :: _, _ when Expr.is_concrete_zero_i z ->
       access_error "Invalid +^U 0 should not exist at resolution stage"
   | UPlus (w, i) :: rs', Some ix -> (
       let modify_uplus_eliminating_zero new_i =
-        if new_i = 0 then rs' else UPlus (w, new_i) :: rs'
+        if new_i = 0 then rs' else UPlus (w, Expr.int new_i) :: rs'
       and partial_layout = context.partial_layouts ty in
       match ty with
       | Ty.Array { ty = tElem; length = n } -> (
-          match (context.partial_layouts tElem).size with
-          | Exactly size ->
+          match ((context.partial_layouts tElem).size, ix, i) with
+          | Exactly size, CI ix, Expr.Lit (Int i) ->
+              let i = Z.to_int i in
               let ix' = ix + div' i size and rem = mod' i size in
               if ix' < 0 then
                 up_tree_cast UpTreeDirection.Curr accesses
@@ -396,15 +441,18 @@ let rec resolve
               else if ix' < n then
                 resolve accesses ty
                   (modify_uplus_eliminating_zero rem)
-                  (Some ix')
+                  (Some (CI ix'))
               else
                 up_tree_cast UpTreeDirection.Fwd accesses
                 @@ modify_uplus_eliminating_zero
                 @@ (i - ((n - ix) * size))
-          | _ -> down_tree_cast (DownTreeDirection.from_int i))
+          | _, CI _, Expr.Lit (Int i) ->
+              down_tree_cast (DownTreeDirection.from_int (Z.to_int i))
+          | _ -> failwith "UPlus array without concrete Uplus offset and index")
       | Adt (name, _args) -> (
-          match Tyenv.adt_def ~tyenv name with
-          | Struct _ -> (
+          match (Tyenv.adt_def ~tyenv name, ix, i) with
+          | Struct _, CI ix, Expr.Lit (Int i) -> (
+              let i = Z.to_int i in
               let moving_over_field, next_ix =
                 if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
               in
@@ -420,17 +468,27 @@ let rec resolve
                        size <= abs i ->
                     (if next_ix = Array.length (context.members ty) then
                      up_tree_cast UpTreeDirection.Fwd accesses
-                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                    else fun rs'' ->
+                      resolve accesses ty rs'' @@ Some (CI next_ix))
                       (modify_uplus_eliminating_zero (i - (signum i * size)))
                 | _ -> down_tree_cast (DownTreeDirection.from_int i))
-          | _ -> down_tree_cast (DownTreeDirection.from_int i))
-      | _ -> down_tree_cast (DownTreeDirection.from_int i))
+          | _, CI _, Expr.Lit (Int i) ->
+              down_tree_cast (DownTreeDirection.from_int (Z.to_int i))
+          | _ -> failwith "UPlus adt without concrete Uplus offset and index")
+      | _ -> (
+          match i with
+          | Expr.Lit (Int i) ->
+              down_tree_cast (DownTreeDirection.from_int (Z.to_int i))
+          | _ ->
+              failwith "Non-concrete index in non-adt/non-array type for uplus")
+      )
   | _ :: _, Some _ -> down_tree_cast DownTreeDirection.Curr
   | _ :: _, _ -> access_error "Stuck handling next op"
-  | [], Some ix when ix > 0 ->
+  | [], Some (CI ix as index) when ix > 0 ->
       (* print_string "(context.members ty).(ix) 347;\n"; *)
-      accesses' ix (context.members ty).(ix)
+      accesses' index (context.members ty).(ix)
       (* There's a lot of "crash" cases instead of nicely handled errors, context.members here should instead fail nicely if it's not a struct *)
+  | [], Some (SI _) -> failwith "SI index at end of resolve"
   | [], _ -> accesses
 
 let rec zero_offset_types (context : context) (ty : Ty.t) : Ty.t list =
@@ -447,7 +505,7 @@ let rec zero_offset_types (context : context) (ty : Ty.t) : Ty.t list =
 
 let resolve_address ~pc ~tyenv ~(context : context) (address : address) :
     access list =
-  let reduced = reduce context address.route in
+  let reduced = reduce ~pc context address.route in
   let accesses =
     resolve ~pc ~tyenv ~context [] address.block_type reduced None
   in
@@ -471,7 +529,7 @@ let resolve_address ~pc ~tyenv ~(context : context) (address : address) :
       List.map
         (function
           | against, index_type ->
-              { index = 0; index_type; against; variant = None })
+              { index = CI 0; index_type; against; variant = None })
         z_o_conversions
     in
     let as' = List.rev_append as_z_o accesses in
@@ -482,7 +540,7 @@ let resolve_address ~pc ~tyenv ~(context : context) (address : address) :
            ( as',
              [],
              result_type as',
-             Some 0,
+             Some (CI 0),
              Format.sprintf "Could not resolve to correct address type" ))
 
 let resolve_address_debug_access_error
@@ -494,7 +552,7 @@ let resolve_address_debug_access_error
   with AccessError (accesses, rs, ty, ix, message) ->
     Format.eprintf "%s: \n" message;
     Format.eprintf "\tty=%a\n\tix=%s\n\trs=[" Ty.pp ty
-    @@ Option.fold ~none:"- (None)" ~some:Int.to_string ix;
+    @@ Option.fold ~none:"- (None)" ~some:show_index ix;
     List.iter (Format.eprintf "%a;\n" Projections.pp_op) rs;
     Format.eprintf "]\n\taccesses=[";
     List.iter (Format.eprintf "%a;\n" pp_access) accesses;
@@ -629,6 +687,7 @@ let rec partial_layout_of
         (* This is suboptimal, but comes around from the model error. Structs/enums are not types *)
         size = AtLeast 0;
       }
+  | Ty.SymArray _ -> failwith "Requiring partial layout of sym_array"
   | Ty.Adt (name, subst) as this_ty -> (
       match Hashtbl.find_opt known (name, subst) with
       | Some layout -> layout

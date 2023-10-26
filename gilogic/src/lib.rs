@@ -2,6 +2,8 @@
 #![feature(rustc_attrs)]
 #![feature(never_type)]
 #![feature(register_tool)]
+#![feature(ptr_internals)]
+#![feature(allocator_api)]
 #![register_tool(gillian)]
 
 mod tys;
@@ -26,6 +28,7 @@ pub use seq::Seq;
 
 mod ownable;
 pub use ownable::Ownable;
+pub mod alloc;
 pub mod prophecies;
 
 #[path = "stubs.rs"]

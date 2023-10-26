@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::{BoundVariableKind, GenericParamDefKind, Generics};
 
 fn fill_item(args: &mut Vec<(u32, Symbol)>, tcx: TyCtxt, defs: &Generics) {
@@ -38,6 +39,9 @@ pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // Plus, I could just build a nice iterator.
 
     fn has_generic_lifetimes(&self) -> bool {
+        if let DefKind::AnonConst | DefKind::InlineConst = self.tcx().def_kind(self.did()) {
+            return false;
+        }
         self.tcx()
             .fn_sig(self.did())
             .instantiate_identity()

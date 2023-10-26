@@ -471,12 +471,38 @@ impl<'tcx> AutoItem<'tcx> {
                     mut_ref_inner.add_to_prog(prog, global_env);
                     return;
                 }
-                fatal!(
-                    global_env,
-                    "Unsupported MonoPred! {:?}, args: {:?}",
-                    global_env.just_pred_name_instance(instance),
-                    instance.args
+
+                // Otherwise, we just compile the predicate
+                log::trace!(
+                    "About to monomorphize predicate : {:?}",
+                    global_env.just_pred_name_instance(instance)
                 );
+                if crate::utils::attrs::is_abstract_predicate(instance.def_id(), global_env.tcx()) {
+                    let pred = PredCtx::new(
+                        global_env,
+                        &mut temp_gen::TempGenerator::new(),
+                        instance.def_id(),
+                        instance.args,
+                    )
+                    .compile_abstract();
+                    prog.add_pred(pred);
+                } else if crate::utils::attrs::is_predicate(instance.def_id(), global_env.tcx()) {
+                    let pred = PredCtx::new(
+                        global_env,
+                        &mut temp_gen::TempGenerator::new(),
+                        instance.def_id(),
+                        instance.args,
+                    )
+                    .compile_concrete();
+                    prog.add_pred(pred);
+                } else {
+                    fatal!(
+                        global_env,
+                        "MonoPred but I don't know what it is? {:?}, {:?}",
+                        instance.def_id(),
+                        global_env.just_pred_name_instance(instance)
+                    )
+                }
             }
         }
     }

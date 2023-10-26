@@ -100,7 +100,7 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
         }
         for e in pure {
             let pure = self.compile_assertion(e, thir);
-            self.toplevel_asrts.push(pure)
+            self.global_toplevel_asrts.push(pure)
         }
         let expr = &thir[e];
         match &expr.kind {
@@ -156,8 +156,9 @@ impl<'tcx, 'genv> PredCtx<'tcx, 'genv> {
             .unwrap_or_else(|| fatal!(self, "No assertion in block?"));
         let assertion =
             self.compile_inner_pred_call_for_extract_lemma(expr, &thir, allow_pure_side);
-        let assertion = std::mem::take(&mut self.toplevel_asrts)
+        let assertion = std::mem::take(&mut self.global_toplevel_asrts)
             .into_iter()
+            .chain(std::mem::take(&mut self.local_toplevel_asrts))
             .filter(|x| !contains_pvar(x, "ret"))
             .chain(std::iter::once(assertion))
             .collect();

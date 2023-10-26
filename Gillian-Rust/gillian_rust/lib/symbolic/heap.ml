@@ -51,6 +51,8 @@ module TypePreds = struct
     | Ref { mut = true; ty = _ } ->
         if !Common.R_config.prophecy_mode then valid_thin_mut_ref_pcy e
         else valid_thin_ptr e
+    | Ref { mut = false; ty = Slice _ } -> valid_fat_ptr e
+    | Ref { mut = false; ty = _ } -> valid_thin_ptr e
     | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
     | Ptr _ -> valid_thin_ptr e
     | Scalar Char -> True
@@ -170,7 +172,8 @@ module TreeBlock = struct
           let proj i = Projections.Index (i, ty, total_size) in
           let+ tuple =
             List.mapi
-              (fun i f -> aux ~current_proj:(proj i :: current_proj) f)
+              (fun i f ->
+                aux ~current_proj:(proj (Expr.int i) :: current_proj) f)
               v
             |> Result.all
           in
@@ -210,10 +213,13 @@ module TreeBlock = struct
     { ty; content }
 
   and of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys (data : Expr.t list) =
+    Logging.verbose (fun m ->
+        m "of_rust_enum_value %a for %a" (Fmt.Dump.list Expr.pp) data Ty.pp ty);
     match data with
     | [ Lit (Int variant_idx); EList fields ] ->
         let vidx = Z.to_int variant_idx in
         let _, tys = List.nth variants_tys vidx in
+        Logging.verbose (fun m -> m "fields: %a" (Fmt.Dump.list Ty.Cty.pp) tys);
         let++ fields =
           DR_list.map2
             (fun t v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
@@ -283,7 +289,8 @@ module TreeBlock = struct
         let uninit_field _ = uninitialized ~tyenv ty' in
         let content = List.init length uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Ptr _ | Unresolved _ -> { ty; content = Uninit }
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | SymArray _ ->
+        { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let uninitialized_outer ~tyenv ty =
@@ -319,6 +326,8 @@ module TreeBlock = struct
           in
           DR.ok { ty; content = Array fields }
         else too_symbolic expr
+    | SymArray { length = _; ty = _ } ->
+        failwith "Implement: Sym_array semi_concretize"
     | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
@@ -419,6 +428,7 @@ module TreeBlock = struct
         | Enum _ as def ->
             Fmt.failwith "Unhandled: structural missing for Enum %a"
               Common.Ty.Adt_def.pp def)
+    | SymArray _ -> failwith "structural missing: Sym_array, to implement"
     | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
@@ -442,21 +452,22 @@ module TreeBlock = struct
         (ret_value, new_block)
     | { index; index_type = _; against; variant } :: r, { ty; content }
       when Ty.equal against ty -> (
-        match (content, variant) with
-        | (Fields vec | Array vec), None ->
+        match (content, variant, index) with
+        | (Fields vec | Array vec), None, CI index ->
             let e = Result.ok_or vec.%[index] ~msg:"Index out of bounds" in
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
-        | Enum { fields = vec; discr }, Some discr' when discr = discr' ->
+        | Enum { fields = vec; discr }, Some discr', CI index
+          when discr = discr' ->
             let** e = Delayed.return vec.%[index] in
             let** v, sub_block = rec_call e r in
             let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
             (v, { ty; content = replace_vec content new_block })
-        | Symbolic s, _ ->
+        | Symbolic s, _, _ ->
             let** this_block = semi_concretize ~tyenv ~variant ty s in
             rec_call this_block path
-        | Missing, None ->
+        | Missing, None, _ ->
             Logging.tmi (fun m ->
                 m "strutural missing: %a "
                   (Fmt.Dump.list Partial_layout.pp_access)
@@ -491,7 +502,8 @@ module TreeBlock = struct
     let* start_accesses = resolve_address ~tyenv ~context start_address in
     let start, array_accesses =
       match start_accesses with
-      | { index; _ } :: r -> (index, List.rev r)
+      | { index = CI index; _ } :: r -> (index, List.rev r)
+      | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
       | _ -> failwith "wrong slice pointer"
     in
     let update block =
@@ -545,7 +557,8 @@ module TreeBlock = struct
     let* start_accesses = resolve_address ~tyenv ~context start_address in
     let start, array_accesses =
       match start_accesses with
-      | { index; _ } :: r -> (index, List.rev r)
+      | { index = CI index; _ } :: r -> (index, List.rev r)
+      | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
       | _ -> failwith "wrong slice pointer"
     in
     let return_and_update block =
@@ -771,6 +784,13 @@ let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
 let alloc ~tyenv (heap : t) ty =
   let loc = ALoc.alloc () in
+  let new_block = TreeBlock.uninitialized_outer ~tyenv ty in
+  let new_heap = MemMap.add loc (T new_block) heap in
+  (loc, new_heap)
+
+let alloc_raw ~tyenv (heap : t) length =
+  let loc = ALoc.alloc () in
+  let ty = Ty.SymArray { length; ty = Scalar (Uint U8) } in
   let new_block = TreeBlock.uninitialized_outer ~tyenv ty in
   let new_heap = MemMap.add loc (T new_block) heap in
   (loc, new_heap)

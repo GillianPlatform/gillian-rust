@@ -26,6 +26,13 @@ impl Literal {
     {
         Self::Int(i.into())
     }
+
+    pub fn string<S>(s: S) -> Self
+    where
+        S: ToString,
+    {
+        Self::String(s.to_string())
+    }
 }
 
 macro_rules! from_int {
