@@ -12,6 +12,7 @@ type t =
   | Invalid_pcy_var of Expr.t
   | Invalid_free_pointer of Expr.t * Expr.t
   | Invalid_value of Ty.t * Expr.t
+  | LogicError of string (* "outs" don't match. e.g. we expect missing and it's not missing. *)
   | Uninitialised_access of string * Projections.t
   | Unhandled of string
   | MissingBlock of string
@@ -37,6 +38,7 @@ let recovery_tactic =
       | None -> Recovery_tactic.none)
   | Missing_proj (loc, proj, _) ->
       try_unfold [ Expr.loc_from_loc_name loc; Projections.to_expr proj ]
+  | LogicError _
   | Invalid_type _
   | Invalid_list_op
   | Unhandled _
@@ -54,6 +56,7 @@ let pp ft =
     | Partially -> string ft "Partially"
   in
   function
+  | LogicError s -> pf ft "Logic error: %s" s
   | Too_symbolic e ->
       pf ft "Expression needs to be concretized further: %a" Expr.pp e
   | Use_after_free s -> pf ft "Use after free: %s" s

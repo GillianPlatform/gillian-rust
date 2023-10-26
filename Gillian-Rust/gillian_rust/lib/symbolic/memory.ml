@@ -161,6 +161,28 @@ let execute_prod_value mem args =
       { mem with heap = new_heap }
   | _ -> Fmt.failwith "Invalid arguments for set_value"
 
+let execute_cons_uninit mem args =
+  let { heap; tyenv; _ } = mem in
+  match args with
+  | [ loc; proj_exp; ty_exp ] ->
+      let ty = Ty.of_expr ty_exp in
+      let** loc_name = resolve_loc_result loc in
+      let* proj = projections_of_expr proj_exp in
+      let++ (), heap = Heap.cons_uninit ~tyenv heap loc_name proj ty in
+      make_branch ~mem:{ mem with heap } ~rets:[] ()
+  | _ -> Fmt.failwith "Invalid arguments for cons_uninit"
+
+let execute_prod_uninit mem args =
+  let { heap; tyenv; _ } = mem in
+  match args with
+  | [ loc; proj; ty ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = projections_of_expr proj in
+      let+ new_heap = Heap.prod_uninit ~tyenv heap loc_name proj ty in
+      { mem with heap = new_heap }
+  | _ -> Fmt.failwith "Invalid arguments for prod_uninit"
+
 let formula_of_expr_exn expr =
   match Formula.lift_logic_expr expr with
   | Some (f, _) -> f
@@ -424,6 +446,7 @@ let consume ~core_pred mem args =
   let+ res =
     match Actions.cp_of_name core_pred with
     | Value -> execute_cons_value mem args
+    | Uninit -> execute_cons_uninit mem args
     | Lft -> execute_cons_lft mem args
     | Ty_size -> execute_cons_ty_size mem args
     | Pcy_value -> execute_cons_pcy_value mem args
@@ -441,6 +464,7 @@ let produce ~core_pred mem args =
   let+ res =
     match Actions.cp_of_name core_pred with
     | Value -> execute_prod_value mem args
+    | Uninit -> execute_prod_uninit mem args
     | Lft -> execute_prod_lft mem args
     | Ty_size -> execute_prod_ty_size mem args
     | Pcy_value -> execute_prod_pcy_value mem args

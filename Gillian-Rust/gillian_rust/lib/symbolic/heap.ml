@@ -149,7 +149,8 @@ module TreeBlock = struct
     let open Fmt in
     pf ft "@[<v 2>AFTER OFFSET: %a %a @]" Expr.pp t.offset pp t.root
 
-  let to_rust_value block : (Expr.t, Err.Conversion_error.t) Result.t =
+  let to_rust_value ?(current_proj = []) block :
+      (Expr.t, Err.Conversion_error.t) Result.t =
     let rec aux ~current_proj ({ content; ty } as t) :
         (Expr.t, Err.Conversion_error.t) Result.t =
       let open Result.Syntax in
@@ -185,18 +186,63 @@ module TreeBlock = struct
       | Uninit -> Error (Uninit, List.rev current_proj)
       | Missing -> Error (Missing, List.rev current_proj)
     in
-    aux ~current_proj:[] block
+    aux ~current_proj block
 
   let to_rust_value_exn ~msg t = to_rust_value t |> Result.ok_or ~msg
 
-  let outer_assertion ~loc block =
-    let cp = Actions.cp_to_name Value in
-    let ty = Ty.to_expr block.root.ty in
-    let value =
-      to_rust_value_exn ~msg:(__FUNCTION__ ^ ": Partially missing?") block.root
+  let rec complete_and_init block =
+    match block.content with
+    | Missing | Uninit -> false
+    | Symbolic _ | Leaf _ -> true
+    | Fields v | Array v | Enum { fields = v; _ } ->
+        List.for_all complete_and_init v
+
+  let assertions ~loc ~base_offset block =
+    let value_cp = Actions.cp_to_name Value in
+    let uninit_cp = Actions.cp_to_name Uninit in
+    let rec aux ~current_proj ({ content; ty } as block) =
+      let ins () =
+        let proj =
+          Projections.to_expr
+            { base = base_offset; from_base = List.rev current_proj }
+        in
+        let ty = Ty.to_expr ty in
+        [ loc; proj; ty ]
+      in
+      if complete_and_init block then
+        let value =
+          to_rust_value_exn
+            ~msg:(__FUNCTION__ ^ ": Complete and init but to_rust_value failed?")
+            block
+        in
+        Seq.return (Asrt.GA (value_cp, ins (), [ value ]))
+      else
+        match content with
+        | Uninit -> Seq.return (Asrt.GA (uninit_cp, ins (), []))
+        | Missing -> Seq.empty
+        | Fields v ->
+            let proj i = Projections.Field (i, ty) in
+            List.to_seq v
+            |> Seq.mapi (fun i f ->
+                   aux ~current_proj:(proj i :: current_proj) f)
+            |> Seq.concat
+        | Array v ->
+            let total_size = List.length v in
+            let proj i = Projections.Index (Expr.int i, ty, total_size) in
+            List.to_seq v
+            |> Seq.mapi (fun i f ->
+                   aux ~current_proj:(proj i :: current_proj) f)
+            |> Seq.concat
+        | Enum _ ->
+            failwith
+              "Trying to derive assertion for incomplete enum: to implement!"
+        | Symbolic _ | Leaf _ -> failwith "unreachable"
     in
-    let offset = block.offset in
-    Asrt.GA (cp, [ loc; offset; ty ], [ value ])
+
+    aux ~current_proj:[] block
+
+  let outer_assertions ~loc block =
+    assertions ~loc ~base_offset:(Some block.offset) block.root
 
   let rec of_rust_struct_value
       ~tyenv
@@ -651,6 +697,27 @@ module TreeBlock = struct
     | Ok x -> Delayed.return x
     | Error _ -> Delayed.vanish ()
 
+  let cons_uninit ~loc:_ ~tyenv t proj ty =
+    let return_and_update t =
+      match t.content with
+      | Uninit -> DR.ok ((), missing t.ty)
+      | _ -> DR.error (Err.LogicError "Not uninit")
+    in
+    find_proj ~tyenv ~return_and_update ~ty t proj
+
+  let prod_uninit ~loc:_ ~tyenv t proj ty =
+    let* new_block =
+      let return_and_update _block =
+        let value = uninitialized ~tyenv ty in
+        DR.ok ((), value)
+      in
+      let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
+      new_block
+    in
+    match new_block with
+    | Ok x -> Delayed.return x
+    | Error _ -> Delayed.vanish ()
+
   let store_proj ~loc ~tyenv t proj ty value =
     let return_and_update block =
       match missing_qty block with
@@ -838,6 +905,25 @@ let prod_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
   let+ new_block = TreeBlock.prod_proj ~tyenv root proj ty value in
   MemMap.add loc (T new_block) mem
 
+let cons_uninit ~tyenv (mem : t) loc proj ty =
+  let** block = find_not_freed loc mem in
+  let++ value, outer = TreeBlock.cons_uninit ~loc ~tyenv block proj ty in
+  (value, MemMap.add loc (T outer) mem)
+
+let prod_uninit ~tyenv (mem : t) loc (proj : Projections.t) ty =
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
+  in
+  let+ new_block = TreeBlock.prod_uninit ~loc ~tyenv root proj ty in
+  MemMap.add loc (T new_block) mem
+
 let deinit ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
   let++ new_block = TreeBlock.deinit ~tyenv block proj ty in
@@ -862,12 +948,12 @@ let assertions ~tyenv:_ (mem : t) =
   let value (loc, block) =
     let loc = Expr.loc_from_loc_name loc in
     match block with
-    | T block -> TreeBlock.outer_assertion ~loc block
+    | T block -> TreeBlock.outer_assertions ~loc block
     | Freed ->
         let cp = Actions.cp_to_name Freed in
-        Asrt.GA (cp, [ loc ], [])
+        Seq.return (Asrt.GA (cp, [ loc ], []))
   in
-  MemMap.to_seq mem |> Seq.map value |> List.of_seq
+  MemMap.to_seq mem |> Seq.flat_map value |> List.of_seq
 
 let empty : t = MemMap.empty
 
