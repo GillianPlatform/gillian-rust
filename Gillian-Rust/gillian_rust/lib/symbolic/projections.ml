@@ -12,6 +12,10 @@ type op =
   | UPlus of arith_kind * Expr.t
 [@@deriving show, yojson, eq]
 
+let variant = function
+  | VField (i, _, _) -> Some i
+  | _ -> None
+
 let pp_elem fmt =
   let str_ak = function
     | Wrap -> "w"
@@ -156,3 +160,25 @@ let split_extension base with_ext =
   in
   let rest = aux base.from_base with_ext.from_base in
   rest
+
+module Reduction = struct
+  let rec reduce_op_list lst =
+    let open Expr.Infix in
+    match lst with
+    | UPlus (k, i) :: UPlus (k', i') :: tl when k == k' ->
+        reduce_op_list (UPlus (k, i + i') :: tl)
+    | Plus (k, i, ty) :: Plus (k', i', ty') :: tl
+      when k == k' && Ty.equal ty ty' ->
+        reduce_op_list (Plus (k, i + i', ty) :: tl)
+    | Plus (_, i, _) :: tl when Expr.is_concrete_zero_i i -> reduce_op_list tl
+    | UPlus (_, i) :: tl when Expr.is_concrete_zero_i i -> reduce_op_list tl
+    | Cast (ty, ty') :: tl when Ty.equal ty ty' -> reduce_op_list tl
+    | Cast (ty0, ty1) :: Cast (ty2, ty3) :: tl when Ty.equal ty1 ty2 ->
+        reduce_op_list (Cast (ty0, ty3) :: tl)
+    | hd :: tl -> hd :: reduce_op_list tl
+    | [] -> []
+
+  let reduce { base; from_base } =
+    let from_base = reduce_op_list from_base in
+    { base; from_base }
+end

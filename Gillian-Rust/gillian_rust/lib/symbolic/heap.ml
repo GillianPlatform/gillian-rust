@@ -13,10 +13,10 @@ exception NotConcrete of string
 
 (* We let the monadic abstraction leak to avoid rewriting
    the entirety of the Partial_layout engine *)
-let resolve_address ~tyenv ~context address =
-  let+ pc = Delayed.leak_pc_copy () in
-  Partial_layout.resolve_address_debug_access_error ~pc ~tyenv ~context address
-  |> List.rev
+(* let resolve_address ~tyenv ~context address =
+   let+ pc = Delayed.leak_pc_copy () in
+   Partial_layout.resolve_address_debug_access_error ~pc ~tyenv ~context address
+   |> List.rev *)
 
 module TypePreds = struct
   let ( .%[] ) e idx = Expr.list_nth e idx
@@ -479,152 +479,141 @@ module TreeBlock = struct
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
 
-  let rec find_path
-      ~tyenv
-      ~return_and_update
-      t
-      (path : Partial_layout.access list) : ('a * t, Err.t) DR.t =
+  let rec find_path ~tyenv ~return_and_update t (path : Projections.op list) :
+      ('a * t, Err.t) DR.t =
     let rec_call = find_path ~tyenv ~return_and_update in
-    let replace_vec c v =
-      match c with
-      | Fields _ -> Fields v
-      | Array _ -> Array v
-      | Enum { discr; _ } -> Enum { discr; fields = v }
-      | _ -> failwith "impossible"
-    in
-    match (path, t) with
-    | [], block ->
-        let++ ret_value, new_block = return_and_update block in
+    match (path, t.content, t.ty) with
+    | [], _, _ ->
+        let++ ret_value, new_block = return_and_update t in
         (ret_value, new_block)
-    | { index; index_type = _; against; variant } :: r, { ty; content }
-      when Ty.equal against ty -> (
-        match (content, variant, index) with
-        | (Fields vec | Array vec), None, CI index ->
-            let e = Result.ok_or vec.%[index] ~msg:"Index out of bounds" in
-            let** v, sub_block = rec_call e r in
-            let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
-            (v, { ty; content = replace_vec content new_block })
-        | Enum { fields = vec; discr }, Some discr', CI index
-          when discr = discr' ->
-            let** e = Delayed.return vec.%[index] in
-            let** v, sub_block = rec_call e r in
-            let++ new_block = Delayed.return (vec.%[index] <- sub_block) in
-            (v, { ty; content = replace_vec content new_block })
-        | Symbolic s, _, _ ->
-            let** this_block = semi_concretize ~tyenv ~variant ty s in
-            rec_call this_block path
-        | Missing, None, _ ->
-            Logging.tmi (fun m ->
-                m "strutural missing: %a "
-                  (Fmt.Dump.list Partial_layout.pp_access)
-                  path);
-            let this_block = structural_missing ~tyenv ty in
-            rec_call this_block path
-        | _ ->
-            Fmt.failwith "Invalid node: (content: %a, variant: %a)" pp_content
-              content (Fmt.Dump.option Fmt.int) variant)
-    | _ -> failwith "Type mismatch"
+    | Field (i, ty) :: rest, Fields vec, ty' when Ty.equal ty ty' ->
+        let e = Result.ok_or vec.%[i] ~msg:"Index out of bounds" in
+        let** v, sub_block = rec_call e rest in
+        let++ new_fields = Delayed.return (vec.%[i] <- sub_block) in
+        (v, { ty; content = Fields new_fields })
+    | VField (i, ty, vidx) :: rest, Enum { discr; fields }, ty'
+      when Ty.equal ty ty' && discr == vidx ->
+        let e = Result.ok_or fields.%[i] ~msg:"Index out of bounds" in
+        let** v, sub_block = rec_call e rest in
+        let++ new_fields = Delayed.return (fields.%[i] <- sub_block) in
+        (v, { ty; content = Enum { discr; fields = new_fields } })
+    | (op :: _ as path), Symbolic s, ty ->
+        let variant = Projections.variant op in
+        let** this_block = semi_concretize ~tyenv ~variant ty s in
+        rec_call this_block path
+    | _ :: _, Missing, ty ->
+        Logging.tmi (fun m ->
+            m "Structural missing: %a" (Fmt.Dump.list Projections.pp_op) path);
+        let this_block = structural_missing ~tyenv ty in
+        rec_call this_block path
+    | _ ->
+        Fmt.failwith "Couldn't resolve path: (content: %a, path: %a)" pp_content
+          t.content
+          (Fmt.Dump.list Projections.pp_op)
+          path
 
-  let get_forest ~tyenv outer (proj : Projections.t) size ty copy =
-    let* () =
-      let base_equals =
-        Formula.Infix.( #== )
-          (Option.value ~default:(Expr.EList []) proj.base)
-          outer.offset
-      in
-      if%ent base_equals then Delayed.return ()
-      else failwith "Trees need to be extended?"
-    in
-    let t = outer.root in
-    let start_address =
-      Partial_layout.
-        {
-          block_type = t.ty;
-          route = proj.from_base;
-          address_type = Ty.slice_elements ty;
-        }
-    in
-    let context = Partial_layout.context_from_env tyenv in
-    let* start_accesses = resolve_address ~tyenv ~context start_address in
-    let start, array_accesses =
-      match start_accesses with
-      | { index = CI index; _ } :: r -> (index, List.rev r)
-      | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
-      | _ -> failwith "wrong slice pointer"
-    in
-    let update block =
-      if copy then block
-      else
-        match block.content with
-        | Array vec ->
-            {
-              content =
-                Array
-                  (Result.ok_or
-                     (List_utils.override_range vec ~start ~size (fun _ ->
-                          uninitialized ~tyenv ty))
-                     ~msg:"Invalid slice range");
-              ty;
-            }
-        | _ -> failwith "Not an array"
-    in
-    let return_and_update block =
-      let update = update block in
-      match block.content with
-      | Array vec ->
-          let ret = List_utils.sublist_map ~start ~size ~f:to_rust_value vec in
-          DR.ok (ret, update)
-      | _ -> DR.error (Invalid_type (block.ty, ty))
-    in
-    let++ ret, root = find_path ~tyenv ~return_and_update t array_accesses in
-    (ret, { outer with root })
+  let get_forest ~tyenv:_ _outer (_proj : Projections.t) _size _ty _copy =
+    failwith "implement: get_forest"
+  (* let* () =
+       let base_equals =
+         Formula.Infix.( #== )
+           (Option.value ~default:(Expr.EList []) proj.base)
+           outer.offset
+       in
+       if%ent base_equals then Delayed.return ()
+       else failwith "Trees need to be extended?"
+     in
+     let t = outer.root in
+     let start_address =
+       Partial_layout.
+         {
+           block_type = t.ty;
+           route = proj.from_base;
+           address_type = Ty.slice_elements ty;
+         }
+     in
+     let context = Partial_layout.context_from_env tyenv in
+     let* start_accesses = resolve_address ~tyenv ~context start_address in
+     let start, array_accesses =
+       match start_accesses with
+       | { index = CI index; _ } :: r -> (index, List.rev r)
+       | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
+       | _ -> failwith "wrong slice pointer"
+     in
+     let update block =
+       if copy then block
+       else
+         match block.content with
+         | Array vec ->
+             {
+               content =
+                 Array
+                   (Result.ok_or
+                      (List_utils.override_range vec ~start ~size (fun _ ->
+                           uninitialized ~tyenv ty))
+                      ~msg:"Invalid slice range");
+               ty;
+             }
+         | _ -> failwith "Not an array"
+     in
+     let return_and_update block =
+       let update = update block in
+       match block.content with
+       | Array vec ->
+           let ret = List_utils.sublist_map ~start ~size ~f:to_rust_value vec in
+           DR.ok (ret, update)
+       | _ -> DR.error (Invalid_type (block.ty, ty))
+     in
+     let++ ret, root = find_path ~tyenv ~return_and_update t array_accesses in
+     (ret, { outer with root }) *)
 
-  let set_forest ~tyenv outer (proj : Projections.t) size ty values =
-    let* () =
-      let base_equals =
-        Formula.Infix.( #== )
-          (Option.value ~default:(Expr.EList []) proj.base)
-          outer.offset
-      in
-      if%ent base_equals then Delayed.return ()
-      else failwith "Trees need to be extended?"
-    in
-    let t = outer.root in
-    assert (List.length values = size);
-    let start_address =
-      Partial_layout.
-        {
-          block_type = t.ty;
-          route = proj.from_base;
-          address_type = Ty.slice_elements ty;
-        }
-    in
-    let context = Partial_layout.context_from_env tyenv in
-    let* start_accesses = resolve_address ~tyenv ~context start_address in
-    let start, array_accesses =
-      match start_accesses with
-      | { index = CI index; _ } :: r -> (index, List.rev r)
-      | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
-      | _ -> failwith "wrong slice pointer"
-    in
-    let return_and_update block =
-      match (block.content, block.ty) with
-      | Array vec, Ty.Array { ty = ty'; _ } ->
-          assert (Ty.equal ty ty');
-          let++ overriden =
-            DR_list.override_range_with_list vec ~start
-              ~f:(of_rust_value ~tyenv ~ty) values
-          in
-          ((), { content = Array overriden; ty })
-      | _ -> failwith "Not an array"
-    in
-    let++ _, new_block = find_path ~tyenv ~return_and_update t array_accesses in
-    { outer with root = new_block }
+  let set_forest ~tyenv:_ _outer (_proj : Projections.t) _size _ty _values =
+    failwith "Implement: set_forest"
+  (* let* () =
+         let base_equals =
+           Formula.Infix.( #== )
+             (Option.value ~default:(Expr.EList []) proj.base)
+             outer.offset
+         in
+         if%ent base_equals then Delayed.return ()
+         else failwith "Trees need to be extended?"
+       in
+       let t = outer.root in
+       assert (List.length values = size);
+       let start_address =
+         Partial_layout.
+           {
+             block_type = t.ty;
+             route = proj.from_base;
+             address_type = Ty.slice_elements ty;
+           }
+       in
+       let context = Partial_layout.context_from_env tyenv in
+       let* start_accesses = resolve_address ~tyenv ~context start_address in
+       let start, array_accesses =
+         match start_accesses with
+         | { index = CI index; _ } :: r -> (index, List.rev r)
+         | { index = SI _; _ } :: _ -> failwith "SI index for get_forest"
+         | _ -> failwith "wrong slice pointer"
+       in
+       let return_and_update block =
+         match (block.content, block.ty) with
+         | Array vec, Ty.Array { ty = ty'; _ } ->
+             assert (Ty.equal ty ty');
+             let++ overriden =
+               DR_list.override_range_with_list vec ~start
+                 ~f:(of_rust_value ~tyenv ~ty) values
+             in
+             ((), { content = Array overriden; ty })
+         | _ -> failwith "Not an array"
+       in
+       let++ _, new_block = find_path ~tyenv ~return_and_update t array_accesses in
+       { outer with root = new_block } *)
 
   let find_proj
       ~tyenv
       ~return_and_update
-      ~ty
+      ~ty:_
       (outer : outer)
       (proj : Projections.t) =
     Logging.tmi (fun m ->
@@ -639,20 +628,14 @@ module TreeBlock = struct
       else failwith "Trees need to be extended?"
     in
     let t = outer.root in
-    let proj = proj.from_base in
-    let address =
-      Partial_layout.{ block_type = t.ty; route = proj; address_type = ty }
-    in
-    let context = Partial_layout.context_from_env tyenv in
     Logging.verbose (fun m ->
-        m "Finding address: %a" (Fmt.Dump.list Projections.pp_elem) proj);
+        m "Before path reduction: %a"
+          (Fmt.Dump.list Projections.pp_elem)
+          proj.from_base);
+    let path = Projections.Reduction.reduce_op_list proj.from_base in
     Logging.verbose (fun m ->
-        m "PL for %a: %a" Ty.pp t.ty Partial_layout.pp_partial_layout
-          (context.partial_layouts t.ty));
-    let* accesses = resolve_address ~tyenv ~context address in
-    Logging.verbose (fun m ->
-        m "Accessess: %a" (Fmt.Dump.list Partial_layout.pp_access) accesses);
-    let++ ret, root = find_path ~tyenv ~return_and_update t accesses in
+        m "After path reduction: %a" (Fmt.Dump.list Projections.pp_elem) path);
+    let++ ret, root = find_path ~tyenv ~return_and_update t path in
     (ret, { outer with root })
 
   let load_proj ~loc ~tyenv t proj ty copy =
@@ -907,8 +890,8 @@ let prod_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
 
 let cons_uninit ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
-  let++ value, outer = TreeBlock.cons_uninit ~loc ~tyenv block proj ty in
-  (value, MemMap.add loc (T outer) mem)
+  let++ (), outer = TreeBlock.cons_uninit ~loc ~tyenv block proj ty in
+  MemMap.add loc (T outer) mem
 
 let prod_uninit ~tyenv (mem : t) loc (proj : Projections.t) ty =
   let root =
@@ -923,6 +906,30 @@ let prod_uninit ~tyenv (mem : t) loc (proj : Projections.t) ty =
   in
   let+ new_block = TreeBlock.prod_uninit ~loc ~tyenv root proj ty in
   MemMap.add loc (T new_block) mem
+
+let cons_many_uninits ~tyenv:_ (_mem : t) _loc _proj _ty _size =
+  failwith "Implement: cons_many_uninits"
+(* let** block = find_not_freed loc mem in
+   let++ (), outer =
+     TreeBlock.cons_many_uninits ~loc ~tyenv block proj ty size
+   in
+   MemMap.add loc (T outer) mem *)
+
+let prod_many_uninits ~tyenv:_ (_mem : t) _loc (_proj : Projections.t) _ty _size
+    =
+  failwith "Implement: prod_many_uninit"
+(* let root =
+     match MemMap.find_opt loc mem with
+     | Some (T root) -> root
+     | Some Freed -> failwith "use after free"
+     | None ->
+         TreeBlock.outer_missing
+           ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+           ~tyenv
+           (Projections.base_ty ~leaf_ty:ty proj)
+   in
+   let+ new_block = TreeBlock.prod_many_uninits ~loc ~tyenv root proj ty size in
+   MemMap.add loc (T new_block) mem *)
 
 let deinit ~tyenv (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in

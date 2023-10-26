@@ -3,6 +3,9 @@ module Adt_def = Common.Ty.Adt_def
 open Projections
 open Gillian.Gil_syntax
 
+(* For now, we'll be sacrificing the ability to handle things like ReprC, in order to make it work.
+   This code is not adapted to symbolic arrays yet. *)
+
 let sure_side_cond ~pc (cond : Formula.t) =
   match cond with
   | True -> true
