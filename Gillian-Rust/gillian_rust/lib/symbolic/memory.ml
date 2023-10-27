@@ -77,18 +77,6 @@ let execute_alloc mem args =
            ())
   | _ -> Fmt.failwith "Invalid arguments for alloc"
 
-let execute_alloc_raw mem args =
-  let { heap; tyenv; _ } = mem in
-  match args with
-  | [ size ] ->
-      let loc, new_heap = Heap.alloc_raw ~tyenv heap size in
-      DR.ok
-        (make_branch
-           ~mem:{ mem with heap = new_heap }
-           ~rets:[ Expr.ALoc loc; EList [] ]
-           ())
-  | _ -> Fmt.failwith "Invalid arguments for alloc_raw"
-
 let execute_store mem args =
   let { heap; tyenv; _ } = mem in
   match args with
@@ -502,7 +490,6 @@ let execute_action ~action_name mem args =
   let+ res =
     match action with
     | Alloc -> execute_alloc mem args
-    | Alloc_raw -> execute_alloc_raw mem args
     | Load_value -> execute_load mem args
     | Store_value -> execute_store mem args
     | Load_discr -> execute_load_discr mem args

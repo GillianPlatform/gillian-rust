@@ -222,9 +222,6 @@ module TreeBlock = struct
         | Uninit -> (
             match ty with
             | Array { length; ty } ->
-                Seq.return
-                  (Asrt.GA (many_uninits_cp, ins ty @ [ Expr.int length ], []))
-            | SymArray { length; ty } ->
                 Seq.return (Asrt.GA (many_uninits_cp, ins ty @ [ length ], []))
             | _ -> Seq.return (Asrt.GA (uninit_cp, ins ty, [])))
         | Missing -> Seq.empty
@@ -309,8 +306,8 @@ module TreeBlock = struct
             of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
         | Enum variants_tys ->
             of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
-    | Array { length; ty = ty' }, EList l
-      when List.compare_length_with l length == 0 ->
+    | Array { length = Expr.Lit (Int length); ty = ty' }, EList l
+      when List.compare_length_with l (Z.to_int length) == 0 ->
         let++ mem_array = DR_list.map (of_rust_value ~tyenv ~ty:ty') l in
         { ty; content = Array mem_array }
     | _, s -> DR.ok { ty; content = Symbolic s }
@@ -339,11 +336,12 @@ module TreeBlock = struct
 
             { ty; content = Fields tuple }
         | Enum _ -> { ty; content = Uninit })
-    | Array { length; ty = ty' } ->
+    | Array { length = Expr.Lit (Int length); ty = ty' }
+      when Z.(length < of_int 20) ->
         let uninit_field _ = uninitialized ~tyenv ty' in
-        let content = List.init length uninit_field in
+        let content = List.init (Z.to_int length) uninit_field in
         { ty; content = Array content }
-    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | SymArray _ ->
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Array _ ->
         { ty; content = Uninit }
     | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
@@ -359,10 +357,11 @@ module TreeBlock = struct
           (Fmt.Dump.option Fmt.int) variant);
     let open Formula.Infix in
     let is_list v = (Expr.typeof v) #== (Expr.type_ ListType) in
-    let has_length i l = (Expr.list_length l) #== (Expr.int i) in
+    let has_length i l = (Expr.list_length l) #== i in
     match ty with
     | Ty.Tuple v ->
-        if%ent (is_list expr) #&& (has_length (List.length v) expr) then
+        if%ent (is_list expr) #&& (has_length (Expr.int (List.length v)) expr)
+        then
           let values =
             List.init (List.length v) (fun i -> Expr.list_nth expr i)
           in
@@ -372,20 +371,24 @@ module TreeBlock = struct
           DR.ok { ty; content = Fields fields }
         else too_symbolic expr
           (* FIXME: This is probably not the right error? *)
-    | Array { length; ty = ty' } ->
+    | Array { length = Expr.Lit (Int length_i) as length; ty = ty' }
+      when Z.(length_i < of_int 1000) ->
         if%sat (is_list expr) #&& (has_length length expr) then
-          let values = List.init length (fun i -> Expr.list_nth expr i) in
+          let values =
+            List.init (Z.to_int length_i) (fun i -> Expr.list_nth expr i)
+          in
           let fields =
             List.map (fun e -> { content = Symbolic e; ty = ty' }) values
           in
           DR.ok { ty; content = Array fields }
         else too_symbolic expr
-    | SymArray { length = _; ty = _ } ->
-        failwith "Implement: Sym_array semi_concretize"
+    | Array _ -> failwith "semi-concretizing arrays: implement"
     | Adt (name, subst) -> (
         match Tyenv.adt_def ~tyenv name with
         | Struct (_repr, fields) ->
-            if%sat (is_list expr) #&& (has_length (List.length fields) expr)
+            if%sat
+              (is_list expr)
+              #&& (has_length (Expr.int (List.length fields)) expr)
             then
               let values =
                 List.init (List.length fields) (fun i -> Expr.list_nth expr i)
@@ -408,10 +411,11 @@ module TreeBlock = struct
             if%sat
               (* Value should have shape:
                  [ idx, [field_0, ..., field_n] ] *)
-              (is_list expr) #&& (has_length 2 expr)
+              (is_list expr)
+              #&& (has_length (Expr.int 2) expr)
               #&& (th_variant_idx #== (Expr.int variant_idx))
               #&& (is_list th_fields)
-              #&& (has_length number_fields th_fields)
+              #&& (has_length (Expr.int number_fields) th_fields)
             then
               let values =
                 List.init number_fields (fun i -> Expr.list_nth th_fields i)
@@ -459,9 +463,15 @@ module TreeBlock = struct
 
   let structural_missing ~tyenv (ty : Ty.t) =
     match ty with
-    | Array { length; ty = cty } ->
-        let missing_child = { ty = cty; content = Missing } in
-        { ty; content = Array (List.init length (fun _ -> missing_child)) }
+    | Array { length = Expr.Lit (Int length_i); ty = ty' }
+      when Z.(length_i < of_int 1000) ->
+        let missing_child = { ty = ty'; content = Missing } in
+        {
+          ty;
+          content =
+            Array (List.init (Z.to_int length_i) (fun _ -> missing_child));
+        }
+    | Array _ -> failwith "structural_mising arrays: implement"
     | Tuple fields ->
         {
           ty;
@@ -482,7 +492,6 @@ module TreeBlock = struct
         | Enum _ as def ->
             Fmt.failwith "Unhandled: structural missing for Enum %a"
               Common.Ty.Adt_def.pp def)
-    | SymArray _ -> failwith "structural missing: Sym_array, to implement"
     | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
@@ -537,22 +546,17 @@ module TreeBlock = struct
     (* For now we implement only a few cases we'll need more as we do more case studies and proofs *)
     match (path, t.content, t.ty) with
     | [], Missing, Array { ty = ty'; length } when Ty.equal ty ty' ->
-        if%ent (Expr.int length) #== size then
-          let++ value, new_slice = return_and_update t in
-          (value, new_slice, lk)
-        else failwith "Not implemented: sub-array of missing"
-    | [], Missing, SymArray { ty = ty'; length } when Ty.equal ty ty' ->
         if%ent length #== size then
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
-        else failwith "Not implement: sub-sym-array of missing"
-    | [ Cast (_ty_from, ty_to) ], Uninit, SymArray { ty = ty'; length }
+        else failwith "Not implemented: sub-array of missing"
+    | [ Cast (_ty_from, ty_to) ], Uninit, Array { ty = ty'; length }
       when Ty.equal ty' ty_to && Ty.equal ty_to ty ->
         if%ent length #== size then
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
         else failwith "Not implement: sub-sym-array of uninit after cast"
-    | [ Cast (ty_from, ty_to) ], Uninit, SymArray { ty = ty'; length }
+    | [ Cast (ty_from, ty_to) ], Uninit, Array { ty = ty'; length }
       when Ty.equal ty_from ty' && Ty.equal ty_to ty ->
         let* size_from, lk = Layout_knowledge.size_of ~lk ty_from in
         let* size_to, lk = Layout_knowledge.size_of ~lk ty_to in
@@ -852,13 +856,6 @@ let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
 let alloc ~tyenv (heap : t) ty =
   let loc = ALoc.alloc () in
-  let new_block = TreeBlock.uninitialized_outer ~tyenv ty in
-  let new_heap = MemMap.add loc (T new_block) heap in
-  (loc, new_heap)
-
-let alloc_raw ~tyenv (heap : t) length =
-  let loc = ALoc.alloc () in
-  let ty = Ty.SymArray { length; ty = Scalar (Uint U8) } in
   let new_block = TreeBlock.uninitialized_outer ~tyenv ty in
   let new_heap = MemMap.add loc (T new_block) heap in
   (loc, new_heap)

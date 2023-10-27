@@ -159,7 +159,7 @@ proc "core::num::<impl usize>::BITS"() {
 proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
      size := l-nth(layout, 0i);
      assert(!(size == 0i)); (* We should never use allocate on zero-sized allocations *)
-     ptr := [alloc_raw](size);
+     ptr := [alloc]({{ "array", "u8", size }});
      (* The following corresponds to Ok(NonNull::slice_from_raw_parts(ptr, size)) *)
      ret := {{ 0i, {{ 
           {{ {{ ptr, size }} }}

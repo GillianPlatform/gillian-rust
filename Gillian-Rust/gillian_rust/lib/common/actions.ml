@@ -1,7 +1,6 @@
 type t =
   (* Memory *)
   | Alloc
-  | Alloc_raw
   | Load_value
   | Store_value
   | Deinit
@@ -29,7 +28,6 @@ type core_predicate =
 
 let of_name = function
   | "alloc" -> Alloc
-  | "alloc_raw" -> Alloc_raw
   | "load_value" -> Load_value
   | "store_value" -> Store_value
   | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
@@ -47,7 +45,6 @@ let of_name = function
 
 let to_name = function
   | Alloc -> "alloc"
-  | Alloc_raw -> "alloc_raw"
   | Load_value -> "load_value"
   | Store_value -> "store_value"
   | Deinit -> "deinit"

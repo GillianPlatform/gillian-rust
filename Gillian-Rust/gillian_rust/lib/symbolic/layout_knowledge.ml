@@ -76,16 +76,12 @@ let is_zst ~lk ~tyenv ty =
             let+ ty = zst_condition ty in
             ty @ acc)
           (Some []) fields
-    | SymArray { length; ty } -> (
+    | Array { length; ty } -> (
         match length with
         | Expr.Lit (Int z) when Z.equal z Z.zero -> Some []
         | _ ->
             let+ for_ty = zst_condition ty in
             Either.Right length :: for_ty)
-    | Array { length; ty } -> (
-        match length with
-        | 0 -> Some []
-        | _ -> zst_condition ty)
     | Adt (name, subst) -> (
         let adt = Common.Tyenv.adt_def ~tyenv name in
         match adt with

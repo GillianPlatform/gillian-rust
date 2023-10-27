@@ -35,8 +35,7 @@ type t =
         For example List<u32> is Adt("List", [ u32 ] *)
   | Ref of { mut : bool; ty : t }
   | Ptr of { mut : bool; ty : t }
-  | Array of { length : int; ty : t }
-  | SymArray of { length : Expr.t; ty : t } (* Array that comes from dynamic allocation, not from the type system *)
+  | Array of { length : Expr.t; ty : t }
   | Slice of t
   | Unresolved of Expr.t
       (** A parameter in an ADT def, should be substituted before used *)
@@ -53,8 +52,8 @@ let rec lvars =
   | Tuple l -> List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
   | Adt (_, l) ->
       List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
-  | SymArray { length; ty } -> SS.union (Expr.lvars length) (lvars ty)
-  | Ref { ty; _ } | Ptr { ty; _ } | Array { ty; _ } | Slice ty -> lvars ty
+  | Array { length; ty } -> SS.union (Expr.lvars length) (lvars ty)
+  | Ref { ty; _ } | Ptr { ty; _ } | Slice ty -> lvars ty
 
 let rec sem_equal a b =
   let open Formula.Infix in
@@ -74,9 +73,6 @@ let rec sem_equal a b =
       (mut_a = mut_b |> Formula.of_bool) #&& (sem_equal ty_a ty_b)
   | ( Array { length = length_a; ty = ty_a },
       Array { length = length_b; ty = ty_b } ) ->
-      (length_a = length_b |> Formula.of_bool) #&& (sem_equal ty_a ty_b)
-  | ( SymArray { length = length_a; ty = ty_a },
-      SymArray { length = length_b; ty = ty_b } ) ->
       length_a #== length_b #&& (sem_equal ty_a ty_b)
   | Slice a, Slice b -> sem_equal a b
   | Unresolved left, Unresolved right -> left #== right
@@ -89,7 +85,8 @@ let rec subst_params ~(subst : t list) t =
   | Cty.Param i -> List.nth subst i
   | Cty.Scalar s -> Scalar s
   | Tuple l -> Tuple (List.map (subst_params ~subst) l)
-  | Array { length; ty } -> Array { length; ty = subst_params ~subst ty }
+  | Array { length; ty } ->
+      Array { length = Expr.int length; ty = subst_params ~subst ty }
   | Slice t -> Slice (subst_params ~subst t)
   | Ref { mut; ty } -> Ref { mut; ty = subst_params ~subst ty }
   | Ptr { mut; ty } -> Ptr { mut; ty = subst_params ~subst ty }
@@ -120,8 +117,8 @@ let rec of_lit = function
       Adt (name, args)
   | LList [ String "ref"; Bool mut; ty ] -> Ref { mut; ty = of_lit ty }
   | LList [ String "ptr"; Bool mut; ty ] -> Ptr { mut; ty = of_lit ty }
-  | LList [ String "array"; ty; Int i ] ->
-      Array { length = Z.to_int i; ty = of_lit ty }
+  | LList [ String "array"; ty; length ] ->
+      Array { length = Lit length; ty = of_lit ty }
   | LList [ String "slice"; ty ] -> Slice (of_lit ty)
   | lit -> Fmt.failwith "Incorrect type %a" Literal.pp lit
 
@@ -134,8 +131,8 @@ let rec of_expr : Expr.t -> t = function
       Ref { mut; ty = of_expr ty }
   | EList [ Expr.Lit (String "ptr"); Expr.Lit (Bool mut); ty ] ->
       Ptr { mut; ty = of_expr ty }
-  | EList [ Expr.Lit (String "array"); ty; Expr.Lit (Int i) ] ->
-      Array { length = Z.to_int i; ty = of_expr ty }
+  | EList [ Expr.Lit (String "array"); ty; length ] ->
+      Array { length; ty = of_expr ty }
   | EList [ Expr.Lit (String "slice"); ty ] -> Slice (of_expr ty)
   | e -> Unresolved e
 
@@ -169,10 +166,7 @@ let rec to_expr = function
       EList [ Lit (String "adt"); Lit (String x); EList args ]
   | Ref { mut; ty } -> EList [ Lit (String "ref"); Lit (Bool mut); to_expr ty ]
   | Ptr { mut; ty } -> EList [ Lit (String "ptr"); Lit (Bool mut); to_expr ty ]
-  | Array { length; ty } ->
-      EList [ Lit (String "array"); to_expr ty; Lit (Int (Z.of_int length)) ]
-  | SymArray { length; ty } ->
-      Expr.EList [ Lit (String "sym_array"); to_expr ty; length ]
+  | Array { length; ty } -> EList [ Lit (String "array"); to_expr ty; length ]
   | Slice ty -> EList [ Lit (String "slice"); to_expr ty ]
   | Unresolved e -> e
 
@@ -186,8 +180,7 @@ let rec pp ft t =
   | Adt (s, args) -> pf ft "%s<%a>" s (list ~sep:comma pp) args
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
-  | Array { length; ty } -> Fmt.pf ft "[%a ; %d]" pp ty length
-  | SymArray { length; ty } -> Fmt.pf ft "[%a ;? %a]" pp ty Expr.pp length
+  | Array { length; ty } -> Fmt.pf ft "[%a ; %a]" pp ty Expr.pp length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
   | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
 
@@ -199,16 +192,12 @@ let rec substitution ~subst_expr t =
   | Adt (name, l) -> Adt (name, List.map rec_call l)
   | Ref { mut; ty } -> Ref { mut; ty = rec_call ty }
   | Ptr { mut; ty } -> Ptr { mut; ty = rec_call ty }
-  | Array { length; ty } -> Array { length; ty = rec_call ty }
-  | SymArray { length; ty } ->
-      SymArray { length = subst_expr length; ty = rec_call ty }
+  | Array { length; ty } ->
+      Array { length = subst_expr length; ty = rec_call ty }
   | Slice t -> Slice (rec_call t)
   | Unresolved e -> Unresolved (subst_expr e)
 
-let array_of_size size ty =
-  match size with
-  | Expr.Lit (Int sz) -> Array { length = Z.to_int sz; ty }
-  | _ -> SymArray { length = size; ty }
+let array_of_size length ty = Array { length; ty }
 
 let slice_elements = function
   | Slice t -> t
