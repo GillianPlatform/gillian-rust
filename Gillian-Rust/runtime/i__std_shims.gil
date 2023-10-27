@@ -54,6 +54,14 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
      er: fail[TYPERR]("Invalid discr")
 };
 
+proc "std::option::Option::<T>::ok_or"(T_ok, T_err, opt, err) {
+         goto [l-nth(opt, 0i) = 1i] ok er;
+     ok: ret := {{ 0i, l-nth(opt, 1i) }}; (* Ok res; *)
+         return;
+     er: ret := {{ 1i, {{ v }} }}; (* Err v; *)
+         return
+};
+
 proc "std::boxed::Box::<T>::from_raw"(T, ptr) {
      global := {{}};
      non_null := {{ ptr }};
@@ -90,21 +98,38 @@ proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
      return
 };
 
+proc "std::mem::size_of"(T) {
+     rep := [size_of](T);
+     ret := l-nth(rep, 0i);
+     return
+};
+
+proc "core::num::<impl usize>::unchecked_mul"(i, j) {
+     ret := i i* j;
+     (* assert(ret i<# ((1i << 64i) i- 1i));  we remove that assert for now because Creusot cannot specify correctly that invariant for vec. *)
+     return
+};
+
 proc "std::alloc::Layout::from_size_align_unchecked"(size, align) {
      ret := {{ size, align }};
      return
 };
 
+proc "std::alloc::Layout::align"(lft, layout) {
+     ret := l-nth(layout, 1i);
+     return
+};
+
 proc "std::alloc::Layout::array"(T, n) {
      (* We don't handle alignment yet. Not because it's not possible, it works exactly like size.
-        But because it requires more research into Rust's current rules regarding alignment that I know less of. *)
+        But because it requires "std::ptr::Unique::<T>::cast"more research into Rust's current rules regarding alignment that I know less of. *)
      (* We also simplify things: we could encode requirements on size proportionally to total allocable memory etc...
         However, we do not do so for now, because there again it is beside the point of what we are trying to show
         with this prototype. *)
           align := 1i;
           size := [size_of](T);
           size := l-nth(size, 0i);
-          goto [(size = 0i) or (n i<= ((2i << 63i) i- align))] ok err;
+          goto [(not (size = 0i)) and (((2i << 63i) i- align) i< n)] err ok;
      ok:  layout := "std::alloc::Layout::from_size_align_unchecked"(n i* size, align);
           ret := {{ 0i, {{ layout }} }};
           return;
@@ -133,7 +158,7 @@ proc "core::num::<impl usize>::BITS"() {
 
 proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
      size := l-nth(layout, 0i);
-     assert(!(size == 0)); (* We should never use allocate on zero-sized allocations *)
+     assert(!(size == 0i)); (* We should never use allocate on zero-sized allocations *)
      ptr := [alloc_raw](size);
      (* The following corresponds to Ok(NonNull::slice_from_raw_parts(ptr, size)) *)
      ret := {{ 0i, {{ 
@@ -142,13 +167,42 @@ proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
      return
 };
 
+proc "i__alloc_maybe_zero"(layout) {
+         goto [l-nth(layout, 0i) = 0i] z nz;
+     z:  ret := {{ 0i, {{ 
+               {{ {{ {{ $l_dangling, {{ }} }}, size }} }}
+         }} }};
+         return;
+     nz: ret := "std::alloc::Allocator::allocate"(null, null, null, layout);
+         return
+};
+
+proc "std::alloc::Allocator::grow"(lft, alloc_ty, alloc_ptr, ptr, old_layout, new_layout) {
+          old_size := l-nth(old_layout, 0i);
+          new_size := l-nth(new_layout, 0i);
+          old_align := l-nth(old_layout, 0i);
+          new_align := l-nth(new_layout, 0i);
+          assert(old_size i<=# new_size); (* This is an actual SAFETY pre-condition to the grow function *)
+          goto [ old_size = 0i ] z nz;
+     z:   ret := "i__alloc_maybe_zero"(new_layout);
+          return;
+     nz:  new_ptr := "std::alloc::Allocator::allocate"(null, null, null, new_layout);
+          (* We copy the old data into the new data *)
+          u := [copy_nonoverlapping](ptr, new_ptr, "u8", old_size);
+          u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "sym_array", "u8", old_size }}); (* We free the old data *)
+          ret := {{ 0i, {{ 
+               {{ {{ new_ptr, new_size }} }}
+          }} }};
+          return
+};
+
 proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
-            new_proj := {{ "c", old_ty, new_ty }};
             old_is_unsized := "i__ty_is_unsized"(old_ty);
             new_is_unsized := "i__ty_is_unsized"(new_ty);
             goto [old_is_unsized] ou os;
      ou:    goto [new_is_unsized] ounu ouns;
      ounu:  (* Old is unsized and new is unsized *)
+            new_proj := {{ "c", old_ty, new_ty }};
             fat_ptr := l-nth(nn, 0i);
             ptr := l-nth(fat_ptr, 0i);
             size := l-nth(fat_ptr, 1i);
@@ -157,7 +211,9 @@ proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
             fail[CAST]("TODO: Cast from unsized to unsized: be careful with size, it needs to be recomputed actually... See i__std_shims");
             ret := {{ {{ {{ loc, proj }}, size }} }};
             return;
-     ouns: (* Old is unsized and new is sized, we just get rid of the size in addition to casting. *)
+     ouns: (* Old is unsized and new is sized, we just get rid of the size in addition to casting.
+              The casting is from inner to inner *)
+           new_proj := {{ "c", l-nth(old_ty, 1i), new_ty }};
            fat_ptr := l-nth(nn, 0i);
            ptr := l-nth(fat_ptr, 0i);
            loc := l-nth(ptr, 0i);
@@ -168,11 +224,19 @@ proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
      osnu: (* Old is sized and new is unsized: impossible, cannot get size! *)
            fail[CAST]("cannot cast from sized to unsized");
      osns: (* Old is sized and new is sized *)
+           new_proj := {{ "c", old_ty, new_ty }};
            ptr := l-nth(nn, 0i);
            loc := l-nth(ptr, 0i);
            proj := l+(l-nth(ptr, 1i), {{ new_proj }});
            ret := {{ {{ loc, proj }} }};
            return
+};
+
+proc "std::ptr::Unique::<T>::cast"(old_ty, new_ty, unique) {
+     nn := l-nth(unique, 0i);
+     nn := "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn);
+     ret := {{ nn, {{ }} }};
+     return
 };
 
 proc "std::ptr::Unique::<T>::new_unchecked"(T, ptr) {
@@ -183,6 +247,28 @@ proc "std::ptr::Unique::<T>::new_unchecked"(T, ptr) {
 proc "std::ptr::Unique::<T>::as_ptr"(T, ptr) {
      ret := "std::ptr::NonNull::<T>::as_ptr"(T, l-nth(ptr, 0i));
      return
+};
+
+proc "<std::ptr::Unique<T> as std::convert::Into<std::ptr::NonNull<T>>>::into"(T1, T2, ptr) {
+     ret := l-nth(ptr, 0i);
+     return
+};
+
+proc "core::num::<impl usize>::checked_add"(i, j) {
+     res_and_overflow := "i__binop_checked_add"(i, j, (1i << 64i) i- 1i);
+     goto [l-nth(res_and_overflow, 1i)] ov ok;
+     ov: ret := {{ 0i, {{ }} }}; (* None *)
+         return;
+     ok: ret := {{ 1i, {{ l-nth(res_and_overflow, 0i) }} }}; (* Some res *)
+         return
+};
+
+proc "std::cmp::max"(T, i, j) {
+     goto [i i> j] ok ko;
+     ok: ret := i;
+         return;
+     ko: ret := j;
+         return
 };
 
 (* PREDS *)

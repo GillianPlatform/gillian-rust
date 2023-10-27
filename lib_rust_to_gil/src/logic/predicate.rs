@@ -192,7 +192,23 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         types.star(e.eq_f([Expr::EList(vec![loc, proj])]).into_asrt())
     }
 
-    fn make_is_ref_asrt(&mut self, e: GExpr) -> Assertion {
+    fn make_is_unique_asrt(&mut self, e: GExpr) -> Assertion {
+        let loc = self.temp_lvar();
+        let proj = self.temp_lvar();
+        let types = Assertion::Types(vec![
+            (loc.clone(), Type::ObjectType),
+            (proj.clone(), Type::ListType),
+        ]);
+        types.star(
+            e.eq_f([
+                Expr::EList(vec![Expr::EList(vec![loc, proj])]),
+                vec![].into(),
+            ])
+            .into_asrt(),
+        )
+    }
+
+    fn make_is_mut_ref_proph_ref_asrt(&mut self, e: GExpr) -> Assertion {
         let loc = self.temp_lvar();
         let proj = self.temp_lvar();
         let pcy = self.temp_lvar();
@@ -203,6 +219,25 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             (pcy_proj.clone(), Type::ListType),
         ]);
         types.star(e.eq_f([[loc, proj], [pcy, pcy_proj]]).into_asrt())
+    }
+
+    fn make_wf_asrt(&mut self, e: GExpr, ty: Ty<'tcx>) -> Assertion {
+        // The type here is already substituted
+        if ty.is_any_ptr() {
+            if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
+                self.make_is_mut_ref_proph_ref_asrt(e)
+            } else {
+                self.make_is_ptr_asrt(e)
+            }
+        } else if ty.is_integral() {
+            Assertion::Types(vec![(e, Type::IntType)])
+        } else if self.is_nonnull(ty) {
+            self.make_is_nonnull_asrt(e)
+        } else if self.is_unique(ty) {
+            self.make_is_unique_asrt(e)
+        } else {
+            Assertion::Emp
+        }
     }
 
     fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
@@ -232,19 +267,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let lvar = GExpr::LVar(format!("#{name}"));
 
                 self.var_map.insert(*var, lvar.clone());
+                // Global toplevel asrts that are pure should prob be added to the facts instead of here.
                 self.global_toplevel_asrts
                     .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
-                if ty.is_any_ptr() {
-                    let type_knowledge = if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
-                        self.make_is_ref_asrt(lvar)
-                    } else {
-                        self.make_is_ptr_asrt(lvar)
-                    };
-                    self.global_toplevel_asrts.push(type_knowledge);
-                } else if self.is_nonnull(ty) {
-                    let type_knowledge = self.make_is_nonnull_asrt(lvar);
-                    self.global_toplevel_asrts.push(type_knowledge);
-                }
+                let type_knowledge = self.make_wf_asrt(lvar, ty);
+                self.global_toplevel_asrts.push(type_knowledge);
                 (name, ty)
             }
             _ => fatal!(self, "Predicate parameters must be variables"),
@@ -723,6 +750,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         crate::utils::ty::is_nonnull(ty, self.tcx())
     }
 
+    fn is_unique(&self, ty: Ty<'tcx>) -> bool {
+        crate::utils::ty::is_unique(ty, self.tcx())
+    }
+
     fn make_nonnull(&self, ptr: GExpr) -> GExpr {
         [ptr].into()
     }
@@ -943,17 +974,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             } = thir.stmts[*stmt].kind
             {
                 let lvar_expr = GExpr::LVar(format!("#{}", name.as_str()));
-                if ty.is_any_ptr() {
-                    let type_knowledge = if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
-                        self.make_is_ref_asrt(lvar_expr.clone())
-                    } else {
-                        self.make_is_ptr_asrt(lvar_expr.clone())
-                    };
-                    self.local_toplevel_asrts.push(type_knowledge);
-                } else if self.is_nonnull(ty) {
-                    let type_knowledge = self.make_is_nonnull_asrt(lvar_expr.clone());
-                    self.local_toplevel_asrts.push(type_knowledge);
-                }
+                let wf_cond = self.make_wf_asrt(lvar_expr.clone(), ty);
+                self.local_toplevel_asrts.push(wf_cond);
                 self.var_map.insert(var, lvar_expr);
                 res.push(name.to_string());
             } else {

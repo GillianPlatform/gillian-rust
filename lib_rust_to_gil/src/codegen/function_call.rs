@@ -34,20 +34,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             {
                 CallKind::PolyFn("<&mut T std::convert::Into<U>>::into".into())
             }
-            // "std::convert::Into::into" => {
-            //     if let TyKind::Ref(_, ty, Mutability::Mut) = substs[0].expect_ty().kind() {
-            //         if let TyKind::Adt(adt_def, subst) = substs[1].expect_ty().kind() {
-            //             if let "core::ptr::NonNull" | "std::ptr::NonNull" =
-            //                 self.tcx().def_path_str(adt_def.did()).as_str()
-            //             {
-            //                 if subst[0].expect_ty() == *ty {
-            //                     return Some(Shim::Function("mut_ref_to_nonnull_ptr".to_string()));
-            //                 }
-            //             }
-            //         }
-            //     };
-            //     None
-            // }
+            Some(FnStubs::Into)
+                if crate::utils::ty::is_unique(substs.type_at(0), self.tcx())
+                    && crate::utils::ty::is_nonnull(substs.type_at(1), self.tcx()) =>
+            {
+                let name =
+                    "<std::ptr::Unique<T> as std::convert::Into<std::ptr::NonNull<T>>>::into"
+                        .into();
+                CallKind::PolyFn(name)
+            }
             Some(FnStubs::FoldSomething) => {
                 let name = fname.strip_suffix("_____fold").unwrap().to_string();
                 CallKind::Fold(name)

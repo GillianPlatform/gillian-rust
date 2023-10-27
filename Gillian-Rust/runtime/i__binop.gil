@@ -11,3 +11,9 @@ proc i__binop_checked_sub(v1, v2) {
   ret := {{ sum, false }}; (* TODO: add bounds checks *)
   return
 };
+
+proc i__binop_checked_mul(v1, v2) {
+  sum := v1 i* v2;
+  ret := {{ sum, false }}; (* TODO: add bounds checks *)
+  return
+};

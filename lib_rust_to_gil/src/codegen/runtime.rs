@@ -28,6 +28,7 @@ pub fn imports(prophecy_mode: bool) -> Vec<Import> {
 
 const CHECKED_ADD: &str = "i__binop_checked_add";
 const CHECKED_SUB: &str = "i__binop_checked_sub";
+const CHECKED_MUL: &str = "i__binop_checked_mul";
 const LANG_ASSERT: &str = "i__lang_assert";
 const _INT_OF_BOOL: &str = "i__lang_int_of_bool";
 const _BOOL_OF_INT: &str = "i__bool_of_lang_int";
@@ -46,6 +47,16 @@ pub fn checked_sub(variable: String, e1: Expr, e2: Expr) -> Cmd {
     Cmd::Call {
         variable,
         proc_ident: Expr::string(CHECKED_SUB.to_string()),
+        parameters: vec![e1, e2],
+        error_lab: None,
+        bindings: None,
+    }
+}
+
+pub fn checked_mul(variable: String, e1: Expr, e2: Expr) -> Cmd {
+    Cmd::Call {
+        variable,
+        proc_ident: Expr::string(CHECKED_MUL.to_string()),
         parameters: vec![e1, e2],
         error_lab: None,
         bindings: None,

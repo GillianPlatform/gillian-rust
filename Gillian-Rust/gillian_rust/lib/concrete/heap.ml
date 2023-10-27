@@ -290,18 +290,6 @@ let load ~tyenv (mem : t) loc proj ty copy =
   Hashtbl.replace mem loc new_block;
   (v, mem)
 
-let load_slice ~tyenv (mem : t) loc proj size ty copy =
-  let block = Hashtbl.find mem loc in
-  let vs, new_block = TreeBlock.get_forest ~tyenv block proj size ty copy in
-  Hashtbl.replace mem loc new_block;
-  (vs, mem)
-
-let store_slice ~tyenv (mem : t) loc proj size ty values =
-  let block = Hashtbl.find mem loc in
-  let new_block = TreeBlock.set_forest ~tyenv block proj size ty values in
-  Hashtbl.replace mem loc new_block;
-  mem
-
 let store ~tyenv (mem : t) loc proj ty value =
   let block = Hashtbl.find mem loc in
   let new_block = TreeBlock.set_proj ~tyenv block proj ty value in

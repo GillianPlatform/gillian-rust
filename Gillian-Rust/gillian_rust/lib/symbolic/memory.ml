@@ -184,27 +184,29 @@ let execute_prod_uninit mem args =
   | _ -> Fmt.failwith "Invalid arguments for prod_uninit"
 
 let execute_cons_many_uninits mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp; size ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ heap = Heap.cons_many_uninits ~tyenv heap loc_name proj ty size in
-      make_branch ~mem:{ mem with heap } ~rets:[] ()
+      let++ heap, lk =
+        Heap.cons_many_uninits ~tyenv ~lk heap loc_name proj ty size
+      in
+      make_branch ~mem:{ mem with heap; lk } ~rets:[] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_many_uninits"
 
 let execute_prod_many_uninits mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp; size ] ->
       let ty = Ty.of_expr ty_exp in
       let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj_exp in
-      let+ new_heap =
-        Heap.prod_many_uninits ~tyenv heap loc_name proj ty size
+      let+ heap, lk =
+        Heap.prod_many_uninits ~tyenv ~lk heap loc_name proj ty size
       in
-      { mem with heap = new_heap }
+      { mem with heap; lk }
   | _ -> Fmt.failwith "Invalid arguments for prod_many_uninits"
 
 let formula_of_expr_exn expr =
@@ -408,12 +410,7 @@ let execute_prod_pcy_value mem args =
 let execute_size_of mem args =
   match args with
   | [ ty ] ->
-      let param =
-        match Ty.of_expr ty with
-        | Unresolved param -> param
-        | _ -> failwith "ty_size with non-param type, need to implement"
-      in
-      let+ ret, new_lk = Layout_knowledge.size_of ~lk:mem.lk param in
+      let+ ret, new_lk = Layout_knowledge.size_of ~lk:mem.lk (Ty.of_expr ty) in
       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
   | _ -> Fmt.failwith "Invalid arguments for size_of"
 
@@ -431,24 +428,18 @@ let execute_is_zst mem args =
 let execute_cons_ty_size mem args =
   match args with
   | [ ty ] ->
-      let param =
-        match Ty.of_expr ty with
-        | Unresolved param -> param
-        | _ -> failwith "ty_size with non-param type, need to implement"
+      let+ ret, new_lk =
+        Layout_knowledge.consume_ty_size ~lk:mem.lk (Ty.of_expr ty)
       in
-      let+ ret, new_lk = Layout_knowledge.consume_ty_size ~lk:mem.lk param in
       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
   | _ -> Fmt.failwith "Invalid arguments for consuming ty_size"
 
 let execute_prod_ty_size mem args =
   match args with
   | [ ty; size ] ->
-      let param =
-        match Ty.of_expr ty with
-        | Unresolved param -> param
-        | _ -> failwith "ty_size with non-param type, need to implement"
+      let+ new_lk =
+        Layout_knowledge.produce_ty_size ~lk:mem.lk (Ty.of_expr ty) size
       in
-      let+ new_lk = Layout_knowledge.produce_ty_size ~lk:mem.lk param size in
       { mem with lk = new_lk }
   | _ -> Fmt.failwith "Invalid arguments for producing ty_size"
 

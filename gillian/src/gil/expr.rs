@@ -135,6 +135,28 @@ impl Expr {
         Literal::Null.into()
     }
 
+    pub fn i_mul(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i * j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::ITimes,
+            },
+        }
+    }
+
+    pub fn f_mul(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::float(i * j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::FTimes,
+            },
+        }
+    }
+
     pub fn i_gt(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i > j),
@@ -164,6 +186,28 @@ impl Expr {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
                 operator: BinOp::ILessThan,
+            },
+        }
+    }
+
+    pub fn i_le(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i <= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::ILessThanEqual,
+            },
+        }
+    }
+
+    pub fn f_le(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i <= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::FLessThanEqual,
             },
         }
     }

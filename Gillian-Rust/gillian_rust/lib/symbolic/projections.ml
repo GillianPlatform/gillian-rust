@@ -10,13 +10,13 @@ type op =
   | Cast of Ty.t * Ty.t
   | Plus of arith_kind * Expr.t * Ty.t
   | UPlus of arith_kind * Expr.t
-[@@deriving show, yojson, eq]
+[@@deriving yojson, eq]
 
 let variant = function
   | VField (i, _, _) -> Some i
   | _ -> None
 
-let pp_elem fmt =
+let pp_op fmt =
   let str_ak = function
     | Wrap -> "w"
     | Overflow -> ""
@@ -29,7 +29,11 @@ let pp_elem fmt =
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%a)<%a>" (str_ak k) Expr.pp i Ty.pp ty
   | UPlus (k, i) -> Fmt.pf fmt "u+%s(%a)" (str_ak k) Expr.pp i
 
-type t = { base : Expr.t option; from_base : op list } [@@deriving yojson]
+type path = op list [@@deriving yojson, eq]
+
+let pp_path = Fmt.Dump.list pp_op
+
+type t = { base : Expr.t option; from_base : path } [@@deriving yojson]
 
 let root = { base = None; from_base = [] }
 
@@ -37,6 +41,19 @@ let root = { base = None; from_base = [] }
 let base_ty ~(leaf_ty : Ty.t) (proj : t) =
   match proj.from_base with
   | [] -> leaf_ty
+  | ( Field (_, ty)
+    | VField (_, ty, _)
+    | Index (_, ty, _)
+    | Cast (ty, _)
+    | Plus (_, _, ty) )
+    :: _ -> ty
+  | UPlus _ :: _ -> failwith "reduced to uplus too early"
+
+(* Returns the base type as above. However, we're looking for a slice.
+   So if the projection is empty, then we need to create the entire slice of leaf type. *)
+let base_ty_slice ~leaf_ty (proj : t) size =
+  match proj.from_base with
+  | [] -> Ty.array_of_size size leaf_ty
   | ( Field (_, ty)
     | VField (_, ty, _)
     | Index (_, ty, _)
@@ -134,8 +151,6 @@ let of_expr (expr : Expr.t) : t =
           m "of_expr is assigning everything to base %a" Expr.pp e);
       { base = Some e; from_base = [] }
 
-let pp_from_base ft from_base = (Fmt.Dump.list pp_elem) ft from_base
-
 let pp ft t =
   let pp_base ft = function
     | None -> ()
@@ -144,7 +159,7 @@ let pp ft t =
         Fmt.string ft " ++ "
   in
   pp_base ft t.base;
-  pp_from_base ft t.from_base
+  pp_path ft t.from_base
 
 (** Takes two projections of the form
    P and P.ex and returns (P, ex) *)

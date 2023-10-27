@@ -155,15 +155,16 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
             CastKind::PtrToPtr => {
                 let opty = self.operand_ty(op);
+                log::debug!(
+                    "Encoding PtrToPtr with types from {:#?} and to {:#?}",
+                    opty,
+                    ty_to
+                );
                 match (opty.kind(), ty_to.kind()) {
                     (
                         TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
                         TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
-                    ) if matches!(ty.kind(), TyKind::Slice(..))
-                        && !matches!(typ.kind(), TyKind::Slice(..)) =>
-                    {
-                        Expr::lnth(enc_op, 0)
-                    }
+                    ) if ty.is_slice() && typ.is_slice() => Expr::lnth(enc_op, 0),
                     (
                         TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
                         TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
@@ -244,6 +245,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(runtime::checked_sub(temp.clone(), e1, e2));
                 Expr::PVar(temp)
             }
+
+            Mul if left_ty.is_integral() && left_ty == right_ty => {
+                let temp = self.temp_var();
+                self.push_cmd(runtime::checked_mul(temp.clone(), e1, e2));
+                Expr::PVar(temp)
+            }
             Gt if left_ty.is_numeric() && left_ty == right_ty => {
                 if left_ty.is_integral() {
                     Expr::i_gt(e1, e2)
@@ -256,6 +263,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     Expr::i_lt(e1, e2)
                 } else {
                     Expr::f_lt(e1, e2)
+                }
+            }
+            Le if left_ty.is_numeric() && left_ty == right_ty => {
+                if left_ty.is_integral() {
+                    Expr::i_le(e1, e2)
+                } else {
+                    Expr::f_le(e1, e2)
                 }
             }
             Shl if left_ty.is_integral() && right_ty.is_integral() => Expr::i_shl(e1, e2),

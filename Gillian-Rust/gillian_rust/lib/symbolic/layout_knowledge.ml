@@ -6,11 +6,11 @@ module Delayed = Gillian.Monadic.Delayed
 type knowledge = { size : Expr.t (* align: Expr.t; *) } [@@deriving yojson]
 
 let pp_knowledge ft (ty, k) =
-  Fmt.pf ft "SIZE OF %a IS %a" Expr.pp ty Expr.pp k.size
+  Fmt.pf ft "SIZE OF %a IS %a" Ty.pp ty Expr.pp k.size
 
 let knowledge_lvars { size } = Expr.lvars size
 
-module Map = Map.Make (Expr)
+module Map = Map.Make (Ty)
 
 type t = knowledge Map.t [@@deriving yojson]
 
@@ -20,25 +20,36 @@ let none = Map.empty
 let assertions t =
   let cp = Common.Actions.cp_to_name Ty_size in
   let asrts (ty, knowledge) =
-    Seq.return (Gil_syntax.Asrt.GA (cp, [ ty ], [ knowledge.size ]))
+    Seq.return (Gil_syntax.Asrt.GA (cp, [ Ty.to_expr ty ], [ knowledge.size ]))
   in
   Map.to_seq t |> Seq.concat_map asrts |> List.of_seq
 
-let consume_ty_size ~lk ty =
-  match Map.find_opt ty lk with
-  | Some { size } -> Delayed.return (size, lk)
-  | None ->
-      let size = Expr.LVar (LVar.alloc ()) in
-      let learned =
-        let open Formula.Infix in
-        let gt_0 = Expr.zero_i #<= size in
-        let is_int = (Expr.typeof size) #== (Expr.type_ IntType) in
-        [ gt_0; is_int ]
-      in
-      Delayed.return ~learned (size, Map.add ty { size } lk)
+let size_of ~lk ty =
+  match ty with
+  | Ty.Scalar ty -> Delayed.return (Expr.int (Ty.size_of_scalar ty), lk)
+  | Ref { ty = Slice _; _ } | Ptr { ty = Slice _; _ } ->
+      Delayed.return (Expr.int (Ty.size_of_scalar (Uint Usize) * 2), lk)
+  | Ref _ | Ptr _ ->
+      Delayed.return (Expr.int (Ty.size_of_scalar (Uint Usize)), lk)
+  | Unresolved _ -> (
+      match Map.find_opt ty lk with
+      | Some { size } -> Delayed.return (size, lk)
+      | None ->
+          let size = Expr.LVar (LVar.alloc ()) in
+          let learned =
+            let open Formula.Infix in
+            let gt_0 = Expr.zero_i #<= size in
+            let is_int = (Expr.typeof size) #== (Expr.type_ IntType) in
+            [ gt_0; is_int ]
+          in
+          Delayed.return ~learned (size, Map.add ty { size } lk))
+  | _ -> Fmt.failwith "size_of: not implemented for %a yet" Ty.pp ty
 
 let produce_ty_size ~lk ty new_size =
   let open Formula.Infix in
+  (match ty with
+  | Ty.Unresolved _ -> ()
+  | _ -> failwith "produce_ty_size for resolved type!");
   match Map.find_opt ty lk with
   | Some { size } ->
       let learned = [ size #== new_size ] in
@@ -47,14 +58,14 @@ let produce_ty_size ~lk ty new_size =
       let learned = [ (Expr.typeof new_size) #== (Expr.type_ IntType) ] in
       Delayed.return ~learned (Map.add ty { size = new_size } lk)
 
-let size_of ~lk ty = consume_ty_size ~lk ty
+let consume_ty_size ~lk ty = size_of ~lk ty
 
 let is_zst ~lk ~tyenv ty =
   (* [None] means it can't be a zst.
      Otherwise, it's a list of conditions:
      [Left e] means e must be a zst, [Right e] means e must be zero
   *)
-  let rec zst_condition (ty : Ty.t) : (Expr.t, Expr.t) Either.t list Option.t =
+  let rec zst_condition (ty : Ty.t) : (Ty.t, Expr.t) Either.t list Option.t =
     let open Syntaxes.Option in
     match ty with
     | Scalar _ | Ref _ | Ptr _ -> None
@@ -96,7 +107,7 @@ let is_zst ~lk ~tyenv ty =
                   acc fields)
               (Some []) variants)
     | Slice _ -> failwith "checking if unsized type is zst?"
-    | Unresolved e -> Some [ Either.Left e ]
+    | ty_param -> Some [ Either.Left ty_param ]
   in
   match zst_condition ty with
   | None -> Delayed.return (Formula.False, lk)
@@ -117,11 +128,12 @@ let is_zst ~lk ~tyenv ty =
 let lvars lk =
   Map.fold
     (fun ty k acc ->
-      knowledge_lvars k |> SS.union (Expr.lvars ty) |> SS.union acc)
+      knowledge_lvars k |> SS.union (Ty.lvars ty) |> SS.union acc)
     lk SS.empty
 
 let substitution subst lk =
   let subst_expr = Gillian.Symbolic.Subst.subst_in_expr subst ~partial:true in
   Map.to_seq lk
-  |> Seq.map (fun (x, y) -> (subst_expr x, { size = subst_expr y.size }))
+  |> Seq.map (fun (x, y) ->
+         (Ty.substitution ~subst_expr x, { size = subst_expr y.size }))
   |> Map.of_seq

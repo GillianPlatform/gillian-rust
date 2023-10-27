@@ -4,8 +4,6 @@ type t =
   | Alloc_raw
   | Load_value
   | Store_value
-  | Load_slice
-  | Store_slice
   | Deinit
   | Free
   | Load_discr
@@ -34,8 +32,8 @@ let of_name = function
   | "alloc_raw" -> Alloc_raw
   | "load_value" -> Load_value
   | "store_value" -> Store_value
-  | "load_slice" -> Load_slice
-  | "store_slice" -> Store_slice
+  | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
+  | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | "deinit" -> Deinit
   | "free" -> Free
   | "size_of" -> Size_of
@@ -52,8 +50,6 @@ let to_name = function
   | Alloc_raw -> "alloc_raw"
   | Load_value -> "load_value"
   | Store_value -> "store_value"
-  | Load_slice -> "load_slice"
-  | Store_slice -> "store_slice"
   | Deinit -> "deinit"
   | Free -> "free"
   | Size_of -> "size_of"

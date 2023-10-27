@@ -39,18 +39,6 @@ let execute_load_value mem args =
       Ok ({ mem with heap = new_heap }, [ ret ])
   | _ -> wrong_args "load_value" args
 
-let execute_load_slice mem args =
-  match args with
-  | [ Literal.Loc loc; Literal.LList proj; Int size; ty; Literal.Bool copy ] ->
-      let rust_ty = Ty.of_lit ty in
-      let proj = Projections.of_lit_list proj in
-      let size = Z.to_int size in
-      let ret, new_heap =
-        Heap.load_slice ~tyenv:mem.tyenv mem.heap loc proj size rust_ty copy
-      in
-      Ok ({ mem with heap = new_heap }, [ Literal.LList ret ])
-  | _ -> wrong_args "load_slice" args
-
 let execute_store_value mem args =
   match args with
   | [ Literal.Loc loc; LList proj; ty; value ] ->
@@ -61,18 +49,6 @@ let execute_store_value mem args =
       in
       Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_value" args
-
-let execute_store_slice mem args =
-  match args with
-  | [ Literal.Loc loc; LList proj; Int size; ty; LList values ] ->
-      let rust_ty = Ty.of_lit ty in
-      let proj = Projections.of_lit_list proj in
-      let size = Z.to_int size in
-      let new_heap =
-        Heap.store_slice ~tyenv:mem.tyenv mem.heap loc proj size rust_ty values
-      in
-      Ok ({ mem with heap = new_heap }, [])
-  | _ -> wrong_args "store_slice" args
 
 let execute_deinit mem args =
   match args with
@@ -113,8 +89,6 @@ let execute_action act_name mem args =
   | Alloc -> protect execute_alloc mem args
   | Load_value -> protect execute_load_value mem args
   | Store_value -> protect execute_store_value mem args
-  | Load_slice -> protect execute_load_slice mem args
-  | Store_slice -> protect execute_store_slice mem args
   | Deinit -> protect execute_deinit mem args
   | Free -> protect execute_free mem args
   | Load_discr -> protect execute_load_discr mem args

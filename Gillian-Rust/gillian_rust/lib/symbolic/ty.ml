@@ -6,13 +6,22 @@ open Gillian.Gil_syntax
 module Cty = Common.Ty
 
 type int_ty = Cty.int_ty = Isize | I8 | I16 | I32 | I64 | I128
-[@@deriving eq, yojson]
+[@@deriving eq, yojson, ord]
 
 type uint_ty = Cty.uint_ty = Usize | U8 | U16 | U32 | U64 | U128
-[@@deriving eq, yojson]
+[@@deriving eq, yojson, ord]
 
 type scalar_ty = Cty.scalar_ty = Bool | Char | Int of int_ty | Uint of uint_ty
-[@@deriving eq, yojson]
+[@@deriving eq, yojson, ord]
+
+let size_of_scalar = function
+  | Bool | Int I8 | Uint U8 -> 1
+  | Int I16 | Uint U16 -> 2
+  | Int I32 | Uint U32 | Char -> 4
+  | Int I64 | Uint U64 -> 8
+  | Int I128 | Uint U128 -> 16
+  | Int Isize | Uint Usize -> 8
+(* Should be made parametric at some point *)
 
 let scalar_ty_to_string = Cty.scalar_ty_of_string
 let scalar_ty_of_string = Cty.scalar_ty_of_yojson
@@ -31,7 +40,7 @@ type t =
   | Slice of t
   | Unresolved of Expr.t
       (** A parameter in an ADT def, should be substituted before used *)
-[@@deriving yojson, eq]
+[@@deriving yojson, eq, ord]
 (* FIXME: type equality cannot be decided syntactically in theory. It has to be decided by SAT.
    But it requires a lot of changes in Projections and Partial_layout that I'm not ready to make yet.
    However, as it is right now, nothing is unsound, simply less complete. *)
@@ -177,8 +186,8 @@ let rec pp ft t =
   | Adt (s, args) -> pf ft "%s<%a>" s (list ~sep:comma pp) args
   | Ref { mut; ty } -> Fmt.pf ft "&%s%a" (if mut then "mut " else "") pp ty
   | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
-  | Array { length; ty } -> Fmt.pf ft "[%a; %d]" pp ty length
-  | SymArray { length; ty } -> Fmt.pf ft "[%a;? %a]" Expr.pp length pp ty
+  | Array { length; ty } -> Fmt.pf ft "[%a ; %d]" pp ty length
+  | SymArray { length; ty } -> Fmt.pf ft "[%a ;? %a]" pp ty Expr.pp length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
   | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
 
@@ -195,6 +204,11 @@ let rec substitution ~subst_expr t =
       SymArray { length = subst_expr length; ty = rec_call ty }
   | Slice t -> Slice (rec_call t)
   | Unresolved e -> Unresolved (subst_expr e)
+
+let array_of_size size ty =
+  match size with
+  | Expr.Lit (Int sz) -> Array { length = Z.to_int sz; ty }
+  | _ -> SymArray { length = size; ty }
 
 let slice_elements = function
   | Slice t -> t
