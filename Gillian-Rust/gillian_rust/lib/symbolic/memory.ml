@@ -78,25 +78,25 @@ let execute_alloc mem args =
   | _ -> Fmt.failwith "Invalid arguments for alloc"
 
 let execute_store mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
-      let++ new_heap = Heap.store ~tyenv heap loc proj ty value in
-      make_branch ~mem:{ mem with heap = new_heap } ()
+      let++ new_heap, lk = Heap.store ~tyenv ~lk heap loc proj ty value in
+      make_branch ~mem:{ mem with heap = new_heap; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for store"
 
 let execute_load mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
-      let++ value, new_heap = Heap.load ~tyenv heap loc proj ty copy in
-      make_branch ~mem:{ mem with heap = new_heap } ~rets:[ value ] ()
+      let++ value, new_heap, lk = Heap.load ~tyenv ~lk heap loc proj ty copy in
+      make_branch ~mem:{ mem with heap = new_heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for load"
 
 let execute_load_discr mem args =
@@ -105,10 +105,10 @@ let execute_load_discr mem args =
       let enum_typ = Ty.of_expr enum_typ in
       let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
-      let++ discr =
-        Heap.load_discr ~tyenv:mem.tyenv mem.heap loc proj enum_typ
+      let++ discr, lk =
+        Heap.load_discr ~tyenv:mem.tyenv ~lk:mem.lk mem.heap loc proj enum_typ
       in
-      make_branch ~mem ~rets:[ discr ] ()
+      make_branch ~mem:{ mem with lk } ~rets:[ discr ] ()
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_free mem args =
@@ -128,74 +128,52 @@ let execute_free mem args =
   | _ -> Fmt.failwith "Invalid arguments for free"
 
 let execute_cons_value mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ value, heap = Heap.cons_value ~tyenv heap loc_name proj ty in
-      make_branch ~mem:{ mem with heap } ~rets:[ value ] ()
+      let++ value, heap, lk =
+        Heap.cons_value ~tyenv ~lk heap loc_name proj ty
+      in
+      make_branch ~mem:{ mem with heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_prod_value mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
       let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj in
-      let+ new_heap = Heap.prod_value ~tyenv heap loc_name proj ty value in
-      { mem with heap = new_heap }
+      let+ new_heap, lk =
+        Heap.prod_value ~tyenv ~lk heap loc_name proj ty value
+      in
+      { mem with heap = new_heap; lk }
   | _ -> Fmt.failwith "Invalid arguments for set_value"
 
 let execute_cons_uninit mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ heap = Heap.cons_uninit ~tyenv heap loc_name proj ty in
-      make_branch ~mem:{ mem with heap } ~rets:[] ()
+      let++ heap, lk = Heap.cons_uninit ~tyenv ~lk heap loc_name proj ty in
+      make_branch ~mem:{ mem with heap; lk } ~rets:[] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_uninit"
 
 let execute_prod_uninit mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; tyenv; lk; _ } = mem in
   match args with
   | [ loc; proj; ty ] ->
       let ty = Ty.of_expr ty in
       let* loc_name = resolve_or_create_loc_name loc in
       let* proj = projections_of_expr proj in
-      let+ new_heap = Heap.prod_uninit ~tyenv heap loc_name proj ty in
-      { mem with heap = new_heap }
+      let+ new_heap, lk = Heap.prod_uninit ~tyenv ~lk heap loc_name proj ty in
+      { mem with heap = new_heap; lk }
   | _ -> Fmt.failwith "Invalid arguments for prod_uninit"
-
-let execute_cons_many_uninits mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj_exp; ty_exp; size ] ->
-      let ty = Ty.of_expr ty_exp in
-      let** loc_name = resolve_loc_result loc in
-      let* proj = projections_of_expr proj_exp in
-      let++ heap, lk =
-        Heap.cons_many_uninits ~tyenv ~lk heap loc_name proj ty size
-      in
-      make_branch ~mem:{ mem with heap; lk } ~rets:[] ()
-  | _ -> Fmt.failwith "Invalid arguments for cons_many_uninits"
-
-let execute_prod_many_uninits mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj_exp; ty_exp; size ] ->
-      let ty = Ty.of_expr ty_exp in
-      let* loc_name = resolve_or_create_loc_name loc in
-      let* proj = projections_of_expr proj_exp in
-      let+ heap, lk =
-        Heap.prod_many_uninits ~tyenv ~lk heap loc_name proj ty size
-      in
-      { mem with heap; lk }
-  | _ -> Fmt.failwith "Invalid arguments for prod_many_uninits"
 
 let formula_of_expr_exn expr =
   match Formula.lift_logic_expr expr with
@@ -289,55 +267,55 @@ let execute_prod_lft mem args =
   | _ -> Fmt.failwith "Invalid arguments for new_lft"
 
 let execute_cons_value_observer mem args =
-  let { pcies; tyenv; _ } = mem in
+  let { pcies; tyenv; lk; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value, pcies =
-        Prophecies.cons_value_obs ~tyenv pcies pcy_id proj ty
+      let++ value, pcies, lk =
+        Prophecies.cons_value_obs ~tyenv ~lk pcies pcy_id proj ty
       in
-      make_branch ~mem:{ mem with pcies } ~rets:[ value ] ()
+      make_branch ~mem:{ mem with pcies; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value_observer"
 
 let execute_prod_value_observer mem args =
-  let { pcies; tyenv; _ } = mem in
+  let { pcies; tyenv; lk; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
-      let+ new_pcies =
-        Prophecies.prod_value_obs ~tyenv pcies pcy_id proj ty value
+      let+ new_pcies, lk =
+        Prophecies.prod_value_obs ~tyenv ~lk pcies pcy_id proj ty value
       in
-      { mem with pcies = new_pcies }
+      { mem with pcies = new_pcies; lk }
   | _ -> Fmt.failwith "Invalid arguments for set_value_observer"
 
 let execute_cons_pcy_controller mem args =
-  let { pcies; tyenv; _ } = mem in
+  let { pcies; tyenv; lk; _ } = mem in
   match args with
   | [ pcy_id; proj_exp; ty_exp ] ->
       let** pcy_id = resolve_loc_result pcy_id in
       let ty = Ty.of_expr ty_exp in
       let* proj = projections_of_expr proj_exp in
-      let++ value, pcies =
-        Prophecies.cons_controller ~tyenv pcies pcy_id proj ty
+      let++ value, pcies, lk =
+        Prophecies.cons_controller ~tyenv ~lk pcies pcy_id proj ty
       in
-      make_branch ~mem:{ mem with pcies } ~rets:[ value ] ()
+      make_branch ~mem:{ mem with pcies; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_pcy_controller"
 
 let execute_prod_pcy_controller mem args =
-  let { pcies; tyenv; _ } = mem in
+  let { pcies; tyenv; lk; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let* pcy_id = resolve_or_create_loc_name pcy_id in
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
-      let+ new_pcies =
-        Prophecies.prod_controller ~tyenv pcies pcy_id proj ty value
+      let+ new_pcies, lk =
+        Prophecies.prod_controller ~tyenv ~lk pcies pcy_id proj ty value
       in
-      { mem with pcies = new_pcies }
+      { mem with pcies = new_pcies; lk }
   | _ -> Fmt.failwith "Invalid arguments for set_pcy_controller"
 
 let execute_pcy_resolve mem args =
@@ -346,21 +324,23 @@ let execute_pcy_resolve mem args =
       let ty = Ty.of_expr ty in
       let** pcy_id = resolve_loc_result pcy_id in
       let* proj = projections_of_expr proj_exp in
-      let++ new_pcies =
-        Prophecies.resolve ~tyenv:mem.tyenv mem.pcies pcy_id proj ty
+      let++ new_pcies, lk =
+        Prophecies.resolve ~tyenv:mem.tyenv ~lk:mem.lk mem.pcies pcy_id proj ty
       in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
+      make_branch ~mem:{ mem with pcies = new_pcies; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for pcy_resolve"
 
 let execute_pcy_assign mem args =
-  let { pcies; tyenv; _ } = mem in
+  let { pcies; tyenv; lk; _ } = mem in
   match args with
   | [ pcy_id; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let** pcy_id = resolve_loc_result pcy_id in
-      let++ new_pcies = Prophecies.assign ~tyenv pcies pcy_id proj ty value in
-      make_branch ~mem:{ mem with pcies = new_pcies } ()
+      let++ new_pcies, lk =
+        Prophecies.assign ~tyenv ~lk pcies pcy_id proj ty value
+      in
+      make_branch ~mem:{ mem with pcies = new_pcies; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for store"
 
 let execute_pcy_alloc mem args =
@@ -450,7 +430,6 @@ let consume ~core_pred mem args =
     match Actions.cp_of_name core_pred with
     | Value -> execute_cons_value mem args
     | Uninit -> execute_cons_uninit mem args
-    | Many_uninits -> execute_cons_many_uninits mem args
     | Lft -> execute_cons_lft mem args
     | Ty_size -> execute_cons_ty_size mem args
     | Pcy_value -> execute_cons_pcy_value mem args
@@ -469,7 +448,6 @@ let produce ~core_pred mem args =
     match Actions.cp_of_name core_pred with
     | Value -> execute_prod_value mem args
     | Uninit -> execute_prod_uninit mem args
-    | Many_uninits -> execute_prod_many_uninits mem args
     | Lft -> execute_prod_lft mem args
     | Ty_size -> execute_prod_ty_size mem args
     | Pcy_value -> execute_prod_pcy_value mem args

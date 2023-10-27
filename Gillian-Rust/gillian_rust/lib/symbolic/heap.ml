@@ -200,7 +200,6 @@ module TreeBlock = struct
   let assertions ~loc ~base_offset block =
     let value_cp = Actions.cp_to_name Value in
     let uninit_cp = Actions.cp_to_name Uninit in
-    let many_uninits_cp = Actions.cp_to_name Many_uninits in
     let rec aux ~current_proj ({ content; ty } as block) =
       let ins ty =
         let proj =
@@ -219,11 +218,7 @@ module TreeBlock = struct
         Seq.return (Asrt.GA (value_cp, ins ty, [ value ]))
       else
         match content with
-        | Uninit -> (
-            match ty with
-            | Array { length; ty } ->
-                Seq.return (Asrt.GA (many_uninits_cp, ins ty @ [ length ], []))
-            | _ -> Seq.return (Asrt.GA (uninit_cp, ins ty, [])))
+        | Uninit -> Seq.return (Asrt.GA (uninit_cp, ins ty, []))
         | Missing -> Seq.empty
         | Fields v ->
             let proj i = Projections.Field (i, ty) in
@@ -496,44 +491,6 @@ module TreeBlock = struct
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
 
-  let rec find_path
-      ~tyenv
-      ~return_and_update
-      ~ty:expected_ty
-      t
-      (path : Projections.op list) : ('a * t, Err.t) DR.t =
-    let rec_call = find_path ~ty:expected_ty ~tyenv ~return_and_update in
-    match (path, t.content, t.ty) with
-    | [], _, _ ->
-        if not (Ty.equal t.ty expected_ty) then
-          failwith "mismatch in type! need to implement casting";
-        return_and_update t
-    | Field (i, ty) :: rest, Fields vec, ty' when Ty.equal ty ty' ->
-        let e = Result.ok_or vec.%[i] ~msg:"Index out of bounds" in
-        let** v, sub_block = rec_call e rest in
-        let++ new_fields = Delayed.return (vec.%[i] <- sub_block) in
-        (v, { ty; content = Fields new_fields })
-    | VField (i, ty, vidx) :: rest, Enum { discr; fields }, ty'
-      when Ty.equal ty ty' && discr == vidx ->
-        let e = Result.ok_or fields.%[i] ~msg:"Index out of bounds" in
-        let** v, sub_block = rec_call e rest in
-        let++ new_fields = Delayed.return (fields.%[i] <- sub_block) in
-        (v, { ty; content = Enum { discr; fields = new_fields } })
-    | (op :: _ as path), Symbolic s, ty ->
-        let variant = Projections.variant op in
-        let** this_block = semi_concretize ~tyenv ~variant ty s in
-        rec_call this_block path
-    | _ :: _, Missing, ty ->
-        Logging.tmi (fun m ->
-            m "Structural missing: %a" (Fmt.Dump.list Projections.pp_op) path);
-        let this_block = structural_missing ~tyenv ty in
-        rec_call this_block path
-    | _ ->
-        Fmt.failwith "Couldn't resolve path: (content: %a, path: %a)" pp_content
-          t.content
-          (Fmt.Dump.list Projections.pp_op)
-          path
-
   let find_slice
       ~tyenv:_
       ~lk (* The lk should probably be hidden in a state monad *)
@@ -569,6 +526,49 @@ module TreeBlock = struct
         Fmt.failwith "Unimplemented case for find_slice: %a, %a, %a, %a"
           Projections.pp_path path pp_content content Ty.pp ty Expr.pp size
 
+  let find_path ~tyenv ~lk ~return_and_update ~ty:expected_ty t path :
+      ('a * t * Layout_knowledge.t, Err.t) DR.t =
+    match expected_ty with
+    | Ty.Array { length; ty } ->
+        find_slice ~tyenv ~lk ~return_and_update ~ty t path length
+    | _ ->
+        let rec aux t (path : Projections.path) =
+          match (path, t.content, t.ty) with
+          | [], _, _ ->
+              if not (Ty.equal t.ty expected_ty) then
+                failwith "mismatch in type! need to implement casting";
+              let++ value, block = return_and_update t in
+              (value, block, lk)
+          | Field (i, ty) :: rest, Fields vec, ty' when Ty.equal ty ty' ->
+              let e = Result.ok_or vec.%[i] ~msg:"Index out of bounds" in
+              let** v, sub_block, lk = aux e rest in
+              let++ new_fields = Delayed.return (vec.%[i] <- sub_block) in
+              (v, { ty; content = Fields new_fields }, lk)
+          | VField (i, ty, vidx) :: rest, Enum { discr; fields }, ty'
+            when Ty.equal ty ty' && discr == vidx ->
+              let e = Result.ok_or fields.%[i] ~msg:"Index out of bounds" in
+              let** v, sub_block, lk = aux e rest in
+              let++ new_fields = Delayed.return (fields.%[i] <- sub_block) in
+              (v, { ty; content = Enum { discr; fields = new_fields } }, lk)
+          | (op :: _ as path), Symbolic s, ty ->
+              let variant = Projections.variant op in
+              let** this_block = semi_concretize ~tyenv ~variant ty s in
+              aux this_block path
+          | _ :: _, Missing, ty ->
+              Logging.tmi (fun m ->
+                  m "Structural missing: %a"
+                    (Fmt.Dump.list Projections.pp_op)
+                    path);
+              let this_block = structural_missing ~tyenv ty in
+              aux this_block path
+          | _ ->
+              Fmt.failwith "Couldn't resolve path: (content: %a, path: %a)"
+                pp_content t.content
+                (Fmt.Dump.list Projections.pp_op)
+                path
+        in
+        aux t path
+
   let find_slice_outer
       ~tyenv
       ~return_and_update
@@ -601,6 +601,7 @@ module TreeBlock = struct
 
   let find_proj
       ~tyenv
+      ~lk
       ~return_and_update
       ~ty
       (outer : outer)
@@ -622,8 +623,8 @@ module TreeBlock = struct
     let path = Projections.Reduction.reduce_op_list proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
-    let++ ret, root = find_path ~tyenv ~return_and_update ~ty t path in
-    (ret, { outer with root })
+    let++ ret, root, lk = find_path ~tyenv ~lk ~return_and_update ~ty t path in
+    (ret, { outer with root }, lk)
 
   let load_proj ~loc ~tyenv t proj ty copy =
     let open Result.Syntax in
@@ -654,7 +655,7 @@ module TreeBlock = struct
     in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
-  let prod_proj ~tyenv t proj ty value =
+  let prod_proj ~tyenv ~lk t proj ty value =
     let* new_block =
       let return_and_update block =
         match missing_qty block with
@@ -664,8 +665,10 @@ module TreeBlock = struct
         | _ -> Delayed.vanish ()
         (* Duplicated resources *)
       in
-      let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-      new_block
+      let++ _, new_block, lk =
+        find_proj ~tyenv ~lk ~ty ~return_and_update t proj
+      in
+      (new_block, lk)
     in
     match new_block with
     | Ok x -> Delayed.return x
@@ -679,8 +682,8 @@ module TreeBlock = struct
     in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
-  let prod_uninit ~loc:_ ~tyenv t proj ty =
-    let* new_block =
+  let prod_uninit ~loc:_ ~lk ~tyenv t proj ty =
+    let* result =
       let return_and_update block =
         match missing_qty block with
         | Some Totally ->
@@ -689,41 +692,16 @@ module TreeBlock = struct
         | _ -> Delayed.vanish ()
         (* Duplicated resource *)
       in
-      let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-      new_block
-    in
-    match new_block with
-    | Ok x -> Delayed.return x
-    | Error _ -> Delayed.vanish ()
-
-  let cons_many_uninits ~loc:_ ~tyenv t proj ty size =
-    let return_and_update t =
-      match t.content with
-      | Uninit -> DR.ok ((), missing t.ty)
-      | _ -> DR.error (Err.LogicError "Not uninit")
-    in
-    find_slice_outer ~tyenv ~return_and_update ~ty t proj size
-
-  let prod_many_uninits ~loc:_ ~lk ~tyenv t proj ty size =
-    let* new_block =
-      let return_and_update block =
-        match missing_qty block with
-        | Some Totally ->
-            let value = uninitialized ~tyenv (Ty.array_of_size size ty) in
-            DR.ok ((), value)
-        | _ -> Delayed.vanish ()
-        (* Duplicated resource *)
-      in
       let++ _, new_block, lk =
-        find_slice_outer ~ty ~lk ~tyenv ~return_and_update t proj size
+        find_proj ~tyenv ~lk ~ty ~return_and_update t proj
       in
       (new_block, lk)
     in
-    match new_block with
+    match result with
     | Ok x -> Delayed.return x
     | Error _ -> Delayed.vanish ()
 
-  let store_proj ~loc ~tyenv t proj ty value =
+  let store_proj ~loc ~tyenv ~lk t proj ty value =
     let return_and_update block =
       match missing_qty block with
       | Some qty -> DR.error (Err.Missing_proj (loc, proj, qty))
@@ -731,10 +709,12 @@ module TreeBlock = struct
           let++ value = of_rust_value ~tyenv ~ty value in
           ((), value)
     in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-    new_block
+    let++ _, new_block, lk =
+      find_proj ~tyenv ~lk ~ty ~return_and_update t proj
+    in
+    (new_block, lk)
 
-  let get_discr ~tyenv t proj enum_typ =
+  let get_discr ~tyenv ~lk t proj enum_typ =
     let return_and_update block =
       match block.content with
       | Enum t -> DR.ok (Expr.int t.discr, block)
@@ -747,13 +727,17 @@ module TreeBlock = struct
           else too_symbolic expr
       | _ -> DR.error (Invalid_type (block.ty, enum_typ))
     in
-    let++ discr, _ = find_proj ~tyenv ~return_and_update ~ty:enum_typ t proj in
-    discr
+    let++ discr, _, lk =
+      find_proj ~tyenv ~lk ~return_and_update ~ty:enum_typ t proj
+    in
+    (discr, lk)
 
-  let deinit ~tyenv t proj ty =
+  let deinit ~tyenv ~lk t proj ty =
     let return_and_update _block = DR.ok ((), uninitialized ~tyenv ty) in
-    let++ _, new_block = find_proj ~tyenv ~ty ~return_and_update t proj in
-    new_block
+    let++ _, new_block, lk =
+      find_proj ~tyenv ~lk ~ty ~return_and_update t proj
+    in
+    (new_block, lk)
 
   let rec equality_constraints t1 t2 =
     let ( #== ) = Formula.Infix.( #== ) in
@@ -860,83 +844,64 @@ let alloc ~tyenv (heap : t) ty =
   let new_heap = MemMap.add loc (T new_block) heap in
   (loc, new_heap)
 
-let load ~tyenv (mem : t) loc proj ty copy =
+let load ~tyenv ~lk (mem : t) loc proj ty copy =
   Logging.tmi (fun m -> m "Found block: %s" loc);
   let** block = find_not_freed loc mem in
-  let++ v, new_block = TreeBlock.load_proj ~loc ~tyenv block proj ty copy in
+  let++ v, new_block, lk =
+    TreeBlock.load_proj ~loc ~tyenv ~lk block proj ty copy
+  in
   let new_mem = MemMap.add loc (T new_block) mem in
-  (v, new_mem)
+  (v, new_mem, lk)
 
-let store ~tyenv (mem : t) loc proj ty value =
+let store ~tyenv ~lk (mem : t) loc proj ty value =
   let** block = find_not_freed loc mem in
-  let++ new_block = TreeBlock.store_proj ~loc ~tyenv block proj ty value in
-  MemMap.add loc (T new_block) mem
-
-let cons_value ~tyenv (mem : t) loc proj ty =
-  let** block = find_not_freed loc mem in
-  let++ value, outer = TreeBlock.cons_proj ~loc ~tyenv block proj ty in
-  (value, MemMap.add loc (T outer) mem)
-
-let prod_value ~tyenv (mem : t) loc (proj : Projections.t) ty value =
-  let root =
-    match MemMap.find_opt loc mem with
-    | Some (T root) -> root
-    | Some Freed -> failwith "use after free"
-    | None ->
-        TreeBlock.outer_missing
-          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-          ~tyenv
-          (Projections.base_ty ~leaf_ty:ty proj)
-  in
-  let+ new_block = TreeBlock.prod_proj ~tyenv root proj ty value in
-  MemMap.add loc (T new_block) mem
-
-let cons_uninit ~tyenv (mem : t) loc proj ty =
-  let** block = find_not_freed loc mem in
-  let++ (), outer = TreeBlock.cons_uninit ~loc ~tyenv block proj ty in
-  MemMap.add loc (T outer) mem
-
-let prod_uninit ~tyenv (mem : t) loc (proj : Projections.t) ty =
-  let root =
-    match MemMap.find_opt loc mem with
-    | Some (T root) -> root
-    | Some Freed -> failwith "use after free"
-    | None ->
-        TreeBlock.outer_missing
-          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-          ~tyenv
-          (Projections.base_ty ~leaf_ty:ty proj)
-  in
-  let+ new_block = TreeBlock.prod_uninit ~loc ~tyenv root proj ty in
-  MemMap.add loc (T new_block) mem
-
-let cons_many_uninits ~lk ~tyenv (mem : t) loc proj ty size =
-  let** block = find_not_freed loc mem in
-  let++ (), outer, lk =
-    TreeBlock.cons_many_uninits ~loc ~lk ~tyenv block proj ty size
-  in
-  (MemMap.add loc (T outer) mem, lk)
-
-let prod_many_uninits ~lk ~tyenv (mem : t) loc (proj : Projections.t) ty size =
-  let root =
-    match MemMap.find_opt loc mem with
-    | Some (T root) -> root
-    | Some Freed -> failwith "use after free"
-    | None ->
-        TreeBlock.outer_missing
-          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-          ~tyenv
-          (Projections.base_ty_slice ~leaf_ty:ty proj size)
-  in
-  let+ new_block, lk =
-    TreeBlock.prod_many_uninits ~loc ~lk ~tyenv root proj ty size
+  let++ new_block, lk =
+    TreeBlock.store_proj ~loc ~tyenv ~lk block proj ty value
   in
   (MemMap.add loc (T new_block) mem, lk)
 
-let deinit ~tyenv (mem : t) loc proj ty =
+let cons_value ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
-  let++ new_block = TreeBlock.deinit ~tyenv block proj ty in
-  MemMap.add loc (T new_block) mem
+  let++ value, outer, lk = TreeBlock.cons_proj ~loc ~tyenv ~lk block proj ty in
+  (value, MemMap.add loc (T outer) mem, lk)
+
+let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
+  in
+  let+ new_block, lk = TreeBlock.prod_proj ~tyenv ~lk root proj ty value in
+  (MemMap.add loc (T new_block) mem, lk)
+
+let cons_uninit ~tyenv ~lk (mem : t) loc proj ty =
+  let** block = find_not_freed loc mem in
+  let++ (), outer, lk = TreeBlock.cons_uninit ~loc ~tyenv ~lk block proj ty in
+  (MemMap.add loc (T outer) mem, lk)
+
+let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
+  in
+  let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
+  (MemMap.add loc (T new_block) mem, lk)
+
+let deinit ~tyenv ~lk (mem : t) loc proj ty =
+  let** block = find_not_freed loc mem in
+  let++ new_block, lk = TreeBlock.deinit ~tyenv ~lk block proj ty in
+  (MemMap.add loc (T new_block) mem, lk)
 
 let free (mem : t) loc ty =
   let** block = find_not_freed loc mem in
@@ -949,9 +914,9 @@ let free (mem : t) loc ty =
     DR.error (Invalid_type (ty, block.root.ty))
   else DR.ok (MemMap.add loc Freed mem)
 
-let load_discr ~tyenv (mem : t) loc proj enum_typ =
+let load_discr ~tyenv ~lk (mem : t) loc proj enum_typ =
   let** block = find_not_freed loc mem in
-  TreeBlock.get_discr ~tyenv block proj enum_typ
+  TreeBlock.get_discr ~tyenv ~lk block proj enum_typ
 
 let assertions ~tyenv:_ (mem : t) =
   let value (loc, block) =

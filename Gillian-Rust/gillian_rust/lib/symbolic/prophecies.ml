@@ -97,29 +97,30 @@ let with_observer_block pcy_id pcy_env f =
   let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
   | Some pcy ->
-      let++ value, new_observer = f pcy.observer in
+      let++ value, new_observer, lk = f pcy.observer in
       let new_pcymap =
         MemMap.add pcy_id { pcy with observer = new_observer } pcy_env
       in
-      (value, new_pcymap)
+      (value, new_pcymap, lk)
   | None -> DR.error (Err.Missing_pcy pcy_id)
 
 let with_controller_block pcy_id pcy_env f =
   let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
   | Some pcy ->
-      let++ value, new_controller = f pcy.controller in
+      let++ value, new_controller, lk = f pcy.controller in
       let new_pcymap =
         MemMap.add pcy_id { pcy with controller = new_controller } pcy_env
       in
-      (value, new_pcymap)
+      (value, new_pcymap, lk)
   | None -> DR.error (Err.Missing_pcy pcy_id)
 
-let cons_value_obs ~tyenv pcy_env pcy_var proj ty =
+let cons_value_obs ~tyenv ~lk pcy_env pcy_var proj ty =
   with_observer_block pcy_var pcy_env @@ fun observer ->
-  TreeBlock.cons_proj ~loc:pcy_var ~tyenv observer proj ty
+  TreeBlock.cons_proj ~loc:pcy_var ~tyenv ~lk observer proj ty
 
-let prod_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
+let prod_value_obs ~tyenv ~lk pcy_env pcy_id (proj : Projections.t) ty obs_value
+    =
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -131,19 +132,28 @@ let prod_value_obs ~tyenv pcy_env pcy_id (proj : Projections.t) ty obs_value =
     | Some { value; observer; controller } -> (value, observer, controller)
     | None -> (Expr.LVar (LVar.alloc ()), missing_root (), missing_root ())
   in
-  let* observer = TreeBlock.prod_proj ~tyenv observer proj ty obs_value in
+  let* observer, lk =
+    TreeBlock.prod_proj ~tyenv ~lk observer proj ty obs_value
+  in
   Delayed.return
     ~learned:(TreeBlock.outer_equality_constraint observer controller)
-    (MemMap.add pcy_id { value; observer; controller } pcy_env)
+    (MemMap.add pcy_id { value; observer; controller } pcy_env, lk)
 
-let cons_controller ~tyenv pcy_env pcy_var proj ty =
+let cons_controller ~tyenv ~lk pcy_env pcy_var proj ty =
   with_controller_block pcy_var pcy_env @@ fun controller ->
   (* FIXME: This might not raise the right error.
      We need to pass what kind of error should be created.
      Of course, this is still sound, but risk triggering the wrong automations. *)
-  TreeBlock.cons_proj ~loc:pcy_var ~tyenv controller proj ty
+  TreeBlock.cons_proj ~loc:pcy_var ~tyenv ~lk controller proj ty
 
-let prod_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
+let prod_controller
+    ~tyenv
+    ~lk
+    pcy_env
+    pcy_id
+    (proj : Projections.t)
+    ty
+    ctrl_value =
   let missing_root () =
     TreeBlock.outer_missing
       ~offset:(Option.value ~default:(Expr.EList []) proj.base)
@@ -155,10 +165,12 @@ let prod_controller ~tyenv pcy_env pcy_id (proj : Projections.t) ty ctrl_value =
     | Some { value; observer; controller } -> (value, observer, controller)
     | None -> (Expr.LVar (LVar.alloc ()), missing_root (), missing_root ())
   in
-  let* controller = TreeBlock.prod_proj ~tyenv controller proj ty ctrl_value in
+  let* controller, lk =
+    TreeBlock.prod_proj ~tyenv ~lk controller proj ty ctrl_value
+  in
   Delayed.return
     ~learned:(TreeBlock.outer_equality_constraint observer controller)
-    (MemMap.add pcy_id { value; observer; controller } pcy_env)
+    (MemMap.add pcy_id { value; observer; controller } pcy_env, lk)
 
 let proj_on_var pcy_var (proj : Projections.t) =
   let () =
@@ -214,17 +226,19 @@ let prod_value ~tyenv pcy_env pcy_id (proj : Projections.t) ty new_value =
   Delayed.return ~learned
     (MemMap.add pcy_id { value; observer; controller } pcy_env)
 
-let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
+let resolve ~tyenv ~lk pcy_env pcy_var (proj : Projections.t) ty =
   match MemMap.find_opt pcy_var pcy_env with
   | None -> DR.error (Err.Missing_pcy pcy_var)
   | Some { value; controller; observer } ->
       let open TreeBlock in
       (* Reading from the controller is a way of ensuring we have the part we require.
          An invariant is that the values of the controller and the resolver have to coincide *)
-      let** current_value, _ =
-        load_proj ~loc:pcy_var ~tyenv controller proj ty true
+      let** current_value, _, lk =
+        load_proj ~loc:pcy_var ~tyenv ~lk controller proj ty true
       in
-      let** _, observer = cons_proj ~loc:pcy_var ~tyenv observer proj ty in
+      let** _, observer, lk =
+        cons_proj ~loc:pcy_var ~tyenv ~lk observer proj ty
+      in
       let learned =
         let open Formula.Infix in
         [ (proj_on_var value proj) #== current_value ]
@@ -232,24 +246,24 @@ let resolve ~tyenv pcy_env pcy_var (proj : Projections.t) ty =
       let new_pcies =
         MemMap.add pcy_var { value; controller; observer } pcy_env
       in
-      DR.ok ~learned new_pcies
+      DR.ok ~learned (new_pcies, lk)
 
-let assign ~tyenv pcy_env pcy_var (proj : Projections.t) ty assigned =
+let assign ~tyenv ~lk pcy_env pcy_var (proj : Projections.t) ty assigned =
   match MemMap.find_opt pcy_var pcy_env with
   | None -> DR.error (Err.Missing_pcy pcy_var)
   | Some { value; controller; observer } ->
       let open TreeBlock in
       (* We need both and need to write in both the controller and observer at once *)
-      let** controller =
-        store_proj ~loc:pcy_var ~tyenv controller proj ty assigned
+      let** controller, lk =
+        store_proj ~loc:pcy_var ~tyenv ~lk controller proj ty assigned
       in
-      let** observer =
-        store_proj ~loc:pcy_var ~tyenv observer proj ty assigned
+      let** observer, lk =
+        store_proj ~loc:pcy_var ~tyenv ~lk observer proj ty assigned
       in
       let new_pcies =
         MemMap.add pcy_var { value; controller; observer } pcy_env
       in
-      DR.ok new_pcies
+      DR.ok (new_pcies, lk)
 
 let alloc ~tyenv pcy_env ty =
   let pcy_id = ALoc.alloc () in

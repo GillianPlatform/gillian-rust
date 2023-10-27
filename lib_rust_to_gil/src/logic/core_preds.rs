@@ -1,11 +1,10 @@
 use gillian::gil::{Assertion, Expr, Formula};
 
-use crate::codegen::typ_encoding::EncodedType;
+use crate::codegen::typ_encoding::{self, EncodedType};
 
 mod pred_names {
     pub(crate) const VALUE: &str = "value";
     pub(crate) const UNINIT: &str = "uninit";
-    pub(crate) const MANY_UNINITS: &str = "many_uninits";
     pub(crate) const LFT: &str = "lft";
     pub(crate) const OBSERVER: &str = "value_observer";
     pub(crate) const CONTROLLER: &str = "pcy_controller";
@@ -36,9 +35,10 @@ pub(crate) fn uninit(pointer: Expr, typ: EncodedType) -> Assertion {
 pub(crate) fn many_uninits(pointer: Expr, typ: EncodedType, size: Expr) -> Assertion {
     let loc = pointer.clone().lnth(0);
     let proj = pointer.lnth(1);
+    let typ = typ_encoding::encode_sym_array(typ, size);
     Assertion::GA {
-        name: pred_names::MANY_UNINITS.to_string(),
-        ins: vec![loc, proj, typ.into(), size],
+        name: pred_names::UNINIT.to_string(),
+        ins: vec![loc, proj, typ.into()],
         outs: vec![],
     }
 }

@@ -30,6 +30,9 @@ pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
 }
 
+pub fn encode_sym_array(ty: EncodedType, length: Expr) -> EncodedType {
+    EncodedType([Expr::from("array"), ty.into(), length].into())
+}
 pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGlobalEnv<'tcx> {
     fn add_adt_to_genv(&mut self, def: AdtDef<'tcx>) {
         self.global_env_mut().register_adt(def);

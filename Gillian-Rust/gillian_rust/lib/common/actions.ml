@@ -18,7 +18,6 @@ type core_predicate =
   | Value
   | Freed
   | Uninit
-  | Many_uninits
   | Ty_size
   | Lft
   | Value_observer
@@ -61,7 +60,6 @@ let cp_to_name = function
   | Value -> "value"
   | Freed -> "freed"
   | Uninit -> "uninit"
-  | Many_uninits -> "many_uninits"
   | Ty_size -> "ty_size"
   | Lft -> "lft"
   | Value_observer -> "value_observer"
@@ -73,7 +71,6 @@ let cp_of_name = function
   | "value" -> Value
   | "freed" -> Freed
   | "uninit" -> Uninit
-  | "many_uninits" -> Many_uninits
   | "ty_size" -> Ty_size
   | "lft" -> Lft
   | "value_observer" -> Value_observer
