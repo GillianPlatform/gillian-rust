@@ -18,6 +18,7 @@ type core_predicate =
   | Value
   | Uninit
   | Maybe_uninit
+  | Many_maybe_uninit
   | Freed
   | Ty_size
   | Lft
@@ -61,6 +62,7 @@ let cp_to_name = function
   | Value -> "value"
   | Uninit -> "uninit"
   | Maybe_uninit -> "maybe_uninit"
+  | Many_maybe_uninit -> "many_maybe_uninit"
   | Freed -> "freed"
   | Ty_size -> "ty_size"
   | Lft -> "lft"
@@ -73,6 +75,7 @@ let cp_of_name = function
   | "value" -> Value
   | "uninit" -> Uninit
   | "maybe_uninit" -> Maybe_uninit
+  | "many_maybe_uninit" -> Many_maybe_uninit
   | "freed" -> Freed
   | "ty_size" -> Ty_size
   | "lft" -> Lft

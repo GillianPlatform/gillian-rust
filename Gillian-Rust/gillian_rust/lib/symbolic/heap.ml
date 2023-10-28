@@ -66,12 +66,13 @@ module Symb_opt = struct
 
   let is_some e = (Expr.list_nth e 0) #== (Expr.int 1)
   let is_none e = (Expr.list_nth e 0) #== (Expr.int 0)
+  let access_some_value e = Expr.list_nth (Expr.list_nth e 1) 0
 
   type t = Some of Expr.t | None | Symb of Expr.t
 
   let of_expr t =
     match%ent t with
-    | is_some -> Delayed.return @@ Some (Expr.list_nth (Expr.list_nth t 1) 0)
+    | is_some -> Delayed.return @@ Some (access_some_value t)
     | is_none -> Delayed.return None
     | _ -> Delayed.return @@ Symb t
 
@@ -122,11 +123,21 @@ module TreeBlock = struct
 
   and tree_content =
     | Symbolic of Expr.t
-    | Leaf of Expr.t
+        (** Something that cannot be given further structure,
+            either because it's already a scalar, or because
+            we want to be lazy in its concretization. *)
+    | Uninit
+    | SymbolicMaybeUninit of Expr.t
+        (** The expr should be a "Rust value" (encoded a as a GIL expr),
+            which has type Option<T>.
+            If the value is None, then it's the equivalent of an [Uninit] node
+            If the value is [Some x] then it's the equivalent of a [Symbolic x] node. *)
+    | ManySymbolicMaybeUninit of Expr.t
+        (** Same as above, except that the expression is of type Seq<Option<T>>, were each element
+            of the sequence behaves as above.  *)
     | Fields of t list
     | Array of t list
     | Enum of { discr : int; fields : t list }
-    | Uninit
     | Missing
 
   type outer = { offset : Expr.t; root : t }
@@ -137,7 +148,8 @@ module TreeBlock = struct
     @@
     match t.content with
     | Uninit | Missing -> SS.empty
-    | Symbolic e | Leaf e -> Expr.lvars e
+    | Symbolic e | SymbolicMaybeUninit e | ManySymbolicMaybeUninit e ->
+        Expr.lvars e
     | Fields l | Array l | Enum { fields = l; _ } ->
         List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
 
@@ -159,12 +171,13 @@ module TreeBlock = struct
   and pp_content ft =
     let open Fmt in
     function
-    | Leaf e -> Expr.pp ft e
     | Fields v -> (parens (Fmt.list ~sep:Fmt.comma pp)) ft v
     | Enum { discr; fields } ->
         pf ft "%a[%a]" int discr (Fmt.list ~sep:comma pp) fields
     | Array v -> (brackets (Fmt.list ~sep:comma pp)) ft v
     | Symbolic s -> Expr.pp ft s
+    | SymbolicMaybeUninit s -> pf ft "¿ %a ?" Expr.pp s
+    | ManySymbolicMaybeUninit s -> pf ft "*¿ %a ?*" Expr.pp s
     | Uninit -> Fmt.string ft "UNINIT"
     | Missing -> Fmt.string ft "MISSING"
 
@@ -173,56 +186,69 @@ module TreeBlock = struct
     pf ft "@[<v 2>[OFFSET: %a] %a @]" Expr.pp t.offset pp t.root
 
   let to_rust_value ?(current_proj = []) block :
-      (Expr.t, Err.Conversion_error.t) Result.t =
-    let rec aux ~current_proj ({ content; ty } as t) :
-        (Expr.t, Err.Conversion_error.t) Result.t =
-      let open Result.Syntax in
+      (Expr.t, Err.Conversion_error.t) DR.t =
+    let rec map_with_proj ~proj vec =
+      let++ _, vec =
+        List.fold_left
+          (fun acc f ->
+            let** i, acc = acc in
+            let++ f = aux ~current_proj:(proj i :: current_proj) f in
+            (i + 1, f :: acc))
+          (DR.ok (0, []))
+          vec
+      in
+      List.rev vec
+    and aux ~current_proj { content; ty } :
+        (Expr.t, Err.Conversion_error.t) DR.t =
       match content with
-      | Leaf s -> (
-          match ty with
-          | Scalar (Uint _ | Int _ | Char | Bool) | Ptr _ | Ref _ -> Ok s
-          | _ -> Fmt.failwith "Malformed tree: %a" pp t)
       | Fields v ->
           let proj i = Projections.Field (i, ty) in
-          let+ tuple =
-            List.mapi
-              (fun i f -> aux ~current_proj:(proj i :: current_proj) f)
-              v
-            |> Result.all
-          in
-          Expr.EList tuple
+          let++ fields = map_with_proj ~proj v in
+          Expr.EList fields
       | Array v ->
           let total_size = List.length v in
-          let proj i = Projections.Index (i, ty, total_size) in
-          let+ tuple =
-            List.mapi
-              (fun i f ->
-                aux ~current_proj:(proj (Expr.int i) :: current_proj) f)
-              v
-            |> Result.all
-          in
-          Expr.EList tuple
+          let proj i = Projections.Index (Expr.int i, ty, total_size) in
+          let++ elements = map_with_proj ~proj v in
+          Expr.EList elements
       | Enum { discr; fields } ->
-          let+ fields = List.map (aux ~current_proj) fields |> Result.all in
+          let proj i = Projections.VField (discr, ty, i) in
+          let++ fields = map_with_proj ~proj fields in
           Expr.EList [ Expr.int discr; EList fields ]
-      | Symbolic s -> Ok s
-      | Uninit -> Error (Uninit, List.rev current_proj)
-      | Missing -> Error (Missing, List.rev current_proj)
+      | Symbolic s -> DR.ok s
+      | SymbolicMaybeUninit e ->
+          if%ent Symb_opt.is_some e then DR.ok e
+          else DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
+      | ManySymbolicMaybeUninit _e ->
+          failwith
+            "ManySymbolicMaybeUninit not available yet. It will be a forall"
+      | Uninit -> DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
+      | Missing -> DR.error Err.Conversion_error.(Missing, List.rev current_proj)
     in
     aux ~current_proj block
 
-  let to_rust_value_exn ~msg t = to_rust_value t |> Result.ok_or ~msg
+  exception Tree_not_a_value
 
-  let rec complete_and_init block =
-    match block.content with
-    | Missing | Uninit -> false
-    | Symbolic _ | Leaf _ -> true
-    | Fields v | Array v | Enum { fields = v; _ } ->
-        List.for_all complete_and_init v
+  (* Converts to a value only if there is no doubt that it can be done. *)
+  let rec to_rust_value_exn t =
+    match t.content with
+    | Fields elements | Array elements ->
+        let elements = List.map to_rust_value_exn elements in
+        Expr.EList elements
+    | Enum { discr; fields } ->
+        let fields = List.map to_rust_value_exn fields in
+        Expr.EList [ Expr.int discr; EList fields ]
+    | Symbolic s -> s
+    | Uninit | Missing | ManySymbolicMaybeUninit _ | SymbolicMaybeUninit _ ->
+        raise Tree_not_a_value
+
+  let to_rust_value_opt_no_reasoning t =
+    try Some (to_rust_value_exn t) with Tree_not_a_value -> None
 
   let assertions ~loc ~base_offset block =
     let value_cp = Actions.cp_to_name Value in
     let uninit_cp = Actions.cp_to_name Uninit in
+    let maybe_uninit_cp = Actions.cp_to_name Maybe_uninit in
+    let many_maybe_uninit_cp = Actions.cp_to_name Many_maybe_uninit in
     let rec aux ~current_proj ({ content; ty } as block) =
       let ins ty =
         let proj =
@@ -232,40 +258,64 @@ module TreeBlock = struct
         let ty = Ty.to_expr ty in
         [ loc; proj; ty ]
       in
-      if complete_and_init block then
-        let value =
-          to_rust_value_exn
-            ~msg:(__FUNCTION__ ^ ": Complete and init but to_rust_value failed?")
-            block
-        in
-        Seq.return (Asrt.GA (value_cp, ins ty, [ value ]))
-      else
-        match content with
-        | Uninit -> Seq.return (Asrt.GA (uninit_cp, ins ty, []))
-        | Missing -> Seq.empty
-        | Fields v ->
-            let proj i = Projections.Field (i, ty) in
-            List.to_seq v
-            |> Seq.mapi (fun i f ->
-                   aux ~current_proj:(proj i :: current_proj) f)
-            |> Seq.concat
-        | Array v ->
-            let total_size = List.length v in
-            let proj i = Projections.Index (Expr.int i, ty, total_size) in
-            List.to_seq v
-            |> Seq.mapi (fun i f ->
-                   aux ~current_proj:(proj i :: current_proj) f)
-            |> Seq.concat
-        | Enum _ ->
-            failwith
-              "Trying to derive assertion for incomplete enum: to implement!"
-        | Symbolic _ | Leaf _ -> failwith "unreachable"
+      match to_rust_value_opt_no_reasoning block with
+      | Some value -> Seq.return (Asrt.GA (value_cp, ins ty, [ value ]))
+      | None -> (
+          match content with
+          | Uninit -> Seq.return (Asrt.GA (uninit_cp, ins ty, []))
+          | SymbolicMaybeUninit s ->
+              Seq.return (Asrt.GA (maybe_uninit_cp, ins ty, [ s ]))
+          | ManySymbolicMaybeUninit s ->
+              Seq.return (Asrt.GA (many_maybe_uninit_cp, ins ty, [ s ]))
+          | Missing -> Seq.empty
+          | Fields v ->
+              let proj i = Projections.Field (i, ty) in
+              List.to_seq v
+              |> Seq.mapi (fun i f ->
+                     aux ~current_proj:(proj i :: current_proj) f)
+              |> Seq.concat
+          | Array v ->
+              let total_size = List.length v in
+              let proj i = Projections.Index (Expr.int i, ty, total_size) in
+              List.to_seq v
+              |> Seq.mapi (fun i f ->
+                     aux ~current_proj:(proj i :: current_proj) f)
+              |> Seq.concat
+          | Enum _ ->
+              failwith
+                "Trying to derive assertion for incomplete enum: to implement!"
+          | Symbolic _ -> failwith "unreachable")
     in
 
     aux ~current_proj:[] block
 
   let outer_assertions ~loc block =
     assertions ~loc ~base_offset:(Some block.offset) block.root
+
+  let rec uninitialized ~tyenv ty =
+    match ty with
+    | Ty.Tuple v ->
+        let tuple = List.map (uninitialized ~tyenv) v in
+        { ty; content = Fields tuple }
+    | Adt (name, subst) -> (
+        match Tyenv.adt_def ~tyenv name with
+        | Struct (_repr, fields) ->
+            let tuple =
+              List.map
+                (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
+                fields
+            in
+
+            { ty; content = Fields tuple }
+        | Enum _ -> { ty; content = Uninit })
+    | Array { length = Expr.Lit (Int length); ty = ty' }
+      when Z.(length < of_int 20) ->
+        let uninit_field _ = uninitialized ~tyenv ty' in
+        let content = List.init (Z.to_int length) uninit_field in
+        { ty; content = Array content }
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Array _ ->
+        { ty; content = Uninit }
+    | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let rec of_rust_struct_value
       ~tyenv
@@ -304,7 +354,7 @@ module TreeBlock = struct
     match (ty, e) with
     | (Ty.Scalar (Uint _ | Int _ | Bool) | Ptr _ | Ref _), e ->
         Logging.tmi (fun m -> m "valid: %a for %a" Expr.pp e Ty.pp ty);
-        if%sat TypePreds.valid ty e then DR.ok { ty; content = Leaf e }
+        if%sat TypePreds.valid ty e then DR.ok { ty; content = Symbolic e }
         else DR.error (Err.Invalid_value (ty, e))
     | Tuple _, Lit (LList data) ->
         let content = List.map lift_lit data in
@@ -330,6 +380,21 @@ module TreeBlock = struct
         { ty; content = Array mem_array }
     | _, s -> DR.ok { ty; content = Symbolic s }
 
+  let of_rust_maybe_uninit ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
+    let* maybe_value = Symb_opt.of_expr e in
+    match maybe_value with
+    | None -> DR.ok (uninitialized ~tyenv ty)
+    | Some value -> of_rust_value ~tyenv ~ty value
+    | Symb e -> DR.ok { content = SymbolicMaybeUninit e; ty }
+
+  let of_rust_many_maybe_uninit ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
+    let* e = Delayed.reduce e in
+    match (e, ty) with
+    | Expr.EList l, Ty.Array { ty; _ } ->
+        let++ elements = DR_list.map (of_rust_maybe_uninit ~tyenv ~ty) l in
+        { content = Array elements; ty }
+    | _ -> DR.ok { content = ManySymbolicMaybeUninit e; ty }
+
   let outer_missing ~offset ~tyenv:_ ty =
     let root = { ty; content = Missing } in
     { offset; root }
@@ -337,31 +402,6 @@ module TreeBlock = struct
   let outer_symbolic ~offset ~tyenv:_ ty e =
     let root = { ty; content = Symbolic e } in
     { offset; root }
-
-  let rec uninitialized ~tyenv ty =
-    match ty with
-    | Ty.Tuple v ->
-        let tuple = List.map (uninitialized ~tyenv) v in
-        { ty; content = Fields tuple }
-    | Adt (name, subst) -> (
-        match Tyenv.adt_def ~tyenv name with
-        | Struct (_repr, fields) ->
-            let tuple =
-              List.map
-                (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
-                fields
-            in
-
-            { ty; content = Fields tuple }
-        | Enum _ -> { ty; content = Uninit })
-    | Array { length = Expr.Lit (Int length); ty = ty' }
-      when Z.(length < of_int 20) ->
-        let uninit_field _ = uninitialized ~tyenv ty' in
-        let content = List.init (Z.to_int length) uninit_field in
-        { ty; content = Array content }
-    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Array _ ->
-        { ty; content = Uninit }
-    | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
 
   let uninitialized_outer ~tyenv ty =
     let root = uninitialized ~tyenv ty in
@@ -461,7 +501,8 @@ module TreeBlock = struct
     | Missing -> true
     | Array fields | Fields fields | Enum { fields; _ } ->
         List.exists partially_missing fields
-    | Symbolic _ | Uninit | Leaf _ -> false
+    | Symbolic _ | Uninit | ManySymbolicMaybeUninit _ | SymbolicMaybeUninit _ ->
+        false
 
   let rec missing_qty t =
     match t.content with
@@ -470,7 +511,8 @@ module TreeBlock = struct
         if List.exists (fun f -> Option.is_some (missing_qty f)) fields then
           Some Partially
         else None
-    | Symbolic _ | Uninit | Leaf _ -> None
+    | Symbolic _ | Uninit | ManySymbolicMaybeUninit _ | SymbolicMaybeUninit _ ->
+        None
 
   let totally_missing t =
     match t.content with
@@ -650,31 +692,23 @@ module TreeBlock = struct
     (ret, { outer with root }, lk)
 
   let load_proj ~loc ~tyenv t proj ty copy =
-    let open Result.Syntax in
     let update block = if copy then block else uninitialized ~tyenv ty in
     let return_and_update t =
-      let result =
-        let+ value =
-          to_rust_value t
-          |> Result.map_error (Err.Conversion_error.lift ~loc ~proj)
-        in
-        (value, update t)
+      let++ value =
+        let result = to_rust_value t in
+        DR.map_error result (Err.Conversion_error.lift ~loc ~proj)
       in
-      DR.of_result result
+      (value, update t)
     in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
   let cons_proj ~loc ~tyenv t proj ty =
-    let open Result.Syntax in
     let return_and_update t =
-      let result =
-        let+ value =
-          to_rust_value t
-          |> Result.map_error (Err.Conversion_error.lift ~loc ~proj)
-        in
-        (value, missing t.ty)
+      let++ value =
+        let result = to_rust_value t in
+        DR.map_error result (Err.Conversion_error.lift ~loc ~proj)
       in
-      DR.of_result result
+      (value, missing t.ty)
     in
     find_proj ~tyenv ~return_and_update ~ty t proj
 
@@ -747,7 +781,7 @@ module TreeBlock = struct
             | Some value ->
                 let++ value = of_rust_value ~tyenv ~ty value in
                 ((), value)
-            | Symb _ -> failwith "TODO")
+            | Symb e -> DR.ok ((), { content = SymbolicMaybeUninit e; ty }))
         | _ -> Delayed.vanish ()
         (* Duplicated resource *)
       in
@@ -799,30 +833,45 @@ module TreeBlock = struct
     (new_block, lk)
 
   let rec equality_constraints t1 t2 =
+    (* Using to_rust_value_exn is over-approximate, but this is only used in the context of prophecies,
+       which may never be uninit.
+       At some point, I should probably rework prophecies to just be values and not trees anyway 🤷‍♂️ *)
     let ( #== ) = Formula.Infix.( #== ) in
     match (t1.content, t2.content) with
     | Missing, _ | _, Missing -> []
-    | (Symbolic e1 | Leaf e1), (Symbolic e2 | Leaf e2) -> [ e1 #== e2 ]
+    | Symbolic e1, Symbolic e2 -> [ e1 #== e2 ]
     | Fields f1, Fields f2 -> List_utils.concat_map_2 equality_constraints f1 f2
     | Array f1, Array f2 -> List_utils.concat_map_2 equality_constraints f1 f2
     | Enum _, Enum _ ->
-        let to_value =
-          to_rust_value_exn ~msg:"Equality constraint: Malformed enums!!"
-        in
+        let to_value = to_rust_value_exn in
         (* Sub parts of enum cannot be missing *)
         [ (to_value t1) #== (to_value t2) ]
-    | Symbolic e, content | content, Symbolic e -> (
-        match to_rust_value { ty = t1.ty; content } with
-        | Ok value -> [ value #== e ]
-        | Error _ -> Fmt.failwith "Need to semi-concretize things to learn")
+    | Symbolic e, content | content, Symbolic e ->
+        let content = to_rust_value_exn { ty = t1.ty; content } in
+        [ content #== e ]
     | _ -> Fmt.failwith "cannot learn equality of %a and %a" pp t1 pp t2
 
   let substitution ~tyenv ~subst_expr t =
     let rec substitute_content ~ty t =
       match t with
-      | Leaf e ->
-          let e = subst_expr e in
-          DR.ok ~learned:[ TypePreds.valid ty e ] (Leaf e)
+      | Symbolic e ->
+          let new_e = subst_expr e in
+          if Expr.equal new_e e then DR.ok t
+          else
+            let++ new_tree = of_rust_value ~tyenv ~ty new_e in
+            new_tree.content
+      | SymbolicMaybeUninit e ->
+          let new_e = subst_expr e in
+          if Expr.equal new_e e then DR.ok t
+          else
+            let++ new_tree = of_rust_maybe_uninit ~tyenv ~ty new_e in
+            new_tree.content
+      | ManySymbolicMaybeUninit e ->
+          let new_e = subst_expr e in
+          if Expr.equal new_e e then DR.ok t
+          else
+            let++ new_tree = of_rust_many_maybe_uninit ~tyenv ~ty new_e in
+            new_tree.content
       | Array lst ->
           let++ lst = DR_list.map substitution lst in
           Array lst
@@ -832,12 +881,6 @@ module TreeBlock = struct
       | Enum { fields; discr } ->
           let++ fields = DR_list.map substitution fields in
           Enum { fields; discr }
-      | Symbolic s ->
-          let new_s = subst_expr s in
-          if new_s == s then DR.ok t
-          else
-            let++ value = of_rust_value ~tyenv ~ty new_s in
-            value.content
       | Uninit | Missing -> DR.ok t
     and substitution { content; ty } =
       let ty = Ty.substitution ~subst_expr ty in
