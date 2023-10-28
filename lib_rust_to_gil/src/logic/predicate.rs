@@ -801,6 +801,23 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         super::core_preds::many_uninits(pointer, typ, size)
     }
 
+    fn compile_maybe_uninit(
+        &mut self,
+        args: &[ExprId],
+        fn_def_ty: Ty<'tcx>,
+        thir: &Thir<'tcx>,
+    ) -> Assertion {
+        let ty = match fn_def_ty.kind() {
+            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
+            _ => panic!("compile_uninit went wrong"),
+        };
+        let ty = self.encode_type_with_args(ty);
+        let pointer = self.compile_expression(args[0], thir);
+        let pointee = self.compile_expression(args[1], thir);
+
+        super::core_preds::maybe_uninit(pointer, ty, pointee)
+    }
+
     fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {
         assert!(args.len() == 2, "Pure call must have one argument");
         // The type in the points_to is the type of the pointee.
@@ -886,6 +903,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
                 Some(LogicStubs::AssertUninit) => self.compile_uninit(args, *ty, thir),
                 Some(LogicStubs::AssertManyUninits) => self.compile_many_uninits(args, *ty, thir),
+                Some(LogicStubs::AssertMaybeUninit) => self.compile_maybe_uninit(args, *ty, thir),
                 Some(LogicStubs::ProphecyObserver) => {
                     self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);

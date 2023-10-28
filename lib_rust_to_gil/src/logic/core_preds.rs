@@ -5,6 +5,7 @@ use crate::codegen::typ_encoding::{self, EncodedType};
 mod pred_names {
     pub(crate) const VALUE: &str = "value";
     pub(crate) const UNINIT: &str = "uninit";
+    pub(crate) const MAYBE_UNINIT: &str = "maybe_uninit";
     pub(crate) const LFT: &str = "lft";
     pub(crate) const OBSERVER: &str = "value_observer";
     pub(crate) const CONTROLLER: &str = "pcy_controller";
@@ -40,6 +41,16 @@ pub(crate) fn many_uninits(pointer: Expr, typ: EncodedType, size: Expr) -> Asser
         name: pred_names::UNINIT.to_string(),
         ins: vec![loc, proj, typ.into()],
         outs: vec![],
+    }
+}
+
+pub(crate) fn maybe_uninit(pointer: Expr, typ: EncodedType, pointee: Expr) -> Assertion {
+    let loc = pointer.clone().lnth(0);
+    let proj = pointer.lnth(1);
+    Assertion::GA {
+        name: pred_names::MAYBE_UNINIT.to_string(),
+        ins: vec![loc, proj, typ.into()],
+        outs: vec![pointee],
     }
 }
 

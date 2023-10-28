@@ -97,6 +97,12 @@ pub trait PointsToMaybeUninit<T>: Sized {
     fn many_uninits(self, _: usize) -> RustAssertion {
         unreachable!()
     }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::asrt::maybe_uninit"]
+    fn maybe_uninit(self, _: Option<T>) -> RustAssertion {
+        unreachable!()
+    }
 }
 impl<T> PointsToMaybeUninit<T> for *const T {}
 impl<T> PointsToMaybeUninit<T> for *mut T {}

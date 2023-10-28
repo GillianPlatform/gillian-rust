@@ -61,6 +61,29 @@ module TypePreds = struct
           Expr.pp e Ty.pp scalar_ty
 end
 
+module Symb_opt = struct
+  open Formula.Infix
+
+  let is_some e = (Expr.list_nth e 0) #== (Expr.int 1)
+  let is_none e = (Expr.list_nth e 0) #== (Expr.int 0)
+
+  type t = Some of Expr.t | None | Symb of Expr.t
+
+  let of_expr t =
+    match%ent t with
+    | is_some -> Delayed.return @@ Some (Expr.list_nth (Expr.list_nth t 1) 0)
+    | is_none -> Delayed.return None
+    | _ -> Delayed.return @@ Symb t
+
+  let none_e = Expr.EList [ Expr.int 0; Expr.EList [] ]
+
+  let to_expr t =
+    match t with
+    | Some e -> Expr.EList [ Expr.int 1; Expr.EList [ e ] ]
+    | None -> none_e
+    | Symb e -> e
+end
+
 let too_symbolic e =
   Delayed.map (Delayed.reduce e) (fun e -> Error (Too_symbolic e))
 
@@ -701,6 +724,42 @@ module TreeBlock = struct
     | Ok x -> Delayed.return x
     | Error _ -> Delayed.vanish ()
 
+  let cons_maybe_uninit ~loc:_ ~tyenv t proj ty =
+    let return_and_update t =
+      match t.content with
+      | Uninit ->
+          let result = Symb_opt.to_expr None in
+          DR.ok (result, missing t.ty)
+      | _ -> failwith "cannot consume maybe_uninit yet"
+    in
+    find_proj ~tyenv ~return_and_update ~ty t proj
+
+  let prod_maybe_uninit ~loc:_ ~lk ~tyenv t proj ty maybe_value =
+    let* result =
+      let return_and_update block =
+        match missing_qty block with
+        | Some Totally -> (
+            let* maybe_value = Symb_opt.of_expr maybe_value in
+            match maybe_value with
+            | None ->
+                let value = uninitialized ~tyenv ty in
+                DR.ok ((), value)
+            | Some value ->
+                let++ value = of_rust_value ~tyenv ~ty value in
+                ((), value)
+            | Symb _ -> failwith "TODO")
+        | _ -> Delayed.vanish ()
+        (* Duplicated resource *)
+      in
+      let++ _, new_block, lk =
+        find_proj ~tyenv ~lk ~ty ~return_and_update t proj
+      in
+      (new_block, lk)
+    in
+    match result with
+    | Ok x -> Delayed.return x
+    | Error _ -> Delayed.vanish ()
+
   let store_proj ~loc ~tyenv ~lk t proj ty value =
     let return_and_update block =
       match missing_qty block with
@@ -896,6 +955,36 @@ let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
           (Projections.base_ty ~leaf_ty:ty proj)
   in
   let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
+  (MemMap.add loc (T new_block) mem, lk)
+
+let cons_maybe_uninit ~tyenv ~lk (mem : t) loc proj ty =
+  let** block = find_not_freed loc mem in
+  let++ value, outer, lk =
+    TreeBlock.cons_maybe_uninit ~loc ~tyenv ~lk block proj ty
+  in
+  (value, MemMap.add loc (T outer) mem, lk)
+
+let prod_maybe_uninit
+    ~tyenv
+    ~lk
+    (mem : t)
+    loc
+    (proj : Projections.t)
+    ty
+    maybe_value =
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj)
+  in
+  let+ new_block, lk =
+    TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
+  in
   (MemMap.add loc (T new_block) mem, lk)
 
 let deinit ~tyenv ~lk (mem : t) loc proj ty =
