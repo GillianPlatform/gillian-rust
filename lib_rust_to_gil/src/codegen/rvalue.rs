@@ -131,11 +131,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 match (self.operand_ty(op).kind(), ty_to.kind()) {
                     (TyKind::Ref(_, left, _), TyKind::Ref(_, right, _)) => {
                         match (left.kind(), right.kind()) {
-                           (TyKind::Array(element_ty , cst), TyKind::Slice(..)) => {
+                           (TyKind::Array(_element_ty , cst), TyKind::Slice(..)) => {
                                 let vtsz = cst.to_valtree();
                                 let sz = self.encode_valtree(&vtsz, cst.ty());
-                                let element_pointer = self.push_cast_array_to_element_pointer(enc_op, *left, *element_ty);
-                                vec![element_pointer, sz.into()].into()
+                                vec![enc_op, sz.into()].into()
                             },
                             (a, b) => fatal!(
                                 self,
@@ -153,33 +152,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     ),
                 }
             }
-            CastKind::PtrToPtr => {
-                let opty = self.operand_ty(op);
-                log::debug!(
-                    "Encoding PtrToPtr with types from {:#?} and to {:#?}",
-                    opty,
-                    ty_to
-                );
-                match (opty.kind(), ty_to.kind()) {
-                    (
-                        TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
-                        TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
-                    ) if ty.is_slice() && typ.is_slice() => Expr::lnth(enc_op, 0),
-                    (
-                        TyKind::RawPtr(ty::TypeAndMut { ty, .. }),
-                        TyKind::RawPtr(ty::TypeAndMut { ty: typ, .. }),
-                    )
-                    | (TyKind::Ref(_, ty, _), TyKind::Ref(_, typ, _)) => {
-                        log::debug!(
-                            "Encoding cast from *{:#?} to *{:#?} as simple cast!",
-                            ty,
-                            typ
-                        );
-                        self.encode_simple_ptr_cast(enc_op, *ty, *typ)
-                    }
-                    _ => fatal!(self, "Cannot encode cast from {:#?} to {:#?}", opty, ty_to),
-                }
-            }
+            // A pointer cast is basically a no-op
+            CastKind::PtrToPtr => enc_op,
             // These two operations do nothing in our semantics.
             // It will lead to some failures, but it's ok, it's sound and it supports a large
             // set of programs.

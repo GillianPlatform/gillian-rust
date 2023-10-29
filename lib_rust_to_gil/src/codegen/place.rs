@@ -24,7 +24,6 @@ pub enum GilProj {
     ArrayIndex(Expr, EncodedType, i128),
     SliceIndex(Expr, EncodedType), // The EncodedType is the type of elements in the slice
     Plus(ArithKind, Expr, EncodedType),
-    Cast(EncodedType, EncodedType),
 }
 
 impl GilProj {
@@ -39,7 +38,6 @@ impl GilProj {
             ]
             .into(),
             Self::ArrayIndex(e, ty, sz) => vec!["i".into(), e, ty.into(), sz.into()].into(),
-            Self::Cast(from_ty, into_ty) => vec!["c".into(), from_ty.into(), into_ty.into()].into(),
             Self::Plus(ak, e, ty) => vec!["+".into(), ak.is_wrapping().into(), e, ty.into()].into(),
             Self::SliceIndex(e, ty) => Self::Plus(ArithKind::Overflow, e, ty).into_expr(),
         }
@@ -102,22 +100,6 @@ impl<'tcx> GilPlace<'tcx> {
 }
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    // Careful: array_ty.kind() should always be [element_ty; _]
-    pub fn push_cast_array_to_element_pointer(
-        &mut self,
-        e: Expr,
-        array_ty: Ty<'tcx>,
-        element_ty: Ty<'tcx>,
-    ) -> Expr {
-        // Casting an array to the first element pointer is the same operation as getting the 0th element.
-        let mut place = GilPlace::base(e, array_ty);
-        place.proj.push(GilProj::Cast(
-            self.encode_type(array_ty),
-            self.encode_type(element_ty),
-        ));
-        place.into_expr_ptr()
-    }
-
     pub fn push_read_gil_place_in_memory(
         &mut self,
         res: String,
@@ -319,19 +301,5 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 assigned_expr: Expr::undefined(),
             }),
         }
-    }
-
-    pub fn encode_simple_ptr_cast(
-        &mut self,
-        e: Expr,
-        from_ty: Ty<'tcx>,
-        into_ty: Ty<'tcx>,
-    ) -> Expr {
-        let mut gil_place = GilPlace::base(e, from_ty);
-        gil_place.proj.push(GilProj::Cast(
-            self.encode_type(from_ty),
-            self.encode_type(into_ty),
-        ));
-        gil_place.into_expr_ptr()
     }
 }

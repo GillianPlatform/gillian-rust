@@ -206,33 +206,22 @@ proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
             goto [old_is_unsized] ou os;
      ou:    goto [new_is_unsized] ounu ouns;
      ounu:  (* Old is unsized and new is unsized *)
-            new_proj := {{ "c", old_ty, new_ty }};
             fat_ptr := l-nth(nn, 0i);
             ptr := l-nth(fat_ptr, 0i);
             size := l-nth(fat_ptr, 1i);
-            loc := l-nth(ptr, 0i);
-            proj := l+(l-nth(ptr, 1i), {{ new_proj }});
-            fail[CAST]("TODO: Cast from unsized to unsized: be careful with size, it needs to be recomputed actually... See i__std_shims");
-            ret := {{ {{ {{ loc, proj }}, size }} }};
+            fail[CAST]("TODO: Resize fat pointer");
+            ret := {{ {{ ptr, size }} }};
             return;
      ouns: (* Old is unsized and new is sized, we just get rid of the size in addition to casting.
               The casting is from inner to inner *)
-           new_proj := {{ "c", l-nth(old_ty, 1i), new_ty }};
-           fat_ptr := l-nth(nn, 0i);
-           ptr := l-nth(fat_ptr, 0i);
-           loc := l-nth(ptr, 0i);
-           proj := l+(l-nth(ptr, 1i), {{ new_proj }});
-           ret := {{ {{ loc, proj }} }};
+           ptr := l-nth(l-nth(nn, 0i), 0i);
+           ret := {{ ptr }};
            return;
      os:   goto [new_is_unsized] osnu osns;
      osnu: (* Old is sized and new is unsized: impossible, cannot get size! *)
            fail[CAST]("cannot cast from sized to unsized");
-     osns: (* Old is sized and new is sized *)
-           new_proj := {{ "c", old_ty, new_ty }};
-           ptr := l-nth(nn, 0i);
-           loc := l-nth(ptr, 0i);
-           proj := l+(l-nth(ptr, 1i), {{ new_proj }});
-           ret := {{ {{ loc, proj }} }};
+     osns: (* Old is sized and new is sized, there's nothing to do *)
+           ret := nn;
            return
 };
 

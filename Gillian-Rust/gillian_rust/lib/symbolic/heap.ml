@@ -600,12 +600,12 @@ module TreeBlock = struct
     (* For now we implement only a few cases we'll need more as we do more case studies and proofs.
        The casts surely come with more general rules. *)
     match (path, t.ty) with
-    | ([ Cast _ ] | []), Array { ty = ty'; length } when Ty.equal ty' ty ->
+    | [], Array { ty = ty'; length } when Ty.equal ty' ty ->
         if%ent length #== size then
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
         else failwith "Not implemented: splitting array CASE 1"
-    | ([ Cast _ ] | []), Array { ty = ty'; length } when untyped ->
+    | [], Array { ty = ty'; length } when untyped ->
         let* size_of_actual, lk = Layout_knowledge.size_of ~lk ty' in
         let* size_of_expected, lk = Layout_knowledge.size_of ~lk ty in
         if%ent
@@ -615,7 +615,7 @@ module TreeBlock = struct
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
         else failwith "Not implemented: splitting array CASE 2"
-    | ([ Cast _ ] | []), Array { ty = ty_from; length = length_from } ->
+    | [], Array { ty = ty_from; length = length_from } ->
         Logging.verbose (fun m ->
             m
               "find_slice: ty_from: %a length_from %a, ty_to: %a length_to: \
@@ -699,7 +699,7 @@ module TreeBlock = struct
     let t = outer.root in
     Logging.verbose (fun m ->
         m "Before path reduction: %a" Projections.pp_path proj.from_base);
-    let path = Projections.Reduction.reduce_op_list ~goal:ty proj.from_base in
+    let path = Projections.Reduction.reduce_op_list proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
     let++ ret, root, lk =
@@ -728,7 +728,7 @@ module TreeBlock = struct
     let t = outer.root in
     Logging.verbose (fun m ->
         m "Before path reduction: %a" Projections.pp_path proj.from_base);
-    let path = Projections.Reduction.reduce_op_list ~goal:ty proj.from_base in
+    let path = Projections.Reduction.reduce_op_list proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
     let++ ret, root, lk = find_path ~tyenv ~lk ~return_and_update ~ty t path in

@@ -7,7 +7,6 @@ type op =
   | VField of int * Ty.t * int
   | Field of int * Ty.t
   | Index of Expr.t * Ty.t * int
-  | Cast of Ty.t * Ty.t
   | Plus of arith_kind * Expr.t * Ty.t
   | UPlus of arith_kind * Expr.t
 [@@deriving yojson, eq]
@@ -25,7 +24,6 @@ let pp_op fmt =
   | Field (i, ty) -> Fmt.pf fmt ".%d<%a>" i Ty.pp ty
   | VField (i, ty, vidx) -> Fmt.pf fmt ".%d<%a.%d>" i Ty.pp ty vidx
   | Index (i, ty, sz) -> Fmt.pf fmt "[%a]<[%a; %d]>" Expr.pp i Ty.pp ty sz
-  | Cast (from_ty, into_ty) -> Fmt.pf fmt "%a>%a" Ty.pp from_ty Ty.pp into_ty
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%a)<%a>" (str_ak k) Expr.pp i Ty.pp ty
   | UPlus (k, i) -> Fmt.pf fmt "u+%s(%a)" (str_ak k) Expr.pp i
 
@@ -41,11 +39,7 @@ let root = { base = None; from_base = [] }
 let base_ty ~(leaf_ty : Ty.t) (proj : t) =
   match proj.from_base with
   | [] -> leaf_ty
-  | ( Field (_, ty)
-    | VField (_, ty, _)
-    | Index (_, ty, _)
-    | Cast (ty, _)
-    | Plus (_, _, ty) )
+  | (Field (_, ty) | VField (_, ty, _) | Index (_, ty, _) | Plus (_, _, ty))
     :: _ -> ty
   | UPlus _ :: _ -> failwith "reduced to uplus too early"
 
@@ -55,8 +49,6 @@ let op_of_lit : Literal.t -> op = function
       VField (Z.to_int i, Ty.of_lit ty, Z.to_int idx)
   | LList [ String "i"; (Int _ as i); ty; Int sz ] ->
       Index (Expr.Lit i, Ty.of_lit ty, Z.to_int sz)
-  | LList [ String "c"; ty_from; ty_into ] ->
-      Cast (Ty.of_lit ty_from, Ty.of_lit ty_into)
   | LList [ String "+"; Bool b; (Int _ as i); ty ] ->
       Plus ((if b then Wrap else Overflow), Expr.Lit i, Ty.of_lit ty)
   | l -> Fmt.failwith "invalid projection literal element %a" Literal.pp l
@@ -69,8 +61,6 @@ let op_of_expr : Expr.t -> op = function
       VField (Z.to_int i, Ty.of_expr ty, Z.to_int idx)
   | EList [ Lit (String "i"); i; ty; Lit (Int sz) ] ->
       Index (i, Ty.of_expr ty, Z.to_int sz)
-  | EList [ Lit (String "c"); ty_from; ty_into ] ->
-      Cast (Ty.of_expr ty_from, Ty.of_expr ty_into)
   | EList [ Lit (String "+"); Lit (Bool b); i; ty ] ->
       Plus ((if b then Wrap else Overflow), i, Ty.of_expr ty)
   | e -> Fmt.failwith "invalid projection expression element %a" Expr.pp e
@@ -96,8 +86,6 @@ let expr_of_elem : op -> Expr.t =
         ]
   | Index (i, ty, sz) ->
       EList [ Lit (String "i"); i; Ty.to_expr ty; Expr.int sz ]
-  | Cast (from_ty, into_ty) ->
-      EList [ Lit (String "c"); Ty.to_expr from_ty; Ty.to_expr into_ty ]
   | Plus (k, i, ty) -> EList [ Lit (String "+"); is_wrap k; i; Ty.to_expr ty ]
   | UPlus (k, i) -> EList [ Lit (String "u+"); is_wrap k; i ]
 
@@ -108,10 +96,6 @@ let substitution_in_op ~subst_expr (op : op) =
   | Field (i, ty) -> Field (i, Ty.substitution ~subst_expr ty)
   | VField (i, ty, idx) -> VField (i, Ty.substitution ~subst_expr ty, idx)
   | Index (i, ty, sz) -> Index (i, Ty.substitution ~subst_expr ty, sz)
-  | Cast (from_ty, into_ty) ->
-      Cast
-        ( Ty.substitution ~subst_expr from_ty,
-          Ty.substitution ~subst_expr into_ty )
   | Plus (k, i, ty) -> Plus (k, i, Ty.substitution ~subst_expr ty)
   | UPlus (k, i) -> UPlus (k, i)
 
@@ -164,7 +148,7 @@ let split_extension base with_ext =
   rest
 
 module Reduction = struct
-  let rec reduce_op_list ?goal lst =
+  let rec reduce_op_list lst =
     let open Expr.Infix in
     match lst with
     | UPlus (k, i) :: UPlus (k', i') :: tl when k == k' ->
@@ -174,17 +158,10 @@ module Reduction = struct
         reduce_op_list (Plus (k, i + i', ty) :: tl)
     | Plus (_, i, _) :: tl when Expr.is_concrete_zero_i i -> reduce_op_list tl
     | UPlus (_, i) :: tl when Expr.is_concrete_zero_i i -> reduce_op_list tl
-    | Cast (ty, ty') :: tl when Ty.equal ty ty' -> reduce_op_list tl
-    | Cast (ty0, ty1) :: Cast (ty2, ty3) :: tl when Ty.equal ty1 ty2 ->
-        reduce_op_list (Cast (ty0, ty3) :: tl)
-    | [ Cast (ty_from, _ty_to) ]
-      when match goal with
-           | Some ty -> Ty.equal ty_from ty
-           | _ -> false -> []
     | hd :: tl -> hd :: reduce_op_list tl
     | [] -> []
 
-  let reduce ?goal { base; from_base } =
-    let from_base = reduce_op_list ?goal from_base in
+  let reduce { base; from_base } =
+    let from_base = reduce_op_list from_base in
     { base; from_base }
 end
