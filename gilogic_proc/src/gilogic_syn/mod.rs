@@ -9,6 +9,7 @@ pub mod frozen_borrow_pcy;
 pub mod lemma;
 pub mod predicate;
 pub mod subst;
+pub mod visitors;
 pub use asrt::*;
 pub use lemma::*;
 pub use predicate::*;

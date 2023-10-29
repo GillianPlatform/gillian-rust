@@ -39,7 +39,10 @@ pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // Plus, I could just build a nice iterator.
 
     fn has_generic_lifetimes(&self) -> bool {
-        if let DefKind::AnonConst | DefKind::InlineConst = self.tcx().def_kind(self.did()) {
+        let def_kind = self.tcx().def_kind(self.did());
+        if let DefKind::AnonConst | DefKind::InlineConst | DefKind::Const | DefKind::AssocConst =
+            def_kind
+        {
             return false;
         }
         self.tcx()

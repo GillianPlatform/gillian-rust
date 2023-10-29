@@ -33,7 +33,7 @@ impl TryReserveError {
 }
 
 pub enum TryReserveErrorKind {
-    /// Error due to the computed capacity exceeding the collection's maximum
+    /// Error due to the comxputed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
     CapacityOverflow,
     AllocError {
@@ -44,23 +44,17 @@ pub enum TryReserveErrorKind {
 
 use TryReserveErrorKind::*;
 
+#[predicate]
+fn all_none<T>(x: In<Seq<Option<T>>>) {
+    assertion!((forall<i: usize> (0 <= i && i < x.len()) ==> x.at(i) == None))
+}
+
 enum AllocInit {
     /// The contents of the new memory are uninitialized.
     Uninitialized,
     /// The new memory is guaranteed to be zeroed.
     Zeroed,
 }
-
-#[predicate]
-fn all_none<T>(l: Seq<Option<T>>) {
-    assertion!((l == Seq::empty()));
-    assertion!(|rest| all_none(rest) * (l == rest.prepend(None)));
-}
-
-#[lemma]
-#[requires(ptr.many_uninits(cap))]
-#[ensures(|l| raw_vec_left(ptr, cap, l) * all_none(l))]
-fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
 
 impl Ownable for AllocInit {
     type RepresentationTy = Self;
@@ -82,19 +76,15 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 }
 
 #[predicate]
-fn raw_vec_left<T: Ownable>(
-    ptr: In<*mut T>,
-    cap: In<usize>,
-    content: Seq<Option<T::RepresentationTy>>,
-) {
-    assertion!((cap == 0) * (content == Seq::empty()));
-    assertion!(|v, v_repr, rest|
-            (cap > 0) * (ptr -> v) * v.own(v_repr) * raw_vec_left(ptr.offset(1), cap - 1, rest) * (content == rest.prepend(Some(v_repr))) * (cap == content.len()));
-    assertion!(|rest| (cap > 0)
-        * ptr.uninit()
-        * raw_vec_left(ptr.offset(1), cap - 1, rest)
-        * (cap == content.len())
-        * (content == rest.prepend(None)));
+pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
+    assertion!((vs == Seq::empty()) * (reprs == Seq::empty()));
+    assertion!(|x: T,
+                x_repr: T::RepresentationTy,
+                rest: Seq<T>,
+                rest_repr: Seq<T::RepresentationTy>| (vs == rest.prepend(x))
+        * x.own(x_repr)
+        * all_own(rest, rest_repr)
+        * (reprs == rest_repr.prepend(x_repr)))
 }
 
 // Modified to remove alloctaor
@@ -113,9 +103,9 @@ impl<T: Ownable> Ownable for RawVec<T> {
 
     #[predicate]
     fn own(self, content: Self::RepresentationTy) {
-        assertion!(
-            |ptr, cap| (self == RawVec { ptr, cap }) * raw_vec_left(ptr.as_ptr(), cap, content)
-        )
+        assertion!(|ptr, cap, vs| (self == RawVec { ptr, cap })
+            * ptr.as_ptr().many_maybe_uninit(cap, vs)
+            * all_own(vs, content))
     }
 }
 
@@ -214,13 +204,13 @@ impl<T: Ownable> RawVec<T> {
                 Err(_) => handle_alloc_error(layout),
             };
             let ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-            uninit_to_raw_vec(ptr.as_ptr(), capacity);
+            // uninit_to_raw_vec(ptr.as_ptr(), capacity);
             Self { ptr, cap: capacity }
         }
     }
 
-    #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
-    #[ensures(emp)]
+    // #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
+    // #[ensures(emp)]
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // This is ensured by the calling contexts.
         // assert!(additional > 0);

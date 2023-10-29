@@ -292,13 +292,7 @@ impl<'tcx> OptionOwn<'tcx> {
         None
     }
 
-    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
-        if global_env.config.prophecies {
-            fatal!(
-                global_env,
-                "Option::own not yet implemented with prophecies"
-            )
-        }
+    fn without_prophecies(&self, global_env: &mut GlobalEnv<'tcx>) -> Pred {
         let slf = Expr::PVar("self".into());
         // first_def is `self == [ 0i, [] ]`
         let first_def = slf
@@ -342,8 +336,8 @@ impl<'tcx> OptionOwn<'tcx> {
             params.push((tyarg, None));
         }
         params.push(("self".into(), None));
-        let pred = gillian::gil::Pred {
-            name: self.pred_name,
+        gillian::gil::Pred {
+            name: self.pred_name.clone(),
             num_params: params.len(),
             ins: (0..params.len()).collect(),
             params,
@@ -352,7 +346,83 @@ impl<'tcx> OptionOwn<'tcx> {
             abstract_: false,
             facts: vec![],
             guard: None,
+        }
+    }
+
+    fn with_prophecies(&self, global_env: &mut GlobalEnv<'tcx>) -> Pred {
+        let slf = Expr::pvar("self");
+        let model = Expr::pvar("model");
+        // first_def is `self == [ 0i, [] ]`
+        let none = Expr::EList(vec![0.into(), Expr::EList(vec![])]);
+        let first_def = slf
+            .clone()
+            .eq_f(none.clone())
+            .into_asrt()
+            .star(model.clone().eq_f(none).into_asrt());
+        let second_def = {
+            let lvar_x = Expr::lvar("#x_model");
+            let lvar_x_model = Expr::lvar("#x_model");
+            let eq = slf
+                .eq_f([1.into(), Expr::EList(vec![lvar_x.clone()])])
+                .into_asrt();
+            let own = global_env.get_own_pred_for(self.ty);
+            let ty_params = param_collector::collect_params_on_args(own.1);
+            let mut params =
+                Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + 1);
+            if ty_params.regions {
+                params.push(Expr::PVar("lft".into()));
+            }
+            for ty in ty_params.parameters {
+                params.push(global_env.encode_type(ty).into())
+            }
+            params.push(lvar_x);
+            params.push(lvar_x_model.clone());
+            let own_call = Assertion::Pred {
+                name: own.0,
+                params,
+            };
+            eq.star(own_call).star(
+                model
+                    .eq_f([1.into(), Expr::EList(vec![lvar_x_model])])
+                    .into(),
+            )
         };
+        let ty_params = crate::logic::param_collector::collect_params(self.ty)
+            .with_consider_arguments([self.ty].into_iter());
+        let mut params: Vec<(String, Option<_>)> =
+            Vec::with_capacity(ty_params.parameters.len() + (ty_params.regions as usize) + 1);
+        if ty_params.regions {
+            params.push(("lft".into(), None));
+        }
+        for tyarg in ty_params.parameters {
+            let tyarg = match *tyarg.kind() {
+                TyKind::Param(ParamTy { index, name }) => type_param_name(index, name),
+                _ => fatal!(global_env, "unreachable!"),
+            };
+            params.push((tyarg, None));
+        }
+        params.push(("self".into(), None));
+        params.push(("model".into(), None));
+        gillian::gil::Pred {
+            name: self.pred_name.clone(),
+            num_params: params.len(),
+            ins: (0..params.len()).collect(),
+            params,
+            definitions: vec![first_def, second_def],
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: None,
+        }
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        let pred = if global_env.config.prophecies {
+            self.with_prophecies(global_env)
+        } else {
+            self.without_prophecies(global_env)
+        };
+
         prog.add_pred(pred);
     }
 }

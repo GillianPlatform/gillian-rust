@@ -84,6 +84,15 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     }
 }
 
+impl<T: Ownable> Ownable for Option<T> {
+    type RepresentationTy = Option<T::RepresentationTy>;
+
+    #[rustc_diagnostic_item = "gillian::pcy::ownable::option_own"]
+    fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
+        unreachable!("Implemented in GIL");
+    }
+}
+
 pub trait Prophecised {
     type ProphecyTy;
 

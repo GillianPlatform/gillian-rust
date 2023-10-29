@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::seq"]
 pub struct Seq<T>(PhantomData<T>);
 
 impl<T> Seq<T> {
@@ -37,6 +39,21 @@ impl<T> Seq<T> {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::seq::len"]
     pub fn len(self) -> usize {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::seq::at"]
+    pub fn at(self, _idx: usize) -> T {
+        unreachable!()
+    }
+}
+
+impl<T> std::ops::Index<usize> for Seq<T> {
+    type Output = T;
+
+    #[rustc_diagnostic_item = "gillian::seq::index"]
+    fn index(&self, _index: usize) -> &Self::Output {
         unreachable!()
     }
 }

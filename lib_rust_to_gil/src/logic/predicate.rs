@@ -17,8 +17,11 @@ use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
 
 use rustc_middle::{
     mir::{interpret::Scalar, BinOp, BorrowKind},
-    thir::{AdtExpr, BlockId, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind, Thir},
-    ty::{AdtKind, EarlyBinder},
+    thir::{
+        AdtExpr, BlockId, ClosureExpr, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind,
+        Thir,
+    },
+    ty::{AdtKind, EarlyBinder, UpvarArgs},
 };
 use rustc_target::abi::FieldIdx;
 use rustc_type_ir::fold::TypeFoldable;
@@ -400,13 +403,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
             ExprKind::VarRef { id } => match self.var_map.get(id) {
+                // Actually, the information about variable names is contained in
+                // `self.tcx().hir().name(id.0)`. So the information I keep is redundant.
+                // This deserves a cleanum.
                 Some(var) => var.clone(),
                 None => {
-                    let var_id = id.0.local_id.as_usize();
-                    let name = format!("#pred_lvar{}", var_id);
+                    let name = format!("#{}", self.tcx().hir().name(id.0));
                     GExpr::LVar(name)
                 }
             },
+            ExprKind::UpvarRef { var_hir_id, .. } => {
+                let name = format!("#{}", self.tcx().hir().name(var_hir_id.0));
+                GExpr::LVar(name)
+            }
             ExprKind::Adt(box AdtExpr {
                 adt_def: def,
                 variant_index,
@@ -590,6 +599,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let list = self.compile_expression(args[0], thir);
                     list.lst_len()
                 }
+                Some(LogicStubs::SeqAt) => {
+                    let list = self.compile_expression(args[0], thir);
+                    let index = self.compile_expression(args[1], thir);
+                    list.lnth_e(index)
+                }
                 Some(LogicStubs::MutRefGetProphecy) => {
                     self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                     let mut_ref = self.compile_expression(args[0], thir);
@@ -687,6 +701,35 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
+    fn compile_forall(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
+        match &thir[e].kind {
+            ExprKind::Scope { value, .. } => self.compile_forall(*value, thir),
+            ExprKind::Closure(box ClosureExpr {
+                closure_id,
+                args: UpvarArgs::Closure(args),
+                ..
+            }) => {
+                let name = self.tcx().fn_arg_names(*closure_id)[0];
+                let ty = args
+                    .as_closure()
+                    .sig()
+                    .input(0)
+                    .skip_binder()
+                    .tuple_fields()[0];
+                let inner =
+                    PredCtx::new(self.global_env, self.temp_gen, closure_id.to_def_id(), args)
+                        .compile_formula_closure();
+                let type_ = if ty.is_integral() {
+                    Some(Type::IntType)
+                } else {
+                    None
+                };
+                Formula::forall((format!("#{}", name), type_), inner)
+            }
+            kind => fatal!(self, "Unexpected quantified form: {:?}", kind),
+        }
+    }
+
     fn compile_formula(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
         let expr = &thir.exprs[e];
         if !self.is_formula_ty(self.subst(expr.ty)) {
@@ -733,9 +776,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             fatal!(self, "Used < in formula for unknown type: {}", ty)
                         }
                     }
+                    Some(LogicStubs::FormulaAnd) => {
+                        let left = self.compile_formula(args[0], thir);
+                        let right = self.compile_formula(args[1], thir);
+                        left.and(right)
+                    }
                     Some(LogicStubs::FormulaNeg) => {
                         let inner = Box::new(self.compile_formula(args[0], thir));
                         Formula::Not(inner)
+                    }
+                    Some(LogicStubs::FormulaForall) => self.compile_forall(args[0], thir),
+                    Some(LogicStubs::FormulaImplication) => {
+                        let left = self.compile_formula(args[0], thir);
+                        let right = self.compile_formula(args[1], thir);
+                        left.implies(right)
                     }
                     _ => {
                         fatal!(self, "{:?} unsupported call in formula", expr)
@@ -799,6 +853,23 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let typ = self.encode_type_with_args(ty);
 
         super::core_preds::many_uninits(pointer, typ, size)
+    }
+
+    fn compile_many_maybe_uninits(
+        &mut self,
+        args: &[ExprId],
+        fn_def_ty: Ty<'tcx>,
+        thir: &Thir<'tcx>,
+    ) -> Assertion {
+        let ty = match fn_def_ty.kind() {
+            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
+            _ => panic!("compile_many_maybe_uninits went wrong"),
+        };
+        let pointer = self.compile_expression(args[0], thir);
+        let size = self.compile_expression(args[1], thir);
+        let pointee = self.compile_expression(args[2], thir);
+        let typ = self.encode_type_with_args(ty);
+        super::core_preds::many_maybe_uninits(pointer, typ, size, pointee)
     }
 
     fn compile_maybe_uninit(
@@ -904,6 +975,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 Some(LogicStubs::AssertUninit) => self.compile_uninit(args, *ty, thir),
                 Some(LogicStubs::AssertManyUninits) => self.compile_many_uninits(args, *ty, thir),
                 Some(LogicStubs::AssertMaybeUninit) => self.compile_maybe_uninit(args, *ty, thir),
+                Some(LogicStubs::AssertManyMaybeUninits) => {
+                    self.compile_many_maybe_uninits(args, *ty, thir)
+                }
                 Some(LogicStubs::ProphecyObserver) => {
                     self.assert_prophecies_enabled("using prophecy::observer");
                     let prophecy = self.compile_expression(args[0], thir);
@@ -1098,6 +1172,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             _ => fatal!(self, "Can't resolve array: {:?}", expr),
         }
+    }
+
+    fn compile_formula_closure(mut self) -> Formula {
+        let (thir, ret_expr) = get_thir!(self);
+        let block = &thir[self.resolve_block(ret_expr, &thir)];
+        if !block.stmts.is_empty() || block.expr.is_none() {
+            fatal!(self, "formula closure is malformed")
+        }
+
+        self.compile_formula(block.expr.unwrap(), &thir)
     }
 
     pub fn compile_abstract(mut self) -> Pred {

@@ -117,6 +117,14 @@ pub(crate) fn is_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
+pub(crate) fn should_translate(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "no_translate"],
+    )
+    .is_none()
+}
+
 pub(crate) fn is_function_specification(def_id: DefId, tcx: TyCtxt) -> bool {
     (is_postcondition(def_id, tcx) || is_precondition(def_id, tcx))
         && get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "for_lemma"]).is_none()

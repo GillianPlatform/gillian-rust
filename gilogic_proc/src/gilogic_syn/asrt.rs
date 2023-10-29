@@ -12,6 +12,7 @@ use std::mem;
 
 mod kw {
     syn::custom_keyword!(emp);
+    syn::custom_keyword!(forall);
 }
 
 #[derive(Debug)]
@@ -115,6 +116,9 @@ ast_enum_of_structs! {
         /// field (`obj.0`).
         Field(TermField),
 
+        // Universal quantification
+        Forall(TermForall),
+
         /// An term contained within invisible delimiters.
         ///
         /// This variant is important for faithfully representing the precedence
@@ -128,6 +132,9 @@ ast_enum_of_structs! {
         /// The `else` branch term may only be an `If` or `Block`
         /// term, not any of the other types of term.
         If(TermIf),
+
+        // Implication
+        Impl(TermImpl),
 
         /// A square bracketed indexing term: `vector[2]`.
         Index(TermIndex),
@@ -452,6 +459,33 @@ ast_struct! {
         pub expr: Box<Term>,
         pub colon_token: Token![:],
         pub ty: Box<Type>,
+    }
+}
+
+ast_struct! {
+    pub struct QuantArg {
+        pub ident: Ident,
+        pub colon_token: Token![:],
+        pub ty: Box<Type>,
+    }
+}
+
+ast_struct! {
+    pub struct TermForall {
+        pub forall_token: kw::forall,
+        pub lt_token: Token![<],
+        pub args: Punctuated<QuantArg, Token![,]>,
+        pub gt_token: Token![>],
+        pub term: Box<Term>
+    }
+}
+
+ast_struct! {
+    pub struct TermImpl {
+        pub hyp: Box<Term>,
+        pub eqeq_token: Token![==],
+        pub gt_token: Token![>],
+        pub cons: Box<Term>,
     }
 }
 
@@ -979,7 +1013,27 @@ pub(crate) mod parsing {
         base: Precedence,
     ) -> Result<Term> {
         loop {
-            if input
+            if Precedence::Impl >= base && input.peek(Token![==]) && input.peek3(Token![>]) {
+                // a ==> b
+                let eqeq_token: Token![==] = input.parse()?;
+                let gt_token: Token![>] = input.parse()?;
+                let precedence = Precedence::Impl;
+                let mut rhs = unary_term(input, allow_struct)?;
+                loop {
+                    let next = peek_precedence(input);
+                    if next >= precedence {
+                        rhs = parse_term(input, rhs, allow_struct, AllowStar(true), next)?;
+                    } else {
+                        break;
+                    }
+                }
+                lhs = Term::Impl(TermImpl {
+                    hyp: Box::new(lhs),
+                    eqeq_token,
+                    gt_token,
+                    cons: Box::new(rhs),
+                });
+            } else if input
                 .fork()
                 .parse::<BinOp>()
                 .ok()
@@ -1196,6 +1250,8 @@ pub(crate) mod parsing {
             input.parse().map(Term::Lit)
         } else if input.peek(Token![|]) {
             term_closure(input, allow_struct).map(Term::Closure)
+        } else if input.peek(kw::forall) {
+            input.parse().map(Term::Forall)
         } else if (input.peek(Ident))
             || input.peek(Token![::])
             || input.peek(Token![<])
@@ -1457,6 +1513,50 @@ pub(crate) mod parsing {
                 expr: Box::new(expr),
                 brace_token,
                 arms,
+            })
+        }
+    }
+
+    impl Parse for TermForall {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let forall_token = input.parse()?;
+            let lt_token: Token![<] = input.parse()?;
+
+            let mut args = Punctuated::new();
+            while !input.peek(Token![>]) {
+                let quantarg = input.parse()?;
+                args.push_value(quantarg);
+                if input.peek(Token![>]) {
+                    break;
+                }
+
+                let punct = input.parse()?;
+                args.push_punct(punct);
+            }
+
+            let gt_token: Token![>] = input.parse()?;
+
+            let term = input.parse()?;
+
+            Ok(TermForall {
+                forall_token,
+                lt_token,
+                args,
+                gt_token,
+                term,
+            })
+        }
+    }
+
+    impl Parse for QuantArg {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let ident = input.parse()?;
+            let colon_token = input.parse()?;
+            let ty = input.parse()?;
+            Ok(QuantArg {
+                ident,
+                colon_token,
+                ty,
             })
         }
     }
@@ -1782,18 +1882,6 @@ pub(crate) mod printing {
         }
     }
 
-    // impl ToTokens for AsrtFragment {
-    //     fn to_tokens(&self, tokens: &mut TokenStream) {
-    //         match self {
-    //             Self::Emp(emp) => emp.to_tokens(tokens),
-    //             Self::PointsTo(pt) => pt.to_tokens(tokens),
-    //             Self::PredCall(pc) => pc.to_tokens(tokens),
-    //             Self::Pure(f) => f.to_tokens(tokens),
-    //             Self::__Nonexhaustive => todo!(),
-    //         }
-    //     }
-    // }
-
     impl ToTokens for LvarDecl {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -1842,6 +1930,33 @@ pub(crate) mod printing {
             self.open_dollar.to_tokens(tokens);
             self.inner.to_tokens(tokens);
             self.close_dollar.to_tokens(tokens);
+        }
+    }
+
+    impl ToTokens for QuantArg {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.ident.to_tokens(tokens);
+            self.colon_token.to_tokens(tokens);
+            self.ty.to_tokens(tokens);
+        }
+    }
+
+    impl ToTokens for TermForall {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.forall_token.to_tokens(tokens);
+            self.lt_token.to_tokens(tokens);
+            self.args.to_tokens(tokens);
+            self.gt_token.to_tokens(tokens);
+            self.term.to_tokens(tokens);
+        }
+    }
+
+    impl ToTokens for TermImpl {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.hyp.to_tokens(tokens);
+            self.eqeq_token.to_tokens(tokens);
+            self.gt_token.to_tokens(tokens);
+            self.cons.to_tokens(tokens);
         }
     }
 

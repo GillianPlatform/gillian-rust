@@ -29,10 +29,14 @@ pub(crate) enum LogicStubs {
     AssertUninit,
     AssertManyUninits,
     AssertMaybeUninit,
+    AssertManyMaybeUninits,
     FormulaEqual,
     FormulaLessEq,
     FormulaLess,
+    FormulaAnd,
     FormulaNeg,
+    FormulaForall,
+    FormulaImplication,
     MutRefGetProphecy,
     MutRefSetProphecy,
     ProphecyGetValue,
@@ -44,6 +48,7 @@ pub(crate) enum LogicStubs {
     SeqPrepend,
     SeqConcat,
     SeqLen,
+    SeqAt,
     // The following are actually part of gilogic and would disappear
     // as soon as we support cross-crate compilation.
     OwnPred,
@@ -65,10 +70,14 @@ impl LogicStubs {
                 "gillian::asrt::uninit" => Some(Self::AssertUninit),
                 "gillian::asrt::many_uninits" => Some(Self::AssertManyUninits),
                 "gillian::asrt::maybe_uninit" => Some(Self::AssertMaybeUninit),
+                "gillian::asrt::many_maybe_uninit" => Some(Self::AssertManyMaybeUninits),
                 "gillian::formula::equal" => Some(Self::FormulaEqual),
                 "gillian::formula::less_eq" => Some(Self::FormulaLessEq),
                 "gillian::formula::less" => Some(Self::FormulaLess),
                 "gillian::formula::neg" => Some(Self::FormulaNeg),
+                "gillian::formula::and" => Some(Self::FormulaAnd),
+                "gillian::formula::forall" => Some(Self::FormulaForall),
+                "gillian::formula::implication" => Some(Self::FormulaImplication),
                 "gillian::mut_ref::get_prophecy" => Some(Self::MutRefGetProphecy),
                 "gillian::mut_ref::set_prophecy" => Some(Self::MutRefSetProphecy),
                 "gillian::prophecy::get_value" => Some(Self::ProphecyGetValue),
@@ -79,11 +88,14 @@ impl LogicStubs {
                 "gillian::seq::prepend" => Some(Self::SeqPrepend),
                 "gillian::seq::concat" => Some(Self::SeqConcat),
                 "gillian::seq::len" => Some(Self::SeqLen),
+                "gillian::seq::at" => Some(Self::SeqAt),
                 "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Self::OwnPred),
                 "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
                     Some(Self::MutRefOwnPred)
                 }
-                "gillian::ownable::option_own" => Some(Self::OptionOwnPred),
+                "gillian::ownable::option_own" | "gillian::pcy::ownable::option_own" => {
+                    Some(Self::OptionOwnPred)
+                }
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 _ => {
                     if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {

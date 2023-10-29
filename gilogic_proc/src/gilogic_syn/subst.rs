@@ -109,6 +109,24 @@ impl VarSubst for TermGroup {
     }
 }
 
+impl VarSubst for TermForall {
+    fn subst(&mut self, subst: &HashMap<String, Ident>) {
+        let idents_to_not_subst = self.args.iter().map(|x| x.ident.to_string());
+        let mut new_subst = subst.clone();
+        for ident in idents_to_not_subst {
+            new_subst.remove(&ident);
+        }
+        self.term.subst(&new_subst);
+    }
+}
+
+impl VarSubst for TermImpl {
+    fn subst(&mut self, subst: &HashMap<String, Ident>) {
+        self.hyp.subst(subst);
+        self.cons.subst(subst);
+    }
+}
+
 impl VarSubst for TermIf {
     fn subst(&mut self, subst: &HashMap<String, Ident>) {
         self.cond.subst(subst);

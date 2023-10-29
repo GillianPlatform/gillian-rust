@@ -6,6 +6,7 @@ mod pred_names {
     pub(crate) const VALUE: &str = "value";
     pub(crate) const UNINIT: &str = "uninit";
     pub(crate) const MAYBE_UNINIT: &str = "maybe_uninit";
+    pub(crate) const MANY_MAYBE_UNINITS: &str = "many_maybe_uninits";
     pub(crate) const LFT: &str = "lft";
     pub(crate) const OBSERVER: &str = "value_observer";
     pub(crate) const CONTROLLER: &str = "pcy_controller";
@@ -50,6 +51,21 @@ pub(crate) fn maybe_uninit(pointer: Expr, typ: EncodedType, pointee: Expr) -> As
     Assertion::GA {
         name: pred_names::MAYBE_UNINIT.to_string(),
         ins: vec![loc, proj, typ.into()],
+        outs: vec![pointee],
+    }
+}
+
+pub(crate) fn many_maybe_uninits(
+    pointer: Expr,
+    typ: EncodedType,
+    size: Expr,
+    pointee: Expr,
+) -> Assertion {
+    let loc = pointer.clone().lnth(0);
+    let proj = pointer.lnth(1);
+    Assertion::GA {
+        name: pred_names::MANY_MAYBE_UNINITS.to_string(),
+        ins: vec![loc, proj, typ.into(), size],
         outs: vec![pointee],
     }
 }

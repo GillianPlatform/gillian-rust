@@ -53,3 +53,19 @@ pub fn is_nonnull<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     }
     false
 }
+
+pub fn is_seq<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+    ty.ty_adt_def().is_some_and(|def| {
+        super::attrs::diagnostic_item_string(def.did(), tcx)
+            .is_some_and(|str| str == "gillian::seq")
+    })
+}
+
+pub fn is_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+    if let Some(adt_def) = ty.ty_adt_def() {
+        if let "core::ptr::Unique" | "std::ptr::Unique" = tcx.def_path_str(adt_def.did()).as_str() {
+            return true;
+        }
+    }
+    false
+}

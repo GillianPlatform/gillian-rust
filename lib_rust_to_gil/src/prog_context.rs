@@ -185,10 +185,12 @@ impl<'tcx> ProgCtx<'tcx> {
     fn final_prog(mut self) -> ParsingUnit {
         for key in self.tcx().hir().body_owners() {
             let did = key.to_def_id();
-            if crate::utils::attrs::is_logic(did, self.tcx()) {
-                self.compile_logic(did);
-            } else {
-                self.compile_fn(did);
+            if crate::utils::attrs::should_translate(did, self.tcx()) {
+                if crate::utils::attrs::is_logic(did, self.tcx()) {
+                    self.compile_logic(did);
+                } else {
+                    self.compile_fn(did);
+                }
             }
         }
         self.add_specs();

@@ -258,6 +258,17 @@ impl Expr {
         }
     }
 
+    pub fn lnth_e(self, e: Expr) -> Self {
+        match e {
+            Expr::Lit(Literal::Int(i)) => self.lnth(i),
+            e => Self::BinOp {
+                operator: BinOp::LstNth,
+                left_operand: Box::new(self),
+                right_operand: Box::new(e),
+            },
+        }
+    }
+
     pub fn lnth<I>(self, i: I) -> Self
     where
         I: Into<BigInt> + Clone,
@@ -273,18 +284,6 @@ impl Expr {
                 operator: BinOp::LstNth,
                 left_operand: Box::new(self),
                 right_operand: Box::new(Self::int(i)),
-            },
-        }
-    }
-
-    pub fn lnth_e(e: Expr, i: Expr) -> Self {
-        match i {
-            Expr::Lit(Literal::Int(i)) => Self::lnth(e, i),
-            Expr::Lit(Literal::Num(f)) => Self::lnth(e, f as usize),
-            _ => Self::BinOp {
-                operator: BinOp::LstNth,
-                left_operand: Box::new(e),
-                right_operand: Box::new(i),
             },
         }
     }

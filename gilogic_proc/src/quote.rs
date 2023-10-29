@@ -39,6 +39,14 @@ impl Formula {
                         ::gilogic::__stubs::less(#right, #left)
                     ));
                 }
+                BinOp::And(tok) => {
+                    let span = tok.span();
+                    let left = Self::encode_inner(left)?;
+                    let right = Self::encode_inner(right)?;
+                    tokens.extend(quote_spanned!(span=>
+                        ::gilogic::__stubs::and(#left, #right)
+                    ));
+                }
                 _ => {
                     return Err(Error::new(
                         op.span(),
@@ -52,6 +60,37 @@ impl Formula {
             }) => {
                 let inner = Self::encode_inner(expr)?;
                 tokens.extend(inner);
+            }
+            Term::Forall(TermForall {
+                forall_token: _,
+                lt_token: _,
+                args,
+                gt_token: _,
+                term,
+            }) => {
+                let mut ts = Self::encode_inner(term)?;
+                for arg in args {
+                    ts = quote! {
+                        ::gilogic::__stubs::forall(
+                            #[gillian::no_translate]
+                            |#arg| { #ts }
+                        )
+                    }
+                }
+                tokens.extend(ts)
+            }
+            Term::Impl(TermImpl {
+                hyp,
+                eqeq_token: _,
+                gt_token: _,
+                cons,
+            }) => {
+                let span = inner.span();
+                let hyp = Self::encode_inner(hyp)?;
+                let cons = Self::encode_inner(cons)?;
+                tokens.extend(quote_spanned! {span=>
+                    ::gilogic::__stubs::implication(#hyp, #cons)
+                });
             }
             _ => {
                 return Err(Error::new(

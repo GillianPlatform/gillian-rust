@@ -70,6 +70,24 @@ pub fn observation(_: RustFormula) -> RustAssertion {
     unreachable!()
 }
 
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::forall"]
+pub fn forall<T, F: Fn(T) -> RustFormula>(_: F) -> RustFormula {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::and"]
+pub fn and(_: RustFormula, _: RustFormula) -> RustFormula {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::implication"]
+pub fn implication(_: RustFormula, _: RustFormula) -> RustFormula {
+    unreachable!()
+}
+
 pub trait PointsTo<T>: Sized {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::asrt::points_to"]
@@ -101,6 +119,12 @@ pub trait PointsToMaybeUninit<T>: Sized {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::asrt::maybe_uninit"]
     fn maybe_uninit(self, _: Option<T>) -> RustAssertion {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::asrt::many_maybe_uninit"]
+    fn many_maybe_uninit(self, _len: usize, _: super::Seq<Option<T>>) -> RustAssertion {
         unreachable!()
     }
 }

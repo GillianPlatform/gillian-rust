@@ -61,10 +61,51 @@ impl Formula {
         }
     }
 
+    pub fn forall(quant: (String, Option<Type>), mut formula: Self) -> Self {
+        if let Formula::ForAll { quantified, .. } = &mut formula {
+            quantified.push(quant);
+            formula
+        } else {
+            Formula::ForAll {
+                quantified: vec![quant],
+                formula: Box::new(formula),
+            }
+        }
+    }
+
+    pub fn fnot(self) -> Self {
+        match self {
+            Formula::True => Formula::False,
+            Formula::False => Formula::True,
+            _ => Formula::Not(Box::new(self)),
+        }
+    }
+
+    pub fn implies(self, right: Self) -> Self {
+        self.fnot().or(right)
+    }
+
+    pub fn or(self, right: Self) -> Self {
+        match (&self, &right) {
+            (Formula::False, _) => right,
+            (_, Formula::False) => self,
+            (Formula::True, _) | (_, Formula::True) => Formula::True,
+            _ => Self::Or {
+                left: Box::new(self),
+                right: Box::new(right),
+            },
+        }
+    }
+
     pub fn and(self, right: Self) -> Self {
-        Self::And {
-            left: Box::new(self),
-            right: Box::new(right),
+        match (&self, &right) {
+            (Formula::True, _) => right,
+            (_, Formula::True) => self,
+            (Formula::False, _) | (_, Formula::False) => Formula::False,
+            _ => Self::And {
+                left: Box::new(self),
+                right: Box::new(right),
+            },
         }
     }
 

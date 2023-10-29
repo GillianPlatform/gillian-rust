@@ -65,6 +65,7 @@ let options ~out_dir () =
     "-Zcrate-attr='register_tool(gillian)'";
     "-Zcrate-attr='feature(rustc_attrs)'";
     "-Zcrate-attr='allow(internal_features)'";
+    "-Zcrate-attr='feature(stmt_expr_attributes)'";
     R_config.exec_mode_arg ();
     R_config.prophecy_mode_arg ();
   ]
