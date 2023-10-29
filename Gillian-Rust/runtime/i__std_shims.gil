@@ -180,15 +180,19 @@ proc "i__alloc_maybe_zero"(layout) {
 proc "std::alloc::Allocator::grow"(lft, alloc_ty, alloc_ptr, ptr, old_layout, new_layout) {
           old_size := l-nth(old_layout, 0i);
           new_size := l-nth(new_layout, 0i);
-          old_align := l-nth(old_layout, 0i);
-          new_align := l-nth(new_layout, 0i);
+          old_align := l-nth(old_layout, 1i);
+          new_align := l-nth(new_layout, 1i);
           assert(old_size i<=# new_size); (* This is an actual SAFETY pre-condition to the grow function *)
           goto [ old_size = 0i ] z nz;
      z:   ret := "i__alloc_maybe_zero"(new_layout);
           return;
      nz:  new_ptr := "std::alloc::Allocator::allocate"(null, null, null, new_layout);
+          
+          (* unwrap result |> NonNull::<[T]>as_mut_ptr() *)
+          new_ptr := l-nth(l-nth(l-nth(l-nth(new_ptr, 1i), 0i), 0i), 0i);
+          ptr := l-nth(ptr, 0i); (* NonNull::as_ptr() *)
           (* We copy the old data into the new data *)
-          u := [copy_nonoverlapping](ptr, new_ptr, "u8", old_size);
+          u := [copy_nonoverlapping](l-nth(ptr, 0i), l-nth(ptr, 1i), l-nth(new_ptr, 0i), l-nth(new_ptr, 1i), "u8", old_size);
           u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "sym_array", "u8", old_size }}); (* We free the old data *)
           ret := {{ 0i, {{ 
                {{ {{ new_ptr, new_size }} }}

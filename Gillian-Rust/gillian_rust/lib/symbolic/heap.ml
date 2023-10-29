@@ -65,7 +65,7 @@ module Symb_opt = struct
   open Formula.Infix
 
   let is_some e = (Expr.list_nth e 0) #== (Expr.int 1)
-  let is_none e = (Expr.list_nth e 0) #== (Expr.int 0)
+  let is_none e = e #== (Expr.EList [ Expr.int 0; Expr.EList [] ])
   let access_some_value e = Expr.list_nth (Expr.list_nth e 1) 0
 
   type t = Some of Expr.t | None | Symb of Expr.t
@@ -83,6 +83,21 @@ module Symb_opt = struct
     | Some e -> Expr.EList [ Expr.int 1; Expr.EList [ e ] ]
     | None -> none_e
     | Symb e -> e
+
+  let new_expr_list_all_none size =
+    let e = Expr.LVar (LVar.alloc ()) in
+    let i = "#i" in
+    let pi = Expr.LVar i in
+    let learned =
+      [
+        (Expr.list_length e) #== size;
+        Formula.ForAll
+          ( [ (i, Some IntType) ],
+            Expr.zero_i #<= pi #&& (pi #< size)
+            #=> (is_none (Expr.list_nth_e e pi)) );
+      ]
+    in
+    Delayed.return ~learned e
 end
 
 let too_symbolic e =
@@ -248,7 +263,7 @@ module TreeBlock = struct
     let value_cp = Actions.cp_to_name Value in
     let uninit_cp = Actions.cp_to_name Uninit in
     let maybe_uninit_cp = Actions.cp_to_name Maybe_uninit in
-    let many_maybe_uninit_cp = Actions.cp_to_name Many_maybe_uninit in
+    let many_maybe_uninit_cp = Actions.cp_to_name Many_maybe_uninits in
     let rec aux ~current_proj ({ content; ty } as block) =
       let ins ty =
         let proj =
@@ -556,40 +571,68 @@ module TreeBlock = struct
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
 
-  let find_slice
-      ~tyenv:_
+  let cast_array
+      ~lk
+      ~from:(ty_from, length_from)
+      ~to_:(ty_to, length_to)
+      content =
+    let open Formula.Infix in
+    match content with
+    | Uninit | Missing ->
+        let* size_from, lk = Layout_knowledge.size_of ~lk ty_from in
+        let* size_to, lk = Layout_knowledge.size_of ~lk ty_to in
+        let new_length = Expr.Infix.(length_from * size_from / size_to) in
+        if%ent new_length #== length_to then Delayed.return (content, lk)
+        else failwith "Not implement: sub-sym-array of uninit after cast"
+    | _ -> failwith "Cannot convert anything else than missing or uninit"
+
+  let rec find_slice
+      ?(untyped = false)
+      ~tyenv
       ~lk (* The lk should probably be hidden in a state monad *)
       ~return_and_update
       ~ty
       (t : t)
       (path : Projections.op list)
       size =
+    let rec_call = find_slice ~tyenv ~return_and_update ~untyped in
     let open Formula.Infix in
-    (* For now we implement only a few cases we'll need more as we do more case studies and proofs *)
-    match (path, t.content, t.ty) with
-    | [], Missing, Array { ty = ty'; length } when Ty.equal ty ty' ->
+    (* For now we implement only a few cases we'll need more as we do more case studies and proofs.
+       The casts surely come with more general rules. *)
+    match (path, t.ty) with
+    | ([ Cast _ ] | []), Array { ty = ty'; length } when Ty.equal ty' ty ->
         if%ent length #== size then
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
-        else failwith "Not implemented: sub-array of missing"
-    | [ Cast (_ty_from, ty_to) ], Uninit, Array { ty = ty'; length }
-      when Ty.equal ty' ty_to && Ty.equal ty_to ty ->
-        if%ent length #== size then
+        else failwith "Not implemented: splitting array CASE 1"
+    | ([ Cast _ ] | []), Array { ty = ty'; length } when untyped ->
+        let* size_of_actual, lk = Layout_knowledge.size_of ~lk ty' in
+        let* size_of_expected, lk = Layout_knowledge.size_of ~lk ty in
+        if%ent
+          Expr.Infix.(size_of_actual * length)
+          #== Expr.Infix.(size_of_expected * size)
+        then
           let++ value, new_slice = return_and_update t in
           (value, new_slice, lk)
-        else failwith "Not implement: sub-sym-array of uninit after cast"
-    | [ Cast (ty_from, ty_to) ], Uninit, Array { ty = ty'; length }
-      when Ty.equal ty_from ty' && Ty.equal ty_to ty ->
-        let* size_from, lk = Layout_knowledge.size_of ~lk ty_from in
-        let* size_to, lk = Layout_knowledge.size_of ~lk ty_to in
-        let length = Expr.Infix.(length * size_from / size_to) in
-        if%ent length #== size then
-          let++ value, new_slice = return_and_update t in
-          (value, new_slice, lk)
-        else failwith "Not implement: sub-sym-array of uninit after cast"
-    | path, content, ty ->
-        Fmt.failwith "Unimplemented case for find_slice: %a, %a, %a, %a"
-          Projections.pp_path path pp_content content Ty.pp ty Expr.pp size
+        else failwith "Not implemented: splitting array CASE 2"
+    | ([ Cast _ ] | []), Array { ty = ty_from; length = length_from } ->
+        Logging.verbose (fun m ->
+            m
+              "find_slice: ty_from: %a length_from %a, ty_to: %a length_to: \
+               %a, content: %a"
+              Ty.pp ty_from Expr.pp length_from Ty.pp ty Expr.pp size pp_content
+              t.content);
+        let* new_content, lk =
+          cast_array ~lk ~from:(ty_from, length_from) ~to_:(ty, size) t.content
+        in
+        rec_call ~lk ~ty
+          { content = new_content; ty = Ty.array ty size }
+          [] size
+    | _ ->
+        Fmt.failwith
+          "Unimplemented case for find_slice: path: %a, t: ==%a==, \
+           expected_ty: %a, size: %a"
+          Projections.pp_path path pp t Ty.pp ty Expr.pp size
 
   let find_path ~tyenv ~lk ~return_and_update ~ty:expected_ty t path :
       ('a * t * Layout_knowledge.t, Err.t) DR.t =
@@ -656,7 +699,7 @@ module TreeBlock = struct
     let t = outer.root in
     Logging.verbose (fun m ->
         m "Before path reduction: %a" Projections.pp_path proj.from_base);
-    let path = Projections.Reduction.reduce_op_list proj.from_base in
+    let path = Projections.Reduction.reduce_op_list ~goal:ty proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
     let++ ret, root, lk =
@@ -685,11 +728,35 @@ module TreeBlock = struct
     let t = outer.root in
     Logging.verbose (fun m ->
         m "Before path reduction: %a" Projections.pp_path proj.from_base);
-    let path = Projections.Reduction.reduce_op_list proj.from_base in
+    let path = Projections.Reduction.reduce_op_list ~goal:ty proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
     let++ ret, root, lk = find_path ~tyenv ~lk ~return_and_update ~ty t path in
     (ret, { outer with root }, lk)
+
+  let copy_nonoverlapping
+      ~tyenv
+      ~lk
+      from_block
+      from_proj
+      to_block
+      to_proj
+      ty
+      size =
+    Logging.verbose (fun m ->
+        m "copy_nonoverlapping: about to load copy from the 'from' block");
+    let** copy, _, lk =
+      find_slice_outer ~tyenv ~lk
+        ~return_and_update:(fun t -> DR.ok (t, t))
+        ~ty from_block from_proj size
+    in
+    Logging.verbose (fun m ->
+        m "copy_nonoverlapping: about to write copy to the 'to' block");
+    let return_and_update _t = DR.ok ((), copy) in
+    let++ (), mem, lk =
+      find_slice_outer ~tyenv ~return_and_update ~ty ~lk to_block to_proj size
+    in
+    (mem, lk)
 
   let load_proj ~loc ~tyenv t proj ty copy =
     let update block = if copy then block else uninitialized ~tyenv ty in
@@ -758,7 +825,7 @@ module TreeBlock = struct
     | Ok x -> Delayed.return x
     | Error _ -> Delayed.vanish ()
 
-  let cons_maybe_uninit ~loc:_ ~tyenv t proj ty =
+  let cons_maybe_uninit ~loc:_ ~lk ~tyenv t proj ty =
     let return_and_update t =
       match t.content with
       | Uninit ->
@@ -766,7 +833,7 @@ module TreeBlock = struct
           DR.ok (result, missing t.ty)
       | _ -> failwith "cannot consume maybe_uninit yet"
     in
-    find_proj ~tyenv ~return_and_update ~ty t proj
+    find_proj ~tyenv ~lk ~return_and_update ~ty t proj
 
   let prod_maybe_uninit ~loc:_ ~lk ~tyenv t proj ty maybe_value =
     let* result =
@@ -787,6 +854,36 @@ module TreeBlock = struct
       in
       let++ _, new_block, lk =
         find_proj ~tyenv ~lk ~ty ~return_and_update t proj
+      in
+      (new_block, lk)
+    in
+    match result with
+    | Ok x -> Delayed.return x
+    | Error _ -> Delayed.vanish ()
+
+  let cons_many_maybe_uninits ~loc:_ ~tyenv ~lk t proj ty size =
+    let return_and_update t =
+      match t.content with
+      | Uninit ->
+          let+ result = Symb_opt.new_expr_list_all_none size in
+          Ok (result, missing t.ty)
+      | ManySymbolicMaybeUninit s -> DR.ok (s, missing t.ty)
+      | _ -> Fmt.failwith "obtained %a for many_maybe_uninits" pp t
+    in
+    find_slice_outer ~tyenv ~lk ~ty ~return_and_update t proj size
+
+  let prod_many_maybe_uninits ~loc:_ ~tyenv ~lk t proj ty size maybe_values =
+    let* result =
+      let return_and_update t =
+        match missing_qty t with
+        | Some Totally ->
+            let content = ManySymbolicMaybeUninit maybe_values in
+            let ty = Ty.array ty size in
+            DR.ok ((), { ty; content })
+        | _ -> Delayed.vanish ()
+      in
+      let++ _, new_block, lk =
+        find_slice_outer ~tyenv ~lk ~ty ~return_and_update t proj size
       in
       (new_block, lk)
     in
@@ -962,6 +1059,29 @@ let store ~tyenv ~lk (mem : t) loc proj ty value =
   in
   (MemMap.add loc (T new_block) mem, lk)
 
+let copy_nonoverlapping
+    ~tyenv
+    ~lk
+    mem
+    ~from:(from_loc, from_proj)
+    ~to_:(to_loc, to_proj)
+    ty
+    size =
+  if String.equal from_loc to_loc then
+    failwith
+      "copy_nonoverlapping: from and to are the same location, to implement. \
+       Trivial but no time"
+  else
+    if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (mem, lk)
+    else
+      let** from_block = find_not_freed from_loc mem in
+      let** to_block = find_not_freed to_loc mem in
+      let++ new_to_block, lk =
+        TreeBlock.copy_nonoverlapping ~tyenv ~lk from_block from_proj to_block
+          to_proj ty size
+      in
+      (MemMap.add to_loc (T new_to_block) mem, lk)
+
 let cons_value ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
   let++ value, outer, lk = TreeBlock.cons_proj ~loc ~tyenv ~lk block proj ty in
@@ -1029,6 +1149,42 @@ let prod_maybe_uninit
     TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
   in
   (MemMap.add loc (T new_block) mem, lk)
+
+let cons_many_maybe_uninits ~tyenv ~lk (mem : t) loc proj ty size =
+  if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (Expr.EList [], mem, lk)
+  else
+    let** block = find_not_freed loc mem in
+    let++ value, outer, lk =
+      TreeBlock.cons_many_maybe_uninits ~loc ~tyenv ~lk block proj ty size
+    in
+    (value, MemMap.add loc (T outer) mem, lk)
+
+let prod_many_maybe_uninits
+    ~tyenv
+    ~lk
+    (mem : t)
+    loc
+    (proj : Projections.t)
+    ty
+    size
+    maybe_values =
+  if%sat Formula.Infix.(size #== Expr.zero_i) then Delayed.return (mem, lk)
+  else
+    let root =
+      match MemMap.find_opt loc mem with
+      | Some (T root) -> root
+      | Some Freed -> failwith "use after free"
+      | None ->
+          TreeBlock.outer_missing
+            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+            ~tyenv
+            (Projections.base_ty ~leaf_ty:(Ty.array ty size) proj)
+    in
+    let+ new_block, lk =
+      TreeBlock.prod_many_maybe_uninits ~loc ~tyenv ~lk root proj ty size
+        maybe_values
+    in
+    (MemMap.add loc (T new_block) mem, lk)
 
 let deinit ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in

@@ -49,19 +49,6 @@ let base_ty ~(leaf_ty : Ty.t) (proj : t) =
     :: _ -> ty
   | UPlus _ :: _ -> failwith "reduced to uplus too early"
 
-(* Returns the base type as above. However, we're looking for a slice.
-   So if the projection is empty, then we need to create the entire slice of leaf type. *)
-let base_ty_slice ~leaf_ty (proj : t) size =
-  match proj.from_base with
-  | [] -> Ty.array_of_size size leaf_ty
-  | ( Field (_, ty)
-    | VField (_, ty, _)
-    | Index (_, ty, _)
-    | Cast (ty, _)
-    | Plus (_, _, ty) )
-    :: _ -> ty
-  | UPlus _ :: _ -> failwith "reduced to uplus too early"
-
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
   | LList [ String "vf"; Int i; ty; Int idx ] ->
@@ -177,7 +164,7 @@ let split_extension base with_ext =
   rest
 
 module Reduction = struct
-  let rec reduce_op_list lst =
+  let rec reduce_op_list ?goal lst =
     let open Expr.Infix in
     match lst with
     | UPlus (k, i) :: UPlus (k', i') :: tl when k == k' ->
@@ -190,10 +177,14 @@ module Reduction = struct
     | Cast (ty, ty') :: tl when Ty.equal ty ty' -> reduce_op_list tl
     | Cast (ty0, ty1) :: Cast (ty2, ty3) :: tl when Ty.equal ty1 ty2 ->
         reduce_op_list (Cast (ty0, ty3) :: tl)
+    | [ Cast (ty_from, _ty_to) ]
+      when match goal with
+           | Some ty -> Ty.equal ty_from ty
+           | _ -> false -> []
     | hd :: tl -> hd :: reduce_op_list tl
     | [] -> []
 
-  let reduce { base; from_base } =
-    let from_base = reduce_op_list from_base in
+  let reduce ?goal { base; from_base } =
+    let from_base = reduce_op_list ?goal from_base in
     { base; from_base }
 end

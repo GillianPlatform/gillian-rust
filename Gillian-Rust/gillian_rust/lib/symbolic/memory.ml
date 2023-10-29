@@ -99,6 +99,22 @@ let execute_load mem args =
       make_branch ~mem:{ mem with heap = new_heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for load"
 
+let execute_copy_nonoverlapping mem args =
+  let { heap; tyenv; lk; _ } = mem in
+  match args with
+  | [ from_loc; from_proj; to_loc; to_proj; ty; size ] ->
+      let ty = Ty.of_expr ty in
+      let** old_loc = resolve_loc_result from_loc in
+      let* old_proj = projections_of_expr from_proj in
+      let** to_loc = resolve_loc_result to_loc in
+      let* to_proj = projections_of_expr to_proj in
+      let++ new_heap, lk =
+        Heap.copy_nonoverlapping ~tyenv ~lk heap ~from:(old_loc, old_proj)
+          ~to_:(to_loc, to_proj) ty size
+      in
+      make_branch ~mem:{ mem with heap = new_heap; lk } ()
+  | _ -> Fmt.failwith "Invalid arguments for copy_nonoverlapping"
+
 let execute_load_discr mem args =
   match args with
   | [ loc; proj; enum_typ ] ->
@@ -200,6 +216,33 @@ let execute_prod_maybe_uninit mem args =
       in
       { mem with heap = new_heap; lk }
   | _ -> Fmt.failwith "Invalid arguments for prod_maybe_uninit"
+
+let execute_cons_many_maybe_uninits mem args =
+  let { heap; tyenv; lk; _ } = mem in
+  match args with
+  | [ loc; proj_exp; ty_exp; size ] ->
+      let ty = Ty.of_expr ty_exp in
+      let** loc_name = resolve_loc_result loc in
+      let* proj = projections_of_expr proj_exp in
+      let++ v, heap, lk =
+        Heap.cons_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size
+      in
+      make_branch ~mem:{ mem with heap; lk } ~rets:[ v ] ()
+  | _ -> Fmt.failwith "Invalid arguments for cons_many_maybe_uninits"
+
+let execute_prod_many_maybe_uninits mem args =
+  let { heap; tyenv; lk; _ } = mem in
+  match args with
+  | [ loc; proj; ty; size; maybe_values ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = projections_of_expr proj in
+      let+ new_heap, lk =
+        Heap.prod_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size
+          maybe_values
+      in
+      { mem with heap = new_heap; lk }
+  | _ -> Fmt.failwith "Invalid arguments for prod_many_maybe_uninits"
 
 let formula_of_expr_exn expr =
   match Formula.lift_logic_expr expr with
@@ -457,6 +500,7 @@ let consume ~core_pred mem args =
     | Value -> execute_cons_value mem args
     | Uninit -> execute_cons_uninit mem args
     | Maybe_uninit -> execute_cons_maybe_uninit mem args
+    | Many_maybe_uninits -> execute_cons_many_maybe_uninits mem args
     | Lft -> execute_cons_lft mem args
     | Ty_size -> execute_cons_ty_size mem args
     | Pcy_value -> execute_cons_pcy_value mem args
@@ -476,6 +520,7 @@ let produce ~core_pred mem args =
     | Value -> execute_prod_value mem args
     | Uninit -> execute_prod_uninit mem args
     | Maybe_uninit -> execute_prod_maybe_uninit mem args
+    | Many_maybe_uninits -> execute_prod_many_maybe_uninits mem args
     | Lft -> execute_prod_lft mem args
     | Ty_size -> execute_prod_ty_size mem args
     | Pcy_value -> execute_prod_pcy_value mem args
@@ -499,6 +544,7 @@ let execute_action ~action_name mem args =
     | Load_value -> execute_load mem args
     | Store_value -> execute_store mem args
     | Load_discr -> execute_load_discr mem args
+    | Copy_nonoverlapping -> execute_copy_nonoverlapping mem args
     | Free -> execute_free mem args
     | Size_of -> execute_size_of mem args
     | Is_zst -> execute_is_zst mem args

@@ -197,7 +197,12 @@ let rec substitution ~subst_expr t =
   | Slice t -> Slice (rec_call t)
   | Unresolved e -> Unresolved (subst_expr e)
 
-let array_of_size length ty = Array { length; ty }
+let array ty length = Array { length; ty }
+
+let is_array_of ~array_ty ~inner_ty =
+  match array_ty with
+  | Array { ty; _ } -> equal ty inner_ty
+  | _ -> false
 
 let slice_elements = function
   | Slice t -> t

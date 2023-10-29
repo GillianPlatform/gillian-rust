@@ -3,6 +3,7 @@ type t =
   | Alloc
   | Load_value
   | Store_value
+  | Copy_nonoverlapping
   | Deinit
   | Free
   | Load_discr
@@ -18,7 +19,7 @@ type core_predicate =
   | Value
   | Uninit
   | Maybe_uninit
-  | Many_maybe_uninit
+  | Many_maybe_uninits
   | Freed
   | Ty_size
   | Lft
@@ -31,6 +32,7 @@ let of_name = function
   | "alloc" -> Alloc
   | "load_value" -> Load_value
   | "store_value" -> Store_value
+  | "copy_nonoverlapping" -> Copy_nonoverlapping
   | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
   | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | "deinit" -> Deinit
@@ -48,6 +50,7 @@ let to_name = function
   | Alloc -> "alloc"
   | Load_value -> "load_value"
   | Store_value -> "store_value"
+  | Copy_nonoverlapping -> "copy_nonoverlapping"
   | Deinit -> "deinit"
   | Free -> "free"
   | Size_of -> "size_of"
@@ -62,7 +65,7 @@ let cp_to_name = function
   | Value -> "value"
   | Uninit -> "uninit"
   | Maybe_uninit -> "maybe_uninit"
-  | Many_maybe_uninit -> "many_maybe_uninit"
+  | Many_maybe_uninits -> "many_maybe_uninit"
   | Freed -> "freed"
   | Ty_size -> "ty_size"
   | Lft -> "lft"
@@ -75,7 +78,7 @@ let cp_of_name = function
   | "value" -> Value
   | "uninit" -> Uninit
   | "maybe_uninit" -> Maybe_uninit
-  | "many_maybe_uninit" -> Many_maybe_uninit
+  | "many_maybe_uninits" -> Many_maybe_uninits
   | "freed" -> Freed
   | "ty_size" -> Ty_size
   | "lft" -> Lft

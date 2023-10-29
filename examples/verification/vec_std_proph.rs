@@ -44,11 +44,6 @@ pub enum TryReserveErrorKind {
 
 use TryReserveErrorKind::*;
 
-#[predicate]
-fn all_none<T>(x: In<Seq<Option<T>>>) {
-    assertion!((forall<i: usize> (0 <= i && i < x.len()) ==> x.at(i) == None))
-}
-
 enum AllocInit {
     /// The contents of the new memory are uninitialized.
     Uninitialized,
@@ -76,6 +71,11 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 }
 
 #[predicate]
+fn all_none<T>(x: In<Seq<Option<T>>>) {
+    assertion!((forall<i: usize> (0 <= i && i < x.len()) ==> x.at(i) == None))
+}
+
+#[predicate]
 pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
     assertion!((vs == Seq::empty()) * (reprs == Seq::empty()));
     assertion!(|x: T,
@@ -86,6 +86,11 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
         * all_own(rest, rest_repr)
         * (reprs == rest_repr.prepend(x_repr)))
 }
+
+#[lemma]
+#[requires(ptr.many_uninits(cap))]
+#[ensures(|content, repr| ptr.many_maybe_uninit(cap, content) * all_own(content, repr) * all_none(content) * all_none(repr))]
+fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
 
 // Modified to remove alloctaor
 pub(crate) struct RawVec<T> {
@@ -204,13 +209,13 @@ impl<T: Ownable> RawVec<T> {
                 Err(_) => handle_alloc_error(layout),
             };
             let ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-            // uninit_to_raw_vec(ptr.as_ptr(), capacity);
+            uninit_to_raw_vec(ptr.as_ptr(), capacity);
             Self { ptr, cap: capacity }
         }
     }
 
-    // #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
-    // #[ensures(emp)]
+    #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
+    #[ensures(emp)]
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // This is ensured by the calling contexts.
         // assert!(additional > 0);
