@@ -128,19 +128,20 @@ let execute_load_discr mem args =
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
 let execute_free mem args =
-  let { heap; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
-  | [ loc; proj; ty ] ->
-      let** () =
-        Delayed.branch_on
-          (Formula.Eq (proj, EList []))
-          ~then_:(fun () -> DR.ok ())
-          ~else_:(fun () -> DR.error (Err.Invalid_free_pointer (loc, proj)))
-      in
+  | [ loc; _proj; ty ] ->
+      (* TODO: implement freeability properly *)
+      (* let** () =
+           Delayed.branch_on
+             (Formula.Eq (proj, EList []))
+             ~then_:(fun () -> DR.ok ())
+             ~else_:(fun () -> DR.error (Err.Invalid_free_pointer (loc, proj)))
+         in *)
       let** loc = resolve_loc_result loc in
       let ty = Ty.of_expr ty in
-      let++ new_heap = Heap.free heap loc ty in
-      make_branch ~mem:{ mem with heap = new_heap } ()
+      let++ new_heap, lk = Heap.free ~lk heap loc ty in
+      make_branch ~mem:{ mem with heap = new_heap; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for free"
 
 let execute_cons_value mem args =

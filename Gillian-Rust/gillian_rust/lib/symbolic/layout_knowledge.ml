@@ -2,6 +2,7 @@ open Gillian.Utils.Prelude
 open Gillian.Gil_syntax
 module DR = Gillian.Monadic.Delayed_result
 module Delayed = Gillian.Monadic.Delayed
+open Delayed.Syntax
 
 type knowledge = { size : Expr.t (* align: Expr.t; *) } [@@deriving yojson]
 
@@ -24,7 +25,7 @@ let assertions t =
   in
   Map.to_seq t |> Seq.concat_map asrts |> List.of_seq
 
-let size_of ~lk ty =
+let rec size_of ~lk ty =
   match ty with
   | Ty.Scalar ty -> Delayed.return (Expr.int (Ty.size_of_scalar ty), lk)
   | Ref { ty = Slice _; _ } | Ptr { ty = Slice _; _ } ->
@@ -43,7 +44,17 @@ let size_of ~lk ty =
             [ gt_0; is_int ]
           in
           Delayed.return ~learned (size, Map.add ty { size } lk))
+  | Array { length; ty } ->
+      let+ size_ty, lk = size_of ~lk ty in
+      (Expr.Infix.(size_ty * length), lk)
   | _ -> Fmt.failwith "size_of: not implemented for %a yet" Ty.pp ty
+
+let size_equal ~lk ty_a ty_b =
+  if Ty.equal ty_a ty_b then Delayed.return (Formula.True, lk)
+  else
+    let* size_a, lk = size_of ~lk ty_a in
+    let+ size_b, lk = size_of ~lk ty_b in
+    (Formula.Infix.(size_a #== size_b), lk)
 
 let produce_ty_size ~lk ty new_size =
   let open Formula.Infix in

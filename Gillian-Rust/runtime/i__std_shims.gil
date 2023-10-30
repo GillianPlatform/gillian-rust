@@ -193,7 +193,7 @@ proc "std::alloc::Allocator::grow"(lft, alloc_ty, alloc_ptr, ptr, old_layout, ne
           ptr := l-nth(ptr, 0i); (* NonNull::as_ptr() *)
           (* We copy the old data into the new data *)
           u := [copy_nonoverlapping](l-nth(ptr, 0i), l-nth(ptr, 1i), l-nth(new_ptr, 0i), l-nth(new_ptr, 1i), "u8", old_size);
-          u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "sym_array", "u8", old_size }}); (* We free the old data *)
+          u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "array", "u8", old_size }}); (* We free the old data *)
           ret := {{ 0i, {{ 
                {{ {{ new_ptr, new_size }} }}
           }} }};

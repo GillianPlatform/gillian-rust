@@ -67,3 +67,15 @@ let concat_map_2 f l1 l2 =
     | _ -> raise (Invalid_argument "concat_map_2")
   in
   aux f [] l1 l2
+
+let split_at ~at l =
+  if at < 0 then raise (Invalid_argument "split_at: negative index")
+  else
+    let rec aux acc at rest =
+      match (at, rest) with
+      | 0, _ -> (List.rev acc, rest)
+      | n, a :: r -> aux (a :: acc) (n - 1) r
+      | _, [] ->
+          raise (Invalid_argument "split_at: index greater than list length")
+    in
+    aux [] at l

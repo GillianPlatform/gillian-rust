@@ -1,8 +1,6 @@
 open Gillian.Gil_syntax
 module Recovery_tactic = Gillian.General.Recovery_tactic
 
-type qty = Partially | Totally [@@deriving yojson, show]
-
 type t =
   | Too_symbolic of Expr.t
   | Use_after_free of string
@@ -18,7 +16,7 @@ type t =
   | MissingBlock of string
   | Missing_pcy of string
   | Missing_lifetime of Lft.t
-  | Missing_proj of (string * Projections.t * qty) (* Something could be only partially missing *)
+  | Missing_proj of (string * Projections.t * Qty.t) (* Something could be only partially missing *)
   | Missing_observation of Formula.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t
@@ -51,10 +49,6 @@ let recovery_tactic =
 
 let pp ft =
   let open Fmt in
-  let pp_qty ft = function
-    | Totally -> string ft "Totally"
-    | Partially -> string ft "Partially"
-  in
   function
   | LogicError s -> pf ft "Logic error: %s" s
   | Too_symbolic e ->
@@ -63,7 +57,7 @@ let pp ft =
   | MissingBlock s -> pf ft "MissingBlock: %s" s
   | Missing_pcy s -> pf ft "Missing prophecy: %s" s
   | Missing_proj (loc, proj, qty) ->
-      pf ft "%a missing projections at location %s: %a" pp_qty qty loc
+      pf ft "%a missing projections at location %s: %a" Qty.pp qty loc
         Projections.pp proj
   | Invalid_type (t1, t2) -> pf ft "Invalid type: %a != %a" Ty.pp t1 Ty.pp t2
   | Invalid_list_op -> pf ft "Invalid list operation"
@@ -92,7 +86,7 @@ module Conversion_error = struct
     let total_proj = Projections.add_ops proj additional_proj in
     let qty =
       match additional_proj with
-      | [] -> Totally
+      | [] -> Qty.Totally
       | _ -> Partially
     in
     match reason with
