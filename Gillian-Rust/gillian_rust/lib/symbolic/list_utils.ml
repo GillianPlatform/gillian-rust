@@ -79,3 +79,11 @@ let split_at ~at l =
           raise (Invalid_argument "split_at: index greater than list length")
     in
     aux [] at l
+
+let extract_range ~range:(start, end_) l =
+  let left, right = split_at ~at:start l in
+  let mid, right = split_at ~at:(end_ - start) right in
+  match (left, mid, right) with
+  | [], mid, right -> `Left (mid, right)
+  | left, mid, [] -> `Right (left, mid)
+  | _ -> `Three (left, mid, right)

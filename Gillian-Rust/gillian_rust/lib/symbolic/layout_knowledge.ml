@@ -49,12 +49,29 @@ let rec size_of ~lk ty =
       (Expr.Infix.(size_ty * length), lk)
   | _ -> Fmt.failwith "size_of: not implemented for %a yet" Ty.pp ty
 
+let reinterpret_offset ~lk ~from_ty ~to_ty ofs =
+  if Ty.equal from_ty to_ty then Delayed.return (ofs, lk)
+  else
+    let* size_from, lk = size_of ~lk from_ty in
+    let+ size_to, lk = size_of ~lk to_ty in
+    (Expr.Infix.(ofs * size_from / size_to), lk)
+
+let length_as_array_of ~lk ~of_ty ty =
+  match ty with
+  | Ty.Array { length; ty } when Ty.equal ty of_ty -> Delayed.return (length, lk)
+  | ty ->
+      let* size_array, lk = size_of ~lk ty in
+      let+ size_conv, lk = size_of ~lk of_ty in
+      (Expr.Infix.(size_array / size_conv), lk)
+
+let compare_sizes ~lk comp ty_a ty_b =
+  let* size_a, lk = size_of ~lk ty_a in
+  let+ size_b, lk = size_of ~lk ty_b in
+  (comp size_a size_b, lk)
+
 let size_equal ~lk ty_a ty_b =
   if Ty.equal ty_a ty_b then Delayed.return (Formula.True, lk)
-  else
-    let* size_a, lk = size_of ~lk ty_a in
-    let+ size_b, lk = size_of ~lk ty_b in
-    (Formula.Infix.(size_a #== size_b), lk)
+  else compare_sizes ~lk Formula.Infix.( #== ) ty_a ty_b
 
 let produce_ty_size ~lk ty new_size =
   let open Formula.Infix in

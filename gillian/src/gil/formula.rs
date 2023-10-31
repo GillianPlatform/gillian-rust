@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{Assertion, Expr, Type};
+use super::{Assertion, Expr, Literal, Type};
 
 #[derive(Debug, Clone)]
 pub enum Formula {
@@ -53,7 +53,33 @@ pub enum Formula {
     },
 }
 
+impl From<bool> for Formula {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::True
+        } else {
+            Self::False
+        }
+    }
+}
+
 impl Formula {
+    pub fn i_le<E1, E2>(e1: E1, e2: E2) -> Self
+    where
+        E1: Into<Expr>,
+        E2: Into<Expr>,
+    {
+        let e1 = e1.into();
+        let e2 = e2.into();
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => (i <= j).into(),
+            _ => Self::ILessEq {
+                left: Box::new(e1),
+                right: Box::new(e2),
+            },
+        }
+    }
+
     pub fn eq(left: Expr, right: Expr) -> Self {
         Self::Eq {
             left: Box::new(left),

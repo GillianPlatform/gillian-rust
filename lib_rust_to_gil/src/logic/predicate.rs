@@ -238,6 +238,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             self.make_is_nonnull_asrt(e)
         } else if self.is_unique(ty) {
             self.make_is_unique_asrt(e)
+        } else if crate::utils::ty::is_unsigned_integral(ty) {
+            Formula::i_le(0, e).into_asrt()
         } else {
             Assertion::Emp
         }

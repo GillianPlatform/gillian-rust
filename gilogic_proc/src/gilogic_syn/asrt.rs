@@ -640,7 +640,7 @@ pub(crate) mod parsing {
                 let pipe1 = input.parse()?;
                 let lvars = Punctuated::parse_separated_nonempty(input)?;
                 let pipe2 = input.parse()?;
-                (Some(pipe1), lvars, pipe2)
+                (Some(pipe1), lvars, Some(pipe2))
             } else {
                 (None, Punctuated::new(), None)
             };

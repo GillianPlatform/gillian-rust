@@ -15,6 +15,10 @@ pub fn mut_ref_inner(ty: Ty) -> Option<Ty> {
     }
 }
 
+pub fn is_unsigned_integral(ty: Ty) -> bool {
+    matches!(ty.kind(), TyKind::Uint(_))
+}
+
 pub fn is_ty_param(ty: Ty) -> bool {
     matches!(ty.kind(), TyKind::Param(_))
 }

@@ -86,6 +86,18 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
         * all_own(rest, rest_repr)
         * (reprs == rest_repr.prepend(x_repr)))
 }
+#[lemma]
+#[requires(|content: Seq<Option<T>>, repr: Seq<Option<T::RepresentationTy>>|
+            (before < after) * ptr.many_maybe_uninit(before, content) * all_own(content, repr) *
+            ptr.add(before).many_uninits(after - before))]
+#[ensures(|new_content: Seq<Option<T>>, new_repr: Seq<Option<T::RepresentationTy>>| 
+        ptr.many_maybe_uninit(after, new_content) * all_own(new_content, new_repr) *
+        (forall<i: usize> (0 <= i && i < before) ==> new_content.at(i) == content.at(i)) *
+        (forall<i: usize> (0 <= i && i < before) ==> new_repr.at(i) == repr.at(i)) *
+        (forall<i: usize> (before <= i && i < after) ==> new_content.at(i) == None) *
+        (forall<i: usize> (before <= i && i < after) ==> new_repr.at(i) == None)
+        )]
+fn concat_own_uninit<T: Ownable>(ptr: *mut T, before: usize, after: usize);
 
 #[lemma]
 #[requires(ptr.many_uninits(cap))]
@@ -109,6 +121,7 @@ impl<T: Ownable> Ownable for RawVec<T> {
     #[predicate]
     fn own(self, content: Self::RepresentationTy) {
         assertion!(|ptr, cap, vs| (self == RawVec { ptr, cap })
+            * cap.own(cap)
             * ptr.as_ptr().many_maybe_uninit(cap, vs)
             * all_own(vs, content))
     }
@@ -251,6 +264,7 @@ impl<T: Ownable> RawVec<T> {
             Err(err) => return Err(err),
         };
         self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        concat_own_uninit(self.ptr.as_ptr(), self.cap, cap);
         self.cap = cap;
         Ok(())
     }

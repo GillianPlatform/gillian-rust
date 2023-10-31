@@ -1,5 +1,5 @@
 {
-  "checksum": "24b5a4573f0965538212adb7ca7d5e04",
+  "checksum": "1d84fdd2a0fbaa6c05321b6e13d75d3d",
   "root": "gillian-rust@link-dev:./esy.json",
   "node": {
     "ocaml@4.14.1000@d41d8cd9": {
@@ -24,9 +24,9 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.1000@d41d8cd9",
-        "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b@d41d8cd9",
         "@opam/yojson@opam:2.1.1@ad5e299c",
-        "@opam/printbox-text@opam:0.6.1@66ef1874",
+        "@opam/printbox-text@opam:0.7@f9122d5d",
         "@opam/ppxlib@opam:0.25.1@bd0b93cc",
         "@opam/ppx_deriving_yojson@opam:3.6.1@c3ef2ec3",
         "@opam/fmt@opam:0.9.0@87213963", "@opam/dune@opam:3.11.1@ba2e0e6a",
@@ -39,16 +39,16 @@
         "@opam/ocaml-lsp-server@opam:1.14.2@98e2df4b"
       ]
     },
-    "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9": {
+    "gillian@github:GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b@d41d8cd9": {
       "id":
-        "gillian@github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465@d41d8cd9",
+        "gillian@github:GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b@d41d8cd9",
       "name": "gillian",
       "version":
-        "github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465",
+        "github:GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b",
       "source": {
         "type": "install",
         "source": [
-          "github:GillianPlatform/Gillian:gillian.json#ba3e52b038b48a79ef7d3899f2fd209242fee465"
+          "github:GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b"
         ]
       },
       "overrides": [],
@@ -810,27 +810,27 @@
         "@opam/dune@opam:3.11.1@ba2e0e6a"
       ]
     },
-    "@opam/printbox-text@opam:0.6.1@66ef1874": {
-      "id": "@opam/printbox-text@opam:0.6.1@66ef1874",
+    "@opam/printbox-text@opam:0.7@f9122d5d": {
+      "id": "@opam/printbox-text@opam:0.7@f9122d5d",
       "name": "@opam/printbox-text",
-      "version": "opam:0.6.1",
+      "version": "opam:0.7",
       "source": {
         "type": "install",
         "source": [
-          "archive:https://opam.ocaml.org/cache/md5/6e/6e065332d7db622572bd963dbd530589#md5:6e065332d7db622572bd963dbd530589",
-          "archive:https://github.com/c-cube/printbox/archive/v0.6.1.tar.gz#md5:6e065332d7db622572bd963dbd530589"
+          "archive:https://opam.ocaml.org/cache/sha256/59/59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737#sha256:59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737",
+          "archive:https://github.com/c-cube/printbox/releases/download/v0.7/printbox-0.7.tbz#sha256:59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737"
         ],
         "opam": {
           "name": "printbox-text",
-          "version": "0.6.1",
-          "path": "esy.lock/opam/printbox-text.0.6.1"
+          "version": "0.7",
+          "path": "esy.lock/opam/printbox-text.0.7"
         }
       },
       "overrides": [],
       "dependencies": [
         "ocaml@4.14.1000@d41d8cd9", "@opam/uutf@opam:1.0.3@47c95a18",
         "@opam/uucp@opam:15.1.0@ef3e0a4e",
-        "@opam/printbox@opam:0.6.1@1c758393",
+        "@opam/printbox@opam:0.7@4a6803f7",
         "@opam/dune@opam:3.11.1@ba2e0e6a",
         "@opam/base-bytes@opam:base@19d0c2ff",
         "@esy-ocaml/substs@0.0.1@d41d8cd9"
@@ -838,25 +838,25 @@
       "devDependencies": [
         "ocaml@4.14.1000@d41d8cd9", "@opam/uutf@opam:1.0.3@47c95a18",
         "@opam/uucp@opam:15.1.0@ef3e0a4e",
-        "@opam/printbox@opam:0.6.1@1c758393",
+        "@opam/printbox@opam:0.7@4a6803f7",
         "@opam/dune@opam:3.11.1@ba2e0e6a",
         "@opam/base-bytes@opam:base@19d0c2ff"
       ]
     },
-    "@opam/printbox@opam:0.6.1@1c758393": {
-      "id": "@opam/printbox@opam:0.6.1@1c758393",
+    "@opam/printbox@opam:0.7@4a6803f7": {
+      "id": "@opam/printbox@opam:0.7@4a6803f7",
       "name": "@opam/printbox",
-      "version": "opam:0.6.1",
+      "version": "opam:0.7",
       "source": {
         "type": "install",
         "source": [
-          "archive:https://opam.ocaml.org/cache/md5/6e/6e065332d7db622572bd963dbd530589#md5:6e065332d7db622572bd963dbd530589",
-          "archive:https://github.com/c-cube/printbox/archive/v0.6.1.tar.gz#md5:6e065332d7db622572bd963dbd530589"
+          "archive:https://opam.ocaml.org/cache/sha256/59/59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737#sha256:59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737",
+          "archive:https://github.com/c-cube/printbox/releases/download/v0.7/printbox-0.7.tbz#sha256:59271f9720bfe25e8bf884b38f1ba7fe161292faf6f895c89f71b615e5671737"
         ],
         "opam": {
           "name": "printbox",
-          "version": "0.6.1",
-          "path": "esy.lock/opam/printbox.0.6.1"
+          "version": "0.7",
+          "path": "esy.lock/opam/printbox.0.7"
         }
       },
       "overrides": [],
