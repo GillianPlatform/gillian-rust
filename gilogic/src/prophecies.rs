@@ -113,7 +113,10 @@ pub trait Prophecised {
     fn prophecy_resolve(self);
 }
 
-impl<T: Ownable> Prophecised for &mut T {
+impl<T> Prophecised for &mut T
+where
+    T: Ownable,
+{
     type ProphecyTy = Prophecy<T::RepresentationTy>;
 
     fn prophecy(self) -> Self::ProphecyTy {

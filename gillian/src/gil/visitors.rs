@@ -100,7 +100,9 @@ macro_rules! make_gil_visitor {
             Formula::Not(f) => {
               self.visit_formula(f);
             },
-            Formula::And { left, right } | Formula::Or { left, right } => {
+            Formula::And { left, right }
+            | Formula::Or { left, right }
+            | Formula::Impl { left, right } => {
               self.visit_formula(left);
               self.visit_formula(right);
             },
@@ -249,10 +251,10 @@ macro_rules! make_gil_visitor {
                 self.visit_expr(operand);
               }
             }
-            Expr::LstSub { list, start, end } => {
+            Expr::LstSub { list, start, length } => {
               self.visit_expr(list);
               self.visit_expr(start);
-              self.visit_expr(end);
+              self.visit_expr(length);
             }
             Expr::EList(exprs) | Expr::ESet(exprs) => {
               for expr in exprs {

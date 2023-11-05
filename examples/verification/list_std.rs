@@ -135,7 +135,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     /// Adds the given node to the front of the list.
-    #[requires(|e: T| self.own() * (node -> Node { next: None, prev: None, element: e }))]
+    #[requires(|e: T| self.own() * (node -> Node { next: None, prev: None, element: e }) * e.own())]
     #[ensures(ret.own())]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,

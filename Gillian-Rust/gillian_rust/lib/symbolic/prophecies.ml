@@ -93,7 +93,7 @@ let with_observer_block pcy_id pcy_env f =
   let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
   | Some pcy ->
-      let++ value, new_observer, lk = f pcy.observer in
+      let++ (value, new_observer), lk = f pcy.observer in
       let new_pcymap =
         MemMap.add pcy_id { pcy with observer = new_observer } pcy_env
       in
@@ -104,7 +104,7 @@ let with_controller_block pcy_id pcy_env f =
   let open DR.Syntax in
   match MemMap.find_opt pcy_id pcy_env with
   | Some pcy ->
-      let++ value, new_controller, lk = f pcy.controller in
+      let++ (value, new_controller), lk = f pcy.controller in
       let new_pcymap =
         MemMap.add pcy_id { pcy with controller = new_controller } pcy_env
       in
@@ -229,10 +229,10 @@ let resolve ~tyenv ~lk pcy_env pcy_var (proj : Projections.t) ty =
       let open TreeBlock in
       (* Reading from the controller is a way of ensuring we have the part we require.
          An invariant is that the values of the controller and the resolver have to coincide *)
-      let** current_value, _, lk =
+      let** (current_value, _), lk =
         load_proj ~loc:pcy_var ~tyenv ~lk controller proj ty true
       in
-      let** _, observer, lk =
+      let** (_, observer), lk =
         cons_proj ~loc:pcy_var ~tyenv ~lk observer proj ty
       in
       let learned =

@@ -87,3 +87,15 @@ let extract_range ~range:(start, end_) l =
   | [], mid, right -> `Left (mid, right)
   | left, mid, [] -> `Right (left, mid)
   | _ -> `Three (left, mid, right)
+
+let replace_ith l i v =
+  if i < 0 then raise (Invalid_argument "replace_ith")
+  else
+    let rec aux acc i l =
+      match (i, l) with
+      | 0, _ :: r -> List.rev_append acc (v :: r)
+      | _, x :: r -> aux (x :: acc) (i - 1) r
+      | _, [] ->
+          raise (Invalid_argument "replace_ith: index is greater than list")
+    in
+    aux [] i l

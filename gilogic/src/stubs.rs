@@ -103,6 +103,16 @@ impl<T> PointsTo<T> for *mut T {}
 impl<T> PointsTo<T> for Box<T> {}
 impl<T> PointsTo<T> for NonNull<T> {}
 
+pub trait PointsToSlice<T>: Sized {
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::asrt::points_to_slice"]
+    fn points_to_slice(self, _sz: usize, _content: super::Seq<T>) -> RustAssertion {
+        unreachable!()
+    }
+}
+
+impl<T> PointsToSlice<T> for *mut T {}
+
 pub trait PointsToMaybeUninit<T>: Sized {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::asrt::uninit"]
@@ -123,8 +133,8 @@ pub trait PointsToMaybeUninit<T>: Sized {
     }
 
     #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::asrt::many_maybe_uninit"]
-    fn many_maybe_uninit(self, _len: usize, _: super::Seq<Option<T>>) -> RustAssertion {
+    #[rustc_diagnostic_item = "gillian::asrt::many_maybe_uninits"]
+    fn many_maybe_uninits(self, _len: usize, _: super::Seq<Option<T>>) -> RustAssertion {
         unreachable!()
     }
 }

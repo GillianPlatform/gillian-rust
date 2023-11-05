@@ -51,7 +51,7 @@ pub fn compile_logic<'tcx, 'genv>(
         )
         .compile()
     } else if is_precondition(did, tcx) {
-        log::debug!("Compiling precondition: {:?}", did);
+        log::trace!("Compiling precondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
         let generic_amounts =
             pred_ctx.generic_types().len() + (pred_ctx.has_generic_lifetimes() as usize);
@@ -78,7 +78,7 @@ pub fn compile_logic<'tcx, 'genv>(
         vec![LogicItem::Precondition(id, args, definition)]
         // Has to b safe, because we know there is exactly one definition
     } else if is_postcondition(did, tcx) {
-        log::debug!("Compiling postcondition: {:?}", did);
+        log::trace!("Compiling postcondition: {:?}", did);
         let pred_ctx = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did);
         let generics_amount =
             pred_ctx.generic_types().len() + (pred_ctx.has_generic_lifetimes() as usize);

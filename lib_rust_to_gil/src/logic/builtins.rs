@@ -26,6 +26,7 @@ pub(crate) enum LogicStubs {
     AssertObservation,
     AssertEmp,
     AssertPointsTo,
+    AssertPointsToSlice,
     AssertUninit,
     AssertManyUninits,
     AssertMaybeUninit,
@@ -49,6 +50,8 @@ pub(crate) enum LogicStubs {
     SeqConcat,
     SeqLen,
     SeqAt,
+    SeqSub,
+    SeqRepeat,
     // The following are actually part of gilogic and would disappear
     // as soon as we support cross-crate compilation.
     OwnPred,
@@ -67,10 +70,11 @@ impl LogicStubs {
                 "gillian::asrt::observation" => Some(Self::AssertObservation),
                 "gillian::asrt::emp" => Some(Self::AssertEmp),
                 "gillian::asrt::points_to" => Some(Self::AssertPointsTo),
+                "gillian::asrt::points_to_slice" => Some(Self::AssertPointsToSlice),
                 "gillian::asrt::uninit" => Some(Self::AssertUninit),
                 "gillian::asrt::many_uninits" => Some(Self::AssertManyUninits),
                 "gillian::asrt::maybe_uninit" => Some(Self::AssertMaybeUninit),
-                "gillian::asrt::many_maybe_uninit" => Some(Self::AssertManyMaybeUninits),
+                "gillian::asrt::many_maybe_uninits" => Some(Self::AssertManyMaybeUninits),
                 "gillian::formula::equal" => Some(Self::FormulaEqual),
                 "gillian::formula::less_eq" => Some(Self::FormulaLessEq),
                 "gillian::formula::less" => Some(Self::FormulaLess),
@@ -89,6 +93,8 @@ impl LogicStubs {
                 "gillian::seq::concat" => Some(Self::SeqConcat),
                 "gillian::seq::len" => Some(Self::SeqLen),
                 "gillian::seq::at" => Some(Self::SeqAt),
+                "gillian::seq::sub" => Some(Self::SeqSub),
+                "gillian::seq::repeat" => Some(Self::SeqRepeat),
                 "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Self::OwnPred),
                 "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
                     Some(Self::MutRefOwnPred)

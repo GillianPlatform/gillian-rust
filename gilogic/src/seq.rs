@@ -47,6 +47,18 @@ impl<T> Seq<T> {
     pub fn at(self, _idx: usize) -> T {
         unreachable!()
     }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::seq::sub"]
+    pub fn sub(self, _start: usize, _size: usize) -> Self {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::seq::repeat"]
+    pub fn repeat(_x: T, _n: usize) -> Self {
+        unreachable!()
+    }
 }
 
 impl<T> std::ops::Index<usize> for Seq<T> {

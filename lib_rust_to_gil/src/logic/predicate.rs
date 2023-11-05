@@ -606,6 +606,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let index = self.compile_expression(args[1], thir);
                     list.lnth_e(index)
                 }
+                Some(LogicStubs::SeqSub) => {
+                    let list = self.compile_expression(args[0], thir);
+                    let start = self.compile_expression(args[1], thir);
+                    let size = self.compile_expression(args[2], thir);
+                    list.lst_sub_e(start, size)
+                }
+                Some(LogicStubs::SeqRepeat) => {
+                    let elem = self.compile_expression(args[0], thir);
+                    let size = self.compile_expression(args[1], thir);
+                    elem.repeat(size)
+                }
                 Some(LogicStubs::MutRefGetProphecy) => {
                     self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                     let mut_ref = self.compile_expression(args[0], thir);
@@ -891,6 +902,24 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         super::core_preds::maybe_uninit(pointer, ty, pointee)
     }
 
+    fn compile_points_to_slice(
+        &mut self,
+        args: &[ExprId],
+        fn_def_ty: Ty<'tcx>,
+        thir: &Thir<'tcx>,
+    ) -> Assertion {
+        let ty = match fn_def_ty.kind() {
+            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
+            _ => panic!("compile points_to_slice wentwrong"),
+        };
+        let pointer = self.compile_expression(args[0], thir);
+        let size = self.compile_expression(args[1], thir);
+        let pointees = self.compile_expression(args[2], thir);
+
+        let typ = self.encode_array_type(self.subst(ty), size);
+        super::core_preds::value(pointer, typ, pointees)
+    }
+
     fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {
         assert!(args.len() == 2, "Pure call must have one argument");
         // The type in the points_to is the type of the pointee.
@@ -974,6 +1003,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     Assertion::Emp
                 }
                 Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
+                Some(LogicStubs::AssertPointsToSlice) => {
+                    self.compile_points_to_slice(args, *ty, thir)
+                }
                 Some(LogicStubs::AssertUninit) => self.compile_uninit(args, *ty, thir),
                 Some(LogicStubs::AssertManyUninits) => self.compile_many_uninits(args, *ty, thir),
                 Some(LogicStubs::AssertMaybeUninit) => self.compile_maybe_uninit(args, *ty, thir),

@@ -28,7 +28,7 @@ pub enum Expr {
     LstSub {
         list: Box<Expr>,
         start: Box<Expr>,
-        end: Box<Expr>,
+        length: Box<Expr>,
     },
     EList(Vec<Expr>),
     ESet(Vec<Expr>),
@@ -129,6 +129,41 @@ impl Expr {
         T: Into<BigInt>,
     {
         Expr::Lit(Literal::Int(i.into()))
+    }
+
+    pub fn implies(self, other: Self) -> Self {
+        self.e_not().e_or(other)
+    }
+
+    pub fn e_or(self, other: Self) -> Self {
+        match (self, other) {
+            (Expr::Lit(Literal::Bool(bl)), Expr::Lit(Literal::Bool(br))) => {
+                Expr::Lit(Literal::Bool(bl || br))
+            }
+            (Expr::Lit(Literal::Bool(true)), _) | (_, Expr::Lit(Literal::Bool(true))) => {
+                Expr::Lit(Literal::Bool(true))
+            }
+            (Expr::Lit(Literal::Bool(false)), e) | (e, Expr::Lit(Literal::Bool(false))) => e,
+            (e1, e2) => Self::BinOp {
+                operator: BinOp::BOr,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+        }
+    }
+
+    pub fn e_not(self) -> Self {
+        match self {
+            Expr::Lit(Literal::Bool(b)) => Expr::Lit(Literal::Bool(!b)),
+            Expr::UnOp {
+                operator: UnOp::UNot,
+                operand: b,
+            } => *b,
+            _ => Self::UnOp {
+                operator: UnOp::UNot,
+                operand: Box::new(self),
+            },
+        }
     }
 
     pub fn null() -> Self {
@@ -288,6 +323,72 @@ impl Expr {
         }
     }
 
+    pub fn repeat(self, amount: Expr) -> Self {
+        match amount {
+            Expr::Lit(Literal::Int(i)) => {
+                let values = std::iter::repeat(self)
+                    .take(i.to_usize().unwrap())
+                    .collect();
+                Expr::EList(values)
+            }
+            amount => Self::BinOp {
+                operator: BinOp::LstRepeat,
+                left_operand: Box::new(self),
+                right_operand: Box::new(amount),
+            },
+        }
+    }
+
+    pub fn lst_sub_e(self, start: Expr, length: Expr) -> Self {
+        match (start, length) {
+            (Expr::Lit(Literal::Int(start)), Expr::Lit(Literal::Int(length))) => {
+                self.lst_sub(start, length)
+            }
+            (start, length) => Self::LstSub {
+                list: Box::new(self),
+                start: Box::new(start),
+                length: Box::new(length),
+            },
+        }
+    }
+
+    pub fn lst_sub<I, J>(self, start: I, length: J) -> Self
+    where
+        I: Into<BigInt> + Clone,
+        J: Into<BigInt> + Clone,
+    {
+        let start: BigInt = start.clone().into();
+        let length: BigInt = length.clone().into();
+        let start_us: Result<usize, _> = start.clone().try_into();
+        let length_us: Result<usize, _> = length.clone().try_into();
+        match (self, start_us, length_us) {
+            (Expr::EList(vec), Ok(start), Ok(length)) => {
+                let result = vec.into_iter().skip(start).take(length).collect::<Vec<_>>();
+                if result.len() != length {
+                    panic!("ListSub is invalid!");
+                }
+                Expr::EList(result)
+            }
+            (Expr::Lit(Literal::LList(vec)), Ok(start), Ok(length)) => {
+                let result: Vec<_> = vec
+                    .into_iter()
+                    .skip(start)
+                    .take(length)
+                    .map(Expr::from)
+                    .collect();
+                if result.len() != length {
+                    panic!("ListSub is invalid!");
+                }
+                Expr::EList(result)
+            }
+            (x, _, _) => Self::LstSub {
+                list: Box::new(x),
+                start: Box::new(Expr::int(start)),
+                length: Box::new(Expr::int(length)),
+            },
+        }
+    }
+
     pub fn lst_len(self) -> Self {
         match self {
             Expr::EList(vec) => Expr::int(vec.len()),
@@ -400,7 +501,7 @@ impl fmt::Display for Expr {
                 left_operand,
                 right_operand,
             } => match operator {
-                BinOpEnum::LstNth | BinOpEnum::StrNth => {
+                BinOpEnum::LstNth | BinOpEnum::StrNth | BinOpEnum::LstRepeat => {
                     write!(f, "{}({}, {})", operator, *left_operand, *right_operand)
                 }
                 _ => write!(f, "({} {} {})", left_operand, operator, right_operand),
@@ -410,7 +511,11 @@ impl fmt::Display for Expr {
                 separated_display(operands, ", ", f)?;
                 write!(f, ")")
             }
-            LstSub { list, start, end } => {
+            LstSub {
+                list,
+                start,
+                length: end,
+            } => {
                 write!(f, "l-sub({}, {}, {})", *list, *start, *end)
             }
             EList(vec) => {

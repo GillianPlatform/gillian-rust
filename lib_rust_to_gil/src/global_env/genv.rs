@@ -193,7 +193,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             .expect("Couldn't find gillian::mut_ref::prophecy_auto_update")
     }
 
-    pub fn get_repr_ty_for(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn get_repr_ty_for(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let repr_ty_id = self.get_repr_ty_did();
         self.resolve_associated_type(repr_ty_id, ty)
     }
@@ -381,11 +381,7 @@ impl<'tcx> GlobalEnv<'tcx> {
                 let current = Expr::LVar("#current".to_string());
                 let model = Expr::PVar("model".to_string());
                 let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
-                let repr_ty_id = self
-                    .tcx()
-                    .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
-                    .expect("Couldn't find gillian::ownable::representation_ty");
-                let model_type = self.resolve_associated_type(repr_ty_id, *inner_ty);
+                let model_type = self.get_repr_ty_for(*inner_ty).unwrap();
                 let encoded_model_type = self.encode_type(model_type);
                 let pcy_value = crate::logic::core_preds::pcy_value(
                     full_pcy.clone(),

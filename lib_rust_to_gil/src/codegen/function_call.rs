@@ -26,7 +26,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let fname = self.tcx().def_path_str_with_args(did, substs);
 
         let stub = FnStubs::of_def_id(did, self.tcx());
-        log::debug!("Shimming {}, stub is {:?}", fname, stub);
+        log::trace!("Shimming {}, stub is {:?}", fname, stub);
         match stub {
             Some(FnStubs::Into)
                 if substs.type_at(0).is_ref()

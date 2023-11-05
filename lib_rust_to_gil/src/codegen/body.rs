@@ -50,7 +50,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         write_mir_fn(self.tcx(), self.mir(), &mut |_, _| Ok(()), &mut buf).unwrap();
         let bytes = buf.into_inner().unwrap();
         let string = String::from_utf8(bytes).unwrap();
-        log::debug!("{}", string)
+        log::trace!("{}", string)
     }
 
     pub fn args(&self) -> Vec<String> {
@@ -75,7 +75,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let proc_name =
             rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(self.did()));
 
-        log::debug!(
+        log::trace!(
             "Compiling {}, defkind: {:?}",
             proc_name,
             self.tcx().def_kind(self.did())

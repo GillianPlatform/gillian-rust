@@ -46,6 +46,6 @@
   },
   "resolutions": {
     "@opam/conf-sqlite3": "ManasJayanth/esy-sqlite:esy.json#28dfc73a8eda790213a8359ad708231069ed7079",
-    "gillian": "GillianPlatform/Gillian:gillian.json#a2035b2ee11c157cc21af68d48eac47cbbfb727b"
+    "gillian": "GillianPlatform/Gillian:gillian.json#387d910a8ecb8d7605eec4dd68cbf03d71e71eac"
   }
 }

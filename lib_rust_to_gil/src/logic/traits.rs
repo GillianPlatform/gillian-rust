@@ -29,7 +29,8 @@ pub trait TraitSolver<'tcx> {
     // and None if it's a parameter. (ImplSource::Param)
     fn resolve_candidate(&self, def_id: DefId, substs: GenericArgsRef<'tcx>) -> ResolvedImpl<'tcx>;
 
-    fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Ty<'tcx>;
+    // Returns None if the trait is unimplemented
+    fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Option<Ty<'tcx>>;
 }
 
 impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
@@ -116,7 +117,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         }
     }
 
-    fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn resolve_associated_type(&self, assoc_id: DefId, for_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let trait_id = self
             .tcx()
             .trait_of_item(assoc_id)
@@ -136,7 +137,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         let selection = match select_ctx.select(&obligation) {
             Ok(Some(selection)) => selection,
             Ok(None) => panic!("Ambiguous!"),
-            Err(Unimplemented) => fatal!(self, "Unimplemented trait!"),
+            Err(Unimplemented) => return None,
             Err(e) => panic!("Error: {:?}", e),
         };
         let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infer_ctx);
@@ -159,14 +160,16 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                         impl_data.impl_def_id,
                     )
                     .expect("Couldn't find the RepresentationType");
-                self.tcx()
-                    .type_of(associated_ty.def_id)
-                    .instantiate_identity()
+                Some(
+                    self.tcx()
+                        .type_of(associated_ty.def_id)
+                        .instantiate_identity(),
+                )
             }
-            ImplSource::Param(..) => self.tcx().mk_ty_from_kind(TyKind::Alias(
+            ImplSource::Param(..) => Some(self.tcx().mk_ty_from_kind(TyKind::Alias(
                 rustc_type_ir::AliasKind::Projection,
                 self.tcx().mk_alias_ty(assoc_id, t_subst),
-            )),
+            ))),
             _ => {
                 fatal!(
                     self,

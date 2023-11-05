@@ -5,11 +5,11 @@
 extern crate gilogic;
 
 use gilogic::{
-    __stubs::PointsToMaybeUninit,
+    __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     macros::{assertion, ensures, lemma, predicate, requires},
-    // mutref_auto_resolve,
-    prophecies::Ownable,
+    mutref_auto_resolve,
+    prophecies::{Ownable, Prophecised},
     Seq,
 };
 use std::alloc::{Allocator, Layout, LayoutError};
@@ -71,11 +71,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 }
 
 #[predicate]
-fn all_none<T>(x: In<Seq<Option<T>>>) {
-    assertion!((forall<i: usize> (0 <= i && i < x.len()) ==> x.at(i) == None))
-}
-
-#[predicate]
 pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
     assertion!((vs == Seq::empty()) * (reprs == Seq::empty()));
     assertion!(|x: T,
@@ -86,45 +81,29 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
         * all_own(rest, rest_repr)
         * (reprs == rest_repr.prepend(x_repr)))
 }
-#[lemma]
-#[requires(|content: Seq<Option<T>>, repr: Seq<Option<T::RepresentationTy>>|
-            (before < after) * ptr.many_maybe_uninit(before, content) * all_own(content, repr) *
-            ptr.add(before).many_uninits(after - before))]
-#[ensures(|new_content: Seq<Option<T>>, new_repr: Seq<Option<T::RepresentationTy>>| 
-        ptr.many_maybe_uninit(after, new_content) * all_own(new_content, new_repr) *
-        (forall<i: usize> (0 <= i && i < before) ==> new_content.at(i) == content.at(i)) *
-        (forall<i: usize> (0 <= i && i < before) ==> new_repr.at(i) == repr.at(i)) *
-        (forall<i: usize> (before <= i && i < after) ==> new_content.at(i) == None) *
-        (forall<i: usize> (before <= i && i < after) ==> new_repr.at(i) == None)
-        )]
-fn concat_own_uninit<T: Ownable>(ptr: *mut T, before: usize, after: usize);
 
-#[lemma]
-#[requires(ptr.many_uninits(cap))]
-#[ensures(|content, repr| ptr.many_maybe_uninit(cap, content) * all_own(content, repr) * all_none(content) * all_none(repr))]
-fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
+// #[lemma]
+// #[requires(|content: Seq<Option<T>>, repr: Seq<Option<T::RepresentationTy>>|
+//             (before < after) * ptr.many_maybe_uninit(before, content) * all_own(content, repr) *
+//             ptr.add(before).many_uninits(after - before))]
+// #[ensures(|nones: Seq<Option<T>>, nones_r: Seq<Option<T::RepresentationTy>>|
+//             ptr.many_maybe_uninit(after, content.concat(nones)) * all_own(content.concat(nones), repr.concat(nones_r)) *
+//             (nones.len() == after - before) * (nones.len() == nones_r.len()) *
+//             all_none(nones) * all_none(nones_r))]
+// fn concat_own_uninit<T: Ownable>(ptr: *mut T, before: usize, after: usize);
+
+// #[lemma]
+// #[requires(ptr.many_uninits(cap))]
+// #[ensures(
+//         ptr.many_maybe_uninit(cap, Seq::<Option<T>>::repeat(None, cap)) *
+//         all_own(Seq::<Option<T>>::repeat(None, cap), Seq::<Option<T::RepresentationTy>>::repeat(None, cap))
+//     )]
+// fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
 
 // Modified to remove alloctaor
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
-}
-
-pub struct Vec<T> {
-    buf: RawVec<T>,
-    len: usize,
-}
-
-impl<T: Ownable> Ownable for RawVec<T> {
-    type RepresentationTy = Seq<Option<T::RepresentationTy>>;
-
-    #[predicate]
-    fn own(self, content: Self::RepresentationTy) {
-        assertion!(|ptr, cap, vs| (self == RawVec { ptr, cap })
-            * cap.own(cap)
-            * ptr.as_ptr().many_maybe_uninit(cap, vs)
-            * all_own(vs, content))
-    }
 }
 
 fn finish_grow(
@@ -167,7 +146,7 @@ fn finish_grow(
     }
 }
 
-impl<T: Ownable> RawVec<T> {
+impl<T> RawVec<T> {
     const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
         8
     } else if mem::size_of::<T>() <= 1024 {
@@ -176,13 +155,14 @@ impl<T: Ownable> RawVec<T> {
         1
     };
 
-    #[ensures(ret.own(Seq::empty()))]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             ptr: Unique::dangling(),
             cap: 0,
         }
     }
+
+    pub const NEW: Self = Self::new();
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
         if T::IS_ZST || self.cap == 0 {
@@ -198,8 +178,8 @@ impl<T: Ownable> RawVec<T> {
         }
     }
 
-    #[requires(init.own(AllocInit::Uninitialized) * capacity.own(capacity) * (capacity < 2 << 62))]
-    #[ensures(|x| ret.own(x) * all_none(x))]
+    // #[requires(init.own(AllocInit::Uninitialized) * capacity.own(capacity) * (capacity < 2 << 62))]
+    // #[ensures(ret.own(Seq::repeat(None, capacity)))]
     fn allocate(capacity: usize, init: AllocInit) -> Self {
         // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
         if T::IS_ZST || capacity == 0 {
@@ -222,13 +202,19 @@ impl<T: Ownable> RawVec<T> {
                 Err(_) => handle_alloc_error(layout),
             };
             let ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-            uninit_to_raw_vec(ptr.as_ptr(), capacity);
             Self { ptr, cap: capacity }
         }
     }
 
-    #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
-    #[ensures(emp)]
+    pub fn ptr(&self) -> *mut T {
+        self.ptr.as_ptr()
+    }
+
+    // #[requires(|current: <Self as Ownable>::RepresentationTy, future: <Self as Ownable>::RepresentationTy| self.own((current, future)) * len.own(len) * additional.own(additional) * (additional > 0))]
+    // #[ensures(
+    //         $future.len() - current.len() >= additional$ // Note quite that
+    //         $future == current.concat(Seq::repeat(future.len() - current.len()))$
+    //  )]
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // This is ensured by the calling contexts.
         // assert!(additional > 0);
@@ -264,13 +250,24 @@ impl<T: Ownable> RawVec<T> {
             Err(err) => return Err(err),
         };
         self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-        concat_own_uninit(self.ptr.as_ptr(), self.cap, cap);
         self.cap = cap;
         Ok(())
     }
 
-    #[requires(capacity.own(capacity) * (capacity < 2 << 62))]
-    #[ensures(|model| ret.own(model) * all_none(model))]
+    pub fn capacity(&self) -> usize {
+        if T::IS_ZST {
+            usize::MAX
+        } else {
+            self.cap
+        }
+    }
+
+    pub fn reserve_for_push(&mut self, len: usize) {
+        handle_reserve(self.grow_amortized(len, 1));
+    }
+
+    // #[requires(capacity.own(capacity) * (capacity < 2 << 62))]
+    // #[ensures(|model| ret.own(model) * (model == Seq::repeat(None, model.len())))]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::allocate(capacity, AllocInit::Uninitialized)
     }
@@ -284,20 +281,80 @@ fn handle_alloc_error(_layout: Layout) -> ! {
     panic!("allocation failed!")
 }
 
-// We need to guarantee the following:
-// * We don't ever allocate `> isize::MAX` byte-size objects.
-// * We don't overflow `usize::MAX` and actually allocate too little.
-//
-// On 64-bit we just need to check for overflow since trying to allocate
-// `> isize::MAX` bytes will surely fail. On 32-bit and 16-bit we need to add
-// an extra guard for this in case we're running on a platform which can use
-// all 4GB in user-space, e.g., PAE or x32.
-
-#[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     if usize::BITS < 64 && alloc_size > isize::MAX as usize {
         Err(TryReserveErrorKind::CapacityOverflow.into())
     } else {
         Ok(())
+    }
+}
+
+pub struct Vec<T> {
+    buf: RawVec<T>,
+    len: usize,
+}
+
+impl<T: Ownable> Ownable for Vec<T> {
+    type RepresentationTy = Seq<T::RepresentationTy>;
+
+    #[predicate]
+    fn own(self, model: Self::RepresentationTy) {
+        assertion!(|ptr, cap, buf: RawVec<T>, len, values, rest| (self
+            == Vec {
+                buf: RawVec { ptr, cap },
+                len
+            })
+            * cap.own(cap)
+            * len.own(len)
+            * (len <= cap)
+            * ptr.as_ptr().points_to_slice(len, values)
+            * (values.len() == model.len())
+            * all_own(values, model)
+            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
+    }
+}
+
+impl<T: Ownable> Vec<T> {
+    #[ensures(ret.own(Seq::empty()))]
+    pub const fn new() -> Self {
+        Vec {
+            buf: RawVec::NEW,
+            len: 0,
+        }
+    }
+
+    #[requires(capacity.own(capacity) * (capacity < 2 << 62))]
+    #[ensures(ret.own(Seq::empty()))]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Vec {
+            buf: RawVec::with_capacity(capacity),
+            len: 0,
+        }
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.buf.ptr()
+    }
+
+    #[requires(|
+        current: <Self as Ownable>::RepresentationTy,
+        future: <Self as Ownable>::RepresentationTy,
+        v_repr: <T as Ownable>::RepresentationTy|
+        self.own((current, future)) *
+        (current.len() < 2 << 62) *
+        value.own(v_repr))]
+    #[ensures($future == current.prepend(v_repr)$)]
+    pub fn push(&mut self, value: T) {
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if self.len == self.buf.capacity() {
+            self.buf.reserve_for_push(self.len);
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(self.len);
+            std::ptr::write(end, value);
+            self.len += 1;
+            mutref_auto_resolve!(self);
+        }
     }
 }

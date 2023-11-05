@@ -53,13 +53,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
         match arg.unpack() {
             // We don't make use of Lifetime arguments for now
             GenericArgKind::Lifetime(..) => None,
-            GenericArgKind::Const(..) => {
-                log::warn!(
-                    "warning: Cannot compile function with const param: {:?}",
-                    arg
-                );
-                None
-            }
+            GenericArgKind::Const(..) => None,
             GenericArgKind::Type(ty) => Some(self.serialize_type(ty)),
         }
     }
@@ -153,15 +147,13 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
         match arg.unpack() {
             // We don't make use of Lifetime arguments for now
             GenericArgKind::Lifetime(..) => None,
-            GenericArgKind::Const(..) => {
-                log::warn!(
-                    "warning: Cannot compile function with const param: {:?}",
-                    arg
-                );
-                None
-            }
+            GenericArgKind::Const(..) => None,
             GenericArgKind::Type(ty) => Some(self.encode_type(ty)),
         }
+    }
+
+    fn encode_array_type(&mut self, ty: Ty<'tcx>, size: Expr) -> EncodedType {
+        EncodedType([Expr::from("array"), self.encode_type(ty).into(), size].into())
     }
 
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
@@ -245,14 +237,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
             }
             TyKind::Array(ty, sz) => {
                 let sz_i = self.array_size_value(sz);
-                EncodedType(
-                    [
-                        Expr::from("array"),
-                        self.encode_type(*ty).into(),
-                        sz_i.into(),
-                    ]
-                    .into(),
-                )
+                self.encode_array_type(*ty, sz_i.into())
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
             TyKind::Param(ParamTy { index, name }) => {

@@ -214,6 +214,21 @@ let fields ~tyenv ty =
       match Common.Tyenv.adt_def ~tyenv name with
       | Struct (_, fields) ->
           List.map (fun (_, cty) -> subst_params ~subst cty) fields
-      | _ -> failwith "field amount on non-struct adt")
+      | _ -> Fmt.failwith "Not a structure: %a" pp ty)
   | Tuple tys -> tys
-  | _ -> Fmt.failwith "field_amount on %a" pp ty
+  | _ -> Fmt.failwith "Not a structure or tuple %a" pp ty
+
+let variant_fields ~tyenv ~idx ty =
+  match ty with
+  | Adt (name, subst) -> (
+      match Common.Tyenv.adt_def ~tyenv name with
+      | Enum variants ->
+          let _, fields = List.nth variants idx in
+          List.map (subst_params ~subst) fields
+      | _ -> Fmt.failwith "Not an enum: %a" pp ty)
+  | _ -> Fmt.failwith "Not an enum: %a" pp ty
+
+let array_inner ty =
+  match ty with
+  | Array { ty; _ } -> ty
+  | _ -> Fmt.failwith "%a is not an array" pp ty

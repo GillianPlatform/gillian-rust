@@ -40,7 +40,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             fatal!(self, "Prophecies are not enabled, something is wrong");
         }
         let ty = self.place_ty(place).ty;
-        let repr_ty = self.global_env().get_repr_ty_for(ty);
-        self.push_alloc_prophecy(repr_ty)
+        match self.global_env().get_repr_ty_for(ty) {
+            Some(repr_ty) => self.push_alloc_prophecy(repr_ty),
+            None => Expr::null(),
+        }
     }
 }

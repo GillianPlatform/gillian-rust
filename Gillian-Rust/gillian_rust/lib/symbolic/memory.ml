@@ -95,7 +95,9 @@ let execute_load mem args =
       let ty = Ty.of_expr ty in
       let* proj = projections_of_expr proj in
       let** loc = resolve_loc_result loc in
-      let++ value, new_heap, lk = Heap.load ~tyenv ~lk heap loc proj ty copy in
+      let++ (value, new_heap), lk =
+        Heap.load ~tyenv ~lk heap loc proj ty copy
+      in
       make_branch ~mem:{ mem with heap = new_heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for load"
 
@@ -151,7 +153,7 @@ let execute_cons_value mem args =
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = projections_of_expr proj_exp in
-      let++ value, heap, lk =
+      let++ (value, heap), lk =
         Heap.cons_value ~tyenv ~lk heap loc_name proj ty
       in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ value ] ()
@@ -496,7 +498,7 @@ let pp_branch fmt branch =
 
 let consume ~core_pred mem args =
   Logging.verbose (fun m -> m "Executing consumer for %s" core_pred);
-  let+ res =
+  let* res =
     match Actions.cp_of_name core_pred with
     | Value -> execute_cons_value mem args
     | Uninit -> execute_cons_uninit mem args
@@ -510,8 +512,11 @@ let consume ~core_pred mem args =
     | Observation -> execute_cons_observation mem args
     | _ -> Fmt.failwith "Unimplemented: Consume %s" core_pred
   in
+  let+ pc = Delayed.leak_pc_copy () in
   Logging.verbose (fun m ->
-      m "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:Err.pp) res);
+      m "Resulting in: %a, with pfs %a"
+        (Fmt.Dump.result ~ok:pp_branch ~error:Err.pp)
+        res Pure_context.pp pc.pfs);
   res
 
 let produce ~core_pred mem args =

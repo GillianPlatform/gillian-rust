@@ -19,6 +19,10 @@ pub enum Formula {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    Impl {
+        left: Box<Formula>,
+        right: Box<Formula>,
+    },
     ILess {
         left: Box<Expr>,
         right: Box<Expr>,
@@ -108,7 +112,15 @@ impl Formula {
     }
 
     pub fn implies(self, right: Self) -> Self {
-        self.fnot().or(right)
+        match (&self, &right) {
+            (Formula::True, _) => right,
+            (Formula::False, _) | (_, Formula::True) => Formula::True,
+            (_, Formula::False) => self.fnot(),
+            _ => Self::Impl {
+                left: Box::new(self),
+                right: Box::new(right),
+            },
+        }
     }
 
     pub fn or(self, right: Self) -> Self {
@@ -157,6 +169,11 @@ impl Formula {
                 let right = (*right).into_expr();
                 Expr::or(left, right)
             }
+            Self::Impl { left, right } => {
+                let left = (*left).into_expr();
+                let right = (*right).into_expr();
+                left.implies(right)
+            }
             Self::Eq { left, right } => Expr::eq_expr(*left, *right),
             Self::ILess { left, right } => Expr::i_lt(*left, *right),
             Self::ILessEq { left, right } => Expr::i_leq(*left, *right),
@@ -179,6 +196,7 @@ impl Display for Formula {
             Not(fml) => write!(f, "(! {})", fml),
             And { left, right } => write!(f, "({} /\\ {})", left, right),
             Or { left, right } => write!(f, "({} \\/ {})", left, right),
+            Impl { left, right } => write!(f, "({} ==> {})", left, right),
             Eq { left, right } => write!(f, "({} == {})", left, right),
             ILess { left, right } => write!(f, "({} i<# {})", left, right),
             ILessEq { left, right } => write!(f, "({} i<=# {})", left, right),

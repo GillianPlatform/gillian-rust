@@ -3,22 +3,22 @@ pred "<() as gilogic::prophecies::Ownable>::own"(+self: List, model: List):
   (self == model) * (self == {{ }});
   
 pred "<u8 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 255i);
 
 pred "<u16 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 65535i);
   
 pred "<u32 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 4294967295i);
 
 pred "<u64 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 18446744073709551615i);
 
 pred "<u128 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 340282366920938463463374607431768211455i);
   
 pred "<usize as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
-  (self == model) * types(self: Int) * (0i i<=# self);
+  (self == model) * types(self: Int) * (0i i<=# self) * (self i<=# 18446744073709551615i);
   
 pred "<i8 as gilogic::prophecies::Ownable>::own"(+self: Int, model: Int):
   (self == model) * types(self: Int);

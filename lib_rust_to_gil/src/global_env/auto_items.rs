@@ -2,7 +2,6 @@ use rustc_middle::ty::ParamTy;
 
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::builtins::LogicStubs;
-use crate::logic::traits::TraitSolver;
 use crate::logic::{core_preds, param_collector, PredCtx};
 use crate::{prelude::*, temp_gen};
 
@@ -45,7 +44,8 @@ impl<'tcx> PcyAutoUpdate<'tcx> {
             assertion: value_cp.star(own_pred_call),
             existentials: vec![new_repr.clone()],
         });
-        let repr_ty = global_env.get_repr_ty_for(inner_ty);
+
+        let repr_ty = global_env.get_repr_ty_for(inner_ty).unwrap();
         let repr_ty = global_env.encode_type(repr_ty).into();
         let assign = Cmd::Action {
             variable: "u".to_owned(),
@@ -212,8 +212,7 @@ impl<'tcx> MutRefOwn<'tcx> {
             let current = Expr::LVar("#current".to_string());
             let model = Expr::PVar("model".to_string());
             let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
-            let repr_ty_id = global_env.get_repr_ty_did();
-            let model_type = global_env.resolve_associated_type(repr_ty_id, inner_ty);
+            let model_type = global_env.get_repr_ty_for(inner_ty).unwrap();
             let encoded_model_type = global_env.encode_type(model_type);
             let pcy_value = crate::logic::core_preds::pcy_value(
                 full_pcy.clone(),
@@ -455,7 +454,7 @@ impl<'tcx> MutRefInner<'tcx> {
             )
         }
         let own = global_env.get_own_pred_for(self.inner_ty);
-        let repr_ty = global_env.get_repr_ty_for(self.inner_ty);
+        let repr_ty = global_env.get_repr_ty_for(self.inner_ty).unwrap();
         let slf = Expr::PVar("self".to_string());
         let pointer = slf.clone().lnth(0);
         let pointee = Expr::LVar("#value".to_string());

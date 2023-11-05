@@ -264,6 +264,22 @@ proc "std::cmp::max"(T, i, j) {
          return
 };
 
+proc "std::ptr::mut_ptr::<impl *mut T>::add"(T, ptr, ofs) {
+     ret := {{ l-nth(ptr, 0i), l+ (l-nth(ptr, 1i), {{ {{ "+", false, ofs, T }} }}) }};
+     return
+};
+
+proc "core::num::<impl usize>::MAX"() {
+     ret := (1i << 64i) i- 1i;
+     return
+};
+
+proc "std::ptr::write"(T, dest, value) {
+     u := [store_value](l-nth(dest, 0i), l-nth(dest, 1i), T, value);
+     ret := {{}};
+     return
+};
+
 (* PREDS *)
 
 pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):
