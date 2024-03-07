@@ -36,3 +36,5 @@ let substitution s lk =
     Gillian.Symbolic.Subst.substitute_formula s ~partial:true
   in
   List.map subst_formula lk
+
+let pp ft o = (Fmt.list ~sep:(Fmt.any "@\n") Formula.pp) ft o

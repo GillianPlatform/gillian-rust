@@ -365,6 +365,7 @@ module TreeBlock = struct
 
   let rec to_rust_value ~tyenv ?(current_proj = []) ~ty:expected_ty block ~lk :
       (Expr.t * LK.t, Err.Conversion_error.t) DR.t =
+    Logging.verbose (fun m -> m "TO_RUST_VALUE");
     let rec all ~lk acc ptvs =
       match ptvs () with
       | Seq.Nil -> DR.ok (List.rev acc, lk)
@@ -417,14 +418,37 @@ module TreeBlock = struct
       | Uninit -> DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
       | Missing -> DR.error Err.Conversion_error.(Missing, List.rev current_proj)
     in
-    let of_lc ~lk:_ ~expected_ty ~current_proj ~node_ty ~index_ty:_ lc =
+    let rec of_lc ~lk ~expected_ty ~current_proj ~node_ty ~index_ty lc =
       match (lc.structural, lc.children) with
       | Some structural, _ ->
           to_rust_value ~tyenv ~ty:expected_ty ~current_proj ~lk
             { content = Structural structural; ty = node_ty }
-      | None, Some _children -> (
+      | None, Some children -> (
           match expected_ty with
-          | Array { ty = _; length = _ } -> Fmt.failwith "bite"
+          | Array { ty = inner_ty; length = _ } ->
+              let rec all_sub ~lk acc = function
+                | [] -> DR.ok (List.rev acc, lk)
+                | (lc, node_ty) :: rest ->
+                    let* expected_ty, lk =
+                      if Ty.is_array_of ~array_ty:node_ty ~inner_ty then
+                        Delayed.return (node_ty, lk)
+                      else if Ty.equal node_ty inner_ty then
+                        Delayed.return (Ty.array inner_ty Expr.one_i, lk)
+                      else
+                        let+ length, lk =
+                          LK.length_as_array_of ~lk ~of_ty:inner_ty
+                            (Ty.array index_ty
+                               Expr.Infix.(snd lc.range - fst lc.range))
+                        in
+                        (Ty.array inner_ty length, lk)
+                    in
+                    let** v, lk =
+                      of_lc ~lk ~expected_ty ~current_proj ~node_ty ~index_ty lc
+                    in
+                    all_sub ~lk (v :: acc) rest
+              in
+              let++ v_lists, lk = all_sub ~lk [] children in
+              (Expr.NOp (LstCat, v_lists), lk)
           | _ -> Fmt.failwith "recomposing value that isn't an array.")
       | None, None -> Fmt.failwith "malformed tree: lazy with no children"
     in
@@ -1712,8 +1736,8 @@ module TreeBlock = struct
       match missing_qty block with
       | Some qty -> DR.error (Err.Missing_proj (loc, proj, qty))
       | None ->
-          let++ value = of_rust_value ~tyenv ~ty value in
-          (((), value), lk)
+          let++ block = of_rust_value ~tyenv ~ty value in
+          (((), block), lk)
     in
     let++ (_, new_block), lk =
       find_proj ~tyenv ~lk ~ty ~return_and_update t proj
@@ -1735,7 +1759,9 @@ module TreeBlock = struct
             #&& ((Expr.list_length expr) #== (Expr.int 2))
           then DR.ok ((Expr.list_nth expr 0, block), lk)
           else too_symbolic expr
-      | _ -> DR.error (Invalid_type (block.ty, enum_typ))
+      | _ ->
+          Logging.verbose (fun m -> m "get_discr error: %a" pp block);
+          DR.error (Invalid_type (block.ty, enum_typ))
     in
     let++ (discr, _), lk =
       find_proj ~tyenv ~lk ~return_and_update ~ty:enum_typ t proj

@@ -293,3 +293,6 @@ pred "std::ptr::mut_ptr::<impl *mut T>::offset"(+T, +ptr, +ofs, out):
      
 pred "std::ptr::mut_ptr::<impl *mut T>::add"(+T, +ptr, +ofs, out):
      out == {{ l-nth(ptr, 0i), l+ (l-nth(ptr, 1i), {{ {{ "+", false, ofs, T }} }}) }};
+     
+pred "std::mem::size_of"(+T, out):
+     <ty_size>(T; out);

@@ -277,9 +277,9 @@ let pp ft t =
     "@[<v 2>Heap:@,\
      %a@]@ @[<v 2>Lifetimes:@,\
      %a@]@ %a@ @[<v 2>Layout knowledge:@,\
-     %a@]"
-    Heap.pp t.heap Lft_ctx.pp t.lfts Prophecies.pp t.pcies Layout_knowledge.pp
-    t.lk
+     %a@]@ @[<v 2>Observations:@,\
+    \ %a@]" Heap.pp t.heap Lft_ctx.pp t.lfts Prophecies.pp t.pcies
+    Layout_knowledge.pp t.lk Obs_ctx.pp t.obs_ctx
 
 let pp_by_need _ _ = failwith "pp_by_need: Not yet implemented"
 let get_print_info _ _ = failwith "get_print_info: Not yet implemented"

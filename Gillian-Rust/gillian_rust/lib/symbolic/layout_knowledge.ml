@@ -88,66 +88,60 @@ let produce_ty_size ~lk ty new_size =
 
 let consume_ty_size ~lk ty = size_of ~lk ty
 
-let is_zst ~lk ~tyenv ty =
-  (* [None] means it can't be a zst.
-     Otherwise, it's a list of conditions:
-     [Left e] means e must be a zst, [Right e] means e must be zero
-  *)
-  let rec zst_condition (ty : Ty.t) : (Ty.t, Expr.t) Either.t list Option.t =
-    let open Syntaxes.Option in
+let rec is_zst ~lk ~tyenv ty =
+  let+ ret, lk =
+    let open Formula.Infix in
+    let return_true lk = Delayed.return (Formula.True, lk) in
+    let return_false lk = Delayed.return (Formula.False, lk) in
+    let rec all ~lk ?(acc = Formula.True) tys =
+      match tys () with
+      | Seq.Nil -> Delayed.return (acc, lk)
+      | Seq.Cons (ty, tys) -> (
+          match acc with
+          | Formula.False -> return_false lk
+          | _ ->
+              let* cond, lk = is_zst ~lk ~tyenv ty in
+              let acc = acc #&& cond in
+              all ~lk ~acc tys)
+    in
     match ty with
-    | Scalar _ | Ref _ | Ptr _ -> None
+    | Ty.Scalar _ | Ref _ | Ptr _ -> return_false lk
     | Tuple fields ->
-        List.fold_left
-          (fun acc ty ->
-            let* acc in
-            let+ ty = zst_condition ty in
-            ty @ acc)
-          (Some []) fields
+        let fields = List.to_seq fields in
+        all ~lk fields
     | Array { length; ty } -> (
         match length with
-        | Expr.Lit (Int z) when Z.equal z Z.zero -> Some []
+        | Expr.Lit (Int z) when Z.equal z Z.zero -> return_true lk
         | _ ->
-            let+ for_ty = zst_condition ty in
-            Either.Right length :: for_ty)
+            let+ for_ty, lk = is_zst ~lk ~tyenv ty in
+            (for_ty #|| (length #== Expr.zero_i), lk))
     | Adt (name, subst) -> (
         let adt = Common.Tyenv.adt_def ~tyenv name in
         match adt with
         | Struct (_, fields) ->
-            List.fold_left
-              (fun acc (_, ty) ->
-                let* acc in
-                let+ for_ty = zst_condition (Ty.subst_params ~subst ty) in
-                for_ty @ acc)
-              (Some []) fields
-        | Enum variants ->
-            List.fold_left
-              (fun acc (_vname, fields) ->
-                List.fold_left
-                  (fun acc ty ->
-                    let* acc in
-                    let+ for_ty = zst_condition (Ty.subst_params ~subst ty) in
-                    for_ty @ acc)
-                  acc fields)
-              (Some []) variants)
+            let fields =
+              List.to_seq fields
+              |> Seq.map (fun (_, ty) -> Ty.subst_params ~subst ty)
+            in
+            all ~lk fields
+        | Enum variants -> (
+            match variants with
+            | [ (_, variant_fields) ] ->
+                let fields =
+                  List.to_seq variant_fields |> Seq.map (Ty.subst_params ~subst)
+                in
+                all ~lk fields
+            | _ ->
+                return_false lk
+                (* more than 1 variant means we have to store at least the discriminant *)
+            ))
     | Slice _ -> failwith "checking if unsized type is zst?"
-    | ty_param -> Some [ Either.Left ty_param ]
+    | ty_param ->
+        let+ e, lk = size_of ~lk ty_param in
+        (e #== Expr.zero_i, lk)
   in
-  match zst_condition ty with
-  | None -> Delayed.return (Formula.False, lk)
-  | Some l ->
-      let open Delayed.Syntax in
-      List.fold_left
-        (fun acc e ->
-          let open Formula.Infix in
-          let* b, lk = acc in
-          match e with
-          | Either.Left e ->
-              let+ e, lk = size_of ~lk e in
-              (b #&& (e #== Expr.zero_i), lk)
-          | Right e -> Delayed.return (b #&& (e #== Expr.zero_i), lk))
-        (Delayed.return (Formula.True, lk))
-        l
+  Logging.verbose (fun m -> m "IS ZST?? %a: %a" Ty.pp ty Formula.pp ret);
+  (ret, lk)
 
 let lvars lk =
   Map.fold
