@@ -47,6 +47,20 @@ impl Formula {
                         ::gilogic::__stubs::and(#left, #right)
                     ));
                 }
+                BinOp::Or(tok) => {
+                    let span = tok.span();
+                    let left = Self::encode_inner(left)?;
+                    let right = Self::encode_inner(right)?;
+                    tokens.extend(quote_spanned!(span=>
+                        ::gilogic::__stubs::or(#left, #right)
+                    ));
+                }
+                BinOp::Ne(tok) => {
+                    let span = tok.span();
+                    tokens.extend(quote_spanned!(span=>
+                        ::gilogic::__stubs::not_equal(#left, #right)
+                    ));
+                }
                 _ => {
                     return Err(Error::new(
                         op.span(),

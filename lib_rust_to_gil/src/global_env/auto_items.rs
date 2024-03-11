@@ -359,7 +359,7 @@ impl<'tcx> OptionOwn<'tcx> {
             .into_asrt()
             .star(model.clone().eq_f(none).into_asrt());
         let second_def = {
-            let lvar_x = Expr::lvar("#x_model");
+            let lvar_x = Expr::lvar("#x");
             let lvar_x_model = Expr::lvar("#x_model");
             let eq = slf
                 .eq_f([1.into(), Expr::EList(vec![lvar_x.clone()])])

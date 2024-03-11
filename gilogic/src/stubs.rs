@@ -38,6 +38,12 @@ pub fn equal<T>(_: T, _: T) -> RustFormula {
     unreachable!()
 }
 
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::not_equal"]
+pub fn not_equal<T>(_: T, _: T) -> RustFormula {
+    unreachable!()
+}
+
 // less and less_eq should be only for numbers
 
 #[gillian::builtin]
@@ -79,6 +85,12 @@ pub fn forall<T, F: Fn(T) -> RustFormula>(_: F) -> RustFormula {
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::formula::and"]
 pub fn and(_: RustFormula, _: RustFormula) -> RustFormula {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::formula::or"]
+pub fn or(_: RustFormula, _: RustFormula) -> RustFormula {
     unreachable!()
 }
 

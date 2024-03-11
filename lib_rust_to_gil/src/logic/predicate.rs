@@ -597,6 +597,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     let right = self.compile_expression(args[1], thir);
                     Expr::lst_concat(left, right)
                 }
+                Some(LogicStubs::SeqHead) => self.compile_expression(args[0], thir).lst_head(),
+                Some(LogicStubs::SeqTail) => self.compile_expression(args[0], thir).lst_tail(),
                 Some(LogicStubs::SeqLen) => {
                     let list = self.compile_expression(args[0], thir);
                     list.lst_len()
@@ -765,7 +767,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         assert!(args.len() == 2, "Equal call must have two arguments");
                         let left = Box::new(self.compile_expression(args[0], thir));
                         let right = Box::new(self.compile_expression(args[1], thir));
-                        Formula::Eq { left, right }
+                        left.eq_f(*right)
+                    }
+                    Some(LogicStubs::FormulaNotEqual) => {
+                        assert!(args.len() == 2, "NotEqual call must have two arguments");
+                        let left = Box::new(self.compile_expression(args[0], thir));
+                        let right = Box::new(self.compile_expression(args[1], thir));
+                        left.eq_f(*right).fnot()
                     }
                     Some(LogicStubs::FormulaLessEq) => {
                         assert!(args.len() == 2, "LessEq call must have two arguments");
@@ -793,6 +801,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         let left = self.compile_formula(args[0], thir);
                         let right = self.compile_formula(args[1], thir);
                         left.and(right)
+                    }
+                    Some(LogicStubs::FormulaOr) => {
+                        let left = self.compile_formula(args[0], thir);
+                        let right = self.compile_formula(args[1], thir);
+                        left.or(right)
                     }
                     Some(LogicStubs::FormulaNeg) => {
                         let inner = Box::new(self.compile_formula(args[0], thir));

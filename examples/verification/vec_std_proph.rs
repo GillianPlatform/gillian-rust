@@ -76,10 +76,10 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
     assertion!(|x: T,
                 x_repr: T::RepresentationTy,
                 rest: Seq<T>,
-                rest_repr: Seq<T::RepresentationTy>| (vs == rest.prepend(x))
+                rest_repr: Seq<T::RepresentationTy>| (vs == rest.append(x))
         * x.own(x_repr)
         * all_own(rest, rest_repr)
-        * (reprs == rest_repr.prepend(x_repr)))
+        * (reprs == rest_repr.append(x_repr)))
 }
 
 // #[lemma]
@@ -299,18 +299,35 @@ impl<T: Ownable> Ownable for Vec<T> {
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
-        assertion!(|ptr, cap, buf: RawVec<T>, len, values, rest| (self
-            == Vec {
-                buf: RawVec { ptr, cap },
-                len
-            })
-            * cap.own(cap)
-            * len.own(len)
-            * (len <= cap)
-            * ptr.as_ptr().points_to_slice(len, values)
-            * (values.len() == model.len())
-            * all_own(values, model)
-            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
+        assertion!(
+            |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
+                * (self
+                    == Vec {
+                        buf: RawVec { ptr, cap },
+                        len
+                    })
+                * cap.own(cap)
+                * len.own(len)
+                * (cap == 0)
+                * ptr.as_ptr().points_to_slice(len, values)
+                * all_own(values, model)
+                * (values.len() == model.len())
+        );
+        assertion!(
+            |ptr, cap, buf: RawVec<T>, len, values, rest| (std::mem::size_of::<T>() > 0)
+                * (self
+                    == Vec {
+                        buf: RawVec { ptr, cap },
+                        len
+                    })
+                * cap.own(cap)
+                * len.own(len)
+                * (len <= cap)
+                * ptr.as_ptr().points_to_slice(len, values)
+                * (values.len() == model.len())
+                * all_own(values, model)
+                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+        )
     }
 }
 
@@ -336,14 +353,14 @@ impl<T: Ownable> Vec<T> {
         self.buf.ptr()
     }
 
-    #[requires(|
-        current: <Self as Ownable>::RepresentationTy,
-        future: <Self as Ownable>::RepresentationTy,
-        v_repr: <T as Ownable>::RepresentationTy|
-        self.own((current, future)) *
-        (current.len() < 2 << 62) *
-        value.own(v_repr))]
-    #[ensures($future == current.prepend(v_repr)$)]
+    // #[requires(|
+    //     current: <Self as Ownable>::RepresentationTy,
+    //     future: <Self as Ownable>::RepresentationTy,
+    //     v_repr: <T as Ownable>::RepresentationTy|
+    //     self.own((current, future)) *
+    //     (current.len() < 2 << 62) *
+    //     value.own(v_repr))]
+    // #[ensures($future == current.prepend(v_repr)$)]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.

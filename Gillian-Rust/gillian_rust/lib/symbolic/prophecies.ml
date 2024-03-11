@@ -6,6 +6,8 @@ open Heap
 open Gil_syntax
 open Delayed_utils
 
+(* TODO: massively simplify! *)
+
 type prophecy = {
   value : Expr.t;
   observer : TreeBlock.outer;

@@ -435,6 +435,37 @@ impl Expr {
         }
     }
 
+    pub fn lst_head(self) -> Self {
+        match self {
+            Expr::EList(vec) => {
+                if vec.is_empty() {
+                    panic!("lst_head on empty list");
+                }
+                vec[0].clone()
+            }
+            s => Self::UnOp {
+                operator: UnOp::Car,
+                operand: Box::new(s),
+            },
+        }
+    }
+
+    pub fn lst_tail(self) -> Self {
+        match self {
+            Expr::EList(mut vec) => {
+                if vec.is_empty() {
+                    panic!("lst_head on empty list");
+                }
+                vec.remove(0);
+                Expr::EList(vec)
+            }
+            s => Self::UnOp {
+                operator: UnOp::Cdr,
+                operand: Box::new(s),
+            },
+        }
+    }
+
     pub fn plus(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i + j),

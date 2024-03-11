@@ -67,11 +67,7 @@ fn dll_seg<T: Ownable>(
 #[ensures(Ownable::own(&mut (*p.as_ptr()).element))]
 fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
 
-#[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_htl,
-    predicate_name = list_ref_mut_htl,
-    frozen_variables = [head, tail, len],
-)]
+#[with_freeze_lemma_for_mutref(lemma_name = freeze_htl, predicate_name = list_ref_mut_htl, frozen_variables = [head, tail, len])]
 impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {
@@ -103,8 +99,6 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    #[requires( self.own() )]
-    #[ensures(option_box_node(ret))]
     fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
         // Original function uses map
         match self.head {
@@ -134,9 +128,6 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    /// Adds the given node to the front of the list.
-    #[requires(|e: T| self.own() * (node -> Node { next: None, prev: None, element: e }) * e.own())]
-    #[ensures(ret.own())]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -175,55 +166,55 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     // #[show_safety]
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
-        IterMut {
-            head: self.head,
-            tail: self.tail,
-            len: self.len,
-            marker: PhantomData,
-        }
-    }
+    // pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+    //     IterMut {
+    //         head: self.head,
+    //         tail: self.tail,
+    //         len: self.len,
+    //         marker: PhantomData,
+    //     }
+    // }
 }
 
-pub struct IterMut<'a, T: 'a> {
-    head: Option<NonNull<Node<T>>>,
-    tail: Option<NonNull<Node<T>>>,
-    len: usize,
-    marker: PhantomData<&'a mut Node<T>>,
-}
+// pub struct IterMut<'a, T: 'a> {
+//     head: Option<NonNull<Node<T>>>,
+//     tail: Option<NonNull<Node<T>>>,
+//     len: usize,
+//     marker: PhantomData<&'a mut Node<T>>,
+// }
 
-#[extract_lemma]
-#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize|
-    list_ref_mut_htl(list, head, tail, len)
-)]
-#[ensures(Ownable::own(IterMut { head, tail, len, marker: PhantomData }))]
-fn extract_iter_mut<T: Ownable>(list: &mut LinkedList<T>);
+// #[extract_lemma]
+// #[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize|
+//     list_ref_mut_htl(list, head, tail, len)
+// )]
+// #[ensures(Ownable::own(IterMut { head, tail, len, marker: PhantomData }))]
+// fn extract_iter_mut<T: Ownable>(list: &mut LinkedList<T>);
 
-impl<'a, T: 'a> Ownable for IterMut<'a, T>
-where
-    T: Ownable,
-{
-    #[borrow]
-    fn own(self) {
-        assertion!(|n, p| dll_seg(self.head, n, self.tail, p, self.len))
-    }
-}
-
-// impl<'a, T> Iterator for IterMut<'a, T> {
-//     type Item = &'a mut T;
-
-//     #[show_safety]
-//     fn next(&mut self) -> Option<&'a mut T> {
-//         if self.len == 0 {
-//             None
-//         } else {
-//             self.head.map(|node| unsafe {
-//                 // Need an unbound lifetime to get 'a
-//                 let node = &mut *node.as_ptr();
-//                 self.len -= 1;
-//                 self.head = node.next;
-//                 &mut node.element
-//             })
-//         }
+// impl<'a, T: 'a> Ownable for IterMut<'a, T>
+// where
+//     T: Ownable,
+// {
+//     #[borrow]
+//     fn own(self) {
+//         assertion!(|n, p| dll_seg(self.head, n, self.tail, p, self.len))
 //     }
 // }
+
+// // impl<'a, T> Iterator for IterMut<'a, T> {
+// //     type Item = &'a mut T;
+
+// //     #[show_safety]
+// //     fn next(&mut self) -> Option<&'a mut T> {
+// //         if self.len == 0 {
+// //             None
+// //         } else {
+// //             self.head.map(|node| unsafe {
+// //                 // Need an unbound lifetime to get 'a
+// //                 let node = &mut *node.as_ptr();
+// //                 self.len -= 1;
+// //                 self.head = node.next;
+// //                 &mut node.element
+// //             })
+// //         }
+// //     }
+// // }

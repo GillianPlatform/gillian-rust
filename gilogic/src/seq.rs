@@ -59,6 +59,18 @@ impl<T> Seq<T> {
     pub fn repeat(_x: T, _n: usize) -> Self {
         unreachable!()
     }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::seq::head"]
+    pub fn head(self) -> T {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::seq::tail"]
+    pub fn tail(self) -> Self {
+        unreachable!()
+    }
 }
 
 impl<T> std::ops::Index<usize> for Seq<T> {
