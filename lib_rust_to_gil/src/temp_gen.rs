@@ -1,3 +1,4 @@
+/// Fresh lvar name generator
 pub struct TempGenerator {
     cur_lvar: u32,
 }

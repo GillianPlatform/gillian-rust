@@ -177,6 +177,15 @@ impl<'tcx> MutRefOwn<'tcx> {
         None
     }
 
+    fn inner(&self) -> MutRefInner<'tcx> {
+        let ty = self.inner_ty;
+        let name = self.pred_name.clone() + "$$inner";
+        return MutRefInner {
+            pred_name: name,
+            inner_ty: ty,
+        };
+    }
+
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
         let own = global_env.get_own_def_did();
 
@@ -529,7 +538,14 @@ impl<'tcx> AutoItem<'tcx> {
                 // This is annoying but fixable long term.
                 // Some others we just compile monomorphized.
                 if let Some(mut_ref_own) = MutRefOwn::of_instance(instance, global_env) {
+                    // INCREDIBLY HACKY
+                    if global_env.config.prophecies {
+                        mut_ref_own.inner().add_to_prog(prog, global_env);
+                    } else {
+                        global_env.inner_pred(mut_ref_own.pred_name.clone());
+                    }
                     mut_ref_own.add_to_prog(prog, global_env);
+
                     return;
                 }
                 if let Some(option_own) = OptionOwn::of_instance(instance, global_env) {

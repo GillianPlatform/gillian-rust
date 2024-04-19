@@ -29,12 +29,8 @@ pub fn predicate(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro_attribute]
-pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    spec::requires(args, input)
-}
-#[proc_macro_attribute]
-pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    spec::ensures(args, input)
+pub fn specification(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    spec::specification(args, input)
 }
 
 #[proc_macro_attribute]

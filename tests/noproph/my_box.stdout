@@ -5,10 +5,10 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
 pred "<MyBox<T> as gilogic::Ownable>::own"(+pty_T0, +self):
-(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (self == #self) * types(#lvar_0: Obj, #lvar_1: List) * (#ptr == {{ #lvar_0, #lvar_1 }});
+(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (self == #self);
 
 
-abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +param_0);
+abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
 
 
 pred "<&mut MyBox<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
@@ -16,9 +16,13 @@ pred "<&mut MyBox<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
 guard: <lft>(lft; true);
 
 
+pred "<&mut MyBox<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
+
+
 spec "MyBox::<T>::write"(pty_T0, m_1self, m_2v)
-[[ (pty_T0 == #pty_T0) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (m_1self == #self) * (m_2v == #v) ]]
-[["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #ret) * (ret == #ret)]]
+[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2v) * (m_2v == #m_2v) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) ]]
+[["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
 normal
 
 proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
@@ -46,8 +50,8 @@ proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
 };
 
 spec "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v)
-[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut MyBox<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (m_1self == #self) * types(#lvar_2: Obj, #lvar_3: List) * (#self == {{ #lvar_2, #lvar_3 }}) * (m_2v == #v) * <lft>(#pLft_a; true) ]]
-[["<() as gilogic::Ownable>::own"(#ret) * (ret == #ret) * <lft>(#pLft_a; true)]]
+[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2v) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_2v == #m_2v) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_a; true)]]
 normal
 
 proc "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v) {

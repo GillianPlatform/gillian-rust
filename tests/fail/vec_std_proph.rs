@@ -8,7 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, ensures, predicate, requires},
+    macros::{assertion, specification, lemma, predicate},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,
@@ -333,7 +333,10 @@ impl<T: Ownable> Ownable for Vec<T> {
 }
 
 impl<T: Ownable> Vec<T> {
-    #[ensures(ret.own(Seq::empty()))]
+    #[specification(
+        requires { emp }
+        ensures { ret.own(Seq::empty())}
+    )]
     pub const fn new() -> Self {
         Vec {
             buf: RawVec::NEW,
@@ -341,8 +344,10 @@ impl<T: Ownable> Vec<T> {
         }
     }
 
-    #[requires(capacity.own(capacity) * (capacity < 2 << 62))]
-    #[ensures(ret.own(Seq::empty()))]
+    #[specification(
+        requires { capacity.own(capacity) * (capacity < 2 << 62 )}
+        ensures { ret.own(Seq::empty()) }
+    )]
     pub fn with_capacity(capacity: usize) -> Self {
         Vec {
             buf: RawVec::with_capacity(capacity),

@@ -18,29 +18,18 @@ jobs:
       # Basic setups
       - uses: actions/checkout@v3
       
-      # Rust setup and build/test
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2022-06-21
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-      - uses: actions-rs/cargo@v1
-        name: Cargo check
-        with:
-          command: check
-      - uses: actions-rs/cargo@v1
-        name: Cargo clippy
-        with:
-          command: clippy
+      - uses: Swatinem/rust-cache@v2
+      
+      - run: cargo build
+      - run: cargo check
+      - run: cargo clippy
       
       # OCaml setup and build/test
       - uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: "5.1"
-      - run: opam pin add gillian "https://github.com/GillianPlatform/Gillian.git#f5995995deb0334f8b292c07fb15f7bdebde6514" -y
+      - run: opam install . --deps-only --with-test
+        working-directory: "Gillian-Rust"
       - run: opam exec -- dune build @all
         working-directory: "Gillian-Rust"
       - run: opam exec -- dune test

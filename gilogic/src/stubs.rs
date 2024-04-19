@@ -167,3 +167,15 @@ where
         unreachable!()
     }
 }
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::instantiate_lvars"]
+pub fn instantiate_lvars<A: core::marker::Tuple, F: FnOnce<A>>(_: F) -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::spec"]
+pub fn spec(_pre: RustAssertion, _post: RustAssertion) -> RustAssertion {
+    unreachable!()
+}

@@ -46,8 +46,29 @@ impl Assertion {
         }
     }
 
+    pub fn unstar(self) -> Vec<Self> {
+        let mut comps = Vec::new();
+        self.unstar_inner(&mut comps);
+        comps
+    }
+
+    fn unstar_inner(self, comps: &mut Vec<Self>) {
+        match self {
+            Self::Star { left, right } => {
+                left.unstar_inner(comps);
+                right.unstar_inner(comps);
+            }
+            _ => comps.push(self),
+        }
+    }
+
     pub fn subst_pvar(&mut self, subst: &HashMap<String, Expr>) {
         let mut visitor = super::visitors::SubstPVar::new(subst);
+        visitor.visit_assertion(self);
+    }
+
+    pub fn subst_lvar(&mut self, subst: &HashMap<String, Expr>) {
+        let mut visitor = super::visitors::SubstLVar::new(subst);
         visitor.visit_assertion(self);
     }
 }

@@ -4,6 +4,7 @@
 #![feature(register_tool)]
 #![feature(ptr_internals)]
 #![feature(allocator_api)]
+#![feature(tuple_trait, unboxed_closures)]
 #![register_tool(gillian)]
 
 mod tys;
@@ -12,8 +13,8 @@ pub use tys::RustAssertion;
 
 pub mod macros {
     pub use gilogic_proc::{
-        assertion, assertion_test, borrow, close_borrow, ensures, extract_lemma, lemma,
-        open_borrow, predicate, requires, show_safety,
+        assertion, assertion_test, borrow, close_borrow, extract_lemma, lemma, open_borrow,
+        predicate, show_safety, specification,
     };
     pub mod prophecies {
         pub use gilogic_proc::with_freeze_lemma_for_mutref_pcy as with_freeze_lemma_for_mutref;

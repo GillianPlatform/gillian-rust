@@ -1,9 +1,3 @@
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2

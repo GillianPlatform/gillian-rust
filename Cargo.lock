@@ -544,7 +544,7 @@ source = "git+https://github.com/xldenis/creusot?rev=639bc912ddc793b9cd56255c471
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.43",
+ "syn 1.0.103",
 ]
 
 [[package]]

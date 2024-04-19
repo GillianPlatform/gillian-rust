@@ -2,7 +2,7 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, token::Colon, Attribute, FnArg, ImplItemMethod, Pat,
+    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemMethod, Pat,
     PatIdent, PatType, ReturnType, Token,
 };
 use uuid::Uuid;
@@ -47,122 +47,23 @@ fn get_attr<'a>(
     })
 }
 
-use crate::gilogic_syn::LvarDecl;
+use crate::Specification;
 
-use super::gilogic_syn::Assertion;
-
-pub(crate) fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
     // However, an `FnItem` is just `ImplItemMethod` that cannot have the `default` keyword,
     // so I'm expecting this to work in any context.
     let mut item = parse_macro_input!(input as ImplItemMethod);
     let item_attrs = std::mem::take(&mut item.attrs);
-    let parsed_assertion = parse_macro_input!(args as Assertion);
-    let assertion: TokenStream = match parsed_assertion.encode() {
-        Ok(stream) => stream,
-        Err(error) => return error.to_compile_error().into(),
-    };
-    let id = Uuid::new_v4().to_string();
-    let name = {
-        let ident = item.sig.ident.to_string();
-        let name_with_uuid = format!("{}_pre_{}", ident, id).replace('-', "_");
-        format_ident!("{}", name_with_uuid, span = Span::call_site())
-    };
-    let name_string = name.to_string();
-    let inputs = &item.sig.inputs;
-    let generics = &item.sig.generics;
-
-    // let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
-
-    let lvar_list = parsed_assertion.lvars.to_token_stream().to_string();
-
-    let for_lemma = if get_attr(&item_attrs, &["gillian", "decl", "lemma"]).is_some() {
-        Some(quote!(#[gillian::for_lemma]))
-    } else {
-        None
-    };
-
-    let result = quote! {
-        #[cfg(gillian)]
-        #[rustc_diagnostic_item=#name_string]
-        #for_lemma
-        #[gillian::decl::precondition]
-        #[gillian::decl::pred_ins=""]
-        // #lifetimes
-        fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
-           ::gilogic::__stubs::defs([#assertion])
-        }
-
-
-        #(#item_attrs)*
-        #[gillian::spec::precondition=#name_string]
-        #[gillian::spec::precondition::lvars=#lvar_list]
-        // #lifetimes
-        #item
-    };
-    result.into()
-}
-
-pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
-    // However, an `FnItem` is just `ImplItemMethod` that cannot have the `default` keyword,
-    // so I'm expecting this to work in any context.
-    let item = parse_macro_input!(input as ImplItemMethod);
-    let mut parsed_assertion = parse_macro_input!(args as Assertion);
-    let pre_id = get_attr(&item.attrs, &["gillian", "spec", "precondition"]).map(|attr| {
-        let tokens = &attr.tokens;
-        quote!(#[gillian::spec::postcondition::pre_id #tokens])
-    });
-
-    // We create an lvar for each lvar already declared in the pre
-    if let Some(lvars_attr) = get_attr(&item.attrs, &["gillian", "spec", "precondition", "lvars"]) {
-        let pre_lvars: syn::Result<aux::LvarsAttr> = syn::parse2(lvars_attr.tokens.clone());
-        match pre_lvars {
-            Ok(lvars) => parsed_assertion.lvars.extend(lvars.0 .0),
-            Err(error) => return error.to_compile_error().into(),
-        }
-    }
-
-    // We create an lvar for each argument
-    let mut f_args_lvars: Punctuated<LvarDecl, Token![,]> = item
-        .sig
-        .inputs
-        .iter()
-        .filter_map(|arg| match arg {
-            FnArg::Typed(PatType {
-                pat: box Pat::Ident(id),
-                ty,
-                ..
-            }) => Some(LvarDecl {
-                ident: id.ident.clone(),
-                ty_opt: Some((Colon::default(), *ty.clone())),
-            }),
-            _ => None,
-        })
-        .collect();
-    let lvars = std::mem::take(&mut parsed_assertion.lvars);
-    f_args_lvars.extend(lvars);
-    parsed_assertion.lvars = f_args_lvars;
-
-    let assertion: TokenStream = match parsed_assertion.encode() {
-        Ok(stream) => stream,
-        Err(error) => return error.to_compile_error().into(),
-    };
+    let parsed_spec = parse_macro_input!(args as Specification);
 
     let id = Uuid::new_v4().to_string();
     let name = {
         let ident = item.sig.ident.to_string();
-        let name_with_uuid = format!("{}_post_{}", ident, id).replace('-', "_");
+        let name_with_uuid = format!("{}_spec_{}", ident, id).replace('-', "_");
         format_ident!("{}", name_with_uuid, span = Span::call_site())
     };
     let name_string = name.to_string();
-    let ins = "0";
-    let ret_ty = match &item.sig.output {
-        ReturnType::Default => quote! { () },
-        ReturnType::Type(_token, ty) => quote! { #ty },
-    };
-    let generics = &item.sig.generics;
-    // let lifetimes = super::lifetime_hack::generic_lifetimes_attr(&item.sig);
 
     let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
         Some(quote!(#[gillian::for_lemma]))
@@ -170,21 +71,38 @@ pub(crate) fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         None
     };
 
+    let mut inputs = item.sig.inputs.clone();
+    // TODO(xavier): Remove this.
+    let ins = format!("{}", inputs.len());
+    let generics = &item.sig.generics;
+
+    let ret_ty = match &item.sig.output {
+        ReturnType::Default => quote! { () },
+        ReturnType::Type(_token, ty) => quote! { #ty },
+    };
+
+    inputs.push(parse_quote! { ret : #ret_ty});
+
+    let spec: TokenStream = match parsed_spec.encode() {
+        Ok(stream) => stream,
+        Err(error) => return error.to_compile_error().into(),
+    };
+
     let result = quote! {
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #for_lemma
-        #pre_id
-        #[gillian::decl::postcondition]
+        #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
-        // #lifetimes
-        fn #name #generics (ret: #ret_ty) -> ::gilogic::RustAssertion {
-           ::gilogic::__stubs::defs([#assertion])
+        fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
+           #spec
         }
 
-        #[gillian::spec::postcondition=#name_string]
+        #(#item_attrs)*
+        #[gillian::spec=#name_string]
         #item
     };
+
     result.into()
 }
 
@@ -209,8 +127,10 @@ pub(crate) fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStre
         args_own.to_token_stream()
     };
     let result = quote! {
-        #[::gilogic::macros::requires(#req)]
-        #[::gilogic::macros::ensures(ret.own())]
+        #[::gilogic::macros::specification(
+            requires { #req }
+            ensures { ret.own() }
+        )]
         #item
     };
     result.into()

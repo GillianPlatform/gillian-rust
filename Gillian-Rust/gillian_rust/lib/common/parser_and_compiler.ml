@@ -67,9 +67,12 @@ let options ~out_dir () =
     "-Zcrate-attr='feature(rustc_attrs)'";
     "-Zcrate-attr='allow(internal_features)'";
     "-Zcrate-attr='feature(stmt_expr_attributes)'";
+  ]
+
+let env () = [
     R_config.exec_mode_arg ();
     R_config.prophecy_mode_arg ();
-  ]
+]
 
 module Parsing = Gil_parsing.Make (Annot)
 
@@ -78,7 +81,7 @@ let compile ~out_dir file =
   let no_ext = Filename.chop_extension (Filename.basename file) in
   let pp_opts = Fmt.(list ~sep:(any " ") string) in
   let options = options ~out_dir () in
-  let command = Fmt.str "cargo run -- %s %a" file pp_opts options in
+  let command = Fmt.str "%a cargo run -- %s %a" pp_opts (env ()) file pp_opts options in
   Logging.normal (fun m -> m "%s" command);
   let exit_code = R_config.in_compiler_root (fun () -> Sys.command command) in
   let* () =

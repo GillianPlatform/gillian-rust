@@ -2,7 +2,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, ensures, predicate, requires},
+    macros::{assertion, predicate, specification},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,
@@ -97,8 +97,10 @@ impl<T: Ownable> ShallowModel for LinkedList<T> {
 }
 
 impl<T: Ownable> LinkedList<T> {
-    #[requires(emp)]
-    #[ensures(ret.own(Seq::nil()))]
+    #[specification(
+        requires { emp } 
+        ensures  {  ret.own(Seq::nil()) }
+    )]
     fn new() -> Self {
         Self {
             head: None,
@@ -135,7 +137,7 @@ impl<T: Ownable> LinkedList<T> {
             self.len += 1;
         }
     }
-
+    
     fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
         // Original function uses map
         match self.head {
@@ -156,11 +158,22 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    #[requires(|current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>| self.own((current, proph)))]
-    #[ensures(|ret_repr: Option<T::RepresentationTy>|
-        ret.own(ret_repr) *
-        $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-         || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$
+    // Obtained by automatically translating the Creusot specification:
+    //#[ensures(
+    // if (self@ = Seq::EMPTY) {
+    //    self^ = Seq::EMPTY && ret@ = None
+    // } else {
+    //    self^ = self@.tail() && ret@ = Some(self@.head())
+    // }
+    // )]
+
+    #[specification(forall current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>.
+        requires { self.own((current, proph)) }
+        exists ret_repr: Option<T::RepresentationTy>.
+        ensures { 
+            ret.own(ret_repr) *
+            $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+             || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$}
     )]
     pub fn pop_front(&mut self) -> Option<T> {
         // Original implementation uses map
@@ -172,16 +185,10 @@ impl<T: Ownable> LinkedList<T> {
         res
     }
 
-    #[requires(
-        |current: Seq<T::RepresentationTy>,
-         proph: Seq<T::RepresentationTy>,
-         elt_repr: T::RepresentationTy|
-            self.own((current, proph)) *
-            $current.len() < usize::MAX$ *
-            elt.own(elt_repr)
+    #[specification(forall current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, elt_repr: T::RepresentationTy.
+        requires { self.own((current, proph)) * $current.len() < usize::MAX$ * elt.own(elt_repr) }
+        ensures { ret.own(()) * $proph == current.prepend(elt_repr)$ }
     )]
-    #[ensures(ret.own(()) * $proph == current.prepend(elt_repr)$)]
-    // #[ensures($proph == current.prepend(velem)$)]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
         mutref_auto_resolve!(self); // <- Unique thing added

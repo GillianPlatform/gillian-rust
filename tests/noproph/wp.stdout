@@ -1,39 +1,39 @@
 #begin_init_data
-{"Global":["Struct","ReprRust",[]],"N":["Struct","ReprRust",[["v",["Param",0]],["o",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]],"WP":["Struct","ReprRust",[["x",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]],["y",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]]}
+{"N":["Struct","ReprRust",[["v",["Param",0]],["o",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]],"WP":["Struct","ReprRust",[["x",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]],["y",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]]}
 #end_init_data
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
 pred "wp::<T>"(+pty_T0, +wp, x, y):
-(#wp == {{ #x, #y }}) * <value>(l-nth(#x, 0i), l-nth(#x, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #v_x, #y }}) * <value>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #v_y, #x }}) * "<T as gilogic::Ownable>::own"(pty_T0, #v_x) * "<T as gilogic::Ownable>::own"(pty_T0, #v_y) * (wp == #wp) * (x == #x) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (y == #y) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }});
+(#wp == {{ #x, #y }}) * <value>(l-nth(#x, 0i), l-nth(#x, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #v_x, #y }}) * <value>(l-nth(#y, 0i), l-nth(#y, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #v_y, #x }}) * "<T as gilogic::Ownable>::own"(pty_T0, #v_x) * "<T as gilogic::Ownable>::own"(pty_T0, #v_y) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }}) * (y == #y) * (x == #x) * (wp == #wp);
 
 
-pred "extract_y::<T>$$extract_proof$$proof_pre"(+pty_T0, +p, x, y):
-(p == #p) * types(#lvar_16: Obj, #lvar_17: List) * (#p == {{ #lvar_16, #lvar_17 }}) * types(#lvar_18: Obj, #lvar_19: List) * (#x == {{ #lvar_18, #lvar_19 }}) * types(#lvar_20: Obj, #lvar_21: List) * (#y == {{ #lvar_20, #lvar_21 }}) * "wp_ref_mut_xy::<T>$$inner"(pty_T0, #p, #x, #y) * (x == #x) * (y == #y);
+pred "extract_y::<T>$$extract_proof$$pre"(+pty_T0, +p, x, y):
+"wp_ref_mut_xy::<T>$$inner"(pty_T0, p, #x, #y) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }});
 
 
-pred "extract_y::<T>$$extract_proof$$proof_post"(+pty_T0, +p, +x, +y):
-(pty_T0 == #pty_T0) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_22: Obj, #lvar_23: List) * (#p == {{ #lvar_22, #lvar_23 }}) * types(#lvar_24: Obj, #lvar_25: List) * (#x == {{ #lvar_24, #lvar_25 }}) * types(#lvar_26: Obj, #lvar_27: List) * (#y == {{ #lvar_26, #lvar_27 }}) * "<&mut T as gilogic::Ownable>::own$$inner"(#pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }});
+pred "extract_y::<T>$$extract_proof$$post"(+pty_T0, +p, +x, +y):
+(pty_T0 == #pty_T0) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_6: Obj, #lvar_7: List) * (#p == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#x == {{ #lvar_8, #lvar_9 }}) * types(#lvar_10: Obj, #lvar_11: List) * (#y == {{ #lvar_10, #lvar_11 }}) * "<&mut T as gilogic::Ownable>::own$$inner"(pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }});
 
 
-pred "extract_x::<T>$$extract_proof$$proof_pre"(+pty_T0, +p, x, y):
-(p == #p) * types(#lvar_40: Obj, #lvar_41: List) * (#p == {{ #lvar_40, #lvar_41 }}) * types(#lvar_42: Obj, #lvar_43: List) * (#x == {{ #lvar_42, #lvar_43 }}) * types(#lvar_44: Obj, #lvar_45: List) * (#y == {{ #lvar_44, #lvar_45 }}) * "wp_ref_mut_xy::<T>$$inner"(pty_T0, #p, #x, #y) * (x == #x) * (y == #y);
+pred "extract_x::<T>$$extract_proof$$pre"(+pty_T0, +p, x, y):
+"wp_ref_mut_xy::<T>$$inner"(pty_T0, p, #x, #y) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }});
 
 
-pred "extract_x::<T>$$extract_proof$$proof_post"(+pty_T0, +p, +x, +y):
-(pty_T0 == #pty_T0) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_46: Obj, #lvar_47: List) * (#p == {{ #lvar_46, #lvar_47 }}) * types(#lvar_48: Obj, #lvar_49: List) * (#x == {{ #lvar_48, #lvar_49 }}) * types(#lvar_50: Obj, #lvar_51: List) * (#y == {{ #lvar_50, #lvar_51 }}) * "<&mut T as gilogic::Ownable>::own$$inner"(#pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }});
+pred "extract_x::<T>$$extract_proof$$post"(+pty_T0, +p, +x, +y):
+(pty_T0 == #pty_T0) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_6: Obj, #lvar_7: List) * (#p == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#x == {{ #lvar_8, #lvar_9 }}) * types(#lvar_10: Obj, #lvar_11: List) * (#y == {{ #lvar_10, #lvar_11 }}) * "<&mut T as gilogic::Ownable>::own$$inner"(pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }});
 
 
 pred "wp_ref_mut_xy::<T>"(+pLft_a, +pty_T0, +REFERENCE, x, y):
-"wp::<T>"(pty_T0, #SELF, #x, #y) * <value>(l-nth(#REFERENCE, 0i), l-nth(#REFERENCE, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF) * (REFERENCE == #REFERENCE) * types(#lvar_60: Obj, #lvar_61: List) * (#REFERENCE == {{ #lvar_60, #lvar_61 }}) * (x == #x) * types(#lvar_62: Obj, #lvar_63: List) * (#x == {{ #lvar_62, #lvar_63 }}) * (y == #y) * types(#lvar_64: Obj, #lvar_65: List) * (#y == {{ #lvar_64, #lvar_65 }});
+"wp::<T>"(pty_T0, #SELF, #x, #y) * <value>(l-nth(#REFERENCE, 0i), l-nth(#REFERENCE, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF) * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * (y == #y) * (x == #x) * (REFERENCE == #REFERENCE);
 guard: <lft>(pLft_a; true);
 
 
 pred "<WP<T> as gilogic::Ownable>::own"(+pty_T0, +self):
-"wp::<T>"(pty_T0, #self, #x, #y) * (self == #self) * types(#lvar_66: Obj, #lvar_67: List) * (#x == {{ #lvar_66, #lvar_67 }}) * types(#lvar_68: Obj, #lvar_69: List) * (#y == {{ #lvar_68, #lvar_69 }});
+"wp::<T>"(pty_T0, #self, #x, #y) * (self == #self);
 
 
-abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +param_0);
+abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
 
 
 pred "<&mut T as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
@@ -47,135 +47,48 @@ guard: <lft>(lft; true);
 
 
 pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
-"wp::<T>"(pty_T0, #SELF, #x, #y) * <value>(l-nth(#REFERENCE, 0i), l-nth(#REFERENCE, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF) * (REFERENCE == #REFERENCE) * types(#lvar_60: Obj, #lvar_61: List) * (#REFERENCE == {{ #lvar_60, #lvar_61 }}) * (x == #x) * types(#lvar_62: Obj, #lvar_63: List) * (#x == {{ #lvar_62, #lvar_63 }}) * (y == #y) * types(#lvar_64: Obj, #lvar_65: List) * (#y == {{ #lvar_64, #lvar_65 }});
+"wp::<T>"(pty_T0, #SELF, #x, #y) * <value>(l-nth(#REFERENCE, 0i), l-nth(#REFERENCE, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF) * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * (y == #y) * (x == #x) * (REFERENCE == #REFERENCE);
 
 
 pred "<&mut T as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
 <value>(l-nth(self, 0i), l-nth(self, 1i), pty_T0; #v) * "<T as gilogic::Ownable>::own"(pty_T0, #v);
 
 
-lemma "extract_y::<T>$$extract_proof"(pty_T0, p)[[ "extract_y::<T>$$extract_proof$$proof_pre"(pty_T0, p, #x, #y) ]]
-[["extract_y::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) * ("extract_y::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) -* "extract_y::<T>$$extract_proof$$proof_pre"(#pty_T0, #p, #x, #y))]]
+pred "<&mut WP<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v) * "<WP<T> as gilogic::Ownable>::own"(pty_T0, #v);
+
+
+lemma "extract_y::<T>$$extract_proof"(pty_T0, p)[[ "extract_y::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y) ]]
+[["extract_y::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) * ("extract_y::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) -* "extract_y::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y))]]
 
 [*
-package ("extract_y::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) -* "extract_y::<T>$$extract_proof$$proof_pre"(#pty_T0, #p, #x, #y))
+package ("extract_y::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) -* "extract_y::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y))
 *]
 
 
-lemma "extract_y::<T>"(pLft_a, pty_T0, p)[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "wp_ref_mut_xy::<T>"(pLft_a, pty_T0, #p, #x, #y) * (p == #p) * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ #lvar_4, #lvar_5 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * (ret == #ret) * types(#lvar_10: Obj, #lvar_11: List) * (#p == {{ #lvar_10, #lvar_11 }}) * types(#lvar_12: Obj, #lvar_13: List) * (#x == {{ #lvar_12, #lvar_13 }}) * types(#lvar_14: Obj, #lvar_15: List) * (#y == {{ #lvar_14, #lvar_15 }})]]
+lemma "extract_y::<T>"(pLft_a, pty_T0, p)[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 
 
-lemma "extract_x::<T>$$extract_proof"(pty_T0, p)[[ "extract_x::<T>$$extract_proof$$proof_pre"(pty_T0, p, #x, #y) ]]
-[["extract_x::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) * ("extract_x::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) -* "extract_x::<T>$$extract_proof$$proof_pre"(#pty_T0, #p, #x, #y))]]
+lemma "extract_x::<T>$$extract_proof"(pty_T0, p)[[ "extract_x::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y) ]]
+[["extract_x::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) * ("extract_x::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) -* "extract_x::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y))]]
 
 [*
-package ("extract_x::<T>$$extract_proof$$proof_post"(#pty_T0, #p, #x, #y) -* "extract_x::<T>$$extract_proof$$proof_pre"(#pty_T0, #p, #x, #y))
+package ("extract_x::<T>$$extract_proof$$post"(#pty_T0, #p, #x, #y) -* "extract_x::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y))
 *]
 
 
-lemma "extract_x::<T>"(pLft_a, pty_T0, p)[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "wp_ref_mut_xy::<T>"(pLft_a, pty_T0, #p, #x, #y) * (p == #p) * types(#lvar_28: Obj, #lvar_29: List) * (#p == {{ #lvar_28, #lvar_29 }}) * types(#lvar_30: Obj, #lvar_31: List) * (#x == {{ #lvar_30, #lvar_31 }}) * types(#lvar_32: Obj, #lvar_33: List) * (#y == {{ #lvar_32, #lvar_33 }}) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * (ret == #ret) * types(#lvar_34: Obj, #lvar_35: List) * (#p == {{ #lvar_34, #lvar_35 }}) * types(#lvar_36: Obj, #lvar_37: List) * (#x == {{ #lvar_36, #lvar_37 }}) * types(#lvar_38: Obj, #lvar_39: List) * (#y == {{ #lvar_38, #lvar_39 }})]]
+lemma "extract_x::<T>"(pLft_a, pty_T0, p)[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 
 
-lemma "freeze_xy::<T>"(pLft_a, pty_T0, REFERENCE)[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #REFERENCE) * (REFERENCE == #REFERENCE) * types(#lvar_52: Obj, #lvar_53: List) * (#REFERENCE == {{ #lvar_52, #lvar_53 }}) ]]
-[["wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #REFERENCE, #x, #y) * (ret == #ret) * types(#lvar_54: Obj, #lvar_55: List) * (#REFERENCE == {{ #lvar_54, #lvar_55 }}) * types(#lvar_56: Obj, #lvar_57: List) * (#x == {{ #lvar_56, #lvar_57 }}) * types(#lvar_58: Obj, #lvar_59: List) * (#y == {{ #lvar_58, #lvar_59 }})]]
+lemma "freeze_xy::<T>"(pLft_a, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #REFERENCE) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_a; true)]]
 
-
-spec "WP::<T>::new"(pty_T0, m_1x, m_2y)
-[[ (pty_T0 == #pty_T0) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * "<T as gilogic::Ownable>::own"(pty_T0, #y) * (m_1x == #x) * (m_2y == #y) ]]
-[["<WP<T> as gilogic::Ownable>::own"(#pty_T0, #ret) * (ret == #ret)]]
-normal
-
-proc "WP::<T>::new"(pty_T0, m_1x, m_2y) {
-        m_12xptr := [alloc]({{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        m_13 := [alloc]({{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        m_15yptr := [alloc]({{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        m_16 := [alloc]({{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-  bb0:  g_0 := "std::ptr::null_mut"({{ "adt", "N", {{ pty_T0 }} }});
-        m_3null := g_0;
-        goto bb1;
-  bb1:  g_1 := m_1x;
-        m_6 := g_1;
-        m_7 := m_3null;
-        g_2 := m_6;
-        g_3 := m_7;
-        m_5 := {{ g_2, g_3 }};
-        goto bb2;
-  bb2:  g_4 := m_5;
-        g_5 := "std::boxed::Box::<T>::new"({{ "adt", "N", {{ pty_T0 }} }}, g_4);
-        m_4xbox := g_5;
-        goto bb3;
-  bb3:  g_6 := m_2y;
-        m_10 := g_6;
-        m_11 := m_3null;
-        g_7 := m_10;
-        g_8 := m_11;
-        m_9 := {{ g_7, g_8 }};
-        goto bb4;
-  bb4:  g_9 := m_9;
-        g_10 := "std::boxed::Box::<T>::new"({{ "adt", "N", {{ pty_T0 }} }}, g_9);
-        m_8ybox := g_10;
-        goto bb5;
-  bb5:  g_11 := m_4xbox;
-        m_14 := g_11;
-        g_12 := m_14;
-        g_13 := "std::boxed::Box::<T, A>::leak"({{ "adt", "N", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }}, g_12);
-        u := [store_value](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_13);
-        goto bb6;
-  bb6:  g_15 := [load_value](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_14 := l-nth(g_15, 0i);
-        u := [store_value](l-nth(m_12xptr, 0i), l-nth(m_12xptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_14);
-        g_16 := m_8ybox;
-        m_17 := g_16;
-        g_17 := m_17;
-        g_18 := "std::boxed::Box::<T, A>::leak"({{ "adt", "N", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }}, g_17);
-        u := [store_value](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_18);
-        goto bb7;
-  bb7:  g_20 := [load_value](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_19 := l-nth(g_20, 0i);
-        u := [store_value](l-nth(m_15yptr, 0i), l-nth(m_15yptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_19);
-        g_22 := [load_value](l-nth(m_12xptr, 0i), l-nth(m_12xptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_21 := l-nth(g_22, 0i);
-        m_19 := g_21;
-        g_23 := m_19;
-        g_25 := [load_value](l-nth(m_15yptr, 0i), l-nth(m_15yptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_24 := l-nth(g_25, 0i);
-        u := [store_value](l-nth(g_24, 0i), l+ (l-nth(g_24, 1i), {{ {{ "f", 1i, {{ "adt", "N", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_23);
-        g_27 := [load_value](l-nth(m_15yptr, 0i), l-nth(m_15yptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_26 := l-nth(g_27, 0i);
-        m_20 := g_26;
-        g_28 := m_20;
-        g_30 := [load_value](l-nth(m_12xptr, 0i), l-nth(m_12xptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_29 := l-nth(g_30, 0i);
-        u := [store_value](l-nth(g_29, 0i), l+ (l-nth(g_29, 1i), {{ {{ "f", 1i, {{ "adt", "N", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, g_28);
-        m_18 := {{  }};
-        g_32 := [load_value](l-nth(m_12xptr, 0i), l-nth(m_12xptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_31 := l-nth(g_32, 0i);
-        m_21 := g_31;
-        g_34 := [load_value](l-nth(m_15yptr, 0i), l-nth(m_15yptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_33 := l-nth(g_34, 0i);
-        m_22 := g_33;
-        g_35 := m_21;
-        g_36 := m_22;
-        m_0 := {{ g_35, g_36 }};
-        goto bb8;
-  bb8:  goto bb9;
-  bb9:  goto bb10;
-  bb10: goto bb11;
-  bb11: g_37 := m_0;
-        ret := g_37;
-        goto rlab;
-  rlab: u := [free](l-nth(m_12xptr, 0i), l-nth(m_12xptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        u := [free](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        u := [free](l-nth(m_15yptr, 0i), l-nth(m_15yptr, 1i), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        u := [free](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, {{ "adt", "N", {{ pty_T0 }} }} }});
-        return
-};
 
 spec "WP::<T>::assign_first"(pLft_a, pty_T0, m_1self, m_2x)
-[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * (m_1self == #self) * types(#lvar_70: Obj, #lvar_71: List) * (#self == {{ #lvar_70, #lvar_71 }}) * (m_2x == #x) * <lft>(#pLft_a; true) ]]
-[["<() as gilogic::Ownable>::own"(#ret) * (ret == #ret) * <lft>(#pLft_a; true)]]
+[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2x) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_2x == #m_2x) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_a; true)]]
 normal
 
 proc "WP::<T>::assign_first"(pLft_a, pty_T0, m_1self, m_2x) {
@@ -202,8 +115,8 @@ proc "WP::<T>::assign_first"(pLft_a, pty_T0, m_1self, m_2x) {
 };
 
 spec "WP::<T>::first_mut"(pLft_a, pty_T0, m_1self)
-[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * (m_1self == #self) * types(#lvar_72: Obj, #lvar_73: List) * (#self == {{ #lvar_72, #lvar_73 }}) * <lft>(#pLft_a; true) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #ret) * (ret == #ret) * types(#lvar_74: Obj, #lvar_75: List) * (#ret == {{ #lvar_74, #lvar_75 }}) * <lft>(#pLft_a; true)]]
+[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #m_1self) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, ret) * <lft>(#pLft_a; true)]]
 normal
 
 proc "WP::<T>::first_mut"(pLft_a, pty_T0, m_1self) {
@@ -250,8 +163,8 @@ proc "WP::<T>::first_mut"(pLft_a, pty_T0, m_1self) {
 };
 
 spec "WP::<T>::second_mut"(pLft_a, pty_T0, m_1self)
-[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * (m_1self == #self) * types(#lvar_76: Obj, #lvar_77: List) * (#self == {{ #lvar_76, #lvar_77 }}) * <lft>(#pLft_a; true) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #ret) * (ret == #ret) * types(#lvar_78: Obj, #lvar_79: List) * (#ret == {{ #lvar_78, #lvar_79 }}) * <lft>(#pLft_a; true)]]
+[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #m_1self) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, ret) * <lft>(#pLft_a; true)]]
 normal
 
 proc "WP::<T>::second_mut"(pLft_a, pty_T0, m_1self) {

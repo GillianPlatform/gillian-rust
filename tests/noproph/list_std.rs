@@ -62,10 +62,10 @@ fn dll_seg<T: Ownable>(
 }
 
 #[extract_lemma]
-#[requires(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize, p: NonNull<Node<T>>|
-    list_ref_mut_htl(list, head, tail, len) * (head == Some(p))
+#[specification(forall head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize, p: NonNull<Node<T>>.
+    requires { list_ref_mut_htl(list, head, tail, len) * (head == Some(p)) }
+    ensures { Ownable::own(&mut (*p.as_ptr()).element) }
 )]
-#[ensures(Ownable::own(&mut (*p.as_ptr()).element))]
 fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
 
 #[with_freeze_lemma_for_mutref(lemma_name = freeze_htl, predicate_name = list_ref_mut_htl, frozen_variables = [head, tail, len])]
@@ -165,6 +165,9 @@ impl<T: Ownable> LinkedList<T> {
             },
         }
     }
+
+    // Fundamentally unsound!
+    // pub fn cycle(&mut self) { ... }
 
     // #[show_safety]
     // pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {

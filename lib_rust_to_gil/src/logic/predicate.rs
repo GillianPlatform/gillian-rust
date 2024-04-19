@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use super::builtins::LogicStubs;
 use super::utils::get_thir;
+use super::{builtins::LogicStubs, is_borrow};
+use crate::signature::build_signature;
 use crate::{
     codegen::{
         place::{GilPlace, GilProj},
@@ -10,25 +11,25 @@ use crate::{
     logic::{core_preds, param_collector},
     prelude::*,
     temp_gen::TempGenerator,
-    utils::polymorphism::HasGenericArguments,
+    utils::polymorphism::{generic_types, has_generic_lifetimes},
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
-use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
+use indexmap::IndexMap;
+use rustc_ast::LitKind;
 
 use rustc_middle::{
     mir::{interpret::Scalar, BinOp, BorrowKind},
-    thir::{
-        AdtExpr, BlockId, ClosureExpr, ExprId, ExprKind, LocalVarId, Param, Pat, PatKind, StmtKind,
-        Thir,
-    },
+    thir::{AdtExpr, BlockId, ClosureExpr, ExprId, ExprKind, LocalVarId, PatKind, Thir},
     ty::{AdtKind, EarlyBinder, UpvarArgs},
 };
 use rustc_target::abi::FieldIdx;
 use rustc_type_ir::fold::TypeFoldable;
 
-pub(crate) struct PredSig {
+pub(crate) struct PredSig<'tcx> {
     pub name: String,
-    pub params: Vec<(String, Option<Type>)>,
+    pub lfts: Vec<String>,
+    pub generics: Vec<String>,
+    pub inputs: Vec<(String, Ty<'tcx>)>,
     pub ins: Vec<usize>,
     pub facts: Vec<Formula>,
     pub guard: Option<Assertion>,
@@ -37,14 +38,14 @@ pub(crate) struct PredSig {
 pub(crate) struct PredCtx<'tcx, 'genv> {
     pub global_env: &'genv mut GlobalEnv<'tcx>,
     pub temp_gen: &'genv mut TempGenerator,
-    pub did: DefId,
+    /// Identifier of the item providing the body (aka specification).
+    pub body_id: DefId,
     pub args: GenericArgsRef<'tcx>,
     pub var_map: HashMap<LocalVarId, GExpr>,
     pub local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
     pub global_toplevel_asrts: Vec<Assertion>, // Assertion that are global to all definitions
+    pub lvars: IndexMap<Symbol, Ty<'tcx>>,
 }
-
-impl<'tcx> HasGenericArguments<'tcx> for PredCtx<'tcx, '_> {}
 
 impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
     fn global_env_mut(&mut self) -> &mut GlobalEnv<'tcx> {
@@ -64,9 +65,15 @@ impl<'tcx> HasTyCtxt<'tcx> for PredCtx<'tcx, '_> {
 
 impl<'tcx> TypeEncoder<'tcx> for PredCtx<'tcx, '_> {}
 
-impl HasDefId for PredCtx<'_, '_> {
-    fn did(&self) -> DefId {
-        self.did
+impl<'tcx> PredSig<'tcx> {
+    pub(crate) fn params(&self) -> Vec<(String, Option<Type>)> {
+        self.lfts
+            .iter()
+            .chain(self.generics.iter())
+            .chain(self.inputs.iter().map(|(nm, _)| nm))
+            .cloned()
+            .map(|nm| (nm, None))
+            .collect()
     }
 }
 
@@ -76,27 +83,28 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub fn new(
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
-        did: DefId,
+        body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
         PredCtx {
             temp_gen,
             global_env,
-            did,
+            body_id,
             args,
             var_map: HashMap::new(),
             local_toplevel_asrts: Vec::new(),
             global_toplevel_asrts: Vec::new(),
+            lvars: Default::default(),
         }
     }
 
     pub fn new_with_identity_args(
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
-        did: DefId,
+        body_id: DefId,
     ) -> Self {
-        let args = GenericArgs::identity_for_item(global_env.tcx(), did);
-        Self::new(global_env, temp_gen, did, args)
+        let args = GenericArgs::identity_for_item(global_env.tcx(), body_id);
+        Self::new(global_env, temp_gen, body_id, args)
     }
 
     pub fn prophecies_enabled(&self) -> bool {
@@ -123,7 +131,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn temp_lvar(&mut self) -> GExpr {
-        Expr::LVar(self.new_temp())
+        let name = self.new_temp();
+
+        // HACK(xavier): Fix this later once the `mk_wf_asrt` is removed;
+        self.lvars
+            .insert(Symbol::intern(&name), self.tcx().types.unit);
+        Expr::LVar(name)
     }
 
     fn get_ins(&self) -> Vec<usize> {
@@ -131,13 +144,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         // This code yeets as soon as we can do multi-crate.
 
         if let Some(LogicStubs::OwnPred | LogicStubs::RefMutInner | LogicStubs::OptionOwnPred) =
-            LogicStubs::of_def_id(self.did(), self.tcx())
+            LogicStubs::of_def_id(self.body_id, self.tcx())
         {
             return vec![0];
         }
 
         let Some(ins_attr) = crate::utils::attrs::get_attr(
-            self.tcx().get_attrs_unchecked(self.did),
+            self.tcx().get_attrs_unchecked(self.body_id),
             &["gillian", "decl", "pred_ins"],
         ) else {
             fatal!(
@@ -147,20 +160,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             )
         };
 
-        let str_arg = if let AttrArgs::Eq(
-            _,
-            AttrArgsEq::Hir(MetaItemLit {
-                kind: LitKind::Str(sym, StrStyle::Cooked),
-                ..
-            }),
-        ) = ins_attr.args
-        {
-            sym.as_str().to_owned()
-        } else {
+        let Some(str_arg) = ins_attr.value_str() else {
             self.tcx()
                 .sess
-                .fatal("Predicate ins attribute must be a string");
+                .fatal("Predicate ins attribute must be a string")
         };
+        let str_arg = str_arg.as_str().to_owned();
+
         if str_arg.is_empty() {
             return vec![];
         }
@@ -172,189 +178,63 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub fn pred_name(&self) -> String {
         self.global_env
-            .just_pred_name_with_args(self.did, self.args)
-    }
-
-    fn make_is_ptr_asrt(&mut self, e: GExpr) -> Assertion {
-        let loc = self.temp_lvar();
-        let proj = self.temp_lvar();
-        let types = Assertion::Types(vec![
-            (loc.clone(), Type::ObjectType),
-            (proj.clone(), Type::ListType),
-        ]);
-        types.star(e.eq_f([loc, proj]).into_asrt())
-    }
-
-    fn make_is_nonnull_asrt(&mut self, e: GExpr) -> Assertion {
-        let loc = self.temp_lvar();
-        let proj = self.temp_lvar();
-        let types = Assertion::Types(vec![
-            (loc.clone(), Type::ObjectType),
-            (proj.clone(), Type::ListType),
-        ]);
-        types.star(e.eq_f([Expr::EList(vec![loc, proj])]).into_asrt())
-    }
-
-    fn make_is_unique_asrt(&mut self, e: GExpr) -> Assertion {
-        let loc = self.temp_lvar();
-        let proj = self.temp_lvar();
-        let types = Assertion::Types(vec![
-            (loc.clone(), Type::ObjectType),
-            (proj.clone(), Type::ListType),
-        ]);
-        types.star(
-            e.eq_f([
-                Expr::EList(vec![Expr::EList(vec![loc, proj])]),
-                vec![].into(),
-            ])
-            .into_asrt(),
-        )
-    }
-
-    fn make_is_mut_ref_proph_ref_asrt(&mut self, e: GExpr) -> Assertion {
-        let loc = self.temp_lvar();
-        let proj = self.temp_lvar();
-        let pcy = self.temp_lvar();
-        let pcy_proj = Expr::from(vec![]);
-        let types = Assertion::Types(vec![
-            (loc.clone(), Type::ObjectType),
-            (proj.clone(), Type::ListType),
-            (pcy_proj.clone(), Type::ListType),
-        ]);
-        types.star(e.eq_f([[loc, proj], [pcy, pcy_proj]]).into_asrt())
-    }
-
-    fn make_wf_asrt(&mut self, e: GExpr, ty: Ty<'tcx>) -> Assertion {
-        // The type here is already substituted
-        if ty.is_any_ptr() {
-            if ty_utils::is_mut_ref(ty) && self.prophecies_enabled() {
-                self.make_is_mut_ref_proph_ref_asrt(e)
-            } else {
-                self.make_is_ptr_asrt(e)
-            }
-        } else if ty.is_integral() {
-            Assertion::Types(vec![(e, Type::IntType)])
-        } else if self.is_nonnull(ty) {
-            self.make_is_nonnull_asrt(e)
-        } else if self.is_unique(ty) {
-            self.make_is_unique_asrt(e)
-        } else if crate::utils::ty::is_unsigned_integral(ty) {
-            Formula::i_le(0, e).into_asrt()
-        } else {
-            Assertion::Emp
-        }
-    }
-
-    fn extract_param(&mut self, param: &Param<'tcx>) -> (String, Ty<'tcx>) {
-        match &param.pat {
-            Some(box Pat {
-                kind:
-                    PatKind::Binding {
-                        mutability: _,
-                        name,
-                        var,
-                        subpattern,
-                        is_primary,
-                        mode: _,
-                        ty: _,
-                    },
-                ..
-            }) => {
-                // When memory implements mutability, the information should probably be used.
-                let name = name.to_string();
-                let ty = self.subst(param.ty);
-                if !is_primary {
-                    fatal!(self, "Predicate parameters must be primary");
-                }
-                if subpattern.is_some() {
-                    fatal!(self, "Predicate parameters cannot have subpatterns");
-                }
-                let lvar = GExpr::LVar(format!("#{name}"));
-
-                self.var_map.insert(*var, lvar.clone());
-                // Global toplevel asrts that are pure should prob be added to the facts instead of here.
-                self.global_toplevel_asrts
-                    .push(GExpr::PVar(name.clone()).eq_f(lvar.clone()).into_asrt()); // All pvars are used through their lvars, and something of the form `(p == #p)`
-                let type_knowledge = self.make_wf_asrt(lvar, ty);
-                self.global_toplevel_asrts.push(type_knowledge);
-                (name, ty)
-            }
-            _ => fatal!(self, "Predicate parameters must be variables"),
-        }
+            .just_pred_name_with_args(self.body_id, self.args)
     }
 
     fn guard(&self) -> Option<Assertion> {
-        crate::utils::attrs::get_attr(
-            self.tcx().get_attrs_unchecked(self.did()),
-            &["gillian", "borrow"],
-        )
-        .map(|_| {
-            if !self.has_generic_lifetimes() {
+        is_borrow(self.body_id, self.tcx()).then(|| {
+            if !has_generic_lifetimes(self.body_id, self.tcx()) {
                 fatal!(self, "Borrow without a lifetime? {:?}", self.pred_name());
             }
             core_preds::alive_lft(Expr::PVar(lifetime_param_name("a")))
         })
     }
 
-    pub fn sig(&mut self) -> PredSig {
-        let has_generic_lifetimes = self.has_generic_lifetimes();
-        let generic_types = self.generic_types();
+    pub fn sig(&mut self) -> PredSig<'tcx> {
+        // Get the id which describes the signature of this predicate.
+        // For specifications this is the identifier of the function being specified.
+        let sig_id = self
+            .global_env
+            .prog_map
+            .get(&self.body_id)
+            .cloned()
+            .unwrap_or(self.body_id);
+
+        let has_generic_lifetimes = has_generic_lifetimes(self.body_id, self.tcx());
+        let generic_types = generic_types(self.body_id, self.tcx());
         let mut ins = self.get_ins();
         let generics_amount = generic_types.len() + (has_generic_lifetimes as usize);
         if generics_amount > 0 {
             // Ins known info is only about non-type params.
-            // If there are generic types args,
+            // If thefre are generic types args,
             // we need to add the type params as ins, and offset known ins,
             // since type params are added in front.
             for i in &mut ins {
                 *i += generics_amount;
             }
-            for i in 0..generics_amount {
-                ins.push(i)
-            }
+            ins.extend(0..generics_amount);
             ins.sort();
         }
+
         let generic_lft_params = if has_generic_lifetimes {
-            Some((lifetime_param_name("a"), None)).into_iter()
+            Some(lifetime_param_name("a")).into_iter()
         } else {
             None.into_iter()
         };
-        let generic_type_params = generic_types
+
+        let generic_type_params = generic_types.into_iter().map(|x| type_param_name(x.0, x.1));
+
+        let arguments: Vec<_> = fn_args_and_tys(self.tcx(), sig_id)
             .into_iter()
-            .map(|x| (type_param_name(x.0, x.1), None));
-        // There are two caes:
-        // - either there is a thir body, in which case we can use "extract_params"
-        // - or there is not thir body, in which case we don't have param names and we just create arbitrary names
-        //   with the right type
-        let thir_body = self
-            .did()
-            .as_local()
-            .and_then(|did| self.tcx().thir_body(did).ok().map(|x| x.0));
-        let arguments: Vec<_> = match thir_body {
-            Some(thir_body) => thir_body
-                .borrow()
-                .params
-                .iter()
-                .map(|p| {
-                    let (name, _substed_ty) = self.extract_param(p);
-                    (name, None)
-                })
-                .collect(),
-            None => {
-                let sig = self.tcx().fn_sig(self.did()).instantiate_identity();
-                (0..sig.inputs().skip_binder().len())
-                    .map(|i| (format!("param_{}", i), None))
-                    .collect()
-            }
-        };
-        let params: Vec<_> = generic_lft_params
-            .chain(generic_type_params)
-            .chain(arguments)
+            .map(|(nm, ty)| (nm.to_string(), self.subst(ty)))
             .collect();
         let guard = self.guard();
+
         PredSig {
             name: self.pred_name(),
-            params,
+            lfts: generic_lft_params.collect(),
+            generics: generic_type_params.collect(),
+            inputs: arguments,
             ins,
             facts: vec![],
             guard,
@@ -404,19 +284,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let expr = &thir[e];
         match &expr.kind {
             ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
-            ExprKind::VarRef { id } => match self.var_map.get(id) {
-                // Actually, the information about variable names is contained in
-                // `self.tcx().hir().name(id.0)`. So the information I keep is redundant.
-                // This deserves a cleanum.
-                Some(var) => var.clone(),
-                None => {
-                    let name = format!("#{}", self.tcx().hir().name(id.0));
-                    GExpr::LVar(name)
+            ExprKind::VarRef { id } | ExprKind::UpvarRef { var_hir_id: id, .. } => {
+                match self.var_map.get(id) {
+                    // Actually, the information about variable names is contained in
+                    // `self.tcx().hir().name(id.0)`. So the information I keep is redundant.
+                    // This deserves a cleanum.
+                    Some(var) => var.clone(),
+                    None => {
+                        let name = format!("#{}", self.tcx().hir().name(id.0));
+                        GExpr::LVar(name)
+                    }
                 }
-            },
-            ExprKind::UpvarRef { var_hir_id, .. } => {
-                let name = format!("#{}", self.tcx().hir().name(var_hir_id.0));
-                GExpr::LVar(name)
             }
             ExprKind::Adt(box AdtExpr {
                 adt_def: def,
@@ -491,7 +369,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         if ty.is_integral() {
                             GExpr::i_shl(left, right)
                         } else {
-                            fatal!(self, "Unsupported type for << {:?}", ty);
+                            fatal!(self, "Unsupported type for << {:?}", ty)
                         }
                     }
                     _ => fatal!(self, "Unsupported binary operator {:?}", op),
@@ -711,7 +589,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 self,
                 "{:?} unsupported Thir expression in expression while compiling {:?}",
                 expr,
-                self.did()
+                self.body_id
             ),
         }
     }
@@ -828,10 +706,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn is_nonnull(&self, ty: Ty<'tcx>) -> bool {
         crate::utils::ty::is_nonnull(ty, self.tcx())
-    }
-
-    fn is_unique(&self, ty: Ty<'tcx>) -> bool {
-        crate::utils::ty::is_unique(ty, self.tcx())
     }
 
     fn make_nonnull(&self, ptr: GExpr) -> GExpr {
@@ -1054,8 +928,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
                     );
                     if ty_params.regions {
-                        if !self.has_generic_lifetimes() {
-                            fatal!(self, "predicate calling another one, it has a lifetime param but not self?? {:?}", self.pred_name())
+                        if !has_generic_lifetimes(self.body_id, self.tcx()) {
+                            fatal!(self, "predicate calling another one, it has a lifetime param but not self? in context: {:?}, offender: {ty:?}", self.pred_name())
                         };
                         params.push(Expr::PVar(lifetime_param_name("a")));
                     }
@@ -1073,7 +947,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub fn resolve_block(&self, e: ExprId, thir: &Thir<'tcx>) -> BlockId {
+    pub fn resolve_block(&self, e: ExprId, thir: &Thir<'tcx>) -> Option<BlockId> {
         let expr = &thir.exprs[e];
         match &expr.kind {
             ExprKind::Scope {
@@ -1082,60 +956,64 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 value,
             } => self.resolve_block(*value, thir),
             ExprKind::Use { source } => self.resolve_block(*source, thir),
-            ExprKind::Block { block, .. } => *block,
-            _ => fatal!(self, "Can't resolve block: {:?}", expr),
+            ExprKind::Block { block, .. } => Some(*block),
+            _ => None,
         }
     }
 
-    // Returns the list of pvars, not lvars.
-    pub(crate) fn add_block_lvars(&mut self, block: BlockId, thir: &Thir<'tcx>) -> Vec<String> {
-        let block = &thir[block];
-        let mut res = Vec::with_capacity(block.stmts.len());
-        for stmt in block.stmts.iter() {
-            // We could do additional check that the rhs is actually a call
-            // to `gilogic::new_lvar()` but 🤷‍♂️.
-            if let StmtKind::Let {
-                pattern:
-                    box Pat {
-                        kind:
-                            PatKind::Binding { name, var, ty, .. }
-                            | PatKind::AscribeUserType {
-                                ascription: _,
-                                subpattern:
-                                    box Pat {
-                                        kind: PatKind::Binding { name, var, ty, .. },
-                                        ..
-                                    },
-                            },
-                        ..
-                    },
-                ..
-            } = thir.stmts[*stmt].kind
-            {
-                let lvar_expr = GExpr::LVar(format!("#{}", name.as_str()));
-                let wf_cond = self.make_wf_asrt(lvar_expr.clone(), ty);
-                self.local_toplevel_asrts.push(wf_cond);
-                self.var_map.insert(var, lvar_expr);
-                res.push(name.to_string());
-            } else {
-                fatal!(
-                    self,
-                    "Unsupported statement in assertion: {:?}",
-                    thir.stmts[*stmt]
-                )
-            }
+    fn peel_scope(&self, mut e: ExprId, thir: &Thir<'tcx>) -> ExprId {
+        while let ExprKind::Scope { value, .. } = &thir[e].kind {
+            e = *value;
         }
-        res
+        e
+    }
+
+    /// Removes any bindings for lvars surrounding an assertion and adds them to the environment.
+    fn peel_lvar_bindings<A>(
+        &mut self,
+        mut e: ExprId,
+        thir: &Thir<'tcx>,
+        mut k: impl FnMut(&mut Self, ExprId, &Thir<'tcx>) -> A,
+    ) -> A {
+        e = self.peel_scope(e, thir);
+
+        match &thir[e].kind {
+            ExprKind::Call { ty, args, .. }
+                if self.get_stub(*ty) == Some(LogicStubs::InstantiateLVars) =>
+            {
+                let ExprKind::Closure(clos) = &thir[self.peel_scope(args[0], thir)].kind else {
+                    unreachable!()
+                };
+
+                let (thir, expr) = get_thir!(self, clos.closure_id.to_def_id());
+
+                for (nm, ty) in fn_args_and_tys(self.tcx(), clos.closure_id.to_def_id()) {
+                    self.lvars.insert(nm, ty);
+                }
+
+                let Some(block) = self.resolve_block(expr, &*thir) else {
+                    unreachable!("closure must start with block")
+                };
+
+                assert_eq!(thir[block].stmts.len(), 0);
+
+                k(self, thir[block].expr.unwrap(), &*thir)
+            }
+            ExprKind::Block { block } => {
+                let block = &thir[*block];
+                assert!(block.stmts.is_empty());
+
+                // let StmtKind::Expr { expr, .. }  = thir[block.stmts[0]].kind else { panic!() };
+                self.peel_lvar_bindings(block.expr.unwrap(), thir, k)
+            }
+            _ => k(self, e, thir),
+        }
     }
 
     fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
-        let block = self.resolve_block(e, thir);
-        self.add_block_lvars(block, thir);
-        let block = &thir.blocks[block];
-        let expr = block
-            .expr
-            .unwrap_or_else(|| fatal!(self, "Assertion block has no expression?"));
-        let inner = self.compile_assertion(expr, thir);
+        let inner =
+            self.peel_lvar_bindings(e, thir, |this, e, thir| this.compile_assertion(e, thir));
+        // this part is important.
         let inner = self
             .global_toplevel_asrts
             .iter()
@@ -1144,8 +1022,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .into_iter()
             .fold(inner, Assertion::star);
 
-        if (!crate::logic::is_function_specification(self.did(), self.tcx()))
-            || (!self.has_generic_lifetimes())
+        if (!crate::logic::is_function_specification(self.body_id, self.tcx()))
+            || (!has_generic_lifetimes(self.body_id, self.tcx()))
         {
             inner
         } else {
@@ -1217,13 +1095,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 assert!(args.len() == 1, "Defs call must have one argument");
                 self.resolve_array(args[0], thir)
             }
-            _ => fatal!(self, "Can't resolve array: {:?}", expr),
+            _ => fatal!(self, "Can't resolve definition: {:?}", expr),
         }
     }
 
     fn compile_formula_closure(mut self) -> Formula {
-        let (thir, ret_expr) = get_thir!(self);
-        let block = &thir[self.resolve_block(ret_expr, &thir)];
+        let (thir, ret_expr) = get_thir!(self, self.body_id);
+        let block = &thir[self.resolve_block(ret_expr, &thir).unwrap()];
         if !block.stmts.is_empty() || block.expr.is_none() {
             fatal!(self, "formula closure is malformed")
         }
@@ -1232,54 +1110,166 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     pub fn compile_abstract(mut self) -> Pred {
-        let PredSig {
-            name,
-            params,
-            ins,
-            facts,
-            guard,
-        } = self.sig();
-        self.global_env_mut().mark_pred_as_compiled(name.clone());
+        let sig = self.sig();
+        self.global_env_mut()
+            .mark_pred_as_compiled(sig.name.clone());
+        let params: Vec<_> = sig.params();
         Pred {
-            name,
+            name: sig.name,
             num_params: params.len(),
             params,
             abstract_: true,
-            facts,
+            facts: sig.facts,
             definitions: vec![],
-            ins,
+            ins: sig.ins,
             pure: false,
-            guard,
+            guard: sig.guard,
         }
     }
 
     pub fn compile_concrete(mut self) -> Pred {
-        let PredSig {
-            name,
-            params,
-            ins,
-            facts,
-            guard,
-        } = self.sig();
-        let (thir, ret_expr) = get_thir!(self);
+        let sig = self.sig();
+        let (thir, ret_expr) = get_thir!(self, self.body_id);
+
+        let real_sig = build_signature(self.global_env, self.body_id);
         // FIXME: Use the list of statements of the main block expr
-        let definitions = self
+        let raw_definitions: Vec<_> = self
             .resolve_definitions(ret_expr, &thir)
             .iter()
             .map(|e| self.compile_assertion_outer(*e, &thir))
             .collect();
-        self.global_env_mut().mark_pred_as_compiled(name.clone());
+        self.global_env_mut()
+            .mark_pred_as_compiled(sig.name.clone());
+        let params: Vec<_> = sig.params();
+
+        let mut definitions = Vec::new();
+
+        for d in raw_definitions {
+            let mut definition = d;
+            definition = real_sig
+                .type_wf_pres(self.global_env, self.temp_gen)
+                .into_iter()
+                .fold(definition, Assertion::star);
+
+            definition = real_sig
+                .store_eq_var()
+                .into_iter()
+                .rfold(definition, Assertion::star);
+            definitions.push(definition);
+        }
 
         Pred {
-            name,
+            name: sig.name,
             num_params: params.len(),
             params,
             abstract_: false,
-            facts,
+            facts: sig.facts,
             definitions,
-            ins,
+            ins: sig.ins,
             pure: false,
-            guard,
+            guard: sig.guard,
         }
     }
+
+    pub fn build_var_map(&mut self, thir: &Thir<'tcx>) {
+        let arguments = &thir.params;
+
+        for param in arguments {
+            let Some(pat) = &param.pat else { continue };
+            use rustc_middle::thir::BindingMode;
+            match &pat.kind {
+                PatKind::Binding {
+                    mutability: Mutability::Not,
+                    name,
+                    mode: BindingMode::ByValue,
+                    var,
+                    subpattern: None,
+                    ..
+                } => {
+                    self.var_map.insert(*var, GExpr::PVar(name.to_string()));
+                }
+                _ => {
+                    fatal!(self, "unsupported pattern in predicate declaration")
+                }
+            }
+        }
+    }
+
+    /// Returns a tuple of universally quantified lvars, precondition, (existentially quantified lvars, postcondition)
+    pub fn raw_spec(
+        mut self,
+    ) -> (
+        IndexMap<Symbol, Ty<'tcx>>,
+        Assertion,
+        (Vec<(Symbol, Ty<'tcx>)>, Assertion),
+    ) {
+        let (thir, ret_expr) = get_thir!(self, self.body_id);
+        self.build_var_map(&thir);
+
+        let (pre_lvars, pre, post) =
+            self.peel_lvar_bindings(ret_expr, &*thir, |this, expr, thir| {
+                let ExprKind::Call {
+                    ty, fun: _, args, ..
+                } = &thir[this.peel_scope(expr, thir)].kind
+                else {
+                    unreachable!("ill formed specification block {:?}", thir[expr])
+                };
+
+                let Some(LogicStubs::Spec) = this.get_stub(*ty) else {
+                    unreachable!("ill formed specification block")
+                };
+                // Only keep the lvars from the `instantiate_lvars` for preconditions?
+                let pre_lvars = std::mem::take(&mut this.lvars);
+
+                let pre = this.compile_assertion(args[0], thir);
+
+                // assert!(this.local_toplevel_asrts.is_empty(), "TODO(xavier): temporary hack {:?}", this.local_toplevel_asrts);
+                // This assertion fails, but probably shoudlnt...
+
+                let _ = std::mem::take(&mut this.local_toplevel_asrts);
+                let _ = std::mem::take(&mut this.lvars);
+
+                let mut post = this.peel_lvar_bindings(args[1], thir, |this, expr, thir| {
+                    this.compile_assertion(expr, thir)
+                });
+
+                post = std::mem::take(&mut this.local_toplevel_asrts)
+                    .into_iter()
+                    .fold(post, Assertion::star);
+
+                (pre_lvars, pre, post)
+            });
+
+        let post_lvars: Vec<_> = self.lvars.into_iter().collect();
+
+        (pre_lvars, pre, (post_lvars, post))
+    }
+}
+
+fn fn_args_and_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<(Symbol, Ty<'tcx>)> {
+    use rustc_hir::def::DefKind;
+    use rustc_hir::Unsafety;
+
+    let tys = match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => tcx
+            .fn_sig(def_id)
+            .instantiate_identity()
+            .inputs()
+            .skip_binder(),
+        DefKind::Closure => {
+            let TyKind::Closure(_, subst) = tcx.type_of(def_id).skip_binder().kind() else {
+                unreachable!()
+            };
+            let closure_args = subst.as_closure().sig();
+            tcx.signature_unclosure(closure_args, Unsafety::Normal)
+                .inputs()
+                .skip_binder()
+        }
+        k => unreachable!("{k:?}"),
+    };
+    tcx.fn_arg_names(def_id)
+        .iter()
+        .zip(tys)
+        .map(|(nm, ty)| (nm.name, *ty))
+        .collect()
 }
