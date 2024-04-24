@@ -1,0 +1,65 @@
+#begin_init_data
+{"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
+
+pred "<&mut Option<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v) * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
+guard: <lft>(lft; true);
+
+
+abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +param_0);
+
+
+pred "<Option<T> as gilogic::Ownable>::own"(+pty_T0, +self):
+(#self == {{ 0i, {{  }} }}) * (self == #self), (#self == {{ 1i, {{ #x }} }}) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * (self == #self);
+
+
+spec "Option::<T>::new"(pty_T0, m_1x)
+[[ (pty_T0 == #pty_T0) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * (m_1x == #x) ]]
+[["<Option<T> as gilogic::Ownable>::own"(#pty_T0, #ret) * (ret == #ret)]]
+normal
+
+proc "Option::<T>::new"(pty_T0, m_1x) {
+  bb0:  g_0 := m_1x;
+        m_2 := g_0;
+        g_1 := m_2;
+        m_0 := {{ 1i, {{ g_1 }} }};
+        goto bb1;
+  bb1:  goto bb2;
+  bb2:  g_2 := m_0;
+        ret := g_2;
+        goto rlab;
+  rlab: return
+};
+
+spec "Option::<T>::put"(pLft_a, pty_T0, m_1self, m_2x)
+[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut Option<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * (m_1self == #self) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (m_2x == #x) * <lft>(#pLft_a; true) ]]
+[["<() as gilogic::Ownable>::own"(#ret) * (ret == #ret) * <lft>(#pLft_a; true)]]
+normal
+
+proc "Option::<T>::put"(pLft_a, pty_T0, m_1self, m_2x) {
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_1 := m_2x;
+        m_4 := g_1;
+        g_2 := m_4;
+        m_3 := {{ 1i, {{ g_2 }} }};
+        goto bb1;
+  bb1:  goto bb2;
+  bb2:  g_3 := m_3;
+        g_5 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, true);
+        g_4 := l-nth(g_5, 0i);
+        u := [store_value](l-nth(g_4, 0i), l-nth(g_4, 1i), {{ "adt", "Option", {{ pty_T0 }} }}, g_3);
+        m_0 := {{  }};
+        goto bb4;
+  bb4:  goto bb5;
+  bb5:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }});
+        return
+};
+

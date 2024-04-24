@@ -1,0 +1,80 @@
+#begin_init_data
+{"MyBox":["Struct","ReprRust",[["ptr",["Ptr",{"mut":true,"ty":["Param",0]}]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil";
+
+pred "<&mut MyBox<T> as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
+(self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }}) * <pcy_value>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #future) * <value_observer>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #current) * "<MyBox<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
+
+
+abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +param_0, param_1);
+
+
+pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
+(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #model) * (self == #self) * (model == #model) * types(#lvar_0: Obj, #lvar_1: List) * (#ptr == {{ #lvar_0, #lvar_1 }});
+
+
+pred "<MyBox<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(+lft, +pty_T0, +self):
+<value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #value) * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #repr) * "<MyBox<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
+guard: <lft>(lft; true);
+
+
+spec "MyBox::<T>::write"(pty_T0, m_1self, m_2v)
+[[ (pty_T0 == #pty_T0) * "<MyBox<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #self, #sm) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #vm) * (m_1self == #self) * (m_2v == #v) ]]
+[["<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #ret, #rm) * <observation>((#rm = #vm); ) * (ret == #ret)]]
+normal
+
+proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "adt", "MyBox", {{ pty_T0 }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, g_0);
+  bb0:  g_1 := m_2v;
+        m_4 := g_1;
+        goto bb1;
+  bb1:  g_2 := m_4;
+        g_4 := [load_value](l-nth(m_1self, 0i), l+ (l-nth(m_1self, 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
+        g_3 := l-nth(g_4, 0i);
+        u := [store_value](l-nth(g_3, 0i), l-nth(g_3, 1i), pty_T0, g_2);
+        m_3 := {{  }};
+        goto bb3;
+  bb3:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, false);
+        g_5 := l-nth(g_6, 0i);
+        m_0 := g_5;
+        goto bb4;
+  bb4:  g_7 := m_0;
+        ret := g_7;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }});
+        return
+};
+
+spec "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v)
+[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut MyBox<T> as gilogic::prophecies::Ownable>::own"(pLft_a, pty_T0, #self, #sm) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #vm) * (m_1self == #self) * types(#lvar_2: Obj, #lvar_3: List, {{  }}: List) * (#self == {{ {{ #lvar_2, #lvar_3 }}, {{ #lvar_4, {{  }} }} }}) * (m_2v == #v) * <lft>(#pLft_a; true) ]]
+[[<observation>((l-nth(#sm, 1i) = #vm); ) * <observation>((l-nth(#sm, 0i) = #vm); ) * (ret == #ret) * <lft>(#pLft_a; true)]]
+normal
+
+proc "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v) {
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_1 := m_2v;
+        m_4 := g_1;
+        goto bb1;
+  bb1:  g_2 := m_4;
+        g_4 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        g_6 := [load_value](l-nth(l-nth(g_3, 0i), 0i), l+ (l-nth(l-nth(g_3, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
+        g_5 := l-nth(g_6, 0i);
+        u := [store_value](l-nth(g_5, 0i), l-nth(g_5, 1i), pty_T0, g_2);
+        m_3 := {{  }};
+        goto bb3;
+  bb3:  m_0 := {{  }};
+        goto bb4;
+  bb4:  g_7 := m_0;
+        ret := g_7;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});
+        return
+};
+

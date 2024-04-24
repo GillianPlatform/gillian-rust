@@ -1,0 +1,76 @@
+#begin_init_data
+{"MyBox":["Struct","ReprRust",[["ptr",["Ptr",{"mut":true,"ty":["Param",0]}]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
+
+pred "<&mut MyBox<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
+guard: <lft>(lft; true);
+
+
+pred "<MyBox<T> as gilogic::Ownable>::own"(+pty_T0, +self):
+(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (self == #self) * types(#lvar_0: Obj, #lvar_1: List) * (#ptr == {{ #lvar_0, #lvar_1 }});
+
+
+abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +param_0);
+
+
+spec "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v)
+[[ (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) * "<&mut MyBox<T> as gilogic::Ownable>::own"(pLft_a, pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (m_1self == #self) * types(#lvar_2: Obj, #lvar_3: List) * (#self == {{ #lvar_2, #lvar_3 }}) * (m_2v == #v) * <lft>(#pLft_a; true) ]]
+[["<() as gilogic::Ownable>::own"(#ret) * (ret == #ret) * <lft>(#pLft_a; true)]]
+normal
+
+proc "MyBox::<T>::update"(pLft_a, pty_T0, m_1self, m_2v) {
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_1 := m_2v;
+        m_4 := g_1;
+        goto bb1;
+  bb1:  g_2 := m_4;
+        g_4 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        g_6 := [load_value](l-nth(g_3, 0i), l+ (l-nth(g_3, 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
+        g_5 := l-nth(g_6, 0i);
+        u := [store_value](l-nth(g_5, 0i), l-nth(g_5, 1i), pty_T0, g_2);
+        m_3 := {{  }};
+        goto bb3;
+  bb3:  m_0 := {{  }};
+        goto bb4;
+  bb4:  g_7 := m_0;
+        ret := g_7;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});
+        return
+};
+
+spec "MyBox::<T>::write"(pty_T0, m_1self, m_2v)
+[[ (pty_T0 == #pty_T0) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #self) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (m_1self == #self) * (m_2v == #v) ]]
+[["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #ret) * (ret == #ret)]]
+normal
+
+proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "adt", "MyBox", {{ pty_T0 }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, g_0);
+  bb0:  g_1 := m_2v;
+        m_4 := g_1;
+        goto bb1;
+  bb1:  g_2 := m_4;
+        g_4 := [load_value](l-nth(m_1self, 0i), l+ (l-nth(m_1self, 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
+        g_3 := l-nth(g_4, 0i);
+        u := [store_value](l-nth(g_3, 0i), l-nth(g_3, 1i), pty_T0, g_2);
+        m_3 := {{  }};
+        goto bb3;
+  bb3:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, false);
+        g_5 := l-nth(g_6, 0i);
+        m_0 := g_5;
+        goto bb4;
+  bb4:  g_7 := m_0;
+        ret := g_7;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }});
+        return
+};
+
