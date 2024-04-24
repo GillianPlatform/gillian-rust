@@ -1,3 +1,4 @@
+//@check-pass
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]

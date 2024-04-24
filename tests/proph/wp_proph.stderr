@@ -1,0 +1,20 @@
+warning: unused imports: `Prophecy`, `observer`
+  --> ../tests/proph/wp_proph.rs:12:30
+   |
+12 |     prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
+   |                              ^^^^^^^^                        ^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: 1 warning emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

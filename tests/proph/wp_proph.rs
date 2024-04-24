@@ -1,3 +1,4 @@
+//@check-pass
 #![feature(concat_idents)]
 
 extern crate gilogic;
