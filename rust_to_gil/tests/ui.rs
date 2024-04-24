@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     program.envs.push(("GILLIAN_EXEC_MODE".into(), Some("verif".into())));
     program.envs.push(("IN_UI_TEST".into(), Some("1".into())));
 
-    let path = PathBuf::from("../tests/pass");
+    let path = PathBuf::from("../tests/noproph");
     let mut config = Config {
     	program,
         output_conflict_handling: OutputConflictHandling::Error,
