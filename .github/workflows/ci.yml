@@ -17,7 +17,6 @@ jobs:
     steps:
       # Basic setups
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v2
       
       # Rust setup and build/test
       - uses: actions-rs/toolchain@v1
@@ -38,35 +37,13 @@ jobs:
           command: clippy
       
       # OCaml setup and build/test
-      - name: Installing esy
-        run: sudo npm install -g esy@0.6.12 --unsafe-perm
-      - name: Restore Cache
-        id: restore-cache
-        uses: actions/cache@v1
+      - uses: ocaml/setup-ocaml@v2
         with:
-          path: Gillian-Rust/_export
-          key: ${{ runner.os }}-esy-0.6.12-${{ hashFiles('Gillian-Rust/esy.lock/index.json') }}
-          restore-keys: |
-            ${{ runner.os }}-esy-0.6.12-
-      - name: Esy install
-        run: "esy install"
+          ocaml-compiler: "5.1"
+      - run: opam pin add gillian "https://github.com/GillianPlatform/Gillian.git#f5995995deb0334f8b292c07fb15f7bdebde6514" -y
+      - run: opam exec -- dune build @all
         working-directory: "Gillian-Rust"
-      - name: Import Cache
-        run: |
-          esy import-dependencies _export
-          rm -rf _export
-        working-directory: "Gillian-Rust"
-      - name: Build
-        run: "esy"
-        working-directory: "Gillian-Rust"
-      - name: Setting dependency cache
-        run: |
-          esy cleanup .
-          esy export-dependencies
-        if: steps.restore-cache.outputs.cache-hit != 'true'
-        working-directory: "Gillian-Rust"
-      - name: build-and-test
-        run: "esy test"
+      - run: opam exec -- dune test
         working-directory: "Gillian-Rust"
 
       # External tests

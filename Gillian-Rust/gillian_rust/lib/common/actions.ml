@@ -8,7 +8,8 @@ type t =
   | Free
   | Load_discr
   | Size_of
-  | Is_zst (* We can optimise this without computing param sizes in most cases *)
+  | Is_zst
+    (* We can optimise this without computing param sizes in most cases *)
   | Ty_is_unsized
   (* Prophecies *)
   | Pcy_alloc

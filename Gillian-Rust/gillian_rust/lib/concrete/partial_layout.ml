@@ -355,8 +355,8 @@ let rec resolve
                 with
                 | Some (FromCount (t', n, 0)) when t' = t ->
                     (if next_ix = Array.length members then
-                     up_tree_cast UpTreeDirection.Fwd accesses
-                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                       up_tree_cast UpTreeDirection.Fwd accesses
+                     else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
                       (modify_plus_eliminating_zero (next_i n))
                 | _ -> down_tree_cast (DownTreeDirection.from_int i))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))
@@ -405,8 +405,8 @@ let rec resolve
                   when (* Format.printf "Bytes %d `cmp` %d 336;\n" size i; *)
                        size <= abs i ->
                     (if next_ix = Array.length (context.members ty) then
-                     up_tree_cast UpTreeDirection.Fwd accesses
-                    else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
+                       up_tree_cast UpTreeDirection.Fwd accesses
+                     else fun rs'' -> resolve accesses ty rs'' @@ Some next_ix)
                       (modify_uplus_eliminating_zero (i - (signum i * size)))
                 | _ -> down_tree_cast (DownTreeDirection.from_int i))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))

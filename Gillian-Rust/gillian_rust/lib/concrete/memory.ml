@@ -82,7 +82,7 @@ let execute_load_discr mem args =
   | _ -> wrong_args "execute_load_discr" args
 
 let protect f mem args = try f mem args with Heap.MemoryError s -> Error s
-  [@@inline]
+[@@inline]
 
 let execute_action act_name mem args =
   match Actions.of_name act_name with

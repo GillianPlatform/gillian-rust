@@ -10,13 +10,15 @@ type t =
   | Invalid_pcy_var of Expr.t
   | Invalid_free_pointer of Expr.t * Expr.t
   | Invalid_value of Ty.t * Expr.t
-  | LogicError of string (* "outs" don't match. e.g. we expect missing and it's not missing. *)
+  | LogicError of string
+    (* "outs" don't match. e.g. we expect missing and it's not missing. *)
   | Uninitialised_access of string * Projections.t
   | Unhandled of string
   | MissingBlock of string
   | Missing_pcy of string
   | Missing_lifetime of Lft.t
-  | Missing_proj of (string * Projections.t * Qty.t) (* Something could be only partially missing *)
+  | Missing_proj of (string * Projections.t * Qty.t)
+    (* Something could be only partially missing *)
   | Missing_observation of Formula.t
   | Double_kill_lifetime of Lft.t
   | Wrong_lifetime_status of Lft.t

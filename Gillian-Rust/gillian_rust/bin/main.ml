@@ -6,8 +6,8 @@ module Gil_to_rust_lifter
                       with type annot = Parser_and_compiler.Annot.t) =
 struct
   include
-    Gillian.Debugger.Lifter.Gil_lifter.Make (S_memory) (Parser_and_compiler) (Verification)
-      
+    Gillian.Debugger.Lifter.Gil_lifter.Make (S_memory) (Parser_and_compiler)
+      (Verification)
 end
 
 module CLI =

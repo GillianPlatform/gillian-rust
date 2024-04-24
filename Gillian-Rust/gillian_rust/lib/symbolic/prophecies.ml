@@ -311,7 +311,7 @@ let substitution ~tyenv pcy_env subst =
     let tree_substed = List.to_seq new_mapping |> MemMap.of_seq in
     List.fold_left
       (fun acc (old_loc, new_loc) ->
-        let** acc in
+        let** acc = acc in
         let new_loc =
           match new_loc with
           | Expr.Lit (Loc loc) | ALoc loc -> loc
