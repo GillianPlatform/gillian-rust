@@ -1,12 +1,4 @@
-warning: unused import: `lemma`
-  --> ../tests/proph/vec_std_proph.rs:10:34
-   |
-10 |     macros::{assertion, ensures, lemma, predicate, requires},
-   |                                  ^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
 error: Can't encode unevaluated promoted constants yet: "capacity_overflow" Some(promoted[0]) &ReErased [&ReErased str; 1_usize]
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
