@@ -1,3 +1,5 @@
+use std::io::stdout;
+
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface::Compiler, Queries};
 
@@ -37,10 +39,18 @@ impl Callbacks for ToGil {
         queries.global_ctxt().unwrap().enter(|tcx| {
             let prog = super::prog_context::ProgCtx::compile_prog(tcx, self.opts.clone());
             let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);
-            log::trace!("Writing to {:#?}", &tmp_file);
-            if let Err(err) = std::fs::write(&tmp_file, prog.to_string()) {
-                tcx.sess
-                    .fatal(format!("Error writing in GIL file: {}", err))
+
+            if self.opts.in_test {
+                let mut out = stdout().lock();
+                use std::io::Write;
+                write!(out, "{prog}").unwrap();
+            } else {
+                log::trace!("Writing to {:#?}", &tmp_file);
+
+                if let Err(err) = std::fs::write(&tmp_file, prog.to_string()) {
+                    tcx.sess
+                        .fatal(format!("Error writing in GIL file: {}", err))
+                }
             }
         });
 
