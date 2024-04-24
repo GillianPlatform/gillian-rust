@@ -1,1 +1,13 @@
 (lang dune 2.9)
+
+(using dune_site 0.1)
+
+(name gillian-rust)
+
+(package
+ (name gillian-rust)
+ (synopsis "Gillian-Rust")
+ (description "Gillian-Rust")
+ (depends gillian dune-sites)
+ (sites
+  (share runtime)))

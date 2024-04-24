@@ -1,0 +1,25 @@
+opam-version: "2.0"
+authors: ["Sacha-Élie Ayoun" "Xavier Denis"]
+maintainer: ["Sacha-Élie Ayoun"]
+name: "gillian-rust"
+synopsis: "Gillian instantiation for Rust"
+license: "BSD-3-Clause"
+bug-reports: "https://github.com/GillianPlatform/rust-to-gil/issues"
+homepage: "https://github.com/GillianPlatform/rust-to-gil/"
+dev-repo: "git+https://github.com/GillianPlatform/rust-to-gil.git"
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+depends: [
+]

@@ -46,7 +46,8 @@ let env_var_import_path = Some "GILLIAN_RUST_RUNTIME_PATH"
 
 let initialize exec_mode =
   R_config.exec_mode := exec_mode;
-  Gillian.Utils.Config.lemma_proof := false
+  Gillian.Utils.Config.lemma_proof := false;
+  Gillian.Utils.Config.set_runtime_paths Runtime.Sites.runtime
 
 let resolve_gilogic () = "target/debug/libgilogic.rlib"
 let resolve_creusillian () = "target/debug/libcreusillian.dylib"

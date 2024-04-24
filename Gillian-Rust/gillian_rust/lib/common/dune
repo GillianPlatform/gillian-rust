@@ -1,5 +1,9 @@
 (library
  (name common)
- (libraries gillian)
+ (libraries gillian dune-site)
  (preprocess
   (pps ppx_deriving_yojson ppx_deriving.std)))
+
+(generate_sites_module
+ (module runtime)
+ (sites gillian-rust))

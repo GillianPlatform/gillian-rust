@@ -1,7 +1,7 @@
 {
   "editor.formatOnSave": true,
   "ocaml.sandbox": {
-    "kind": "esy",
-    "root": "${workspaceFolder:rust-to-gil}/Gillian-Rust"
+    "kind": "opam",
+    "switch": "${workspaceFolder:rust-to-gil}/Gillian-Rust"
   }
 }

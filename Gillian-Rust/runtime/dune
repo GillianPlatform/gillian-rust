@@ -1,5 +1,7 @@
 (install
- (section share)
+ (section
+  (site
+   (gillian-rust runtime)))
  (files
   i__binop.gil
   i__lang.gil
