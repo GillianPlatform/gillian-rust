@@ -1,0 +1,4 @@
+error: Can't encode unevaluated promoted constants yet: "capacity_overflow" Some(promoted[0]) &ReErased [&ReErased str; 1_usize]
+
+error: aborting due to previous error
+

@@ -12,5 +12,13 @@ lib_rtg = { path = "../lib_rust_to_gil" }
 log = "0.4"
 toml = "0.5.9"
 
+[dev-dependencies]
+ui_test = "*"
+
 [package.metadata.rust-analyzer]
 rustc_private = true
+
+[[test]]
+test = false
+name = "ui"
+harness = false

@@ -34,7 +34,7 @@ fn main() {
 
     let mut args: Vec<_> = std::env::args().collect();
 
-    let opts = config::Config::of_args(&mut args);
+    let opts = config::Config::of_env();
 
     args.push(format!("--sysroot={}", sysroot_path()));
     args.push("-Cpanic=abort".to_owned());

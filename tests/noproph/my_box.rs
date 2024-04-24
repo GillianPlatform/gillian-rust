@@ -1,3 +1,4 @@
+//@check-pass
 extern crate gilogic;
 
 struct MyBox<T> {

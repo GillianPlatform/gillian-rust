@@ -1,3 +1,4 @@
+//@check-pass
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
@@ -7,7 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, ensures, lemma, predicate, requires},
+    macros::{assertion, ensures, predicate, requires},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,

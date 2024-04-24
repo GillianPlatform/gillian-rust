@@ -1,3 +1,11 @@
+//@check-pass
+extern crate gilogic;
+
+use gilogic::{
+    macros::{ *},
+    Ownable,
+};
+
 struct MyInt(u32);
 
 impl Ownable for MyInt {

@@ -36,19 +36,23 @@ impl fmt::Debug for ExecMode {
 pub struct Config {
     pub mode: ExecMode,
     pub prophecies: bool,
+    pub in_test: bool,
 }
 
 impl Config {
-    pub fn of_args(args: &mut Vec<String>) -> Self {
-        let mode = args
-            .iter()
-            .find_map(|x| x.strip_prefix("--gillian-exec-mode="))
-            .map(|x| ExecMode::from_str(x).unwrap())
-            .expect(
-                "Unspecified execution mode. Please add `--gillian-exec-mode=[verif|concrete|symb]",
-            );
-        let prophecies = args.iter().any(|x| x == "--gillian-prophecies");
-        args.retain(|a| (a != "--gillian-prophecies") && !a.starts_with("--gillian-exec-mode="));
-        Config { mode, prophecies }
+    pub fn of_env() -> Self {
+        let in_test = std::env::var("IN_UI_TEST").is_ok();
+
+        let mode = std::env::var("GILLIAN_EXEC_MODE").unwrap_or("verif".into());
+        let mode = ExecMode::from_str(&mode).expect(
+            "Unspecified execution mode. Please add `GILLIAN_EXEC_MODE=[verif|concrete|symb]`",
+        );
+        let prophecies = std::env::var("GILLIAN_PROPHECIES").is_ok();
+
+        Config {
+            mode,
+            prophecies,
+            in_test,
+        }
     }
 }
