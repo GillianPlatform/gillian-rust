@@ -3,7 +3,7 @@ use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::traits::ResolvedImpl;
 use crate::prelude::*;
 use crate::{config::Config, logic::traits::TraitSolver};
-use rustc_data_structures::sync::HashMapExt;
+use indexmap::IndexMap;
 use rustc_middle::ty::{
     AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ReprOptions,
 };
@@ -86,7 +86,7 @@ pub struct GlobalEnv<'tcx> {
     pub(super) mut_ref_owns: HashMap<Ty<'tcx>, String>, // TODO: convert to item.
     pub(super) mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>, // TODO: convert to item.
     // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
-    pub(super) inner_preds: HashMap<String, String>,
+    pub(super) inner_preds: IndexMap<String, String>,
     // Borrow preds for which an $$inner version should be derived.
 }
 
@@ -246,7 +246,7 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     fn inner_pred(&mut self, pred: String) -> String {
         let name = pred.clone() + "$$inner";
-        self.inner_preds.insert_same(pred, name.clone());
+        self.inner_preds.insert(pred, name.clone());
         name
     }
 

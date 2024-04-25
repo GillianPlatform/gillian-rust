@@ -1,19 +1,18 @@
-use std::collections::HashMap;
-
 use rustc_hir::def::DefKind;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
 use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
+use indexmap::IndexMap;
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
     prog: gillian::gil::Prog,
     global_env: GlobalEnv<'tcx>,
-    pre_tbl: HashMap<Symbol, (Vec<String>, Assertion)>,
-    post_tbl: HashMap<Symbol, Assertion>,
-    spec_tbl: HashMap<String, (Symbol, Symbol)>,
+    pre_tbl: IndexMap<Symbol, (Vec<String>, Assertion)>,
+    post_tbl: IndexMap<Symbol, Assertion>,
+    spec_tbl: IndexMap<String, (Symbol, Symbol)>,
     temp_gen: TempGenerator,
 }
 
@@ -29,9 +28,9 @@ impl<'tcx> ProgCtx<'tcx> {
             prog: gillian::gil::Prog::new(runtime::imports(config.prophecies)),
             global_env: GlobalEnv::new(tcx, config),
             temp_gen: TempGenerator::new(),
-            pre_tbl: HashMap::new(),
-            post_tbl: HashMap::new(),
-            spec_tbl: HashMap::new(),
+            pre_tbl: IndexMap::new(),
+            post_tbl: IndexMap::new(),
+            spec_tbl: IndexMap::new(),
             tcx,
         }
     }
@@ -112,7 +111,7 @@ impl<'tcx> ProgCtx<'tcx> {
         let pre = {
             let (pre_args, mut pre) = self
                 .pre_tbl
-                .remove(&pre_id)
+                .shift_remove(&pre_id)
                 .unwrap_or_else(|| fatal!(self, "Precondition {} not found for {}", pre_id, key));
             if pre_args.len() != proc_args.len() {
                 fatal!(
@@ -126,7 +125,7 @@ impl<'tcx> ProgCtx<'tcx> {
         };
         let post = self
             .post_tbl
-            .remove(&post_id)
+            .shift_remove(&post_id)
             .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
 
         let sspec = gillian::gil::SingleSpec {
@@ -152,12 +151,12 @@ impl<'tcx> ProgCtx<'tcx> {
         // Lemmas come from THIR and therefore should be safe to handle.
         let pre = self
             .pre_tbl
-            .remove(&pre_id)
+            .shift_remove(&pre_id)
             .unwrap_or_else(|| fatal!(self, "Precondition {} not found for {}", pre_id, key))
             .1;
         let post = self
             .post_tbl
-            .remove(&post_id)
+            .shift_remove(&post_id)
             .unwrap_or_else(|| fatal!(self, "Postcondition {} not found for {}", post_id, key));
 
         let lemma = self

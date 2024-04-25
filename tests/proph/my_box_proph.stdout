@@ -4,15 +4,15 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil";
 
-pred "<&mut MyBox<T> as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
-(self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }}) * <pcy_value>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #future) * <value_observer>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #current) * "<MyBox<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
+pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
+(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #model) * (self == #self) * (model == #model) * types(#lvar_0: Obj, #lvar_1: List) * (#ptr == {{ #lvar_0, #lvar_1 }});
 
 
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +param_0, param_1);
 
 
-pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
-(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #model) * (self == #self) * (model == #model) * types(#lvar_0: Obj, #lvar_1: List) * (#ptr == {{ #lvar_0, #lvar_1 }});
+pred "<&mut MyBox<T> as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
+(self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }}) * <pcy_value>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #future) * <value_observer>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #current) * "<MyBox<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
 
 
 pred "<MyBox<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(+lft, +pty_T0, +self):
