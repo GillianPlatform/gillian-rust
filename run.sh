@@ -1,7 +1,6 @@
 #!/bin/bash
 
- cargo run -- examples/verification/list_std.rs \
-  --gillian-exec-mode=verif \
+GILLIAN_EXEC_MODE=verif cargo run -- $1 \
   -Ldependency=./target/debug/deps/ \
   --extern gilogic=target/debug/libgilogic.rlib \
   --extern creusillian=target/debug/libcreusillian.rlib \

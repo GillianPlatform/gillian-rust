@@ -1,6 +1,7 @@
+use indexmap::IndexMap;
+
 use super::print_utils::separated_display;
 use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
-use std::collections::HashMap;
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone)]
@@ -12,12 +13,12 @@ pub struct Import {
 #[derive(Default, Debug)]
 pub struct Prog {
     pub imports: Vec<Import>,
-    pub lemmas: HashMap<String, Lemma>,
-    pub preds: HashMap<String, Pred>,
-    pub only_specs: HashMap<String, Spec>,
-    pub procs: HashMap<String, Proc>,
-    pub macros: HashMap<String, Macro>,
-    pub bi_specs: HashMap<String, BiSpec>,
+    pub lemmas: IndexMap<String, Lemma>,
+    pub preds: IndexMap<String, Pred>,
+    pub only_specs: IndexMap<String, Spec>,
+    pub procs: IndexMap<String, Proc>,
+    pub macros: IndexMap<String, Macro>,
+    pub bi_specs: IndexMap<String, BiSpec>,
     pub proc_names: Vec<String>,
 }
 
