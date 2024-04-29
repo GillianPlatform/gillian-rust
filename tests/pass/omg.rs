@@ -27,7 +27,7 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 }
 
 #[extract_lemma]
-#[specification(forall x: *mut N<T>, y: *mut N<T>.
+#[specification(forall x, y.
     requires { wp_ref_mut_xy(p, x, y) }
     ensures { Ownable::own(&mut (*y).v) }
 
@@ -35,7 +35,7 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[extract_lemma]
-#[specification(forall x: *mut N<T>, y: *mut N<T>.
+#[specification(forall x, y.
     requires { wp_ref_mut_xy(p, x, y) }
     ensures { Ownable::own(&mut (*x).v) }
 )]

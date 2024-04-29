@@ -21,9 +21,9 @@ impl<T: Ownable> Ownable for MyBox<T> {
 impl<T: Ownable> MyBox<T> {
 
     #[specification(
-        forall sm: T::RepresentationTy, vm: T::RepresentationTy .
+        forall sm, vm .
             requires { self.own(sm) * v.own(vm) }
-        exists rm: T::RepresentationTy, foo: T .
+        exists rm, foo: T .
             ensures {   ret.own(rm) * $rm == vm$ }
     )]
     // #[requires(|sm: T::RepresentationTy, vm: T::RepresentationTy| self.own(sm) * v.own(vm) )]

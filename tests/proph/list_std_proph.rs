@@ -167,9 +167,9 @@ impl<T: Ownable> LinkedList<T> {
     // }
     // )]
 
-    #[specification(forall current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>.
+    #[specification(forall current, proph.
         requires { self.own((current, proph)) }
-        exists ret_repr: Option<T::RepresentationTy>.
+        exists ret_repr.
         ensures { 
             ret.own(ret_repr) *
             $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
@@ -185,7 +185,7 @@ impl<T: Ownable> LinkedList<T> {
         res
     }
 
-    #[specification(forall current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, elt_repr: T::RepresentationTy.
+    #[specification(forall current, proph, elt_repr.
         requires { self.own((current, proph)) * $current.len() < usize::MAX$ * elt.own(elt_repr) }
         ensures { ret.own(()) * $proph == current.prepend(elt_repr)$ }
     )]

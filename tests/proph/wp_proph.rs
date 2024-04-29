@@ -62,9 +62,9 @@ impl<T: Ownable> Ownable for WP<T> {
 
 impl<T: Ownable> WP<T> {
     #[specification(
-        forall lx: T::RepresentationTy, ly: T::RepresentationTy.
+        forall lx, ly.
         requires { x.own(lx) * y.own(ly) }
-        exists ret_v : _.
+        exists ret_v.
         ensures { ret.own(ret_v) * $ret_v == (lx, ly)$ }
     )]
     fn new(x: T, y: T) -> Self {
@@ -84,9 +84,7 @@ impl<T: Ownable> WP<T> {
     }
 
     #[specification(
-        forall current: (T::RepresentationTy, T::RepresentationTy),
-        proph: (T::RepresentationTy, T::RepresentationTy),
-        xm: T::RepresentationTy.
+        forall current, proph, xm.
         requires { self.own((current, proph)) * x.own(xm) }
         ensures { $proph == (xm, current.1)$ }
     )]
@@ -97,9 +95,9 @@ impl<T: Ownable> WP<T> {
         }
     }
 
-    #[specification(forall cself : (T::RepresentationTy, T::RepresentationTy), pself : (T::RepresentationTy, T::RepresentationTy).
+    #[specification(forall cself, pself.
         requires { self.own((cself, pself)) }
-        exists c : _, p : _ . 
+        exists c, p. 
         ensures {  ret.own((c, p)) * $cself.1 == pself.1$ }
     )]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
