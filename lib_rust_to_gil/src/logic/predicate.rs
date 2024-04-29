@@ -36,15 +36,14 @@ pub(crate) struct PredSig<'tcx> {
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
-    pub global_env: &'genv mut GlobalEnv<'tcx>,
-    pub temp_gen: &'genv mut TempGenerator,
+    global_env: &'genv mut GlobalEnv<'tcx>,
+    temp_gen: &'genv mut TempGenerator,
     /// Identifier of the item providing the body (aka specification).
-    pub body_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-    pub var_map: HashMap<LocalVarId, GExpr>,
-    pub local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
-    pub global_toplevel_asrts: Vec<Assertion>, // Assertion that are global to all definitions
-    pub lvars: IndexMap<Symbol, Ty<'tcx>>,
+    body_id: DefId,
+    args: GenericArgsRef<'tcx>,
+    var_map: HashMap<LocalVarId, GExpr>,
+    local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
+    lvars: IndexMap<Symbol, Ty<'tcx>>,
 }
 
 impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
@@ -93,7 +92,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             args,
             var_map: HashMap::new(),
             local_toplevel_asrts: Vec::new(),
-            global_toplevel_asrts: Vec::new(),
             lvars: Default::default(),
         }
     }
@@ -1014,11 +1012,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let inner =
             self.peel_lvar_bindings(e, thir, |this, e, thir| this.compile_assertion(e, thir));
-        // this part is important.
-        let inner = self
-            .global_toplevel_asrts
-            .iter()
-            .fold(inner, |acc, eq| Assertion::star(acc, eq.clone()));
+        
         let inner = std::mem::take(&mut self.local_toplevel_asrts)
             .into_iter()
             .fold(inner, Assertion::star);
