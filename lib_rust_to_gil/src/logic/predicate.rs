@@ -130,12 +130,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         self.temp_gen.fresh_lvar()
     }
 
-    fn temp_lvar(&mut self) -> GExpr {
+    fn temp_lvar(&mut self, ty: Ty<'tcx>) -> GExpr {
         let name = self.new_temp();
 
         // HACK(xavier): Fix this later once the `mk_wf_asrt` is removed;
-        self.lvars
-            .insert(Symbol::intern(&name), self.tcx().types.unit);
+        self.lvars.insert(Symbol::intern(&name), ty);
         Expr::LVar(name)
     }
 
@@ -512,8 +511,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     self.assert_prophecies_enabled("using `Prophecy::value`");
                     let prophecy = self.compile_expression(args[0], thir);
                     let ty = self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty));
+                    let value = self.temp_lvar(ty);
                     let ty = self.encode_type(ty);
-                    let value = self.temp_lvar();
                     self.local_toplevel_asrts.push(core_preds::pcy_value(
                         prophecy,
                         ty,
@@ -572,7 +571,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         .collect();
                     params.extend(args.iter().map(|e| self.compile_expression(*e, thir)));
 
-                    let out_var = self.temp_lvar();
+                    let fn_sig = ty.fn_sig(self.tcx());
+                    let out = fn_sig.output().skip_binder();
+                    let out_var = self.temp_lvar(out);
                     params.push(out_var.clone());
 
                     let pred_call = Assertion::Pred {
