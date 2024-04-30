@@ -180,10 +180,10 @@ impl<'tcx> MutRefOwn<'tcx> {
     fn inner(&self) -> MutRefInner<'tcx> {
         let ty = self.inner_ty;
         let name = self.pred_name.clone() + "$$inner";
-        return MutRefInner {
+        MutRefInner {
             pred_name: name,
             inner_ty: ty,
-        };
+        }
     }
 
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {

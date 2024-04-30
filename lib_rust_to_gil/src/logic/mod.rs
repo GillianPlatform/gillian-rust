@@ -50,10 +50,8 @@ pub fn compile_logic<'tcx, 'genv>(
             is_extract_lemma(did, tcx),
         )
         .compile()
-    } else if is_specification(did, tcx) {
-        vec![]
     // Has to b safe, because we know there is exactly one definition
-    } else if is_fold(did, tcx) || is_unfold(did, tcx) {
+    } else if is_fold(did, tcx) || is_unfold(did, tcx) || is_specification(did, tcx) {
         vec![]
     } else {
         unreachable!()

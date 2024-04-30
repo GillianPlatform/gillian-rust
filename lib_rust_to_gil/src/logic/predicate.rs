@@ -990,13 +990,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     self.lvars.insert(nm, ty);
                 }
 
-                let Some(block) = self.resolve_block(expr, &*thir) else {
+                let Some(block) = self.resolve_block(expr, &thir) else {
                     unreachable!("closure must start with block")
                 };
 
                 assert_eq!(thir[block].stmts.len(), 0);
 
-                k(self, thir[block].expr.unwrap(), &*thir)
+                k(self, thir[block].expr.unwrap(), &thir)
             }
             ExprKind::Block { block } => {
                 let block = &thir[*block];
@@ -1012,7 +1012,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_assertion_outer(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let inner =
             self.peel_lvar_bindings(e, thir, |this, e, thir| this.compile_assertion(e, thir));
-        
+
         let inner = std::mem::take(&mut self.local_toplevel_asrts)
             .into_iter()
             .fold(inner, Assertion::star);
@@ -1202,7 +1202,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         self.build_var_map(&thir);
 
         let (pre_lvars, pre, post) =
-            self.peel_lvar_bindings(ret_expr, &*thir, |this, expr, thir| {
+            self.peel_lvar_bindings(ret_expr, &thir, |this, expr, thir| {
                 let ExprKind::Call {
                     ty, fun: _, args, ..
                 } = &thir[this.peel_scope(expr, thir)].kind
@@ -1241,7 +1241,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 }
 
-fn fn_args_and_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<(Symbol, Ty<'tcx>)> {
+fn fn_args_and_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<(Symbol, Ty<'_>)> {
     use rustc_hir::def::DefKind;
     use rustc_hir::Unsafety;
 

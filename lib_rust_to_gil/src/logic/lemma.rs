@@ -144,10 +144,10 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 existentials: Vec::new(),
             };
 
-            let sig = build_signature(&mut self.global_env, self.did);
+            let sig = build_signature(self.global_env, self.did);
 
             let ss = sig
-                .to_gil_spec(&mut self.global_env, name)
+                .to_gil_spec(self.global_env, name)
                 .expect("Expected lemma to have contract")
                 .sspecs
                 .remove(0);
@@ -211,8 +211,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let def = sig
             .store_eq_var()
             .into_iter()
-            .chain(sig.type_wf_pres(self.global_env, &mut fresh).into_iter())
-            .chain(guard.into_iter())
+            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
+            .chain(guard)
             .fold(inner_call, Assertion::star);
 
         // let def = spec.pre; // There is a unique assertion in the definitions
@@ -269,7 +269,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
         let def = store_eqs
             .into_iter()
-            .chain(sig.type_wf_pres(self.global_env, &mut fresh).into_iter())
+            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
             .chain(remainder)
             .rfold(inner_call, |acc, a| Assertion::star(a, acc));
 

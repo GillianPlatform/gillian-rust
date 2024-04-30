@@ -84,7 +84,7 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Asserts that inputs equal their respective lvars. Something to do with the 'mutable store' according to sacha
-    pub fn store_eq_var<'genv>(&self) -> Vec<Assertion> {
+    pub fn store_eq_var(&self) -> Vec<Assertion> {
         let mut wfs = Vec::new();
 
         for (nm, _) in self.all_vars() {
@@ -95,7 +95,7 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Asserts that inputs equal their respective lvars. Something to do with the 'mutable store' according to sacha
-    pub fn store_eq_all<'genv>(&self) -> Vec<Assertion> {
+    pub fn store_eq_all(&self) -> Vec<Assertion> {
         let mut wfs = Vec::new();
 
         for arg in &self.args {
@@ -153,10 +153,7 @@ impl<'tcx> Signature<'tcx> {
             wf.push(crate::logic::core_preds::alive_lft(lvar));
         }
 
-        let full_pre = lv
-            .into_iter()
-            .chain(wf.into_iter())
-            .rfold(pre, Assertion::star);
+        let full_pre = lv.into_iter().chain(wf).rfold(pre, Assertion::star);
 
         Some(full_pre)
     }
@@ -224,7 +221,7 @@ fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
         if let GenericParamDefKind::Lifetime = param.kind {
             continue;
         }
-        f(&param);
+        f(param);
     }
 }
 
@@ -245,7 +242,7 @@ pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Sig
     for (_, l) in lifetimes.iter().enumerate() {
         match l {
             BoundVariableKind::Region(_) => {
-                args.push(ParamKind::Lifetime(Symbol::intern(&format!("pLft_a"))))
+                args.push(ParamKind::Lifetime(Symbol::intern("pLft_a")))
                 // TODO(xavier): Once we can properly compile lifetimes in predicate terms we can re-enable this
                 // if let Some(nm) = rk.get_name() {
                 //     args.push(ParamKind::Lifetime(Symbol::intern(&format!(
