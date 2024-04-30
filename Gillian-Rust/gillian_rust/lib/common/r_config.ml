@@ -10,7 +10,7 @@ let expand_and_stop = ref false
 let exec_mode = ref Gillian.Utils.Exec_mode.Verification
 
 let exec_mode_arg () =
-  let arg_header = "--gillian-exec-mode=" in
+  let arg_header = "GILLIAN_EXEC_MODE=" in
   let mode =
     match !exec_mode with
     | Concrete -> "concrete"
@@ -21,4 +21,4 @@ let exec_mode_arg () =
   arg_header ^ mode
 
 let prophecy_mode = ref false
-let prophecy_mode_arg () = if !prophecy_mode then "--gillian-prophecies" else ""
+let prophecy_mode_arg () = if !prophecy_mode then "GILLIAN_PROPHECIES=1" else ""

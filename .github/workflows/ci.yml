@@ -17,30 +17,29 @@ jobs:
     steps:
       # Basic setups
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       
-      # Rust setup and build/test
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2022-06-21
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-      - uses: actions-rs/cargo@v1
-        name: Cargo check
-        with:
-          command: check
-      - uses: actions-rs/cargo@v1
-        name: Cargo clippy
-        with:
-          command: clippy
+      - run: cargo build
+      - run: cargo check
+      - run: cargo clippy
       
       # OCaml setup and build/test
       - uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: "5.1"
-      - run: opam pin add gillian "https://github.com/GillianPlatform/Gillian.git#f5995995deb0334f8b292c07fb15f7bdebde6514" -y
+          ocaml-compiler: "ocaml-variants.5.1.1+options"
+      - name: OCaml cache
+        id: ocaml-cache
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-ocaml
+        with:
+          path: "Gillian-Rust/_opam"
+          key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-
+            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1
+      - run: opam install . --deps-only --with-test --locked
+        working-directory: "Gillian-Rust"
       - run: opam exec -- dune build @all
         working-directory: "Gillian-Rust"
       - run: opam exec -- dune test
@@ -48,3 +47,10 @@ jobs:
 
       # External tests
       - run: ./test_all.sh
+      
+      # Cleanup _opam before updating cache
+      - if: ${{ steps.cache-ocaml.outputs.cache-hit != 'true' }}
+        name: Cleanup _opam before updating cache
+        continue-on-error: true
+        run: opam clean
+        working-directory: "Gillian-Rust"

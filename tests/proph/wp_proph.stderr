@@ -1,7 +1,7 @@
 warning: unused imports: `Prophecy`, `observer`
-  --> ../tests/proph/wp_proph.rs:12:30
+  --> ../tests/proph/wp_proph.rs:11:30
    |
-12 |     prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
+11 |     prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
    |                              ^^^^^^^^                        ^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default

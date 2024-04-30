@@ -5,8 +5,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, borrow, ensures, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        requires,
+        assertion, borrow, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
     },
     mutref_auto_resolve,
     prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
@@ -62,8 +61,12 @@ impl<T: Ownable> Ownable for WP<T> {
 }
 
 impl<T: Ownable> WP<T> {
-    #[requires(|lx: T::RepresentationTy, ly: T::RepresentationTy| x.own(lx) * y.own(ly))]
-    #[ensures(|ret_v| ret.own(ret_v) * $ret_v == (lx, ly)$)]
+    #[specification(
+        forall lx, ly.
+        requires { x.own(lx) * y.own(ly) }
+        exists ret_v.
+        ensures { ret.own(ret_v) * $ret_v == (lx, ly)$ }
+    )]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
 
@@ -80,13 +83,10 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    #[requires(|current: (T::RepresentationTy, T::RepresentationTy),
-                proph: (T::RepresentationTy, T::RepresentationTy),
-                xm: T::RepresentationTy|
-        self.own((current, proph)) * x.own(xm)
-    )]
-    #[ensures(
-        $proph == (xm, current.1)$
+    #[specification(
+        forall current, proph, xm.
+        requires { self.own((current, proph)) * x.own(xm) }
+        ensures { $proph == (xm, current.1)$ }
     )]
     fn assign_first(&mut self, x: T) {
         unsafe {
@@ -95,8 +95,11 @@ impl<T: Ownable> WP<T> {
         }
     }
 
-    #[requires(|cself: (T::RepresentationTy, T::RepresentationTy), pself: (T::RepresentationTy, T::RepresentationTy)| self.own((cself, pself)))]
-    #[ensures(|c, p| ret.own((c, p)) * $cself.1 == pself.1$)]
+    #[specification(forall cself, pself.
+        requires { self.own((cself, pself)) }
+        exists c, p. 
+        ensures {  ret.own((c, p)) * $cself.1 == pself.1$ }
+    )]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
             freeze_xy(self);

@@ -60,8 +60,7 @@ pub fn is_nonnull<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 
 pub fn is_seq<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     ty.ty_adt_def().is_some_and(|def| {
-        super::attrs::diagnostic_item_string(def.did(), tcx)
-            .is_some_and(|str| str == "gillian::seq")
+        tcx.get_diagnostic_item(Symbol::intern("gillian::seq")) == Some(def.did())
     })
 }
 

@@ -331,5 +331,38 @@ impl<'a> GilVisitorMut for SubstPVar<'a> {
     }
 }
 
+pub struct SubstLVar<'a>(&'a HashMap<String, Expr>);
+
+impl<'a> SubstLVar<'a> {
+    pub fn new(mapping: &'a HashMap<String, Expr>) -> Self {
+        Self(mapping)
+    }
+}
+
+impl<'a> GilVisitorMut for SubstLVar<'a> {
+    fn visit_lcmd(&mut self, _lcmd: &mut LCmd) {
+        panic!("SubstPVar::visit_lcmd! shouldn't be called where pvars are used as identifiers and not exprs")
+    }
+
+    fn visit_slcmd(&mut self, _slcmd: &mut SLCmd) {
+        panic!("SubstPVar::visit_slcmd! shouldn't be called where pvars are used as identifiers and not exprs")
+    }
+
+    fn visit_cmd(&mut self, _cmd: &mut Cmd) {
+        panic!("SubstPVar::visit_cmd! shouldn't be called where pvars are used as identifiers and not exprs")
+    }
+
+    fn visit_expr(&mut self, expr: &mut Expr) {
+        match expr {
+            Expr::LVar(s) => {
+                if let Some(e) = self.0.get(s) {
+                    *expr = e.clone();
+                }
+            }
+            _ => self.super_expr(expr),
+        }
+    }
+}
+
 make_gil_visitor!(GilVisitor,);
 make_gil_visitor!(GilVisitorMut, mut);

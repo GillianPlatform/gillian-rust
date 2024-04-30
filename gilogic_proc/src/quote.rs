@@ -154,6 +154,47 @@ impl AsrtFragment {
     }
 }
 
+impl Specification {
+    pub fn encode(&self) -> syn::Result<TokenStream> {
+        let def = {
+            let mut fragments = self.postcond.iter();
+            let first = fragments.next().unwrap().encode();
+            fragments.fold(first, |acc, fragment| {
+                let acc = acc?;
+                let right = fragment.encode()?;
+                Ok(quote!(::gilogic::__stubs::star(#acc, #right)))
+            })?
+        };
+
+        let rvars = self.rvars.iter();
+        let postcond_tokens = quote!({
+            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#rvars),*| {
+                #def
+            })
+        });
+
+        // Temporary for easier compatibility with existing code;
+
+        let precond_tokens = {
+            let mut fragments = self.precond.iter();
+            let first = fragments.next().unwrap().encode();
+            fragments.fold(first, |acc, fragment| {
+                let acc = acc?;
+                let right = fragment.encode()?;
+                Ok(quote!(::gilogic::__stubs::star(#acc, #right)))
+            })?
+        };
+
+        let lvars = self.lvars.iter();
+
+        Ok(quote! {
+            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
+                ::gilogic::__stubs::spec(#precond_tokens, #postcond_tokens)
+            })
+        })
+    }
+}
+
 impl Assertion {
     pub fn encode(&self) -> syn::Result<TokenStream> {
         let mut tokens = TokenStream::new();
@@ -169,8 +210,9 @@ impl Assertion {
             })?
         };
         tokens.extend(quote!({
-            #(let #lvars = ::gilogic::__stubs::InstantiateLVar::instantiate_lvar(); )*
-            #def
+            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
+                #def
+            })
         }));
         Ok(tokens)
     }
@@ -299,8 +341,11 @@ impl ToTokens for frozen_borrow::FreezeMutRefOwn {
         tokens.extend(quote! {
 
             #[lemma]
-            #[requires(REFERENCE.own())]
-            #[ensures(|#(#additional_args),*| #name(REFERENCE, #(#additional_args),*))]
+            #[specification(
+                requires { REFERENCE.own() }
+                exists #(#additional_args),*.
+                ensures { #name(REFERENCE, #(#additional_args),*) }
+            )]
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
             #[gillian::borrow]
@@ -337,8 +382,12 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
         tokens.extend(quote! {
 
             #[lemma]
-            #[requires(|MODEL: <&mut #own_impl_ty as ::gilogic::prophecies::Ownable>::RepresentationTy| REFERENCE.own(MODEL))]
-            #[ensures(|#(#additional_args),*| #outer_name(REFERENCE, MODEL, #(#additional_args),*))]
+            #[specification(
+                forall MODEL: <&mut #own_impl_ty as ::gilogic::prophecies::Ownable>::RepresentationTy.
+                requires { REFERENCE.own(MODEL) }
+                exists #(#additional_args),*.
+                ensures { #outer_name(REFERENCE, MODEL, #(#additional_args),*) }
+            )]
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
             #[gillian::borrow]

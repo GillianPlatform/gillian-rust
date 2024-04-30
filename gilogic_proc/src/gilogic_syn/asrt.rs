@@ -13,6 +13,22 @@ use std::mem;
 mod kw {
     syn::custom_keyword!(emp);
     syn::custom_keyword!(forall);
+    syn::custom_keyword!(exists);
+    syn::custom_keyword!(requires);
+    syn::custom_keyword!(ensures);
+}
+
+pub struct Specification {
+    pub forall: Option<kw::forall>,
+    pub lvars: Punctuated<LvarDecl, Token![,]>,
+    pub dot: Option<Token![.]>,
+    pub requires: kw::requires,
+    pub precond: Punctuated<AsrtFragment, Token![*]>,
+    pub exists: Option<kw::exists>,
+    pub rvars: Punctuated<LvarDecl, Token![,]>,
+    pub dot2: Option<Token![.]>,
+    pub ensures: kw::ensures,
+    pub postcond: Punctuated<AsrtFragment, Token![*]>,
 }
 
 #[derive(Debug)]
@@ -85,6 +101,7 @@ ast_struct! {
 }
 
 ast_struct! {
+    /// A prophetic assertion. $ assert $
     pub struct Observation {
         pub open_dollar: Token![$],
         pub inner: Term,
@@ -631,6 +648,54 @@ pub(crate) mod parsing {
                 None
             };
             Ok(LvarDecl { ident, ty_opt })
+        }
+    }
+
+    impl Parse for Specification {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let lookahead = input.lookahead1();
+            let (forall, lvars, dot) = if lookahead.peek(kw::forall) {
+                let forall = input.parse::<kw::forall>()?;
+                let lvars = Punctuated::parse_separated_nonempty(input)?;
+                let dot = input.parse()?;
+                (Some(forall), lvars, Some(dot))
+            } else {
+                (None, Punctuated::new(), None)
+            };
+
+            let requires = input.parse()?;
+
+            let content;
+            let _ = braced!(content in input);
+            let precond = Punctuated::parse_separated_nonempty(&content)?;
+
+            let lookahead = input.lookahead1();
+            let (exists, rvars, dot2) = if lookahead.peek(kw::exists) {
+                let exists = input.parse::<kw::exists>()?;
+                let lvars = Punctuated::parse_separated_nonempty(input)?;
+                let dot = input.parse()?;
+                (Some(exists), lvars, Some(dot))
+            } else {
+                (None, Punctuated::new(), None)
+            };
+
+            let ensures = input.parse()?;
+            let content;
+            let _ = braced!(content in input);
+            let postcond = Punctuated::parse_separated_nonempty(&content)?;
+
+            Ok(Specification {
+                forall,
+                lvars,
+                dot,
+                requires,
+                precond,
+                exists,
+                rvars,
+                dot2,
+                ensures,
+                postcond,
+            })
         }
     }
 

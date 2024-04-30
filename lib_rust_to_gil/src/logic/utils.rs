@@ -14,7 +14,7 @@ macro_rules! get_thir {
         if let Ok((___thir, ___expr)) = ___thir {
             (___thir.borrow(), ___expr)
         } else {
-            fatal!($s, "Predicate body failed to typecheck for {:?}", $s.did())
+            fatal!($s, "Predicate body failed to typecheck for {:?}", $did)
         }
     }};
 }

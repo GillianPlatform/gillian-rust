@@ -34,33 +34,42 @@ fn has_lifetimes_generics(did: DefId, tcx: TyCtxt) -> bool {
         .is_some_and(|def_id| has_lifetimes_generics(def_id, tcx))
 }
 
+pub fn has_generic_lifetimes(did: DefId, tcx: TyCtxt) -> bool {
+    let def_kind = tcx.def_kind(did);
+    if let DefKind::AnonConst | DefKind::InlineConst | DefKind::Const | DefKind::AssocConst =
+        def_kind
+    {
+        return false;
+    }
+    tcx.fn_sig(did)
+        .instantiate_identity()
+        .bound_vars()
+        .iter()
+        .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Region(..)))
+        || crate::utils::attrs::get_pre_for_post(did, tcx)
+            .is_some_and(|did| has_generic_lifetimes(did, tcx))
+        || has_lifetimes_generics(did, tcx)
+}
+
+pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
+    let defs = tcx.generics_of(did);
+    let mut vec = Vec::with_capacity(defs.count());
+    fill_item(&mut vec, tcx, defs);
+    vec
+}
+
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // TODO: refactor all this, I should only go through it once.
     // Plus, I could just build a nice iterator.
 
+    #[deprecated]
     fn has_generic_lifetimes(&self) -> bool {
-        let def_kind = self.tcx().def_kind(self.did());
-        if let DefKind::AnonConst | DefKind::InlineConst | DefKind::Const | DefKind::AssocConst =
-            def_kind
-        {
-            return false;
-        }
-        self.tcx()
-            .fn_sig(self.did())
-            .instantiate_identity()
-            .bound_vars()
-            .iter()
-            .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Region(..)))
-            || crate::utils::attrs::get_pre_for_post(self.did(), self.tcx())
-                .is_some_and(|did| (did, self.tcx()).has_generic_lifetimes())
-            || has_lifetimes_generics(self.did(), self.tcx())
+        has_generic_lifetimes(self.did(), self.tcx())
     }
 
+    #[deprecated]
     fn generic_types(&self) -> Vec<(u32, Symbol)> {
-        let defs = self.tcx().generics_of(self.did());
-        let mut vec = Vec::with_capacity(defs.count());
-        fill_item(&mut vec, self.tcx(), defs);
-        vec
+        generic_types(self.did(), self.tcx())
     }
 }
 

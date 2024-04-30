@@ -62,6 +62,8 @@ pub(crate) enum LogicStubs {
     MutRefOwnPred,
     OptionOwnPred,
     RefMutInner,
+    InstantiateLVars,
+    Spec,
 }
 
 impl LogicStubs {
@@ -111,6 +113,8 @@ impl LogicStubs {
                     Some(Self::OptionOwnPred)
                 }
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
+                "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
+                "gillian::asrt::spec" => Some(Self::Spec),
                 _ => {
                     if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
                         let mut iter = fields.split("::");

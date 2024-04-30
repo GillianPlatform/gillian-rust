@@ -1,23 +1,22 @@
-use rustc_ast::{AttrArgs, AttrArgsEq, LitKind, MetaItemLit, StrStyle};
-use rustc_ast::{AttrItem, AttrKind};
+use rustc_ast::AttrKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Attribute;
 use rustc_span::{def_id::DefId, Symbol};
 
-pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a AttrItem> {
+pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a Attribute> {
     attrs.iter().find_map(|attr| {
-        let attr = match &attr.kind {
+        let kind = match &attr.kind {
             AttrKind::DocComment(..) => {
                 return None;
             }
             AttrKind::Normal(p) => &p.item,
         };
 
-        if attr.path.segments.len() != path.len() {
+        if kind.path.segments.len() != path.len() {
             return None;
         }
 
-        let matches = attr
+        let matches = kind
             .path
             .segments
             .iter()
@@ -31,40 +30,10 @@ pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a 
     })
 }
 
-fn extract_string_arg(attr: &AttrItem) -> Symbol {
-    if let AttrArgs::Eq(
-        _,
-        AttrArgsEq::Hir(MetaItemLit {
-            kind: LitKind::Str(sym, StrStyle::Cooked),
-            ..
-        }),
-    ) = attr.args
-    {
-        sym
-    } else {
-        panic!("Attribute must be a string");
-    }
-}
-
 pub fn diagnostic_item_string(def_id: DefId, tcx: TyCtxt) -> Option<String> {
     get_attr(tcx.get_attrs_unchecked(def_id), &["rustc_diagnostic_item"])
-        .map(|x| extract_string_arg(x).to_string())
-}
-
-pub(crate) fn get_pre_id(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
-    get_attr(
-        tcx.get_attrs_unchecked(def_id),
-        &["gillian", "spec", "precondition"],
-    )
-    .map(extract_string_arg)
-}
-
-pub(crate) fn get_post_id(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
-    get_attr(
-        tcx.get_attrs_unchecked(def_id),
-        &["gillian", "spec", "postcondition"],
-    )
-    .map(extract_string_arg)
+        .and_then(|x| x.value_str())
+        .map(|x| x.to_string())
 }
 
 pub(crate) fn get_pre_for_post(def_id: DefId, tcx: TyCtxt) -> Option<DefId> {
@@ -73,7 +42,7 @@ pub(crate) fn get_pre_for_post(def_id: DefId, tcx: TyCtxt) -> Option<DefId> {
         &["gillian", "spec", "postcondition", "pre_id"],
     )
     .and_then(|x| {
-        let id = extract_string_arg(x);
+        let id = x.value_str().unwrap();
         tcx.get_diagnostic_item(id)
     })
 }
@@ -94,21 +63,18 @@ pub(crate) fn is_predicate(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
-pub(crate) fn is_precondition(def_id: DefId, tcx: TyCtxt) -> bool {
+pub(crate) fn is_borrow(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "borrow"]).is_some()
+}
+
+pub(crate) fn is_specification(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
-        &["gillian", "decl", "precondition"],
+        &["gillian", "decl", "specification"],
     )
     .is_some()
 }
 
-pub(crate) fn is_postcondition(def_id: DefId, tcx: TyCtxt) -> bool {
-    get_attr(
-        tcx.get_attrs_unchecked(def_id),
-        &["gillian", "decl", "postcondition"],
-    )
-    .is_some()
-}
 pub(crate) fn is_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
@@ -126,7 +92,7 @@ pub(crate) fn should_translate(def_id: DefId, tcx: TyCtxt) -> bool {
 }
 
 pub(crate) fn is_function_specification(def_id: DefId, tcx: TyCtxt) -> bool {
-    (is_postcondition(def_id, tcx) || is_precondition(def_id, tcx))
+    is_specification(def_id, tcx)
         && get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "for_lemma"]).is_none()
 }
 
@@ -161,15 +127,19 @@ pub(crate) fn is_unfold(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
+pub(crate) fn is_gillian_spec(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
+    get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "spec"])
+        .and_then(|attr| attr.value_str())
+}
+
 pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
     [
         is_predicate,
         is_abstract_predicate,
-        is_precondition,
-        is_postcondition,
         is_lemma,
         is_fold,
         is_unfold,
+        is_specification,
     ]
     .iter()
     .any(|f| f(def_id, tcx))

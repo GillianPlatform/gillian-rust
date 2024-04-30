@@ -2,6 +2,7 @@ use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::traits::ResolvedImpl;
 use crate::prelude::*;
+use crate::utils::attrs::is_gillian_spec;
 use crate::{config::Config, logic::traits::TraitSolver};
 use indexmap::IndexMap;
 use rustc_middle::ty::{
@@ -83,11 +84,16 @@ pub struct GlobalEnv<'tcx> {
     pub(super) adt_queue: QueueOnce<AdtDef<'tcx>, ()>,
 
     pub(super) item_queue: QueueOnce<String, AutoItem<'tcx>>,
-    pub(super) mut_ref_owns: HashMap<Ty<'tcx>, String>, // TODO: convert to item.
-    pub(super) mut_ref_inners: HashMap<Ty<'tcx>, (String, Ty<'tcx>)>, // TODO: convert to item.
+    pub(super) mut_ref_owns: IndexMap<Ty<'tcx>, String>, // TODO: convert to item.
     // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
-    pub(super) inner_preds: IndexMap<String, String>,
+    pub(super) mut_ref_inners: IndexMap<Ty<'tcx>, (String, Ty<'tcx>)>, // TODO: convert to item.
     // Borrow preds for which an $$inner version should be derived.
+    pub(super) inner_preds: IndexMap<String, String>,
+
+    // Mapping from item -> specification
+    pub(crate) spec_map: HashMap<DefId, DefId>,
+    // Mapping from specification -> item
+    pub(crate) prog_map: HashMap<DefId, DefId>,
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
@@ -146,15 +152,43 @@ impl<'tcx> GlobalEnv<'tcx> {
             "<i128 as gilogic::prophecies::Ownable>::own".to_owned(),
             "<isize as gilogic::prophecies::Ownable>::own".to_owned(),
         ]);
+
+        let (spec_map, prog_map) = Self::build_gillian_spec_map(tcx);
         Self {
             config,
             tcx,
             adt_queue: Default::default(),
             item_queue,
+            spec_map,
+            prog_map,
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             inner_preds: Default::default(),
         }
+    }
+
+    /// Build a map from item to its specification closure(s)
+    fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
+        let mut sym_to_prog = HashMap::new();
+        for item in tcx.hir().body_owners() {
+            if let Some(nm) = is_gillian_spec(item.into(), tcx) {
+                sym_to_prog.insert(nm, item.to_def_id());
+                continue;
+            }
+        }
+        let mut specs = HashMap::new();
+        let mut progs = HashMap::new();
+
+        for item in tcx.hir().body_owners() {
+            if let Some(diag) = tcx.get_diagnostic_name(item.into()) {
+                let Some(prog_id) = sym_to_prog.remove(&diag) else {
+                    continue;
+                };
+                specs.insert(prog_id, item.into());
+                progs.insert(item.into(), prog_id);
+            }
+        }
+        (specs, progs)
     }
 
     pub fn get_own_def_did(&self) -> DefId {
@@ -244,19 +278,10 @@ impl<'tcx> GlobalEnv<'tcx> {
         (name, instance.args)
     }
 
-    fn inner_pred(&mut self, pred: String) -> String {
+    pub(crate) fn inner_pred(&mut self, pred: String) -> String {
         let name = pred.clone() + "$$inner";
         self.inner_preds.insert(pred, name.clone());
         name
-    }
-
-    pub fn resolve_inner_of_predicate(
-        &mut self,
-        did: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> (String, GenericArgsRef<'tcx>) {
-        let (name, args) = self.resolve_predicate(did, args);
-        (self.inner_pred(name), args)
     }
 
     pub fn get_own_pred_for(&mut self, ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {

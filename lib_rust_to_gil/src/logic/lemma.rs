@@ -1,7 +1,7 @@
-use super::predicate::PredCtx;
 use super::utils::get_thir;
 use super::LogicItem;
-use crate::prelude::*;
+use crate::signature::{build_signature, ParamKind};
+use crate::{prelude::*, signature};
 use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
 use rustc_middle::thir::{Param, Pat, PatKind};
@@ -24,7 +24,6 @@ struct LemmaSig {
 pub(crate) struct LemmaCtx<'tcx, 'genv> {
     global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
-    temp_gen: &'genv mut TempGenerator,
     trusted: bool,
     is_extract_lemma: bool,
 }
@@ -58,14 +57,13 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub fn new(
         global_env: &'genv mut GlobalEnv<'tcx>,
         did: DefId,
-        temp_gen: &'genv mut TempGenerator,
+        _: &'genv mut TempGenerator,
         trusted: bool,
         is_extract_lemma: bool,
     ) -> Self {
         Self {
             global_env,
             did,
-            temp_gen,
             trusted,
             is_extract_lemma,
         }
@@ -122,143 +120,212 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn compile(self) -> Vec<LogicItem> {
+    pub(crate) fn compile(mut self) -> Vec<LogicItem> {
         let mut res = Vec::with_capacity(1 + 3 * (self.is_extract_lemma as usize));
 
         let sig = self.sig();
 
         if self.is_extract_lemma {
-            let name = sig.name.clone() + "$$extract_proof";
-
-            let (pvars_pre, mut proof_pre) = {
-                let pre_name = crate::utils::attrs::get_pre_id(self.did, self.tcx())
-                    .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
-                let pre_did = self
-                    .tcx()
-                    .get_diagnostic_item(pre_name)
-                    .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", pre_name));
-
-                PredCtx::new_with_identity_args(self.global_env, self.temp_gen, pre_did)
-                    .into_inner_of_borrow_call(name.clone() + "$$proof_pre", true)
-            };
-
-            let pre_true_vars: Vec<Expr> = proof_pre
-                .params
-                .iter()
-                .map(|x| Expr::PVar(x.0.clone()))
-                .collect();
-            let mut pre_call_params = pre_true_vars;
-            pre_call_params.extend(pvars_pre.iter().map(|x| Expr::LVar(format!("#{}", x))));
-
-            let pre_call = (proof_pre.name.clone(), pre_call_params);
-            // Right now the wand_pre looks like
-            // `pred(+T, +x) = P(x, #y, #z), where pvars_pre is `y`, `z`.
-            // We need to fix to expose the outs.
-            let eqs: Assertion = pvars_pre
-                .iter()
-                .map(|x| {
-                    Expr::PVar(x.clone())
-                        .eq_f(Expr::LVar(format!("#{}", x)))
-                        .into_asrt()
-                })
-                .collect();
-            let def = proof_pre.definitions.pop().unwrap(); // There is a unique assertion in the definitions
-            proof_pre.definitions.push(def.star(eqs));
-            proof_pre.num_params += pvars_pre.len();
-            proof_pre
-                .params
-                .extend(pvars_pre.into_iter().map(|x| (x, None)));
-
-            let post_params = proof_pre.params.clone();
-            res.push(LogicItem::Pred(proof_pre));
-
-            let (_, mut proof_post) = {
-                let post_name = crate::utils::attrs::get_post_id(self.did, self.tcx())
-                    .unwrap_or_else(|| fatal!(self, "No precondition found for extract lemma"));
-                let post_did = self
-                    .tcx()
-                    .get_diagnostic_item(post_name)
-                    .unwrap_or_else(|| fatal!(self, "couldn't find pre-condition {}", post_name));
-
-                PredCtx::new_with_identity_args(self.global_env, self.temp_gen, post_did)
-                    .into_inner_of_borrow_call(name.clone() + "$$proof_post", false)
-            };
-
-            let post_eqs: Assertion = post_params
-                .iter()
-                .map(|x| {
-                    Expr::PVar(x.0.clone())
-                        .eq_f(Expr::LVar(format!("#{}", x.0)))
-                        .into_asrt()
-                })
-                .collect();
-            let mut def = proof_post.definitions.pop().unwrap();
-            let all_subst = post_params
-                .iter()
-                .map(|x| (x.0.clone(), Expr::LVar(format!("#{}", x.0))))
-                .collect();
-            def.subst_pvar(&all_subst);
-            proof_post.definitions.push(post_eqs.star(def));
-            proof_post.num_params = post_params.len();
-            proof_post.params = post_params;
-            proof_post.ins = (0..proof_post.num_params).collect();
-            // We also need to fix the wand_post to use the outs from before (and ignore the ret thing)
-
-            let post_call: (String, Vec<_>) = (
-                proof_post.name.clone(),
-                proof_post
-                    .params
-                    .iter()
-                    .map(|x| Expr::PVar(x.0.clone()))
-                    .collect(),
-            );
-            res.push(LogicItem::Pred(proof_post));
-
-            let proof = {
-                let mut pre_call = pre_call.clone();
-                pre_call.1.iter_mut().for_each(|e| e.subst_pvar(&all_subst));
-                let mut post_call = post_call.clone();
-                post_call
-                    .1
-                    .iter_mut()
-                    .for_each(|e| e.subst_pvar(&all_subst));
-                Some(vec![LCmd::SL(SLCmd::Package {
-                    lhs: post_call,
-                    rhs: pre_call,
-                })])
-            };
-
-            let mut conc = Assertion::pred_call_of_tuple(post_call.clone())
-                .star(Assertion::wand(post_call, pre_call.clone()));
-            conc.subst_pvar(&all_subst);
-            // This skips the lifetime argument.
-            let params = sig.params.iter().skip(1).map(Clone::clone).collect();
-            let proof_lemma = Lemma {
-                name,
-                params,
-                hyp: Assertion::pred_call_of_tuple(pre_call),
-                concs: vec![conc],
-                proof,
-                variant: None,
-                existentials: Vec::new(),
-            };
-            res.push(LogicItem::Lemma(proof_lemma));
+            let defs = self.compile_extract_lemma(&sig, self.did);
+            res.extend(defs);
         }
         if self.trusted {
+            let name = sig.name.clone();
+
             // We set temporary hyp and conclusion, which we be replaced later by the specs
-            let lemma = Lemma {
-                name: sig.name.clone(),
+            let mut lemma = Lemma {
+                name: name.clone(),
                 params: sig.params,
+                // params: sig.args.iter().map(|a| a.name().to_string()).collect(),
                 hyp: Assertion::Emp,
                 concs: Vec::new(),
                 proof: None,
                 variant: None,
                 existentials: Vec::new(),
             };
+
+            let sig = build_signature(self.global_env, self.did);
+
+            let ss = sig
+                .to_gil_spec(self.global_env, name)
+                .expect("Expected lemma to have contract")
+                .sspecs
+                .remove(0);
+
+            lemma.hyp = ss.pre;
+            lemma.concs = ss.posts;
+
             res.push(LogicItem::Lemma(lemma));
         } else {
             fatal!(self, "Can't compile untrusted lemmas yet")
         }
+        res
+    }
+
+    fn compile_extract_lemma(&mut self, sig: &LemmaSig, id: DefId) -> Vec<LogicItem> {
+        let name = sig.name.clone() + "$$extract_proof";
+        let post_name = name.clone() + "$$post";
+        let pre_name = name.clone() + "$$pre";
+
+        let sig = signature::build_signature(self.global_env, id);
+
+        let mut fresh = TempGenerator::new();
+
+        let mut res = Vec::new();
+
+        let (inner_predicate_name, pre_inner_args, guard) = {
+            let mut splat = sig
+                .user_pre()
+                .expect("extract lemma needs precondition")
+                .clone()
+                .unstar();
+
+            let Assertion::Pred { name, params } = splat.remove(0) else {
+                fatal!(self, "malformed precondition for extract lemma")
+            };
+            // TODO assert first argument is a lifetime
+            let mut params = params.clone();
+            params.remove(0);
+            (name.clone() + "$$inner", params, splat)
+        };
+
+        let inner_call = Assertion::Pred {
+            name: inner_predicate_name,
+            params: pre_inner_args.clone(),
+        };
+
+        let non_lvars = sig
+            .args
+            .iter()
+            .skip(1)
+            .filter(|p| !matches!(p, ParamKind::Logic(_, _)))
+            .count();
+        let ins = (0..non_lvars).collect();
+        let pre_params = sig
+            .args
+            .iter()
+            .skip(1)
+            .map(|p| (p.name().to_string(), None))
+            .collect();
+
+        let def = sig
+            .store_eq_var()
+            .into_iter()
+            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
+            .chain(guard)
+            .fold(inner_call, Assertion::star);
+
+        // let def = spec.pre; // There is a unique assertion in the definitions
+        let proof_pre = Pred {
+            name: pre_name.clone(),
+            num_params: 0,
+            params: pre_params,
+            ins,
+            definitions: vec![def],
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: None,
+        };
+
+        res.push(LogicItem::Pred(proof_pre));
+
+        let (inner_predicate_name, inner_args, remainder) = {
+            let post = sig
+                .user_post(&mut fresh)
+                .expect("extract lemma needs precondition");
+            let mut splat = post.unstar();
+
+            let Assertion::Pred { name, params } = splat.remove(0) else {
+                fatal!(self, "malformed precondition for extract lemma")
+            };
+            // TODO assert first argument is a lifetime
+            let mut params = params.clone();
+            params.remove(0);
+
+            (name.clone() + "$$inner", params, splat)
+        };
+
+        let inner_call = Assertion::Pred {
+            name: inner_predicate_name,
+            params: inner_args,
+        };
+
+        let post_params: Vec<_> = sig
+            .args
+            .iter()
+            .skip(1)
+            .map(|p| (p.name().to_string(), None))
+            .collect();
+
+        let ins = (0..post_params.len()).collect();
+
+        // TODO(xavier): Remove and replace with `vars_wf`.
+        let store_eqs = post_params.iter().cloned().map(|(nm, _)| {
+            Expr::PVar(nm.clone())
+                .eq_f(Expr::LVar(format!("#{}", nm)))
+                .into_asrt()
+        });
+
+        let def = store_eqs
+            .into_iter()
+            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
+            .chain(remainder)
+            .rfold(inner_call, |acc, a| Assertion::star(a, acc));
+
+        let proof_post = Pred {
+            name: post_name.clone(),
+            num_params: 0,
+            params: post_params.clone(),
+            ins,
+            definitions: vec![def],
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: None,
+        };
+        res.push(LogicItem::Pred(proof_post));
+
+        // REALLY HACKY.
+        // TODO(xavier): Clean this up by building the arguments properly from the lemma
+        // signature.
+        let params: Vec<_> = post_params
+            .iter()
+            .map(|(e, _)| Expr::LVar(format!("#{e}")))
+            .collect();
+
+        let pre_call_tup = (pre_name.clone(), params.clone());
+        let post_call_tup = (post_name.clone(), params.clone());
+
+        let proof = {
+            vec![LCmd::SL(SLCmd::Package {
+                lhs: post_call_tup.clone(),
+                rhs: pre_call_tup.clone(),
+            })]
+        };
+
+        let conc = Assertion::pred_call_of_tuple(post_call_tup.clone())
+            .clone()
+            .star(Assertion::wand(post_call_tup, pre_call_tup.clone()));
+
+        // eprintln!("args {:?}", sig.args);
+        // Something weird about the lifetimes here
+        let params = sig.args.iter().filter_map(|p| match p {
+            ParamKind::Generic(t) => Some(t.to_string()),
+            ParamKind::Program(t, _) => Some(t.to_string()),
+            _ => None,
+        });
+        let proof_lemma = Lemma {
+            name,
+            params: params.collect(),
+            hyp: Assertion::pred_call_of_tuple(pre_call_tup),
+            concs: vec![conc],
+            proof: Some(proof),
+            variant: None,
+            existentials: vec![],
+        };
+
+        res.push(LogicItem::Lemma(proof_lemma));
         res
     }
 }

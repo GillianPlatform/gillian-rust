@@ -22,4 +22,9 @@ build: [
   ]
 ]
 depends: [
+  "gillian"
+  "dune-site"
+]
+pin-depends: [
+  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#f5995995deb0334f8b292c07fb15f7bdebde6514"
 ]

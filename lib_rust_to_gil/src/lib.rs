@@ -43,6 +43,7 @@ mod codegen;
 mod global_env;
 mod logic;
 mod prog_context;
+mod signature;
 mod temp_gen;
 pub mod utils;
 
