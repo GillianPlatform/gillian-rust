@@ -114,7 +114,8 @@ impl<'tcx> Resolver<'tcx> {
         let current = Expr::LVar("#current".to_string());
         let future = Expr::LVar("#future".to_string());
         let mut_ref = "mut_ref".to_string();
-        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(self.args.type_at(0));
+        let ty = global_env.tcx().erase_regions_ty(self.args.type_at(0));
+        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(ty);
         let inner_subst_params = param_collector::collect_params_on_args(inner_subst);
         let pred_params = inner_subst_params
             .parameters

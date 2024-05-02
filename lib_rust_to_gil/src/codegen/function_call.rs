@@ -1,10 +1,17 @@
+use std::collections::HashMap;
+
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use crate::utils::polymorphism::HasGenericArguments;
+use crate::signature::build_signature;
+use crate::utils::polymorphism::{all_generics, HasGenericArguments};
 use names::bb_label;
-use rustc_middle::ty::GenericArgsRef;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::ty::{self, BoundRegion, GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 use super::typ_encoding::lifetime_param_name;
@@ -89,6 +96,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     fn all_args_for_fn_call(
         &mut self,
+        def_id: DefId,
         substs: GenericArgsRef<'tcx>,
         operands: &[Spanned<Operand<'tcx>>],
     ) -> Vec<Expr> {
@@ -96,7 +104,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
+            let callee_sig = build_signature(self.global_env, def_id);
+            eprintln!(
+                "callee_has_regions {def_id:?}, {substs:?} {:?}",
+                self.tcx().fn_sig(def_id)
+            );
+            self.check_func_call(self.tcx().fn_sig(def_id).skip_binder(), operands);
             if self.has_generic_lifetimes() {
+                eprintln!("has_generic_lifetimes {substs:?}");
                 args.push(Expr::PVar(lifetime_param_name("a")))
             } else {
                 args.push(Expr::null())
@@ -138,6 +153,25 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
+    pub fn check_func_call(&mut self, sig: PolyFnSig<'tcx>, args: &[Spanned<Operand<'tcx>>]) {
+        let mut tbl = HashMap::new();
+
+        for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
+            let arg_ty = arg.node.ty(self.mir(), self.tcx());
+            poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap();
+        }
+
+        for (l, d) in self.mir().local_decls.iter_enumerated() {
+            eprintln!("{l:?} -> {:?}", d.ty);
+        }
+
+        for b in &self.borrow_set.location_map {
+            eprintln!("{b:?}");
+        }
+
+        eprintln!("{tbl:?}");
+    }
+
     pub fn push_function_call(
         &mut self,
         func: &Operand<'tcx>,
@@ -154,7 +188,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
         match call_kind {
             CallKind::Lemma(fname) => {
-                let gil_args = self.all_args_for_fn_call(substs, operands);
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
                     lemma_name: fname,
                     parameters: gil_args,
@@ -182,7 +216,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::PolyFn(fname) => {
-                let gil_args = self.all_args_for_fn_call(substs, operands);
+                eprintln!(
+                    "PolyFn call {def_id:?} {:?}",
+                    all_generics(self.tcx(), def_id)
+                );
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
                     variable: ivar.clone(),
@@ -221,5 +259,90 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         if let Some(bb) = target {
             self.push_cmd(Cmd::Goto(bb_label(bb)));
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PoorManUnificationError<'tcx> {
+    /// Unclear what rules should apply to dyn objects
+    DynObject,
+    /// Too lazy to implement closures for the moment given that gillian-rust doesn't support them anyways
+    ClosureOrGenerator,
+    /// I don't understand how these actually work and what we need to do here
+    BoundVar,
+    /// Currently we don't do normalization so lets just error out here.
+    Alias,
+    /// General error for when we don't have types of the same shape
+    Mismatch(Ty<'tcx>, Ty<'tcx>),
+}
+
+type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;
+
+fn poor_man_unification<'tcx>(
+    tbl: &mut HashMap<Region<'tcx>, Region<'tcx>>,
+    lhs: Ty<'tcx>,
+    rhs: Ty<'tcx>,
+) -> PoorManUnificationResult<'tcx, ()> {
+    match (lhs.kind(), rhs.kind()) {
+        (TyKind::Bool, TyKind::Bool) => Ok(()),
+        (TyKind::Char, TyKind::Char) => Ok(()),
+        (TyKind::Int(_), TyKind::Int(_)) => Ok(()),
+        (TyKind::Uint(_), TyKind::Uint(_)) => Ok(()),
+        (TyKind::Float(_), TyKind::Float(_)) => Ok(()),
+        (TyKind::Adt(i, s), TyKind::Adt(j, t)) if i == j => {
+            for (s, t) in s.into_iter().zip(t.into_iter()) {
+                match (s.unpack(), t.unpack()) {
+                    (GenericArgKind::Lifetime(l), GenericArgKind::Lifetime(j)) => {
+                        if *tbl.entry(l).or_insert(j) != j {
+                            return Err(PoorManUnificationError::Mismatch(lhs, rhs));
+                        }
+                    }
+                    (GenericArgKind::Type(t), GenericArgKind::Type(u)) => {
+                        poor_man_unification(tbl, t, u)?
+                    }
+                    (GenericArgKind::Const(_), GenericArgKind::Const(_)) => {}
+                    _ => unreachable!("expected and provided subst don't have same shape"),
+                }
+            }
+            Ok(())
+        }
+        (TyKind::Foreign(_), TyKind::Foreign(_)) => Ok(()),
+        (TyKind::Str, TyKind::Str) => Ok(()),
+        (TyKind::Array(t, _), TyKind::Array(u, _)) => poor_man_unification(tbl, *t, *u),
+        (TyKind::Slice(t), TyKind::Slice(u)) => poor_man_unification(tbl, *t, *u),
+        (TyKind::RawPtr(t, _), TyKind::RawPtr(u, _)) => poor_man_unification(tbl, *t, *u),
+        (TyKind::Ref(r, t, _), TyKind::Ref(s, u, _)) => {
+            if *tbl.entry(*r).or_insert(*s) != *s {
+                return Err(PoorManUnificationError::Mismatch(lhs, rhs));
+            }
+
+            poor_man_unification(tbl, *t, *u)
+        }
+        (TyKind::FnDef(_, _), TyKind::FnDef(_, _)) if lhs == rhs => Ok(()),
+        (TyKind::FnPtr(i), TyKind::FnPtr(j)) if i == j => Ok(()),
+        (TyKind::Dynamic(_, _, _), TyKind::Dynamic(_, _, _)) => {
+            Err(PoorManUnificationError::DynObject)
+        }
+        (TyKind::Closure(_, _), TyKind::Closure(_, _)) => {
+            Err(PoorManUnificationError::ClosureOrGenerator)
+        }
+        (TyKind::Coroutine(_, _), TyKind::Coroutine(_, _)) => {
+            Err(PoorManUnificationError::ClosureOrGenerator)
+        }
+        (TyKind::CoroutineWitness(_, _), TyKind::CoroutineWitness(_, _)) => {
+            Err(PoorManUnificationError::ClosureOrGenerator)
+        }
+        (TyKind::Never, TyKind::Never) => Ok(()),
+        (TyKind::Tuple(ts), TyKind::Tuple(us)) => ts
+            .iter()
+            .zip(us.iter())
+            .try_for_each(|(t, u)| poor_man_unification(tbl, t, u)),
+        (TyKind::Alias(_, _), TyKind::Alias(_, _)) => Err(PoorManUnificationError::Alias),
+        (TyKind::Param(p), TyKind::Param(q)) if p == q => Ok(()),
+        (TyKind::Bound(_, _), TyKind::Bound(_, _)) => Err(PoorManUnificationError::BoundVar),
+        (TyKind::Placeholder(p), TyKind::Placeholder(q)) if p == q => Ok(()),
+        (TyKind::Infer(i), TyKind::Infer(j)) if i == j => Ok(()),
+        (TyKind::Error(e), TyKind::Error(f)) if e == f => Ok(()),
+        _ => Err(PoorManUnificationError::Mismatch(lhs, rhs)),
     }
 }

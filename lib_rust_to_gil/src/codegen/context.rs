@@ -1,3 +1,7 @@
+use rustc_borrowck::borrow_set::BorrowSet;
+use rustc_borrowck::consumers::BodyWithBorrowckFacts;
+use rustc_borrowck::consumers::Borrows;
+use rustc_borrowck::consumers::RegionInferenceContext;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_span::def_id::DefId;
@@ -13,6 +17,8 @@ pub struct GilCtxt<'tcx, 'body> {
     switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'body Body<'tcx>,
+    pub borrow_info: Borrows<'body, 'tcx>,
+    pub borrow_set: &'body BorrowSet<'tcx>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
@@ -41,14 +47,33 @@ impl<'tcx, 'body> HasGlobalEnv<'tcx> for GilCtxt<'tcx, 'body> {
 impl<'tcx> TypeEncoder<'tcx> for GilCtxt<'tcx, '_> {}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
-    pub fn new(mir: &'body Body<'tcx>, global_env: &'body mut GlobalEnv<'tcx>) -> Self {
+    pub fn new(
+        global_env: &'body mut GlobalEnv<'tcx>,
+        body: &'body Body<'tcx>,
+        borrow_set: &'body BorrowSet<'tcx>,
+        region_inference_context: &'body RegionInferenceContext<'tcx>,
+    ) -> Self {
+        let mir = body;
+        let borrow_info = Borrows::new(
+            global_env.tcx(),
+            &mir,
+            &region_inference_context,
+            &borrow_set,
+        );
+
+        eprintln!("{:?}", region_inference_context.outlives_constraints().collect::<Vec<_>>());
+        eprintln!("--");
+        eprintln!("{:?}", region_inference_context.regions().collect::<Vec<_>>());
+
         GilCtxt {
-            locals_in_memory: locals_in_memory_for_mir(mir),
+            locals_in_memory: locals_in_memory_for_mir(&mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
+            borrow_info,
+            borrow_set,
             global_env,
         }
     }
@@ -70,7 +95,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn mir(&self) -> &'body Body<'tcx> {
-        self.mir
+        &self.mir
     }
 
     pub fn _location(&self, scope: &SourceScope) {

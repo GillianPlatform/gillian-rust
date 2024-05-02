@@ -8,4 +8,5 @@ GILLIAN_EXEC_MODE=verif cargo run -- $1 \
   -Zcrate-attr='register_tool(gillian)' \
   -Zcrate-attr='feature(rustc_attrs)' \
   -Zcrate-attr='allow(internal_features)' \
-  -Zcrate-attr='feature(stmt_expr_attributes)'
+  -Zcrate-attr='feature(stmt_expr_attributes)' \
+  -Zdump-mir= 

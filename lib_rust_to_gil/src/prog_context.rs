@@ -39,17 +39,12 @@ impl<'tcx> ProgCtx<'tcx> {
     }
 
     fn compile_fn(&mut self, did: DefId) {
-        let body = match self.tcx().def_kind(did) {
-            DefKind::Ctor(..) => self.tcx().optimized_mir(did).clone(),
-            _ => self
-                .tcx()
-                .mir_promoted(did.expect_local())
-                .0
-                .borrow()
-                .clone(),
-        };
         let sig = build_signature(&mut self.global_env, did);
-        let ctx = GilCtxt::new(&body, &mut self.global_env);
+        let with_facts =  self.global_env.body_with_facts(did.expect_local());
+        let body = with_facts.body.clone();
+        let borrow_set = with_facts.borrow_set.clone();
+        let region_ctxt = with_facts.region_inference_context.clone();
+        let ctx = GilCtxt::new(&mut self.global_env, &body, &*borrow_set, &*region_ctxt);
 
         let mut proc = ctx.push_body();
 
