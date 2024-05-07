@@ -1,9 +1,14 @@
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use crate::utils::polymorphism::HasGenericArguments;
+use crate::signature::build_signature;
+use crate::utils::polymorphism::{all_generics, HasGenericArguments};
 use names::bb_label;
-use rustc_middle::ty::GenericArgsRef;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::ty::{self, BoundRegion, GenericArgsRef, PolyFnSig};
+use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 use super::typ_encoding::lifetime_param_name;
@@ -88,6 +93,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     fn all_args_for_fn_call(
         &mut self,
+        def_id: DefId,
         substs: GenericArgsRef<'tcx>,
         operands: &[Operand<'tcx>],
     ) -> Vec<Expr> {
@@ -95,7 +101,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
+            let callee_sig = build_signature(self.global_env, def_id);
+            eprintln!(
+                "callee_has_regions {def_id:?}, {substs:?} {:?}",
+                self.tcx().fn_sig(def_id)
+            );
+            let mut infcx = self.tcx().infer_ctxt().build();
+            self.check_func_call(&mut infcx, self.tcx().fn_sig(def_id).skip_binder(), operands);
             if self.has_generic_lifetimes() {
+                eprintln!("has_generic_lifetimes {substs:?}");
                 args.push(Expr::PVar(lifetime_param_name("a")))
             } else {
                 args.push(Expr::null())
@@ -137,6 +151,63 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
+    pub fn check_func_call(
+        &mut self,
+        infcx: &mut InferCtxt<'tcx>,
+        sig: PolyFnSig<'tcx>,
+        args: &[Operand<'tcx>],
+    ) {
+        let tcx = self.tcx();
+        let (unnormalized_sig, map) = tcx.replace_late_bound_regions(sig, |br| {
+            // use renumber::RegionCtxt;
+
+            // let region_ctxt_fn = || {
+            //     let reg_info = match br.kind {
+            //         ty::BoundRegionKind::BrAnon => sym::anon,
+            //         ty::BoundRegionKind::BrNamed(_, name) => name,
+            //         ty::BoundRegionKind::BrEnv => sym::env,
+            //     };
+
+            //     rustc_borrowck::
+            //     RegionCtxt::LateBound(reg_info)
+            // };
+
+            infcx.next_region_var(
+                // TODO(xavier): change this to a real origin?
+                RegionVariableOrigin::MiscVariable(DUMMY_SP),
+                // rustc_infer::infer::RegionVariableOrigin::LateBoundRegion((), (), ())
+                // BoundRegion(DUMMY_SP, br.kind, BoundRegionConversionTime::FnCall),
+                // region_ctxt_fn,
+            )
+        });
+
+        eprintln!("{map:?}");
+
+        for (sig_in, arg) in unnormalized_sig.inputs().iter().zip(args) {
+            let arg_ty = arg.ty(self.mir(), self.tcx());
+            // TODO(xavier) is this correct? who knows!
+            eprintln!("{arg_ty:?} <: {sig_in:?}");
+            let res = infcx
+                .at(&ObligationCause::dummy(), self.tcx().param_env(self.did()))
+                .relate(DefineOpaqueTypes::No, *sig_in, ty::Variance::Contravariant, arg_ty).unwrap();
+            assert!(res.obligations.is_empty());
+        }
+
+        let _ = infcx.resolve_regions(&OutlivesEnvironment::new(self.tcx().param_env(self.did())));
+
+        // eprintln!("{:?}", infcx.unresolved_variables());
+        for (k, v) in map {
+            eprintln!("{k:?} -> {v:?}");
+
+            let r = infcx.fully_resolve(v);
+
+            eprintln!("{r:?}");
+        }
+
+        // infcx.
+
+    }
+
     pub fn push_function_call(
         &mut self,
         func: &Operand<'tcx>,
@@ -153,7 +224,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
         match call_kind {
             CallKind::Lemma(fname) => {
-                let gil_args = self.all_args_for_fn_call(substs, operands);
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
                     lemma_name: fname,
                     parameters: gil_args,
@@ -181,7 +252,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::PolyFn(fname) => {
-                let gil_args = self.all_args_for_fn_call(substs, operands);
+                eprintln!(
+                    "PolyFn call {def_id:?} {:?}",
+                    all_generics(self.tcx(), def_id)
+                );
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
                     variable: ivar.clone(),
