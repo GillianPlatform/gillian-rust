@@ -4,6 +4,7 @@ use crate::prelude::*;
 use crate::utils::polymorphism::HasGenericArguments;
 use names::bb_label;
 use rustc_middle::ty::GenericArgsRef;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::VariantIdx;
 
 use super::typ_encoding::lifetime_param_name;
@@ -89,9 +90,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn all_args_for_fn_call(
         &mut self,
         substs: GenericArgsRef<'tcx>,
-        operands: &[Operand<'tcx>],
+        operands: &[Spanned<Operand<'tcx>>],
     ) -> Vec<Expr> {
-        let callee_has_regions = operands.iter().any(|op| self.operand_ty(op).is_ref());
+        let callee_has_regions = operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
@@ -107,7 +108,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             }
         }
         for op in operands {
-            let op = self.push_encode_operand(op);
+            let op = self.push_encode_operand(&op.node);
             args.push(op)
         }
         args
@@ -116,11 +117,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn only_param_args_for_fn_call(
         &mut self,
         substs: GenericArgsRef<'tcx>,
-        operands: &[Operand<'tcx>],
+        operands: &[Spanned<Operand<'tcx>>],
     ) -> Vec<Expr> {
         let params = param_collector::collect_params_on_args(substs);
         let callee_has_regions =
-            params.regions || operands.iter().any(|op| self.operand_ty(op).is_ref());
+            params.regions || operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
         let mut args = Vec::with_capacity(
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
@@ -131,7 +132,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             args.push(self.encode_type(ty_arg).into())
         }
         for op in operands {
-            let op = self.push_encode_operand(op);
+            let op = self.push_encode_operand(&op.node);
             args.push(op)
         }
         args
@@ -140,7 +141,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn push_function_call(
         &mut self,
         func: &Operand<'tcx>,
-        operands: &[Operand<'tcx>],
+        operands: &[Spanned<Operand<'tcx>>],
         destination: Place<'tcx>,
         target: Option<BasicBlock>,
     ) {
@@ -211,7 +212,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             CallKind::Constructor(ConstructorKind::Enum(idx)) => {
                 let operands: Vec<Expr> = operands
                     .iter()
-                    .map(|op| self.push_encode_operand(op))
+                    .map(|op| self.push_encode_operand(&op.node))
                     .collect();
                 let value = vec![idx.as_u32().into(), operands.into()].into();
                 self.push_place_write(destination, value, self.place_ty(destination).ty)

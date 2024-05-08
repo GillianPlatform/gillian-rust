@@ -3,10 +3,8 @@ use rustc_infer::{
     infer::TyCtxtInferExt,
     traits::{ImplSource, Obligation, ObligationCause, SelectionError::Unimplemented, TraitEngine},
 };
-use rustc_middle::{
-    traits::DefiningAnchor,
-    ty::{AssocKind, GenericArgsRef, TraitRef},
-};
+use rustc_middle::ty::AliasTy;
+use rustc_middle::ty::{AssocKind, GenericArgsRef, TraitRef};
 use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{translate_args, SelectionContext, TraitEngineExt};
 
@@ -54,11 +52,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                 let assoc = tcx.associated_item(def_id);
                 let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
                 // Not sure what's happening below for now...
-                let infer_ctx = tcx
-                    .infer_ctxt()
-                    .ignoring_regions()
-                    .with_opaque_type_inference(DefiningAnchor::Bubble)
-                    .build();
+                let infer_ctx = tcx.infer_ctxt().ignoring_regions().build();
 
                 let mut select_ctx = SelectionContext::new(&infer_ctx);
                 let cause = ObligationCause::dummy();
@@ -125,12 +119,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
         let param_env = self.tcx().param_env(assoc_id);
         let t_subst = self.tcx().mk_args(&[for_ty.into()]);
         let trait_ref = TraitRef::from_method(self.tcx(), trait_id, t_subst);
-        let infer_ctx = self
-            .tcx()
-            .infer_ctxt()
-            .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bubble)
-            .build();
+        let infer_ctx = self.tcx().infer_ctxt().ignoring_regions().build();
         let mut select_ctx = SelectionContext::new(&infer_ctx);
         let cause = ObligationCause::dummy();
         let obligation = Obligation::new(self.tcx(), cause, param_env, trait_ref);
@@ -166,10 +155,11 @@ impl<'tcx, T: HasTyCtxt<'tcx>> TraitSolver<'tcx> for T {
                         .instantiate_identity(),
                 )
             }
-            ImplSource::Param(..) => Some(self.tcx().mk_ty_from_kind(TyKind::Alias(
+            ImplSource::Param(..) => Some(Ty::new_alias(
+                self.tcx(),
                 rustc_type_ir::AliasKind::Projection,
-                self.tcx().mk_alias_ty(assoc_id, t_subst),
-            ))),
+                AliasTy::new(self.tcx(), assoc_id, t_subst),
+            )),
             _ => {
                 fatal!(
                     self,

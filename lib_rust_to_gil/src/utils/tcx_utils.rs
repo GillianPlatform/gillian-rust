@@ -23,7 +23,7 @@ impl<'tcx> HasTyCtxt<'tcx> for (DefId, TyCtxt<'tcx>) {
 
 macro_rules! fatal {
   ($e: expr, $($tts:tt)*) => {
-      $e.tcx().sess.fatal(format!($($tts)*))
+      $e.tcx().dcx().fatal(format!($($tts)*))
   };
 }
 

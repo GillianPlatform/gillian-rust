@@ -44,7 +44,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
 
     fn array_size_value(&self, sz: &Const) -> i128 {
         match sz.kind() {
-            ConstKind::Value(ValTree::Leaf(x)) => x.to_bits(x.size()).unwrap() as i128,
+            ConstKind::Value(ValTree::Leaf(x)) => x.try_to_bits(x.size()).unwrap() as i128,
             _ => panic!("Invalid array size"),
         }
     }
@@ -90,10 +90,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
                     .map(|x| self.serialize_type(x))
                     .collect::<Vec<_>>()
             ]),
-            RawPtr(TypeAndMut {
-                ty,
-                mutbl: mutability,
-            }) => {
+            RawPtr(ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,
@@ -190,10 +187,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
             // We'll have to change this later when we start
             // caring about the aliasing model,
             // but we don't at the moment
-            TyKind::RawPtr(TypeAndMut {
-                ty,
-                mutbl: mutability,
-            }) => {
+            TyKind::RawPtr(ty, mutability) => {
                 let mutability = match mutability {
                     Mutability::Mut => true,
                     Mutability::Not => false,

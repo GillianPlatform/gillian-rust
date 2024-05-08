@@ -120,7 +120,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub fn assert_prophecies_enabled(&self, msg: &str) {
         if !self.prophecies_enabled() {
             let msg = format!("Prophecies are not enabled: {}", msg);
-            self.tcx().sess.fatal(msg);
+            self.tcx().dcx().fatal(msg);
         }
     }
 
@@ -159,7 +159,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         let Some(str_arg) = ins_attr.value_str() else {
             self.tcx()
-                .sess
+                .dcx()
                 .fatal("Predicate ins attribute must be a string")
         };
         let str_arg = str_arg.as_str().to_owned();
@@ -339,7 +339,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     fatal!(self, "Negged literal? {:?}", expr)
                 }
                 match lit.node {
-                    LitKind::Int(i, _) => i.into(),
+                    LitKind::Int(i, _) => i.get().into(),
                     _ => fatal!(self, "Unsupported literal {:?}", expr),
                 }
             }
@@ -1171,12 +1171,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         for param in arguments {
             let Some(pat) = &param.pat else { continue };
-            use rustc_middle::thir::BindingMode;
+            use rustc_ast::ast::BindingMode;
             match &pat.kind {
                 PatKind::Binding {
-                    mutability: Mutability::Not,
+                    // mutability: Mutability::Not,
                     name,
-                    mode: BindingMode::ByValue,
+                    mode: BindingMode::NONE,
                     var,
                     subpattern: None,
                     ..

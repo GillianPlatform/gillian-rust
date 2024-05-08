@@ -74,7 +74,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             Some(box Pat {
                 kind:
                     PatKind::Binding {
-                        mutability: _,
+                        // mutability: _,
                         name,
                         var: _,
                         subpattern,

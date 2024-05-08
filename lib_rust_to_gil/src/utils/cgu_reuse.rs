@@ -57,7 +57,7 @@ pub fn reuse_workproduct_for_cgu(
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir_sess(tcx.sess, saved_file);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
-            tcx.sess.err(&format!(
+            tcx.dcx().err(&format!(
                 "unable to copy {} to {}: {}",
                 source_file.display(),
                 obj_out.display(),
