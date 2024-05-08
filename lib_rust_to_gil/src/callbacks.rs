@@ -35,7 +35,6 @@ impl Callbacks for ToGil {
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        compiler.session().abort_if_errors();
         queries.global_ctxt().unwrap().enter(|tcx| {
             let prog = super::prog_context::ProgCtx::compile_prog(tcx, self.opts.clone());
             let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);
@@ -48,13 +47,13 @@ impl Callbacks for ToGil {
                 log::trace!("Writing to {:#?}", &tmp_file);
 
                 if let Err(err) = std::fs::write(&tmp_file, prog.to_string()) {
-                    tcx.sess
+                    tcx.dcx()
                         .fatal(format!("Error writing in GIL file: {}", err))
                 }
             }
         });
 
-        compiler.session().abort_if_errors();
+        compiler.sess.dcx().abort_if_errors();
 
         Compilation::Stop
     }

@@ -50,15 +50,15 @@ impl<'tcx> ParamCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamCollector<'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         if let TyKind::Param(_) = *t.kind() {
             self.parameters.push(t);
         }
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, _r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, _r: Region<'tcx>) -> Self::Result {
         self.regions = true;
-        ControlFlow::Continue(())
+        ()
     }
 }

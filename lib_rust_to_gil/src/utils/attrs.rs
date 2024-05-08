@@ -1,6 +1,6 @@
 use rustc_ast::AttrKind;
+use rustc_ast::Attribute;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Attribute;
 use rustc_span::{def_id::DefId, Symbol};
 
 pub(crate) fn get_attr<'a>(attrs: &'a [Attribute], path: &[&str]) -> Option<&'a Attribute> {

@@ -40,11 +40,16 @@ impl<'tcx> ProgCtx<'tcx> {
 
     fn compile_fn(&mut self, did: DefId) {
         let body = match self.tcx().def_kind(did) {
-            DefKind::Ctor(..) => self.tcx().optimized_mir(did),
-            _ => std::cell::Ref::leak(self.tcx().mir_promoted(did.expect_local()).0.borrow()),
+            DefKind::Ctor(..) => self.tcx().optimized_mir(did).clone(),
+            _ => self
+                .tcx()
+                .mir_promoted(did.expect_local())
+                .0
+                .borrow()
+                .clone(),
         };
         let sig = build_signature(&mut self.global_env, did);
-        let ctx = GilCtxt::new(body, &mut self.global_env);
+        let ctx = GilCtxt::new(&body, &mut self.global_env);
 
         let mut proc = ctx.push_body();
 
