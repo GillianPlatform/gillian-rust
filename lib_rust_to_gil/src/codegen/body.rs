@@ -1,5 +1,4 @@
 use crate::codegen::typ_encoding::type_param_name;
-use crate::signature::build_signature;
 use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
 use rustc_middle::mir::pretty::write_mir_fn;
 
@@ -54,10 +53,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         log::trace!("{}", string)
     }
 
-    pub fn args(&mut self) -> Vec<String> {
-        let sig = build_signature(self.global_env, self.did());
-
-        sig.args.iter().map(|a| a.name().to_string()).collect()
+    pub fn args(&self) -> Vec<String> {
+        let lfts = if self.has_generic_lifetimes() {
+            Some(lifetime_param_name("a")).into_iter()
+        } else {
+            None.into_iter()
+        };
+        let types = self
+            .generic_types()
+            .into_iter()
+            .map(|x| type_param_name(x.0, x.1));
+        let args = self
+            .mir()
+            .args_iter()
+            .map(|local| self.name_from_local(local));
+        lfts.chain(types).chain(args).collect()
     }
 
     pub fn push_body(mut self) -> Proc {

@@ -1,27 +1,27 @@
 use crate::prelude::*;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::{BoundVariableKind, GenericParamDef, GenericParamDefKind, Generics};
+use rustc_middle::ty::{BoundVariableKind, GenericParamDefKind, Generics};
 
-// fn fill_item(args: &mut Vec<(u32, Symbol)>, tcx: TyCtxt, defs: &Generics) {
-//     if let Some(def_id) = defs.parent {
-//         let parent_defs = tcx.generics_of(def_id);
-//         fill_item(args, tcx, parent_defs);
-//     }
-//     fill_single(args, defs)
-// }
+fn fill_item(args: &mut Vec<(u32, Symbol)>, tcx: TyCtxt, defs: &Generics) {
+    if let Some(def_id) = defs.parent {
+        let parent_defs = tcx.generics_of(def_id);
+        fill_item(args, tcx, parent_defs);
+    }
+    fill_single(args, defs)
+}
 
-// fn fill_single(args: &mut Vec<(u32, Symbol)>, defs: &Generics) {
-//     args.reserve(defs.params.len());
-//     for param in &defs.params {
-//         if let GenericParamDefKind::Const { .. } = param.kind {
-//             panic!("Const Generics are not handled for now");
-//         }
-//         if let GenericParamDefKind::Lifetime = param.kind {
-//             continue;
-//         }
-//         args.push((param.index, param.name));
-//     }
-// }
+fn fill_single(args: &mut Vec<(u32, Symbol)>, defs: &Generics) {
+    args.reserve(defs.params.len());
+    for param in &defs.params {
+        if let GenericParamDefKind::Const { .. } = param.kind {
+            panic!("Const Generics are not handled for now");
+        }
+        if let GenericParamDefKind::Lifetime = param.kind {
+            continue;
+        }
+        args.push((param.index, param.name));
+    }
+}
 
 fn has_lifetimes_generics(did: DefId, tcx: TyCtxt) -> bool {
     let defs = tcx.generics_of(did);
@@ -51,46 +51,10 @@ pub fn has_generic_lifetimes(did: DefId, tcx: TyCtxt) -> bool {
         || has_lifetimes_generics(did, tcx)
 }
 
-fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F) {
-    if let Some(def_id) = defs.parent {
-        let parent_defs = tcx.generics_of(def_id);
-        fill_item(tcx, parent_defs, f);
-    }
-    fill_single(defs, f)
-}
-
-fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
-    for param in &defs.params {
-        if let GenericParamDefKind::Const { is_host_effect: true, .. } = param.kind {
-            continue
-        }
-        f(param);
-    }
-}
-
-pub fn all_generics(tcx: TyCtxt, did: DefId) -> Vec<GenericParamDef> {
-    let mut vec = Vec::new();
-
-    fill_item(tcx, tcx.generics_of(did), &mut |param| {
-        vec.push(param.clone())
-    });
-
-    vec
-}
-
 pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
     let defs = tcx.generics_of(did);
     let mut vec = Vec::with_capacity(defs.count());
-    fill_item(tcx, defs, &mut |param| {
-        if let GenericParamDefKind::Const { .. } = param.kind {
-            panic!("Const Generics are not handled for now");
-        }
-        if let GenericParamDefKind::Lifetime = param.kind {
-            return;
-        }
-
-        vec.push((param.index, param.name))
-    });
+    fill_item(&mut vec, tcx, defs);
     vec
 }
 
