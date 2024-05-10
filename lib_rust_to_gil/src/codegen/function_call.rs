@@ -8,8 +8,6 @@ use rustc_middle::ty::{GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::VariantIdx;
 
-use super::typ_encoding::lifetime_param_name;
-
 enum ConstructorKind {
     Enum(VariantIdx),
 }
@@ -124,6 +122,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
     pub fn only_param_args_for_fn_call(
         &mut self,
+        def_id: DefId,
         substs: GenericArgsRef<'tcx>,
         operands: &[Spanned<Operand<'tcx>>],
     ) -> Vec<Expr> {
@@ -134,7 +133,17 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
         if callee_has_regions {
-            args.push(Expr::PVar(lifetime_param_name("a")))
+            let sig = self.tcx().fn_sig(def_id);
+            let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.check_func_call(ssig, operands);
+
+            args.extend(
+                regions
+                    .into_iter()
+                    .map(|r| r.as_var())
+                    .map(|v| self.region_info.name_region(v))
+                    .map(Expr::PVar),
+            );
         }
         for ty_arg in params.parameters {
             args.push(self.encode_type(ty_arg).into())
@@ -155,12 +164,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());
             poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap();
-        }
-
-        eprintln!("{sig:?}");
-
-        for (s, a) in &tbl {
-            eprintln!("{s:?} -> {:?}", self.region_info.name_region(a.as_var()));
         }
 
         tbl.values().copied().collect()
@@ -191,7 +194,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::Fold(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::Fold {
                     pred_name: fname,
                     parameters: gil_args,
@@ -200,7 +203,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::Unfold(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::Unfold {
                     pred_name: fname,
                     parameters: gil_args,
@@ -224,7 +227,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
             }
             CallKind::MonoFn(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
                     variable: ivar.clone(),

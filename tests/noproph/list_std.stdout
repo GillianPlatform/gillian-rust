@@ -256,7 +256,7 @@ proc "LinkedList::<T>::pop_front"(pLft_a, pty_T0, m_1self) {
         g_1 := l-nth(g_2, 0i);
         m_3 := g_1;
         g_3 := m_3;
-        g_4 := "LinkedList::<T>::pop_front_node"(pLft_a, pty_T0, g_3);
+        g_4 := "LinkedList::<T>::pop_front_node"(pLft_anon, pty_T0, g_3);
         u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }}, g_4);
         goto bb1;
   bb1:  g_6 := [load_discr](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }});
@@ -328,7 +328,7 @@ proc "LinkedList::<T>::push_front_node"(pLft_a, pty_T0, m_1self, m_2node) {
         g_16 := l-nth(g_17, 0i);
         m_7 := g_16;
         g_18 := m_7;
-        g_19 := "<&mut T std::convert::Into<U>>::into"(pLft_a, {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_18);
+        g_19 := "<&mut T std::convert::Into<U>>::into"(pLft_8, {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_18);
         m_6 := g_19;
         goto bb2;
   bb2:  g_20 := m_6;
@@ -425,7 +425,7 @@ proc "LinkedList::<T>::push_front"(pLft_a, pty_T0, m_1self, m_2elt) {
         goto bb2;
   bb2:  g_8 := m_4;
         g_9 := m_5;
-        g_10 := "LinkedList::<T>::push_front_node"(pLft_a, pty_T0, g_8, g_9);
+        g_10 := "LinkedList::<T>::push_front_node"(pLft_anon, pty_T0, g_8, g_9);
         m_3 := g_10;
         goto bb3;
   bb3:  m_0 := {{  }};
@@ -453,13 +453,13 @@ proc "LinkedList::<T>::front_mut"(pLft_a, pty_T0, m_1self) {
         g_1 := l-nth(g_2, 0i);
         m_3 := g_1;
         g_3 := m_3;
-        apply "freeze_htl::<T>"(pLft_a,pty_T0,g_3);
+        apply "freeze_htl::<T>"(pLft_anon,pty_T0,g_3);
         goto bb1;
   bb1:  g_5 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
         g_4 := l-nth(g_5, 0i);
         m_5 := {{ l-nth(g_4, 0i), l+ (l-nth(g_4, 1i), {{ {{ "f", 0i, {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}) }};
         g_6 := m_5;
-        g_7 := "std::option::Option::<T>::as_mut"(pLft_a, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_6);
+        g_7 := "std::option::Option::<T>::as_mut"(pLft_16, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_6);
         u := [store_value](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }}, g_7);
         goto bb2;
   bb2:  g_9 := [load_discr](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
@@ -478,7 +478,7 @@ proc "LinkedList::<T>::front_mut"(pLft_a, pty_T0, m_1self) {
         g_13 := l-nth(g_14, 0i);
         m_11 := g_13;
         g_15 := m_11;
-        g_16 := "std::ptr::NonNull::<T>::as_mut"(pLft_a, {{ "adt", "Node", {{ pty_T0 }} }}, g_15);
+        g_16 := "std::ptr::NonNull::<T>::as_mut"(pLft_17, {{ "adt", "Node", {{ pty_T0 }} }}, g_15);
         u := [store_value](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, g_16);
         goto bb7;
   bb6:  m_0 := {{ 0i, {{  }} }};
@@ -492,7 +492,7 @@ proc "LinkedList::<T>::front_mut"(pLft_a, pty_T0, m_1self) {
         g_20 := l-nth(g_21, 0i);
         m_13 := g_20;
         g_22 := m_13;
-        apply "extract_head::<T>"(pLft_a,pty_T0,g_22);
+        apply "extract_head::<T>"(pLft_anon,pty_T0,g_22);
         goto bb8;
   bb8:  g_23 := m_8ret;
         m_0 := g_23;
