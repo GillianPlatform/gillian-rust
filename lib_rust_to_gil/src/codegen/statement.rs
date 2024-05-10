@@ -15,7 +15,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 };
                 self.push_cmd(cmd);
             }
-            StatementKind::FakeRead(..)
+            StatementKind::PlaceMention(..)
+            | StatementKind::FakeRead(..)
             | StatementKind::Nop
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
