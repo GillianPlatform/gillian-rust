@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::ty::{
-    AdtDef, AliasTy, Const, ConstKind, GenericArg, GenericArgKind, ParamTy, TypeAndMut,
+    AdtDef, AliasTy, Const, ConstKind, GenericArg, GenericArgKind, ParamTy, Region, TypeAndMut
 };
 use rustc_type_ir::{AliasKind, IntTy, UintTy};
 use serde_json::json;
@@ -28,6 +28,17 @@ pub fn type_param_name(index: u32, name: Symbol) -> String {
 
 pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
+}
+
+pub fn region_name(reg: Region) -> String {
+    // Drop the '
+    if let Some(nm) = reg.get_name() {
+        lifetime_param_name(&nm.as_str()[1..])
+    } else if reg.is_var() {
+        lifetime_param_name(&reg.as_var().as_u32().to_string())
+    } else {
+        lifetime_param_name("anon")
+    }
 }
 
 pub fn encode_sym_array(ty: EncodedType, length: Expr) -> EncodedType {

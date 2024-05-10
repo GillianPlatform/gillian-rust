@@ -68,6 +68,11 @@ impl<'tcx> Signature<'tcx> {
         })
     }
 
+    /// Return the "physical arguments" of a symbol, ak everything except the lvars.
+    pub fn physical_args(&self) -> impl Iterator<Item = ParamKind<'tcx>> + '_ {
+        self.args.iter().filter(|a| !matches!(a, ParamKind::Logic(_, _))).cloned()
+    }
+
     /// Returns the set of type well-formedness assertions for the input parameters of a predicate
     pub fn type_wf_pres(
         &self,

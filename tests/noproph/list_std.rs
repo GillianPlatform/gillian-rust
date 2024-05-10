@@ -129,42 +129,42 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    fn push_front_node(&mut self, mut node: Box<Node<T>>) {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
-        unsafe {
-            node.next = self.head;
-            node.prev = None;
-            let node = Some(Box::leak(node).into());
+    // fn push_front_node(&mut self, mut node: Box<Node<T>>) {
+    //     // This method takes care not to create mutable references to whole nodes,
+    //     // to maintain validity of aliasing pointers into `element`.
+    //     unsafe {
+    //         node.next = self.head;
+    //         node.prev = None;
+    //         let node = Some(Box::leak(node).into());
 
-            match self.head {
-                None => self.tail = node,
-                // Not creating new mutable (unique!) references overlapping `element`.
-                Some(head) => (*head.as_ptr()).prev = node,
-            }
+    //         match self.head {
+    //             None => self.tail = node,
+    //             // Not creating new mutable (unique!) references overlapping `element`.
+    //             Some(head) => (*head.as_ptr()).prev = node,
+    //         }
 
-            self.head = node;
-            self.len += 1;
-        }
-    }
+    //         self.head = node;
+    //         self.len += 1;
+    //     }
+    // }
 
-    #[show_safety]
-    pub fn push_front(&mut self, elt: T) {
-        self.push_front_node(Box::new(Node::new(elt)));
-    }
+    // #[show_safety]
+    // pub fn push_front(&mut self, elt: T) {
+    //     self.push_front_node(Box::new(Node::new(elt)));
+    // }
 
-    #[show_safety]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        freeze_htl(self);
-        match self.head.as_mut() {
-            None => None,
-            Some(node) => unsafe {
-                let ret = Some(&mut node.as_mut().element);
-                extract_head(self);
-                ret
-            },
-        }
-    }
+    // #[show_safety]
+    // pub fn front_mut(&mut self) -> Option<&mut T> {
+    //     freeze_htl(self);
+    //     match self.head.as_mut() {
+    //         None => None,
+    //         Some(node) => unsafe {
+    //             let ret = Some(&mut node.as_mut().element);
+    //             extract_head(self);
+    //             ret
+    //         },
+    //     }
+    // }
 
     // Fundamentally unsound!
     // pub fn cycle(&mut self) { ... }

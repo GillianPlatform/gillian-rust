@@ -57,7 +57,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn args(&mut self) -> Vec<String> {
         let sig = build_signature(self.global_env, self.did());
 
-        sig.args.iter().map(|a| a.name().to_string()).collect()
+        sig.physical_args().map(|a| a.name().to_string()).collect()
     }
 
     pub fn push_body(mut self) -> Proc {

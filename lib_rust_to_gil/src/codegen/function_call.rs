@@ -9,7 +9,7 @@ use names::bb_label;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::ty::{self, BoundRegion, GenericArgKind, GenericArgsRef, PolyFnSig, Region};
+use rustc_middle::ty::{self, BoundRegion, GenericArgKind, GenericArgsRef, PolyFnSig, Region, RegionVid};
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -104,18 +104,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
-            let callee_sig = build_signature(self.global_env, def_id);
-            eprintln!(
-                "callee_has_regions {def_id:?}, {substs:?} {:?}",
-                self.tcx().fn_sig(def_id)
-            );
-            self.check_func_call(self.tcx().fn_sig(def_id).skip_binder(), operands);
-            if self.has_generic_lifetimes() {
-                eprintln!("has_generic_lifetimes {substs:?}");
-                args.push(Expr::PVar(lifetime_param_name("a")))
-            } else {
-                args.push(Expr::null())
-            }
+            let sig = self.tcx().fn_sig(def_id);
+            let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.check_func_call(ssig, operands);
+
+            args.extend(regions.into_iter().map(|r| r.as_var()).map(|v| self.region_info.name_region(v)).map(Expr::PVar));
         }
         for ty_arg in substs {
             if let Some(e) = self.encode_generic_arg(ty_arg) {
@@ -153,23 +146,20 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
-    pub fn check_func_call(&mut self, sig: PolyFnSig<'tcx>, args: &[Spanned<Operand<'tcx>>]) {
+    pub fn check_func_call(&mut self, sig: PolyFnSig<'tcx>, args: &[Spanned<Operand<'tcx>>]) -> Vec<Region<'tcx>> {
         let mut tbl = HashMap::new();
-
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());
             poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap();
         }
 
-        for (l, d) in self.mir().local_decls.iter_enumerated() {
-            eprintln!("{l:?} -> {:?}", d.ty);
+        eprintln!("{sig:?}");
+
+        for (s, a) in &tbl {
+            eprintln!("{s:?} -> {:?}", self.region_info.name_region(a.as_var()));
         }
 
-        for b in &self.borrow_set.location_map {
-            eprintln!("{b:?}");
-        }
-
-        eprintln!("{tbl:?}");
+        tbl.values().copied().collect()
     }
 
     pub fn push_function_call(
@@ -216,10 +206,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::PolyFn(fname) => {
-                eprintln!(
-                    "PolyFn call {def_id:?} {:?}",
-                    all_generics(self.tcx(), def_id)
-                );
                 let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
@@ -263,7 +249,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum PoorManUnificationError<'tcx> {
+pub enum PoorManUnificationError<'tcx> {
     /// Unclear what rules should apply to dyn objects
     DynObject,
     /// Too lazy to implement closures for the moment given that gillian-rust doesn't support them anyways
@@ -278,7 +264,7 @@ enum PoorManUnificationError<'tcx> {
 
 type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;
 
-fn poor_man_unification<'tcx>(
+pub fn poor_man_unification<'tcx>(
     tbl: &mut HashMap<Region<'tcx>, Region<'tcx>>,
     lhs: Ty<'tcx>,
     rhs: Ty<'tcx>,

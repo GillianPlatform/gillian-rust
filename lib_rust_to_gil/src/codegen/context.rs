@@ -2,12 +2,19 @@ use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::BodyWithBorrowckFacts;
 use rustc_borrowck::consumers::Borrows;
 use rustc_borrowck::consumers::RegionInferenceContext;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
+use rustc_middle::ty::PolyFnSig;
+use rustc_middle::ty::RegionVid;
 use rustc_span::def_id::DefId;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
+use super::typ_encoding::lifetime_param_name;
+use crate::codegen::function_call::poor_man_unification;
+use crate::codegen::typ_encoding::region_name;
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
@@ -17,8 +24,8 @@ pub struct GilCtxt<'tcx, 'body> {
     switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'body Body<'tcx>,
-    pub borrow_info: Borrows<'body, 'tcx>,
-    pub borrow_set: &'body BorrowSet<'tcx>,
+    borrow_info: Borrows<'body, 'tcx>,
+    pub region_info: RegionInfo<'body, 'tcx>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
 
@@ -46,25 +53,146 @@ impl<'tcx, 'body> HasGlobalEnv<'tcx> for GilCtxt<'tcx, 'body> {
 
 impl<'tcx> TypeEncoder<'tcx> for GilCtxt<'tcx, '_> {}
 
+pub struct RegionInfo<'body, 'tcx> {
+    /// Identifies regions which are simple reborrows of another region.
+    reborrows: HashMap<RegionVid, RegionVid>,
+    /// Designates a representative for each region cycle, prefering universal regions over others.
+    scc_reprs: HashMap<u32, RegionVid>,
+    /// Holds a name for each universal or user-named region
+    region_names: HashMap<RegionVid, String>,
+    /// Context for queries
+    regioncx: &'body RegionInferenceContext<'tcx>,
+}
+
+impl RegionInfo<'_, '_> {
+    pub fn name_region(&self, vid: RegionVid) -> String {
+        // Strip reborrows from this region
+        let unrebor = self.reborrows.get(&vid).copied().unwrap_or(vid);
+        // Now look up the representative
+        let scc = self.regioncx.constraint_sccs().scc(unrebor);
+        let repr = self.scc_reprs[&scc.as_u32()];
+        self.region_names
+            .get(&repr)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| lifetime_param_name(&repr.as_u32().to_string()) )
+    }
+}
+
+fn region_info<'body, 'tcx>(
+    regioncx: &'body RegionInferenceContext<'tcx>,
+    borrows: &'body BorrowSet<'tcx>,
+    sig: PolyFnSig<'tcx>,
+    local_decls: &'body LocalDecls<'tcx>,
+    tcx: TyCtxt<'tcx>,
+) -> RegionInfo<'body, 'tcx> {
+    // Calculate a representative for each region scc. Choosing the minimum prefers universal regions over placeholders
+    let mut reprs: HashMap<u32, _> = HashMap::new();
+
+    // Identify reborrows and produce a mapping erasing their lifetimes.
+    let reborrows = identify_reborrows(borrows, local_decls, tcx);
+
+    for (reg, orig) in &reborrows {
+        assert!(regioncx.eval_outlives(*orig, *reg));
+        assert!(!reborrows.contains_key(orig));
+    }
+
+    for (reg, scc) in regioncx.constraint_sccs().scc_indices().iter_enumerated() {
+        reprs
+            .entry(scc.as_u32())
+            .and_modify(|pre: &mut RegionVid| *pre = (*pre).min(reg))
+            .or_insert(reg);
+    }
+
+    let mut tbl = HashMap::new();
+
+    for (sig_in, arg_ty) in sig
+        .skip_binder()
+        .inputs()
+        .iter()
+        .zip(local_decls.iter().skip(1))
+    {
+        // let arg_ty = arg.node.ty(self.mir(), self.tcx());
+        poor_man_unification(&mut tbl, *sig_in, arg_ty.ty).unwrap();
+    }
+
+    // Build a name for each representative
+    let mut names = HashMap::new();
+    for (name, vid) in tbl {
+        let vid = vid.as_var();
+        let vid = reborrows.get(&vid).unwrap_or(&vid);
+        // if let Some(name) = name.get_name() {
+        let scc = regioncx.constraint_sccs().scc(*vid);
+        let repr = reprs[&scc.as_u32()];
+        // eprintln!("{name:?} : {repr:?}");
+        names.insert(repr, region_name(name));
+        // }
+    }
+
+    RegionInfo {
+        reborrows,
+        scc_reprs: reprs,
+        region_names: names,
+        regioncx,
+    }
+}
+
+/// Identifies reborrows in the borrow set, that is borrows of the form `&mut * P`.
+/// For each of these borrows we produce an additional set of equalities combining their lifetimes into one.
+fn identify_reborrows<'tcx>(
+    x: &BorrowSet<'tcx>,
+    locals: &LocalDecls<'tcx>,
+    tcx: TyCtxt<'tcx>,
+) -> HashMap<RegionVid, RegionVid> {
+    let mut reborrow_lft = HashMap::new();
+    for (_, data) in x.location_map.iter() {
+        let borrowed = data.borrowed_place;
+
+        let Some(last) = borrowed.iter_projections().last() else {
+            continue;
+        };
+
+        let is_reborrow = last.1 == ProjectionElem::Deref;
+
+        let ty = last.0.ty(locals, tcx).ty;
+
+        let TyKind::Ref(region, _, _) = ty.kind() else {
+            continue;
+        };
+        let tgt_ty = data.assigned_place.ty(locals, tcx);
+        let TyKind::Ref(tgt_reg, _, _) = tgt_ty.ty.kind() else {
+            continue;
+        };
+
+        let region_vid = region.as_var();
+        let subst_region = *reborrow_lft.get(&region_vid).unwrap_or(&region_vid);
+        if is_reborrow {
+            reborrow_lft.insert(tgt_reg.as_var(), subst_region);
+            reborrow_lft.insert(data.region, subst_region);
+        }
+    }
+
+    reborrow_lft
+}
+
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn new(
         global_env: &'body mut GlobalEnv<'tcx>,
         body: &'body Body<'tcx>,
         borrow_set: &'body BorrowSet<'tcx>,
-        region_inference_context: &'body RegionInferenceContext<'tcx>,
+        regioncx: &'body RegionInferenceContext<'tcx>,
     ) -> Self {
         let mir = body;
-        let borrow_info = Borrows::new(
+        let borrow_info = Borrows::new(global_env.tcx(), &mir, &regioncx, &borrow_set);
+
+        let sig = global_env.tcx().fn_sig(body.source.def_id()).skip_binder();
+
+        let region_info = region_info(
+            regioncx,
+            borrow_set,
+            sig,
+            &body.local_decls,
             global_env.tcx(),
-            &mir,
-            &region_inference_context,
-            &borrow_set,
         );
-
-        eprintln!("{:?}", region_inference_context.outlives_constraints().collect::<Vec<_>>());
-        eprintln!("--");
-        eprintln!("{:?}", region_inference_context.regions().collect::<Vec<_>>());
-
         GilCtxt {
             locals_in_memory: locals_in_memory_for_mir(&mir),
             gil_temp_counter: 0,
@@ -73,7 +201,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             next_label: None,
             mir,
             borrow_info,
-            borrow_set,
+            region_info,
             global_env,
         }
     }
