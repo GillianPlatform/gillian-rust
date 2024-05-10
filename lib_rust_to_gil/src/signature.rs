@@ -8,7 +8,7 @@ use rustc_middle::ty::{GenericParamDefKind, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
-    codegen::typ_encoding::type_param_name,
+    codegen::typ_encoding::{lifetime_param_name, region_name, type_param_name},
     logic::PredCtx,
     prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},
@@ -70,7 +70,10 @@ impl<'tcx> Signature<'tcx> {
 
     /// Return the "physical arguments" of a symbol, ak everything except the lvars.
     pub fn physical_args(&self) -> impl Iterator<Item = ParamKind<'tcx>> + '_ {
-        self.args.iter().filter(|a| !matches!(a, ParamKind::Logic(_, _))).cloned()
+        self.args
+            .iter()
+            .filter(|a| !matches!(a, ParamKind::Logic(_, _)))
+            .cloned()
     }
 
     /// Returns the set of type well-formedness assertions for the input parameters of a predicate
@@ -244,10 +247,25 @@ pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Sig
     let lifetimes = tcx.fn_sig(id).skip_binder().bound_vars();
 
     use rustc_middle::ty::BoundVariableKind;
-    for (_, l) in lifetimes.iter().enumerate() {
+    for (ix, l) in lifetimes.iter().enumerate() {
         match l {
-            BoundVariableKind::Region(_) => {
-                args.push(ParamKind::Lifetime(Symbol::intern("pLft_a")))
+            BoundVariableKind::Region(r) => {
+                use rustc_middle::ty::BoundRegionKind;
+                let nm = match r {
+                    BoundRegionKind::BrAnon => lifetime_param_name(&ix.to_string()),
+                    BoundRegionKind::BrNamed(_, _) => {
+                        if let Some(nm) = r.get_name() {
+                            lifetime_param_name(&nm.as_str()[1..])
+                        } else {
+                            lifetime_param_name(&ix.to_string())
+                        }
+                    }
+                    BoundRegionKind::BrEnv => lifetime_param_name(&ix.to_string()),
+                };
+
+                args.push(ParamKind::Lifetime(Symbol::intern(&nm)));
+                // eprintln!("{l:?}");
+                // args.push(region_name(r))
                 // TODO(xavier): Once we can properly compile lifetimes in predicate terms we can re-enable this
                 // if let Some(nm) = rk.get_name() {
                 //     args.push(ParamKind::Lifetime(Symbol::intern(&format!(

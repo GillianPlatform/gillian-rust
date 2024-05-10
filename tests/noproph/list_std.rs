@@ -166,18 +166,18 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    Fundamentally unsound!
-    pub fn cycle(&mut self) { ... }
+    // Fundamentally unsound!
+    // pub fn cycle(&mut self) { ... }
 
-    #[show_safety]
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
-        IterMut {
-            head: self.head,
-            tail: self.tail,
-            len: self.len,
-            marker: PhantomData,
-        }
-    }
+    // #[show_safety]
+    // pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+    //     IterMut {
+    //         head: self.head,
+    //         tail: self.tail,
+    //         len: self.len,
+    //         marker: PhantomData,
+    //     }
+    // }
 }
 
 // pub struct IterMut<'a, T: 'a> {

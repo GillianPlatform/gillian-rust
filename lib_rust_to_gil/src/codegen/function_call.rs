@@ -97,8 +97,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
         if callee_has_regions {
             let sig = self.tcx().fn_sig(def_id);
-            let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.check_func_call(ssig, operands);
+            // let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.check_func_call(sig.skip_binder(), operands);
 
             args.extend(
                 regions
@@ -134,8 +134,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         );
         if callee_has_regions {
             let sig = self.tcx().fn_sig(def_id);
-            let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.check_func_call(ssig, operands);
+            // let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.check_func_call(sig.skip_binder(), operands);
 
             args.extend(
                 regions
@@ -336,6 +336,9 @@ pub fn poor_man_unification<'tcx>(
         (TyKind::Placeholder(p), TyKind::Placeholder(q)) if p == q => Ok(()),
         (TyKind::Infer(i), TyKind::Infer(j)) if i == j => Ok(()),
         (TyKind::Error(e), TyKind::Error(f)) if e == f => Ok(()),
+        // Parameters in the signature are allowed to match against any instantiation,
+        // they (by parametricity) don't produce substitutions for lifetimes
+        (TyKind::Param(_), _) => Ok(()),
         _ => Err(PoorManUnificationError::Mismatch(lhs, rhs)),
     }
 }

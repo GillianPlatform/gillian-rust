@@ -1,0 +1,42 @@
+warning: unnecessary parentheses around type
+  --> ../tests/multiple_lifetimes/simple.rs:12:52
+   |
+12 | fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'a mut i32) {
+   |                                                    ^           ^
+   |
+   = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+   |
+12 - fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'a mut i32) {
+12 + fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'a mut i32 {
+   |
+
+warning: unnecessary parentheses around type
+  --> ../tests/multiple_lifetimes/simple.rs:18:52
+   |
+18 | fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'b mut i32) {
+   |                                                    ^           ^
+   |
+help: remove these parentheses
+   |
+18 - fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'b mut i32) {
+18 + fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'b mut i32 {
+   |
+
+warning: unused variable: `y`
+  --> ../tests/multiple_lifetimes/simple.rs:12:33
+   |
+12 | fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'a mut i32) {
+   |                                 ^ help: if this is intentional, prefix it with an underscore: `_y`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `x`
+  --> ../tests/multiple_lifetimes/simple.rs:18:16
+   |
+18 | fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'b mut i32) {
+   |                ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: 4 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

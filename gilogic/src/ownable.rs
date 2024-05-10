@@ -42,6 +42,7 @@ impl<T: Ownable> Ownable for &mut T {
 stubbed_ownable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
+    #[rustc_diagnostic_item = "gillian::ownable::tuple_own"]
     fn own(self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }

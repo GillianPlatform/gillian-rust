@@ -1,15 +1,3 @@
-error: expected one of `!` or `::`, found `unsound`
-   --> ../tests/noproph/list_std.rs:169:19
-    |
-92  | impl<T: Ownable> LinkedList<T> {
-    |                                - while parsing this item list starting here
-...
-169 |     Fundamentally unsound!
-    |                   ^^^^^^^ expected one of `!` or `::`
-...
-181 | }
-    | - the item list ends here
-
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
@@ -20,5 +8,4 @@ error: expected one of `!` or `::`, found `unsound`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-error: aborting due to 1 previous error
-
+[TIMESTAMP DEBUG rust_to_gil] Correct!

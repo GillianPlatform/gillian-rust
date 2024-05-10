@@ -82,8 +82,8 @@ lemma "extract_x::<T>"(pLft_a, pty_T0, p)[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 
 
-lemma "freeze_xy::<T>"(pLft_a, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #REFERENCE) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[["wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_a; true)]]
+lemma "freeze_xy::<T>"(pLft_a, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["wp_ref_mut_xy::<T>"(pLft_a, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_0; true)]]
 
 
 spec "WP::<T>::assign_first"(pLft_a, pty_T0, m_1self, m_2x)
