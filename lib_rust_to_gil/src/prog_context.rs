@@ -1,5 +1,3 @@
-use rustc_hir::def::DefKind;
-
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
 use crate::logic::{compile_logic, LogicItem};

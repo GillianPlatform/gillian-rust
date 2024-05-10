@@ -1,9 +1,6 @@
-use crate::codegen::typ_encoding::type_param_name;
 use crate::signature::build_signature;
 use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
 use rustc_middle::mir::pretty::write_mir_fn;
-
-use super::typ_encoding::lifetime_param_name;
 
 impl<'tcx> HasGenericArguments<'tcx> for GilCtxt<'tcx, '_> {}
 

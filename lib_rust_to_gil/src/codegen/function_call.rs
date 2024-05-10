@@ -3,15 +3,9 @@ use std::collections::HashMap;
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use crate::signature::build_signature;
-use crate::utils::polymorphism::{all_generics, HasGenericArguments};
 use names::bb_label;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
-use rustc_middle::ty::{self, BoundRegion, GenericArgKind, GenericArgsRef, PolyFnSig, Region, RegionVid};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 use super::typ_encoding::lifetime_param_name;
@@ -108,7 +102,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             let ssig = sig.instantiate(self.tcx(), substs);
             let regions = self.check_func_call(ssig, operands);
 
-            args.extend(regions.into_iter().map(|r| r.as_var()).map(|v| self.region_info.name_region(v)).map(Expr::PVar));
+            args.extend(
+                regions
+                    .into_iter()
+                    .map(|r| r.as_var())
+                    .map(|v| self.region_info.name_region(v))
+                    .map(Expr::PVar),
+            );
         }
         for ty_arg in substs {
             if let Some(e) = self.encode_generic_arg(ty_arg) {
@@ -146,7 +146,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
-    pub fn check_func_call(&mut self, sig: PolyFnSig<'tcx>, args: &[Spanned<Operand<'tcx>>]) -> Vec<Region<'tcx>> {
+    pub fn check_func_call(
+        &mut self,
+        sig: PolyFnSig<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+    ) -> Vec<Region<'tcx>> {
         let mut tbl = HashMap::new();
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());

@@ -1,8 +1,5 @@
 use rustc_borrowck::borrow_set::BorrowSet;
-use rustc_borrowck::consumers::BodyWithBorrowckFacts;
-use rustc_borrowck::consumers::Borrows;
 use rustc_borrowck::consumers::RegionInferenceContext;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::ty::PolyFnSig;
@@ -24,7 +21,6 @@ pub struct GilCtxt<'tcx, 'body> {
     switch_label_counter: usize,
     next_label: Option<String>,
     mir: &'body Body<'tcx>,
-    borrow_info: Borrows<'body, 'tcx>,
     pub region_info: RegionInfo<'body, 'tcx>,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
 }
@@ -182,7 +178,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         regioncx: &'body RegionInferenceContext<'tcx>,
     ) -> Self {
         let mir = body;
-        let borrow_info = Borrows::new(global_env.tcx(), &mir, &regioncx, &borrow_set);
 
         let sig = global_env.tcx().fn_sig(body.source.def_id()).skip_binder();
 
@@ -200,7 +195,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             gil_body: ProcBody::default(),
             next_label: None,
             mir,
-            borrow_info,
             region_info,
             global_env,
         }

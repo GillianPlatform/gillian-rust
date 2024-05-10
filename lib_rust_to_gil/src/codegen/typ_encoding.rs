@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use rustc_middle::ty::{
-    AdtDef, AliasTy, Const, ConstKind, GenericArg, GenericArgKind, ParamTy, Region, TypeAndMut
+    AdtDef, AliasTy, Const, ConstKind, GenericArg, GenericArgKind, ParamTy, Region,
 };
 use rustc_type_ir::{AliasKind, IntTy, UintTy};
 use serde_json::json;

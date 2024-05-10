@@ -1,5 +1,3 @@
-use std::ops::ControlFlow;
-
 use crate::prelude::*;
 use rustc_middle::ty::Region;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};

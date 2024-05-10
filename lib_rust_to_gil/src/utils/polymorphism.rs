@@ -68,16 +68,6 @@ fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
     }
 }
 
-pub fn all_generics(tcx: TyCtxt, did: DefId) -> Vec<GenericParamDef> {
-    let mut vec = Vec::new();
-
-    fill_item(tcx, tcx.generics_of(did), &mut |param| {
-        vec.push(param.clone())
-    });
-
-    vec
-}
-
 pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
     let defs = tcx.generics_of(did);
     let mut vec = Vec::with_capacity(defs.count());
