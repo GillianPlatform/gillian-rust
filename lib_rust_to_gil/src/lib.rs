@@ -22,6 +22,7 @@ extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
+extern crate rustc_borrowck;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;

@@ -290,7 +290,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             ) => match promoted {
                 None => {
                     let proc_ident = self.tcx().def_path_str_with_args(def, args);
-                    let parameters = self.only_param_args_for_fn_call(args, &[]);
+                    let parameters = self.only_param_args_for_fn_call(def, args, &[]);
                     let variable = self.temp_var();
                     let fn_call = Cmd::Call {
                         variable: variable.clone(),

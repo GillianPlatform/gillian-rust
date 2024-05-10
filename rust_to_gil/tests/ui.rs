@@ -9,6 +9,8 @@ fn main() -> Result<()> {
         .envs
         .push(("GILLIAN_PROPHECIES".into(), Some("1".into())));
     run_tests(config1)?;
+    let config = build_config(PathBuf::from("../tests/multiple_lifetimes"));
+    run_tests(config);
     run_tests(config2)
 }
 

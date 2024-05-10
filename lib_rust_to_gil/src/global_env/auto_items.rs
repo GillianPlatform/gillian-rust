@@ -1,4 +1,4 @@
-use rustc_middle::ty::ParamTy;
+use rustc_middle::ty::{List, ParamTy};
 
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::builtins::LogicStubs;
@@ -114,7 +114,8 @@ impl<'tcx> Resolver<'tcx> {
         let current = Expr::LVar("#current".to_string());
         let future = Expr::LVar("#future".to_string());
         let mut_ref = "mut_ref".to_string();
-        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(self.args.type_at(0));
+        let ty = global_env.tcx().erase_regions_ty(self.args.type_at(0));
+        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(ty);
         let inner_subst_params = param_collector::collect_params_on_args(inner_subst);
         let pred_params = inner_subst_params
             .parameters
@@ -276,6 +277,99 @@ impl<'tcx> MutRefOwn<'tcx> {
             facts: vec![],
             guard,
         };
+        prog.add_pred(pred);
+    }
+}
+
+struct TupleOwn<'tcx> {
+    pred_name: String,
+    left: Ty<'tcx>,
+    right: Ty<'tcx>,
+}
+
+impl<'tcx> TupleOwn<'tcx> {
+    fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
+        let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
+        if let Some(LogicStubs::TupleOwnPred) = stub {
+            // If the first argument is a region, then we have
+            let ty = instance.args.type_at(0);
+
+            let name = global_env.just_pred_name_instance(instance);
+            return Some(Self {
+                pred_name: name,
+                left: ty,
+                right: instance.args.type_at(1),
+            });
+        }
+        None
+    }
+
+    fn without_prophecies(&self, global_env: &mut GlobalEnv<'tcx>) -> Pred {
+        let slf = Expr::PVar("self".into());
+
+        let mut sig_params = Vec::new();
+
+        let own_left = global_env.get_own_pred_for(self.left);
+        let own_right = global_env.get_own_pred_for(self.right);
+
+        let ty_param_left = param_collector::collect_params_on_args(own_left.1);
+        let ty_param_right = param_collector::collect_params_on_args(own_right.1);
+
+        eprintln!("{ty_param_left:?} {ty_param_right:?}");
+
+        let lvar_x = Expr::LVar("#x".into());
+        let lvar_y = Expr::LVar("#y".into());
+        let eq = slf
+            .eq_f([ lvar_x.clone(), lvar_y.clone()])
+            .into_asrt();
+
+        let mut params = vec![];
+        if ty_param_left.regions {
+            params.push(Expr::PVar("lft_a".into()));
+            sig_params.push(("lft_a".into(), None));
+        }
+        params.push(lvar_x);
+
+        let own_left = Assertion::Pred {
+            name: own_left.0,
+            params,
+        };
+
+        let mut params = vec![];
+        if ty_param_right.regions {
+            params.push(Expr::PVar("lft_b".into()));
+            sig_params.push(("lft_b".into(), None));
+        }
+        params.push(lvar_y);
+
+        let own_right = Assertion::Pred {
+            name: own_right.0,
+            params,
+        };
+        sig_params.push(("self".into(), None));
+
+        let def = eq.star(own_left).star(own_right);
+        gillian::gil::Pred {
+            name: self.pred_name.clone(),
+            num_params: sig_params.len(),
+            ins: (0..sig_params.len()).collect(),
+            params: sig_params,
+            definitions: vec![def],
+            pure: false,
+            abstract_: false,
+            facts: vec![],
+            guard: None,
+        }
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        let pred = if global_env.config.prophecies {
+            // self.with_prophecies(global_env)
+            fatal!(global_env, "not implemented")
+        } else {
+            self.without_prophecies(global_env)
+        };
+
         prog.add_pred(pred);
     }
 }
@@ -552,6 +646,12 @@ impl<'tcx> AutoItem<'tcx> {
                     option_own.add_to_prog(prog, global_env);
                     return;
                 }
+
+                if let Some(tuple_own) = TupleOwn::of_instance(instance, global_env) {
+                    tuple_own.add_to_prog(prog, global_env);
+                    return;
+                }
+
                 if let Some(mut_ref_inner) = MutRefInner::of_instance(instance, global_env) {
                     mut_ref_inner.add_to_prog(prog, global_env);
                     return;

@@ -61,6 +61,7 @@ pub(crate) enum LogicStubs {
     OwnPred,
     MutRefOwnPred,
     OptionOwnPred,
+    TupleOwnPred,
     RefMutInner,
     InstantiateLVars,
     Spec,
@@ -111,6 +112,9 @@ impl LogicStubs {
                 }
                 "gillian::ownable::option_own" | "gillian::pcy::ownable::option_own" => {
                     Some(Self::OptionOwnPred)
+                }
+                "gillian::ownable::tuple_own" | "gillian::pcy::ownable::tuple_own" => {
+                    Some(Self::TupleOwnPred)
                 }
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),

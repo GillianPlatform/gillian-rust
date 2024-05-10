@@ -1,0 +1,87 @@
+#begin_init_data
+{}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
+
+pred "<&mut i32 as gilogic::Ownable>::own"(+lft, +self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), "i32"; #v) * "<i32 as gilogic::Ownable>::own"(#v);
+guard: <lft>(lft; true);
+
+
+pred "<&mut i32 as gilogic::Ownable>::own$$inner"(+self: List):
+<value>(l-nth(self, 0i), l-nth(self, 1i), "i32"; #v) * "<i32 as gilogic::Ownable>::own"(#v);
+
+
+proc swap_borrows(pLft_a, pLft_b, m_1x, m_2y) {
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "ref", true, "i32" }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, g_0);
+        g_1 := m_2y;
+        m_2y := [alloc]({{ "ref", true, "i32" }});
+        u := [store_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, g_1);
+  bb0:  g_3 := [load_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, true);
+        g_2 := l-nth(g_3, 0i);
+        m_3 := g_2;
+        g_5 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, true);
+        g_4 := l-nth(g_5, 0i);
+        m_4 := g_4;
+        g_6 := m_3;
+        g_7 := m_4;
+        m_0 := {{ g_6, g_7 }};
+        g_8 := m_0;
+        ret := g_8;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }});
+        u := [free](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }});
+        return
+};
+
+spec fst(pLft_a, pLft_b, m_1x, m_2y)
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_1x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_2y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#m_2y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1x == {{ #lvar_0, #lvar_1 }}) * (m_2y == #m_2y) * (m_1x == #m_1x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
+[["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
+normal
+
+proc fst(pLft_a, pLft_b, m_1x, m_2y) {
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "ref", true, "i32" }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, g_0);
+        m_3 := [alloc]({{ "ref", true, "i32" }});
+  bb0:  g_2 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, true);
+        g_1 := l-nth(g_2, 0i);
+        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }}, g_1);
+        g_4 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }}, true);
+        g_3 := l-nth(g_4, 0i);
+        m_0 := g_3;
+        g_5 := m_0;
+        ret := g_5;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }});
+        u := [free](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }});
+        return
+};
+
+spec snd(pLft_a, pLft_b, m_1x, m_2y)
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_1x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_2y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#m_2y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1x == {{ #lvar_0, #lvar_1 }}) * (m_2y == #m_2y) * (m_1x == #m_1x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
+[["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
+normal
+
+proc snd(pLft_a, pLft_b, m_1x, m_2y) {
+        g_0 := m_2y;
+        m_2y := [alloc]({{ "ref", true, "i32" }});
+        u := [store_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, g_0);
+        m_3 := [alloc]({{ "ref", true, "i32" }});
+  bb0:  g_2 := [load_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, true);
+        g_1 := l-nth(g_2, 0i);
+        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }}, g_1);
+        g_4 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }}, true);
+        g_3 := l-nth(g_4, 0i);
+        m_0 := g_3;
+        g_5 := m_0;
+        ret := g_5;
+        goto rlab;
+  rlab: u := [free](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }});
+        u := [free](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, "i32" }});
+        return
+};
+

@@ -1,10 +1,13 @@
 use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::traits::ResolvedImpl;
-use crate::prelude::*;
+use crate::{callbacks, prelude::*};
 use crate::utils::attrs::is_gillian_spec;
 use crate::{config::Config, logic::traits::TraitSolver};
 use indexmap::IndexMap;
+use once_map::OnceMap;
+use rustc_borrowck::consumers::BodyWithBorrowckFacts;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{
     AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ReprOptions,
 };
@@ -94,6 +97,8 @@ pub struct GlobalEnv<'tcx> {
     pub(crate) spec_map: HashMap<DefId, DefId>,
     // Mapping from specification -> item
     pub(crate) prog_map: HashMap<DefId, DefId>,
+
+    bodies: OnceMap<LocalDefId, Box<BodyWithBorrowckFacts<'tcx>>>,
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for GlobalEnv<'tcx> {
@@ -164,6 +169,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             inner_preds: Default::default(),
+            bodies: Default::default(),
         }
     }
 
@@ -586,5 +592,13 @@ impl<'tcx> GlobalEnv<'tcx> {
             }
         }
         Value::Object(obj)
+    }
+
+    pub(crate) fn body_with_facts(&self, def_id: LocalDefId) -> &BodyWithBorrowckFacts<'tcx> {
+        self.bodies.insert(def_id, |_| {
+            let body = callbacks::get_body(self.tcx, def_id)
+            .unwrap_or_else(|| panic!("did not find body for {def_id:?}"));
+            Box::new(body)
+        })
     }
 }
