@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::gilsonite;
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, is_borrow};
+use crate::logic::gilsonite::SeqOp;
 use crate::signature::build_signature;
 use crate::{
     codegen::{
@@ -700,7 +701,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                 }
             }
-            _ => fatal!(self, "Unsupported formula: {:?}", expr),
+            _ => fatal!(self, "Cannot lower formula: {:?}", expr),
         }
     }
 
@@ -854,100 +855,121 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Assertion::star(pfs, super::core_preds::value(left, ty, right))
     }
 
+    fn compile_points_to_new(
+        &mut self,
+        src: gilsonite::Expr<'tcx>,
+        tgt: gilsonite::Expr<'tcx>,
+    ) -> Assertion {
+        let ty = self.encode_type_with_args(tgt.ty);
+        let left_ty = self.subst(src.ty);
+        let left = self.compile_expression_inner(src);
+        let right = self.compile_expression_inner(tgt);
+        // If the type is a box or a nonnull, we need to access its pointer.
+        let (left, pfs) = if left_ty.is_box() {
+            // boxes have to be block pointers.
+            // We don't have that at the moment however, we need to encode
+            // The idea of a "freeable" resource.
+            let loc = GExpr::LVar(self.new_temp());
+            let proj = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), proj.clone()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
+            let box_ = self.make_box(ptr.clone());
+            let eq = Formula::Eq {
+                left: Box::new(box_),
+                right: Box::new(left),
+            };
+            let eq = Assertion::Pure(eq);
+            let pfs = Assertion::star(typing, eq);
+            (ptr, pfs)
+        } else if self.is_nonnull(left_ty) {
+            // FIXME: this is technically not correct,
+            // we would need to annotate the pointsTo to make sure that's true.
+            let loc = GExpr::LVar(self.new_temp());
+            let proj = GExpr::LVar(self.new_temp());
+            let ptr: Expr = [loc.clone(), proj.clone()].into();
+            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
+            let non_null = self.make_nonnull(ptr.clone());
+            let eq = Formula::Eq {
+                left: Box::new(non_null),
+                right: Box::new(left),
+            };
+            let eq = Assertion::Pure(eq);
+            let pfs = Assertion::star(typing, eq);
+            (ptr, pfs)
+        } else if ty_utils::is_mut_ref(left_ty) && self.prophecies_enabled() {
+            (left.lnth(0), Assertion::Emp)
+        } else {
+            (left, Assertion::Emp)
+        };
+        Assertion::star(pfs, super::core_preds::value(left, ty, right))
+    }
     pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let gilsonite = gilsonite::GilsoniteBuilder::new(thir.clone(), self.tcx());
         let _asrt = gilsonite.build_assert(e);
         // dbg!(_asrt);
+        self.compile_assertion_inner(_asrt)
+        //
+    }
 
-        let expr = &thir.exprs[e];
-        if !self.is_assertion_ty(self.subst(expr.ty)) {
-            fatal!(self, "{:?} is not the assertion type", self.subst(expr.ty))
-        }
-        match &expr.kind {
-            ExprKind::Scope {
-                region_scope: _,
-                lint_level: _,
-                value,
-            } => self.compile_assertion(*value, thir),
-            ExprKind::Use { source } => self.compile_assertion(*source, thir),
-            ExprKind::Call {
-                ty, fun: _, args, ..
-            } => match self.get_stub(*ty) {
-                Some(LogicStubs::AssertPure) => {
-                    assert!(args.len() == 1, "Pure call must have one argument");
-                    let formula = self.compile_formula(args[0], thir);
-                    Assertion::Pure(formula)
-                }
-                Some(LogicStubs::AssertObservation) => {
-                    assert!(args.len() == 1, "Observation call must have one argment");
-                    let formula = self.compile_formula(args[0], thir);
-                    super::core_preds::observation(formula)
-                }
-                Some(LogicStubs::AssertStar) => {
-                    assert!(args.len() == 2, "Pure call must have one argument");
-                    let left = self.compile_assertion(args[0], thir);
-                    let right = self.compile_assertion(args[1], thir);
-                    Assertion::star(left, right)
-                }
-                Some(LogicStubs::AssertEmp) => {
-                    assert!(args.len() == 0, "Emp call must have no arguments");
-                    Assertion::Emp
-                }
-                Some(LogicStubs::AssertPointsTo) => self.compile_points_to(args, thir),
-                Some(LogicStubs::AssertPointsToSlice) => {
-                    self.compile_points_to_slice(args, *ty, thir)
-                }
-                Some(LogicStubs::AssertUninit) => self.compile_uninit(args, *ty, thir),
-                Some(LogicStubs::AssertManyUninits) => self.compile_many_uninits(args, *ty, thir),
-                Some(LogicStubs::AssertMaybeUninit) => self.compile_maybe_uninit(args, *ty, thir),
-                Some(LogicStubs::AssertManyMaybeUninits) => {
-                    self.compile_many_maybe_uninits(args, *ty, thir)
-                }
-                Some(LogicStubs::ProphecyObserver) => {
-                    self.assert_prophecies_enabled("using prophecy::observer");
-                    let prophecy = self.compile_expression(args[0], thir);
-                    let typ = self
-                        .encode_type(self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty)));
-                    let model = self.compile_expression(args[1], thir);
-                    super::core_preds::observer(prophecy, typ, model)
-                }
-                Some(LogicStubs::ProphecyController) => {
-                    self.assert_prophecies_enabled("using prophecy::controller");
-                    let prophecy = self.compile_expression(args[0], thir);
-                    let typ = self
-                        .encode_type(self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty)));
-                    let model = self.compile_expression(args[1], thir);
-                    super::core_preds::controller(prophecy, typ, model)
-                }
-                _ => {
-                    let (def_id, substs) = match ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (*def_id, substs),
-                        _ => fatal!(self, "Unsupported Thir expression: {:?}", expr),
+    fn compile_assertion_inner(&mut self, gil: gilsonite::Assert<'tcx>) -> Assertion {
+        use gilsonite::AssertKind;
+        match gil.kind {
+            AssertKind::Star { left, right } => self
+                .compile_assertion_inner(*left)
+                .star(self.compile_assertion_inner(*right)),
+            AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula_inner(formula)),
+            AssertKind::Call {
+                def_id,
+                substs,
+                args,
+            } => {
+                let substs = self.subst(substs);
+                let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
+
+                let ty_params = param_collector::collect_params_on_args(substs)
+                    .with_consider_arguments(args.iter().map(|id| self.subst(id.ty)));
+                let mut params = Vec::with_capacity(
+                    ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
+                );
+                if ty_params.regions {
+                    if !has_generic_lifetimes(self.body_id, self.tcx()) {
+                        fatal!(
+                            self,
+                            "predicate calling another one, it has a lifetime param but not self?"
+                        )
                     };
-                    let substs = self.subst(*substs);
-                    let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
-                    let ty_params = param_collector::collect_params_on_args(substs)
-                        .with_consider_arguments(args.iter().map(|id| self.subst(thir[*id].ty)));
-                    let mut params = Vec::with_capacity(
-                        ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
-                    );
-                    if ty_params.regions {
-                        if !has_generic_lifetimes(self.body_id, self.tcx()) {
-                            fatal!(self, "predicate calling another one, it has a lifetime param but not self? in context: {:?}, offender: {ty:?}", self.pred_name())
-                        };
-                        params.push(Expr::PVar(lifetime_param_name("a")));
-                    }
-                    for tyarg in ty_params.parameters {
-                        let tyarg = self.encode_type(tyarg);
-                        params.push(tyarg.into());
-                    }
-                    for arg in args.iter() {
-                        params.push(self.compile_expression(*arg, thir));
-                    }
-                    Assertion::Pred { name, params }
+                    params.push(Expr::PVar(lifetime_param_name("a")));
                 }
-            },
-            _ => fatal!(self, "Can't compile assertion yet: {:?}", expr),
+                for tyarg in ty_params.parameters {
+                    let tyarg = self.encode_type(tyarg);
+                    params.push(tyarg.into());
+                }
+                for arg in args.into_iter() {
+                    params.push(self.compile_expression_inner(arg));
+                }
+                Assertion::Pred { name, params }
+            }
+            AssertKind::PointsTo { src, tgt } => self.compile_points_to_new(src, tgt),
+            AssertKind::Emp => Assertion::Emp,
+            AssertKind::Error(e) => fatal!(self, "{e}"),
+            AssertKind::Observation { formula } => {
+                let formula = self.compile_formula_inner(formula);
+                core_preds::observation(formula)
+            }
+            AssertKind::ProphecyController { prophecy, model } => {
+                self.assert_prophecies_enabled("using prophecy::controller");
+                let typ = self.encode_type(self.unwrap_prophecy_ty(self.subst(prophecy.ty)));
+                let prophecy = self.compile_expression_inner(prophecy);
+                let model = self.compile_expression_inner(model);
+                super::core_preds::controller(prophecy, typ, model)
+            }
+            AssertKind::ProphecyObserver { prophecy, model } => {
+                self.assert_prophecies_enabled("using prophecy::controller");
+                let typ = self.encode_type(self.unwrap_prophecy_ty(self.subst(prophecy.ty)));
+                let prophecy = self.compile_expression_inner(prophecy);
+                let model = self.compile_expression_inner(model);
+                super::core_preds::observer(prophecy, typ, model)
+            }
         }
     }
 
@@ -1243,6 +1265,219 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let post_lvars: Vec<_> = self.lvars.into_iter().collect();
 
         (pre_lvars, pre, (post_lvars, post))
+    }
+
+    fn compile_formula_inner(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
+        assert!(formula.bound_vars.is_empty());
+
+        let f = self.compile_formula_body(formula.body);
+        f
+    }
+
+    fn compile_formula_body(&mut self, formula: gilsonite::FormulaKind<'tcx>) -> Formula {
+        use gilsonite::{EOp, FOp, FormulaKind};
+        match formula {
+            FormulaKind::True => Formula::True,
+            FormulaKind::False => Formula::False,
+            FormulaKind::FOp { left, op, right } => {
+                let left = self.compile_formula_body(*left);
+                let right = self.compile_formula_body(*right);
+                match op {
+                    FOp::Impl => left.implies(right),
+                    FOp::Or => left.or(right),
+                    FOp::And => left.and(right),
+                }
+            }
+            FormulaKind::EOp { left, op, right } => {
+                let ty = left.ty;
+                let left = Box::new(self.compile_expression_inner(*left));
+                let right = Box::new(self.compile_expression_inner(*right));
+                match op {
+                    EOp::Lt => {
+                        if ty.is_floating_point() {
+                            Formula::FLess { left, right }
+                        } else {
+                            Formula::ILess { left, right }
+                        }
+                    }
+                    // TODO: Handle string case too (requires knowing what types its defined on)
+                    EOp::Le => {
+                        if ty.is_floating_point() {
+                            Formula::FLessEq { left, right }
+                        } else {
+                            Formula::ILessEq { left, right }
+                        }
+                    }
+                    EOp::Eq => left.eq_f(*right),
+                    EOp::SetMem => Formula::SetMem { left, right },
+                    EOp::SetSub => Formula::SetSub { left, right },
+                    EOp::Ne => left.eq_f(*right).fnot(),
+                }
+            }
+            FormulaKind::Neg { form } => self.compile_formula_body(*form).fnot(),
+        }
+    }
+
+    fn compile_expression_inner(&mut self, body: gilsonite::Expr<'tcx>) -> GExpr {
+        use gilsonite::{BinOp, ExprKind};
+        match body.kind {
+            ExprKind::Call {
+                def_id,
+                substs,
+                args,
+            } => {
+                let mut params: Vec<_> = substs
+                    .iter()
+                    .filter_map(|x| self.encode_generic_arg(x))
+                    .map(|x| x.into())
+                    .collect();
+                params.extend(args.into_iter().map(|e| self.compile_expression_inner(e)));
+
+                let fn_sig = self.tcx().fn_sig(def_id).skip_binder();
+                let out = fn_sig.output().skip_binder();
+                let out_var = self.temp_lvar(out);
+                params.push(out_var.clone());
+
+                let pred_call = Assertion::Pred {
+                    name: self.tcx().def_path_str(def_id),
+                    params,
+                };
+
+                self.local_toplevel_asrts.push(pred_call);
+                out_var
+            }
+            ExprKind::BinOp { left, op, right } => {
+                let left = self.compile_expression_inner(*left);
+                let right = self.compile_expression_inner(*right);
+                match op {
+                    BinOp::Eq => GExpr::eq_expr(left, right),
+                    BinOp::Lt => todo!(),
+                    BinOp::Le => todo!(),
+                    BinOp::Ge => todo!(),
+                    BinOp::Gt => todo!(),
+                    BinOp::Ne => todo!(),
+                    BinOp::Sub => GExpr::minus(left, right),
+                    BinOp::Add => GExpr::plus(left, right),
+                }
+            }
+            ExprKind::Constructor {
+                def_id,
+                args: _,
+                fields,
+                variant_index,
+            } => {
+                let fields: Vec<_> = fields
+                    .into_iter()
+                    .map(|f| self.compile_expression_inner(f))
+                    .collect();
+
+                match self.tcx().adt_def(def_id).adt_kind() {
+                    AdtKind::Enum => {
+                        let n: GExpr = variant_index.as_u32().into();
+                        vec![n, fields.into()].into()
+                    }
+                    AdtKind::Struct => fields.into(),
+                    AdtKind::Union => {
+                        fatal!(self, "Unions are not supported in logic yet")
+                    }
+                }
+            }
+            ExprKind::Tuple { fields } => {
+                let fields: Vec<_> = fields
+                    .into_iter()
+                    .map(|f| self.compile_expression_inner(f))
+                    .collect();
+                fields.into()
+            }
+            ExprKind::Field { lhs, field } => {
+                if matches!(self.subst(lhs.ty).kind(), TyKind::Tuple(..)) {
+                    self.compile_expression_inner(*lhs).lnth(field.as_u32())
+                } else if lhs.ty.is_any_ptr() {
+                    let ty = self.subst(lhs.ty.builtin_deref(true).unwrap().ty);
+                    let gil_derefed = self.compile_expression_inner(*lhs);
+                    let mut place = GilPlace::base(gil_derefed, ty);
+                    if ty.is_enum() {
+                        panic!("enum field, need to handle")
+                    }
+                    place.proj.push(GilProj::Field(
+                        field.as_u32(),
+                        self.encode_type_with_args(ty),
+                    ));
+                    if self.prophecies_enabled() {
+                        [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()].into()
+                    } else {
+                        place.into_expr_ptr()
+                    }
+                } else {
+                    match self.subst(lhs.ty).ty_adt_def() {
+                        Some(adt) => {
+                            if adt.is_struct() {
+                                let lhs = self.compile_expression_inner(*lhs);
+                                lhs.lnth(field.as_usize())
+                            } else {
+                                fatal!(self, "Can't use field access on enums in assertions.")
+                            }
+                        }
+                        None => fatal!(self, "Field access on non-adt in assertion? {:?}", lhs.ty),
+                    }
+                }
+            }
+
+            ExprKind::Var { id } => match self.var_map.get(&id) {
+                // Actually, the information about variable names is contained in
+                // `self.tcx().hir().name(id.0)`. So the information I keep is redundant.
+                // This deserves a cleanum.
+                Some(var) => var.clone(),
+                None => {
+                    let name = format!("#{}", self.tcx().hir().name(id.0));
+                    GExpr::LVar(name)
+                }
+            },
+            ExprKind::Integer { value } => value.into(),
+            ExprKind::SeqNil => GExpr::EList(vec![]),
+            ExprKind::SeqOp { op, args } => {
+                let mut args: Vec<_> = args
+                    .into_iter()
+                    .map(|a| self.compile_expression_inner(a))
+                    .collect();
+                match op {
+                    SeqOp::Append => args.remove(0).lst_concat(vec![args.remove(0)].into()),
+                    SeqOp::Prepend => {
+                        GExpr::lst_concat(vec![args.remove(1)].into(), args.remove(0))
+                    }
+                    SeqOp::Concat => args.remove(0).lst_concat(args.remove(0)),
+                    SeqOp::Head => args.remove(0).lst_head(),
+                    SeqOp::Tail => args.remove(0).lst_tail(),
+                    SeqOp::Len => args.remove(0).lst_len(),
+                    SeqOp::At => todo!(),
+                    SeqOp::Sub => todo!(),
+                    SeqOp::Repeat => todo!(),
+                }
+            }
+            ExprKind::Error(e) => fatal!(self, "{e}"),
+            ExprKind::ZST => vec![].into(),
+            ExprKind::SetProphecy { mut_ref, prophecy } => {
+                self.assert_prophecies_enabled("using `Prophecised::assign`");
+                let mut_ref = self.compile_expression_inner(*mut_ref);
+                let pcy = self.compile_expression_inner(*prophecy);
+                [mut_ref.lnth(0), pcy].into()
+            }
+            ExprKind::GetProphecy { mut_ref } => {
+                self.assert_prophecies_enabled("using `Prophecised::prophecy`");
+                let mut_ref = self.compile_expression_inner(*mut_ref);
+                mut_ref.lnth(1)
+            }
+            ExprKind::GetValue { mut_ref } => {
+                self.assert_prophecies_enabled("using `Prophecy::value`");
+                let ty = self.unwrap_prophecy_ty(self.subst(mut_ref.ty));
+                let prophecy = self.compile_expression_inner(*mut_ref);
+                let value = self.temp_lvar(ty);
+                let ty = self.encode_type(ty);
+                self.local_toplevel_asrts
+                    .push(core_preds::pcy_value(prophecy, ty, value.clone()));
+                value
+            }
+        }
     }
 }
 

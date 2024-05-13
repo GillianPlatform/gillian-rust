@@ -1,10 +1,11 @@
 use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::{
-    mir::{self, BorrowKind, Place},
+    mir::{self, interpret::Scalar, BorrowKind, ConstValue, Place},
     thir::{self, AdtExpr, ExprId, LocalVarId, Thir},
-    ty::{self, GenericArgsRef, Ty, TyCtxt},
+    ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind},
 };
+
 use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -12,7 +13,7 @@ use super::builtins::LogicStubs;
 
 /// Pure logical terms, must have no spatial or resource component.
 #[derive(Debug)]
-enum ExprKind<'tcx> {
+pub enum ExprKind<'tcx> {
     Call {
         def_id: DefId,
         substs: GenericArgsRef<'tcx>,
@@ -49,10 +50,52 @@ enum ExprKind<'tcx> {
         args: Vec<Expr<'tcx>>,
     },
     Error(String),
+    ZST,
+    SetProphecy { mut_ref: Box<Expr<'tcx>>, prophecy: Box<Expr<'tcx>> },
+    GetProphecy { mut_ref: Box<Expr<'tcx>> },
+    GetValue { mut_ref: Box<Expr<'tcx>> },
 }
 
 #[derive(Debug)]
-enum SeqOp {
+pub enum FormulaKind<'tcx> {
+    True,
+    False,
+    FOp {
+        left: Box<FormulaKind<'tcx>>,
+        op: FOp,
+        right: Box<FormulaKind<'tcx>>,
+    },
+    EOp {
+        left: Box<Expr<'tcx>>,
+        op: EOp,
+        right: Box<Expr<'tcx>>,
+    },
+    Neg {
+        form: Box<FormulaKind<'tcx>>,
+    },
+}
+
+/// Propositional operators
+#[derive(Debug)]
+pub enum FOp {
+    Impl,
+    Or,
+    And,
+}
+
+/// Expression operations
+#[derive(Debug)]
+pub enum EOp {
+    Lt,
+    Le,
+    Eq,
+    Ne,
+    SetMem,
+    SetSub,
+}
+
+#[derive(Debug)]
+pub enum SeqOp {
     Append,
     Prepend,
     Concat,
@@ -64,7 +107,7 @@ enum SeqOp {
     Repeat,
 }
 #[derive(Debug)]
-enum BinOp {
+pub enum BinOp {
     Eq,
     Lt,
     Le,
@@ -76,24 +119,24 @@ enum BinOp {
 }
 
 #[derive(Debug)]
-struct Formula<'tcx> {
-    bound_vars: Vec<(Symbol, Ty<'tcx>)>,
-    body: Expr<'tcx>,
+pub struct Formula<'tcx> {
+    pub bound_vars: Vec<(Symbol, Ty<'tcx>)>,
+    pub body: FormulaKind<'tcx>,
 }
 
 #[derive(Debug)]
-struct Expr<'tcx> {
-    kind: ExprKind<'tcx>,
-    ty: Ty<'tcx>,
+pub struct Expr<'tcx> {
+    pub kind: ExprKind<'tcx>,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Debug)]
 pub struct Assert<'tcx> {
-    kind: AssertKind<'tcx>,
+    pub kind: AssertKind<'tcx>,
 }
 
 #[derive(Debug)]
-enum AssertKind<'tcx> {
+pub enum AssertKind<'tcx> {
     /// Separating conjunction
     Star {
         left: Box<Assert<'tcx>>,
@@ -117,6 +160,17 @@ enum AssertKind<'tcx> {
     },
     Emp,
     Error(String),
+    Observation {
+        formula: Formula<'tcx>,
+    },
+    ProphecyController {
+        prophecy: Expr<'tcx>,
+        model: Expr<'tcx>,
+    },
+    ProphecyObserver {
+        prophecy: Expr<'tcx>,
+        model: Expr<'tcx>,
+    },
     // ... other core predicates
 }
 
@@ -174,14 +228,33 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         AssertKind::PointsTo { src, tgt }
                     }
                     // Other core predicates
-                    Some(LogicStubs::AssertObservation) => AssertKind::Error("AssertObservation".into()),
-                    Some(LogicStubs::AssertPointsToSlice) => AssertKind::Error("AssertPointsToSlice".into()),
+                    Some(LogicStubs::AssertObservation) => {
+                        let formula = self.build_formula(args[0]);
+                        AssertKind::Observation { formula }
+                    }
+                    Some(LogicStubs::AssertPointsToSlice) => {
+                        AssertKind::Error("AssertPointsToSlice".into())
+                    }
                     Some(LogicStubs::AssertUninit) => AssertKind::Error("AssertUninit".into()),
-                    Some(LogicStubs::AssertManyUninits) => AssertKind::Error("AssertManyUninits".into()),
-                    Some(LogicStubs::AssertMaybeUninit) => AssertKind::Error("AssertMaybeUninit".into()),
-                    Some(LogicStubs::AssertManyMaybeUninits) => AssertKind::Error("AssertManyMaybeUninits".into()),
-                    Some(LogicStubs::ProphecyObserver) => AssertKind::Error("ProphecyObserver".into()),
-                    Some(LogicStubs::ProphecyController) => AssertKind::Error("ProphecyController".into()),
+                    Some(LogicStubs::AssertManyUninits) => {
+                        AssertKind::Error("AssertManyUninits".into())
+                    }
+                    Some(LogicStubs::AssertMaybeUninit) => {
+                        AssertKind::Error("AssertMaybeUninit".into())
+                    }
+                    Some(LogicStubs::AssertManyMaybeUninits) => {
+                        AssertKind::Error("AssertManyMaybeUninits".into())
+                    }
+                    Some(LogicStubs::ProphecyObserver) => {
+                        let prophecy = self.build_expression(args[0]);
+                        let model = self.build_expression(args[1]);
+                        AssertKind::ProphecyObserver { prophecy, model }
+                    }
+                    Some(LogicStubs::ProphecyController) => {
+                        let prophecy = self.build_expression(args[0]);
+                        let model = self.build_expression(args[1]);
+                        AssertKind::ProphecyController { prophecy, model }
+                    }
                     Some(LogicStubs::OwnPred) | None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
@@ -243,8 +316,109 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     Some(LogicStubs::FormulaForall) => todo!(),
                     _ => Formula {
                         bound_vars: Vec::new(),
-                        body: self.build_expression(id),
+                        body: self.build_formula_body(id),
                     },
+                }
+            }
+            _ => self
+                .tcx
+                .dcx()
+                .fatal(format!("Unsupported formula: {:?}", expr)),
+        }
+    }
+
+    fn build_formula_body(&self, id: ExprId) -> FormulaKind<'tcx> {
+        let expr = &self.thir[id];
+        if !self.is_formula_ty(expr.ty) {
+            todo!()
+            // fatal!(self, "{:?} is not the formula type", self.subst(expr.ty))
+        }
+
+        match &expr.kind {
+            thir::ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.build_formula_body(*value),
+            thir::ExprKind::Use { source } => self.build_formula_body(*source),
+            thir::ExprKind::Call {
+                ty, fun: _, args, ..
+            } => {
+                let stub = self.get_stub(*ty);
+                match stub {
+                    Some(LogicStubs::FormulaEqual) => {
+                        let left = self.build_expression(args[0]);
+                        let right = self.build_expression(args[1]);
+                        FormulaKind::EOp {
+                            left: Box::new(left),
+                            op: EOp::Eq,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaLess) => {
+                        let left = self.build_expression(args[0]);
+                        let right = self.build_expression(args[1]);
+                        FormulaKind::EOp {
+                            left: Box::new(left),
+                            op: EOp::Lt,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaLessEq) => {
+                        let left = self.build_expression(args[0]);
+                        let right = self.build_expression(args[1]);
+                        FormulaKind::EOp {
+                            left: Box::new(left),
+                            op: EOp::Le,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaAnd) => {
+                        let left = self.build_formula_body(args[0]);
+                        let right = self.build_formula_body(args[1]);
+                        FormulaKind::FOp {
+                            left: Box::new(left),
+                            op: FOp::And,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaOr) => {
+                        let left = self.build_formula_body(args[0]);
+                        let right = self.build_formula_body(args[1]);
+                        FormulaKind::FOp {
+                            left: Box::new(left),
+                            op: FOp::Or,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaNeg) => {
+                        let form = self.build_formula_body(args[0]);
+                        FormulaKind::Neg {
+                            form: Box::new(form),
+                        }
+                    }
+                    Some(LogicStubs::FormulaNotEqual) => {
+                        let left = self.build_expression(args[0]);
+                        let right = self.build_expression(args[1]);
+                        FormulaKind::EOp {
+                            left: Box::new(left),
+                            op: EOp::Ne,
+                            right: Box::new(right),
+                        }
+                    }
+                    Some(LogicStubs::FormulaImplication) => {
+                        let left = self.build_formula_body(args[0]);
+                        let right = self.build_formula_body(args[1]);
+                        FormulaKind::FOp {
+                            left: Box::new(left),
+                            op: FOp::Impl,
+                            right: Box::new(right),
+                        }
+                    }
+                    _ => self
+                        .tcx
+                        .dcx()
+                        .fatal(format!("Unsupported formula: {:?}", expr)),
                 }
             }
             _ => self
@@ -261,6 +435,28 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         }
     }
 
+    fn compile_constant(&self, cst: ConstValue<'tcx>, ty: Ty<'tcx>) -> ExprKind<'tcx> {
+        match (cst, ty.kind()) {
+            (ConstValue::ZeroSized, _) => ExprKind::ZST,
+            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Int(..)) => {
+                let i = sci
+                    .try_to_int(sci.size())
+                    .expect("Cannot fail because we chose the right size");
+                ExprKind::Integer { value: i as u128 }
+            }
+            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Uint(..)) => {
+                let i = sci
+                    .try_to_uint(sci.size())
+                    .expect("Cannot fail because we chose the right size");
+                ExprKind::Integer { value: i }
+            }
+            _ => self
+                .tcx
+                .dcx()
+                .fatal(format!("Cannot encore constant {:?} of type {:?}", cst, ty)),
+        }
+    }
+
     fn build_expression_kind(&self, id: ExprId) -> ExprKind<'tcx> {
         let expr = &self.thir[id];
 
@@ -273,6 +469,24 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Use { source } => self.build_expression_kind(*source),
             thir::ExprKind::UpvarRef { var_hir_id, .. } => ExprKind::Var { id: *var_hir_id },
             thir::ExprKind::VarRef { id } => ExprKind::Var { id: *id },
+            thir::ExprKind::NamedConst {
+                def_id,
+                args,
+                user_ty: _,
+            } => {
+                if !args.is_empty() {
+                    self.tcx
+                        .dcx()
+                        .fatal(format!("Cannot evaluate this constant yet: {:?}", def_id));
+                };
+                let cst = self.tcx.const_eval_poly(*def_id).unwrap_or_else(|_| {
+                    self.tcx
+                        .dcx()
+                        .fatal(format!("Cannot evaluate this constant yet: {:?}", def_id))
+                });
+
+                self.compile_constant(cst, expr.ty)
+            }
             thir::ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index,
@@ -423,7 +637,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         };
                         ExprKind::SeqOp { op, args }
                     }
-                    Some(LogicStubs::ProphecyGetValue) => ExprKind::Error("ProphecyGetValue".into()),
                     None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
@@ -437,16 +650,26 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             args,
                         }
                     }
-                    Some(a) => {
-                       self
-                        .tcx
-                        .dcx()
-                        .fatal(format!("{:?} unsupported stub in expression", a))
+                    Some(LogicStubs::MutRefGetProphecy) => {
+                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
+                        let mut_ref = Box::new(self.build_expression(args[0]));
+                        ExprKind::GetProphecy { mut_ref }
                     }
-                    _ => self
+                    Some(LogicStubs::ProphecyGetValue) => {
+                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
+                        let mut_ref = Box::new(self.build_expression(args[0]));
+                        ExprKind::GetValue { mut_ref }
+                    }
+                    Some(LogicStubs::MutRefSetProphecy) => {
+                        // self.asser/t_prophecies_enabled("using `Prophecised::assign`");
+                        let mut_ref = Box::new(self.build_expression(args[0]));
+                        let prophecy = Box::new(self.build_expression(args[1]));
+                        ExprKind::SetProphecy { mut_ref, prophecy }
+                    }
+                    Some(a) => self
                         .tcx
                         .dcx()
-                        .fatal(format!("{:?} unsupported call in expression", expr)),
+                        .fatal(format!("{:?} unsupported stub in expression", a)),
                 }
             }
             _ => self
