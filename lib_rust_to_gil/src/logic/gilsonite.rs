@@ -1,7 +1,7 @@
 use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::{
-    mir::{self, interpret::Scalar, BorrowKind, ConstValue, Place},
+    mir::{self, interpret::Scalar, BorrowKind, ConstValue},
     thir::{self, AdtExpr, ExprId, LocalVarId, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind},
 };
@@ -51,9 +51,16 @@ pub enum ExprKind<'tcx> {
     },
     Error(String),
     ZST,
-    SetProphecy { mut_ref: Box<Expr<'tcx>>, prophecy: Box<Expr<'tcx>> },
-    GetProphecy { mut_ref: Box<Expr<'tcx>> },
-    GetValue { mut_ref: Box<Expr<'tcx>> },
+    SetProphecy {
+        mut_ref: Box<Expr<'tcx>>,
+        prophecy: Box<Expr<'tcx>>,
+    },
+    GetProphecy {
+        mut_ref: Box<Expr<'tcx>>,
+    },
+    GetValue {
+        mut_ref: Box<Expr<'tcx>>,
+    },
 }
 
 #[derive(Debug)]
@@ -111,8 +118,6 @@ pub enum BinOp {
     Eq,
     Lt,
     Le,
-    Ge,
-    Gt,
     Ne,
     Sub,
     Add,
@@ -170,6 +175,27 @@ pub enum AssertKind<'tcx> {
     ProphecyObserver {
         prophecy: Expr<'tcx>,
         model: Expr<'tcx>,
+    },
+    PointsToSlice {
+        src: Expr<'tcx>,
+        size: Expr<'tcx>,
+        pointees: Expr<'tcx>,
+    },
+    Uninit {
+        pointer: Expr<'tcx>,
+    },
+    ManyUninits {
+        pointer: Expr<'tcx>,
+        size: Expr<'tcx>,
+    },
+    MaybeUninit {
+        pointer: Expr<'tcx>,
+        pointee: Expr<'tcx>,
+    },
+    ManyMaybeUninits {
+        pointer: Expr<'tcx>,
+        pointees: Expr<'tcx>,
+        size: Expr<'tcx>,
     },
     // ... other core predicates
 }
@@ -233,17 +259,45 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         AssertKind::Observation { formula }
                     }
                     Some(LogicStubs::AssertPointsToSlice) => {
-                        AssertKind::Error("AssertPointsToSlice".into())
+                        let src = self.build_expression(args[0]);
+                        let size = self.build_expression(args[1]);
+                        let pointees = self.build_expression(args[1]);
+
+                        // TODO unify with PointsTo
+                        AssertKind::PointsToSlice {
+                            src,
+                            size,
+                            pointees,
+                        }
                     }
-                    Some(LogicStubs::AssertUninit) => AssertKind::Error("AssertUninit".into()),
+                    Some(LogicStubs::AssertUninit) => {
+                        let pointer = self.build_expression(args[0]);
+
+                        AssertKind::Uninit { pointer }
+                    }
                     Some(LogicStubs::AssertManyUninits) => {
-                        AssertKind::Error("AssertManyUninits".into())
+                        let pointer = self.build_expression(args[0]);
+
+                        let size = self.build_expression(args[1]);
+
+                        AssertKind::ManyUninits { pointer, size }
                     }
                     Some(LogicStubs::AssertMaybeUninit) => {
-                        AssertKind::Error("AssertMaybeUninit".into())
+                        let pointer = self.build_expression(args[0]);
+                        let pointee = self.build_expression(args[1]);
+
+                        AssertKind::MaybeUninit { pointer, pointee }
                     }
                     Some(LogicStubs::AssertManyMaybeUninits) => {
-                        AssertKind::Error("AssertManyMaybeUninits".into())
+                        let pointer = self.build_expression(args[0]);
+
+                        let size = self.build_expression(args[1]);
+                        let pointees = self.build_expression(args[2]);
+                        AssertKind::ManyMaybeUninits {
+                            pointer,
+                            pointees,
+                            size,
+                        }
                     }
                     Some(LogicStubs::ProphecyObserver) => {
                         let prophecy = self.build_expression(args[0]);
@@ -691,21 +745,4 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             _ => e,
         }
     }
-
-    // fn expect_place(&self, args: ExprId) -> Place<'tcx> {
-    //     let expr = &self.thir[args];
-
-    //     match &expr.kind {
-    //         thir::ExprKind::Scope {
-    //             region_scope: _,
-    //             lint_level: _,
-    //             value,
-    //         } => self.expect_place(*value),
-    //         _ => todo!("{:?}", self.thir[args]),
-    //     }
-    // }
 }
-
-// struct Formula<'tcx> {
-
-// }

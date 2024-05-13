@@ -319,9 +319,7 @@ impl<'tcx> TupleOwn<'tcx> {
 
         let lvar_x = Expr::LVar("#x".into());
         let lvar_y = Expr::LVar("#y".into());
-        let eq = slf
-            .eq_f([ lvar_x.clone(), lvar_y.clone()])
-            .into_asrt();
+        let eq = slf.eq_f([lvar_x.clone(), lvar_y.clone()]).into_asrt();
 
         let mut params = vec![];
         if ty_param_left.regions {

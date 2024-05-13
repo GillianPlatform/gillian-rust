@@ -61,8 +61,12 @@ fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F
 
 fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
     for param in &defs.params {
-        if let GenericParamDefKind::Const { is_host_effect: true, .. } = param.kind {
-            continue
+        if let GenericParamDefKind::Const {
+            is_host_effect: true,
+            ..
+        } = param.kind
+        {
+            continue;
         }
         f(param);
     }

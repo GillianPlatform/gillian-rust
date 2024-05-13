@@ -17,14 +17,11 @@ use crate::{
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use indexmap::IndexMap;
-use rustc_ast::LitKind;
 
 use rustc_middle::{
-    mir::{interpret::Scalar, BinOp, BorrowKind},
-    thir::{AdtExpr, BlockId, ClosureExpr, ExprId, ExprKind, LocalVarId, PatKind, Thir},
-    ty::{AdtKind, EarlyBinder, UpvarArgs},
+    thir::{BlockId, ExprId, ExprKind, LocalVarId, PatKind, Thir},
+    ty::{AdtKind, EarlyBinder},
 };
-use rustc_target::abi::FieldIdx;
 use rustc_type_ir::fold::TypeFoldable;
 
 pub(crate) struct PredSig<'tcx> {
@@ -240,14 +237,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn is_assertion_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_assertion_ty(ty, self.tcx())
-    }
-
-    fn is_formula_ty(&self, ty: Ty<'tcx>) -> bool {
-        super::builtins::is_formula_ty(ty, self.tcx())
-    }
-
     pub(crate) fn get_stub(&self, ty: Ty<'tcx>) -> Option<LogicStubs> {
         LogicStubs::for_fn_def_ty(ty, self.tcx())
     }
@@ -256,452 +245,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         match ty.kind() {
             TyKind::Adt(_, args) => args[0].expect_ty(),
             _ => fatal!(self, "Prophecy field on non-prophecy"),
-        }
-    }
-
-    fn compile_constant(&self, cst: ConstValue<'tcx>, ty: Ty<'tcx>) -> GExpr {
-        let ty = self.subst(ty);
-        match (cst, ty.kind()) {
-            (ConstValue::ZeroSized, _) => vec![].into(),
-            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Int(..)) => {
-                let i = sci
-                    .try_to_int(sci.size())
-                    .expect("Cannot fail because we chose the right size");
-                i.into()
-            }
-            (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Uint(..)) => {
-                let i = sci
-                    .try_to_uint(sci.size())
-                    .expect("Cannot fail because we chose the right size");
-                i.into()
-            }
-            _ => fatal!(self, "Cannot encore constant {:?} of type {:?}", cst, ty),
-        }
-    }
-
-    pub(crate) fn compile_expression(&mut self, e: ExprId, thir: &Thir<'tcx>) -> GExpr {
-        let expr = &thir[e];
-        match &expr.kind {
-            ExprKind::Scope { value, .. } => self.compile_expression(*value, thir),
-            ExprKind::VarRef { id } | ExprKind::UpvarRef { var_hir_id: id, .. } => {
-                match self.var_map.get(id) {
-                    // Actually, the information about variable names is contained in
-                    // `self.tcx().hir().name(id.0)`. So the information I keep is redundant.
-                    // This deserves a cleanum.
-                    Some(var) => var.clone(),
-                    None => {
-                        let name = format!("#{}", self.tcx().hir().name(id.0));
-                        GExpr::LVar(name)
-                    }
-                }
-            }
-            ExprKind::Adt(box AdtExpr {
-                adt_def: def,
-                variant_index,
-                fields,
-                base,
-                args: _,
-                user_ty: _,
-            }) => {
-                if base.is_some() {
-                    fatal!(self, "Illegal base in logic ADT expression")
-                }
-                let mut fields_with_idx: Vec<(FieldIdx, GExpr)> = fields
-                    .iter()
-                    .map(|f| (f.name, self.compile_expression(f.expr, thir)))
-                    .collect();
-                fields_with_idx.sort_by(|(f1, _), (f2, _)| f1.cmp(f2));
-                let fields: Vec<GExpr> = fields_with_idx.into_iter().map(|(_, e)| e).collect();
-                match def.adt_kind() {
-                    AdtKind::Enum => {
-                        let n: GExpr = variant_index.as_u32().into();
-                        vec![n, fields.into()].into()
-                    }
-                    AdtKind::Struct => fields.into(),
-                    AdtKind::Union => {
-                        fatal!(self, "Unions are not supported in logic yet")
-                    }
-                }
-            }
-            ExprKind::NamedConst {
-                def_id,
-                args,
-                user_ty: _,
-            } => {
-                if !args.is_empty() {
-                    fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id);
-                };
-                let cst = self.tcx().const_eval_poly(*def_id).unwrap_or_else(|_| {
-                    fatal!(self, "Cannot evaluate this constant yet: {:?}", def_id)
-                });
-                self.compile_constant(cst, expr.ty)
-            }
-            ExprKind::Literal { lit, neg } => {
-                if *neg {
-                    fatal!(self, "Negged literal? {:?}", expr)
-                }
-                match lit.node {
-                    LitKind::Int(i, _) => i.get().into(),
-                    _ => fatal!(self, "Unsupported literal {:?}", expr),
-                }
-            }
-            ExprKind::Binary { op, lhs, rhs } => {
-                let left = self.compile_expression(*lhs, thir);
-                let right = self.compile_expression(*rhs, thir);
-                let ty = self.subst(thir.exprs[*lhs].ty);
-                match op {
-                    BinOp::Add => {
-                        if ty.is_integral() {
-                            GExpr::plus(left, right)
-                        } else {
-                            fatal!(self, "Unsupported type for addition {:?}", ty)
-                        }
-                    }
-                    BinOp::Sub => {
-                        if ty.is_integral() {
-                            GExpr::minus(left, right)
-                        } else {
-                            fatal!(self, "Unsupported type for substraction {:?}", ty)
-                        }
-                    }
-                    BinOp::Shl => {
-                        if ty.is_integral() {
-                            GExpr::i_shl(left, right)
-                        } else {
-                            fatal!(self, "Unsupported type for << {:?}", ty)
-                        }
-                    }
-                    _ => fatal!(self, "Unsupported binary operator {:?}", op),
-                }
-            }
-            ExprKind::Tuple { fields } => {
-                let fields: Vec<GExpr> = fields
-                    .iter()
-                    .map(|f| self.compile_expression(*f, thir))
-                    .collect();
-                fields.into()
-            }
-            ExprKind::Borrow {
-                borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
-                arg,
-            } => {
-                // We ignore reborrows, there is no temporality in expressions.
-                let arg = Self::resolve(*arg, thir);
-                let arg = &thir[arg];
-                match arg.kind {
-                    ExprKind::Deref { arg: e } => self.compile_expression(e, thir),
-                    ExprKind::Field {
-                        lhs,
-                        variant_index: _,
-                        name,
-                    } => {
-                        let lhs = Self::resolve(lhs, thir);
-                        let lhs = &thir[lhs];
-                        match lhs.kind {
-                            ExprKind::Deref { arg: derefed } => {
-                                // Expression is of the form `& (*derefed).field`
-                                // Derefed should be a pointer, and we offset it by the field, adding the right projection.
-                                let gil_derefed = self.compile_expression(derefed, thir);
-                                let ty = self.subst(lhs.ty);
-                                let mut place = GilPlace::base(gil_derefed, ty);
-                                if ty.is_enum() {
-                                    panic!("enum field, need to handle")
-                                }
-                                place.proj.push(GilProj::Field(
-                                    name.as_u32(),
-                                    self.encode_type_with_args(ty),
-                                ));
-                                if self.prophecies_enabled() {
-                                    [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()]
-                                        .into()
-                                } else {
-                                    place.into_expr_ptr()
-                                }
-                            }
-                            _ => fatal!(self, "Cannot deref this: {:?}", lhs),
-                        }
-                    }
-                    _ => fatal!(
-                        self,
-                        "Unsupported borrow in assertion, borrowing: {:?}",
-                        arg
-                    ),
-                }
-            }
-            ExprKind::Field {
-                lhs,
-                variant_index: _,
-                name,
-            } if matches!(self.subst(thir[*lhs].ty).kind(), TyKind::Tuple(..)) => {
-                self.compile_expression(*lhs, thir).lnth(name.as_u32())
-            }
-            ExprKind::Field {
-                lhs,
-                variant_index: _,
-                name,
-            } => match self.subst(thir[*lhs].ty).ty_adt_def() {
-                Some(adt) => {
-                    if adt.is_struct() {
-                        let lhs = self.compile_expression(*lhs, thir);
-                        lhs.lnth(name.as_usize())
-                    } else {
-                        fatal!(self, "Can't use field access on enums in assertions.")
-                    }
-                }
-                None => fatal!(self, "Field access on non-adt in assertion?"),
-            },
-            ExprKind::Call {
-                ty, fun: _, args, ..
-            } => match self.get_stub(*ty) {
-                Some(LogicStubs::SeqNil) => {
-                    assert!(args.is_empty());
-                    GExpr::EList(vec![])
-                }
-                Some(LogicStubs::SeqAppend) => {
-                    let list = self.compile_expression(args[0], thir);
-                    let elem = self.compile_expression(args[1], thir);
-                    let elem = vec![elem].into();
-                    Expr::lst_concat(list, elem)
-                }
-                Some(LogicStubs::SeqPrepend) => {
-                    let list = self.compile_expression(args[0], thir);
-                    let elem = self.compile_expression(args[1], thir);
-                    let elem = vec![elem].into();
-                    Expr::lst_concat(elem, list)
-                }
-                Some(LogicStubs::SeqConcat) => {
-                    let left = self.compile_expression(args[0], thir);
-                    let right = self.compile_expression(args[1], thir);
-                    Expr::lst_concat(left, right)
-                }
-                Some(LogicStubs::SeqHead) => self.compile_expression(args[0], thir).lst_head(),
-                Some(LogicStubs::SeqTail) => self.compile_expression(args[0], thir).lst_tail(),
-                Some(LogicStubs::SeqLen) => {
-                    let list = self.compile_expression(args[0], thir);
-                    list.lst_len()
-                }
-                Some(LogicStubs::SeqAt) => {
-                    let list = self.compile_expression(args[0], thir);
-                    let index = self.compile_expression(args[1], thir);
-                    list.lnth_e(index)
-                }
-                Some(LogicStubs::SeqSub) => {
-                    let list = self.compile_expression(args[0], thir);
-                    let start = self.compile_expression(args[1], thir);
-                    let size = self.compile_expression(args[2], thir);
-                    list.lst_sub_e(start, size)
-                }
-                Some(LogicStubs::SeqRepeat) => {
-                    let elem = self.compile_expression(args[0], thir);
-                    let size = self.compile_expression(args[1], thir);
-                    elem.repeat(size)
-                }
-                Some(LogicStubs::MutRefGetProphecy) => {
-                    self.assert_prophecies_enabled("using `Prophecised::prophecy`");
-                    let mut_ref = self.compile_expression(args[0], thir);
-                    mut_ref.lnth(1)
-                }
-                Some(LogicStubs::MutRefSetProphecy) => {
-                    self.assert_prophecies_enabled("using `Prophecised::assign`");
-                    let mut_ref = self.compile_expression(args[0], thir);
-                    let pcy = self.compile_expression(args[1], thir);
-                    [mut_ref.lnth(0), pcy].into()
-                }
-                Some(LogicStubs::ProphecyGetValue) => {
-                    self.assert_prophecies_enabled("using `Prophecy::value`");
-                    let prophecy = self.compile_expression(args[0], thir);
-                    let ty = self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty));
-                    let value = self.temp_lvar(ty);
-                    let ty = self.encode_type(ty);
-                    self.local_toplevel_asrts.push(core_preds::pcy_value(
-                        prophecy,
-                        ty,
-                        value.clone(),
-                    ));
-                    value
-                }
-                Some(LogicStubs::ProphecyField(i)) => {
-                    self.assert_prophecies_enabled("using `Prophecy::field`");
-                    let proph = self.compile_expression(args[0], thir);
-                    let ty = self.unwrap_prophecy_ty(self.subst(thir.exprs[args[0]].ty));
-                    [
-                        proph.clone().lnth(0),
-                        proph.lnth(1).lst_concat(
-                            [GilProj::Field(i, self.encode_type(ty)).into_expr()].into(),
-                        ),
-                    ]
-                    .into()
-                }
-                None if match ty.kind() {
-                    TyKind::FnDef(def_id, _) => self.tcx().is_constructor(*def_id),
-                    _ => false,
-                } =>
-                {
-                    let fields: Vec<GExpr> = args
-                        .iter()
-                        .map(|a| self.compile_expression(*a, thir))
-                        .collect();
-                    let (did, ty_of_ctor) = match ty.kind() {
-                        TyKind::FnDef(did, subst) => (
-                            did,
-                            self.tcx()
-                                .fn_sig(*did)
-                                .instantiate(self.tcx(), subst)
-                                .output()
-                                .skip_binder(),
-                        ),
-                        _ => unreachable!(),
-                    };
-                    let def = ty_of_ctor.ty_adt_def().unwrap();
-                    if ty_of_ctor.is_enum() {
-                        let idx = def.variant_index_with_ctor_id(*did).index();
-                        return vec![idx.into(), fields.into()].into();
-                    }
-                    fatal!(self, "Constructor, but not for an enum: {:?}", expr)
-                }
-                None => {
-                    let (did, subst) = match ty.kind() {
-                        TyKind::FnDef(did, subst) => (*did, *subst),
-                        _ => fatal!(self, "Not an FnDef? {:?}", ty),
-                    };
-                    let mut params: Vec<_> = subst
-                        .iter()
-                        .filter_map(|x| self.encode_generic_arg(x))
-                        .map(|x| x.into())
-                        .collect();
-                    params.extend(args.iter().map(|e| self.compile_expression(*e, thir)));
-
-                    let fn_sig = ty.fn_sig(self.tcx());
-                    let out = fn_sig.output().skip_binder();
-                    let out_var = self.temp_lvar(out);
-                    params.push(out_var.clone());
-
-                    let pred_call = Assertion::Pred {
-                        name: self.tcx().def_path_str(did),
-                        params,
-                    };
-
-                    self.local_toplevel_asrts.push(pred_call);
-                    out_var
-                }
-                _ => fatal!(self, "{:?} unsupported call in expression", expr),
-            },
-            _ => fatal!(
-                self,
-                "{:?} unsupported Thir expression in expression while compiling {:?}",
-                expr,
-                self.body_id
-            ),
-        }
-    }
-
-    fn compile_forall(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
-        match &thir[e].kind {
-            ExprKind::Scope { value, .. } => self.compile_forall(*value, thir),
-            ExprKind::Closure(box ClosureExpr {
-                closure_id,
-                args: UpvarArgs::Closure(args),
-                ..
-            }) => {
-                let name = self.tcx().fn_arg_names(*closure_id)[0];
-                let ty = args
-                    .as_closure()
-                    .sig()
-                    .input(0)
-                    .skip_binder()
-                    .tuple_fields()[0];
-                let inner =
-                    PredCtx::new(self.global_env, self.temp_gen, closure_id.to_def_id(), args)
-                        .compile_formula_closure();
-                let type_ = if ty.is_integral() {
-                    Some(Type::IntType)
-                } else {
-                    None
-                };
-                Formula::forall((format!("#{}", name), type_), inner)
-            }
-            kind => fatal!(self, "Unexpected quantified form: {:?}", kind),
-        }
-    }
-
-    fn compile_formula(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Formula {
-        let expr = &thir.exprs[e];
-        if !self.is_formula_ty(self.subst(expr.ty)) {
-            fatal!(self, "{:?} is not the formula type", self.subst(expr.ty))
-        }
-
-        match &expr.kind {
-            ExprKind::Scope {
-                region_scope: _,
-                lint_level: _,
-                value,
-            } => self.compile_formula(*value, thir),
-            ExprKind::Use { source } => self.compile_formula(*source, thir),
-            ExprKind::Call {
-                ty, fun: _, args, ..
-            } => {
-                let stub = self.get_stub(*ty);
-                match stub {
-                    Some(LogicStubs::FormulaEqual) => {
-                        assert!(args.len() == 2, "Equal call must have two arguments");
-                        let left = Box::new(self.compile_expression(args[0], thir));
-                        let right = Box::new(self.compile_expression(args[1], thir));
-                        left.eq_f(*right)
-                    }
-                    Some(LogicStubs::FormulaNotEqual) => {
-                        assert!(args.len() == 2, "NotEqual call must have two arguments");
-                        let left = Box::new(self.compile_expression(args[0], thir));
-                        let right = Box::new(self.compile_expression(args[1], thir));
-                        left.eq_f(*right).fnot()
-                    }
-                    Some(LogicStubs::FormulaLessEq) => {
-                        assert!(args.len() == 2, "LessEq call must have two arguments");
-                        let ty = self.subst(thir.exprs[args[0]].ty);
-                        if ty.is_integral() {
-                            let left = Box::new(self.compile_expression(args[0], thir));
-                            let right = Box::new(self.compile_expression(args[1], thir));
-                            Formula::ILessEq { left, right }
-                        } else {
-                            fatal!(self, "Used <= in formula for unknown type: {}", ty)
-                        }
-                    }
-                    Some(LogicStubs::FormulaLess) => {
-                        assert!(args.len() == 2, "Less call must have two arguments");
-                        let ty = self.subst(thir.exprs[args[0]].ty);
-                        if ty.is_integral() {
-                            let left = Box::new(self.compile_expression(args[0], thir));
-                            let right = Box::new(self.compile_expression(args[1], thir));
-                            Formula::ILess { left, right }
-                        } else {
-                            fatal!(self, "Used < in formula for unknown type: {}", ty)
-                        }
-                    }
-                    Some(LogicStubs::FormulaAnd) => {
-                        let left = self.compile_formula(args[0], thir);
-                        let right = self.compile_formula(args[1], thir);
-                        left.and(right)
-                    }
-                    Some(LogicStubs::FormulaOr) => {
-                        let left = self.compile_formula(args[0], thir);
-                        let right = self.compile_formula(args[1], thir);
-                        left.or(right)
-                    }
-                    Some(LogicStubs::FormulaNeg) => {
-                        let inner = Box::new(self.compile_formula(args[0], thir));
-                        Formula::Not(inner)
-                    }
-                    Some(LogicStubs::FormulaForall) => self.compile_forall(args[0], thir),
-                    Some(LogicStubs::FormulaImplication) => {
-                        let left = self.compile_formula(args[0], thir);
-                        let right = self.compile_formula(args[1], thir);
-                        left.implies(right)
-                    }
-                    _ => {
-                        fatal!(self, "{:?} unsupported call in formula", expr)
-                    }
-                }
-            }
-            _ => fatal!(self, "Cannot lower formula: {:?}", expr),
         }
     }
 
@@ -721,36 +264,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         [unique, global].into()
     }
 
-    fn compile_uninit(
-        &mut self,
-        args: &[ExprId],
-        fn_def_ty: Ty<'tcx>,
-        thir: &Thir<'tcx>,
-    ) -> Assertion {
-        let ty = match fn_def_ty.kind() {
-            TyKind::FnDef(_, substs) => substs[1].expect_ty(),
-            _ => panic!("compile_uninit went wrong"),
-        };
-
-        let pointer = self.compile_expression(args[0], thir);
-        let typ = self.encode_type_with_args(ty);
-
-        super::core_preds::uninit(pointer, typ)
-    }
-
     fn compile_many_uninits(
         &mut self,
-        args: &[ExprId],
-        fn_def_ty: Ty<'tcx>,
-        thir: &Thir<'tcx>,
+        pointer: gilsonite::Expr<'tcx>,
+        size: gilsonite::Expr<'tcx>,
     ) -> Assertion {
-        let ty = match fn_def_ty.kind() {
-            TyKind::FnDef(_, substs) => substs[1].expect_ty(),
-            _ => panic!("compile_uninit went wrong"),
-        };
-
-        let pointer = self.compile_expression(args[0], thir);
-        let size = self.compile_expression(args[1], thir);
+        let ty = pointer.ty.builtin_deref(true).unwrap().ty;
+        let pointer = self.compile_expression_inner(pointer);
+        let size = self.compile_expression_inner(size);
         let typ = self.encode_type_with_args(ty);
 
         super::core_preds::many_uninits(pointer, typ, size)
@@ -758,104 +279,34 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn compile_many_maybe_uninits(
         &mut self,
-        args: &[ExprId],
-        fn_def_ty: Ty<'tcx>,
-        thir: &Thir<'tcx>,
+        pointer: gilsonite::Expr<'tcx>,
+        size: gilsonite::Expr<'tcx>,
+        pointee: gilsonite::Expr<'tcx>,
     ) -> Assertion {
-        let ty = match fn_def_ty.kind() {
-            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
-            _ => panic!("compile_many_maybe_uninits went wrong"),
-        };
-        let pointer = self.compile_expression(args[0], thir);
-        let size = self.compile_expression(args[1], thir);
-        let pointee = self.compile_expression(args[2], thir);
+        let ty = pointer.ty.builtin_deref(true).unwrap().ty;
+
+        let pointer = self.compile_expression_inner(pointer);
+        let size = self.compile_expression_inner(size);
+        let pointee = self.compile_expression_inner(pointee);
         let typ = self.encode_type_with_args(ty);
         super::core_preds::many_maybe_uninits(pointer, typ, size, pointee)
     }
 
     fn compile_maybe_uninit(
         &mut self,
-        args: &[ExprId],
-        fn_def_ty: Ty<'tcx>,
-        thir: &Thir<'tcx>,
+        pointer: gilsonite::Expr<'tcx>,
+        pointee: gilsonite::Expr<'tcx>,
     ) -> Assertion {
-        let ty = match fn_def_ty.kind() {
-            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
-            _ => panic!("compile_uninit went wrong"),
-        };
+        let ty = pointer.ty.builtin_deref(true).unwrap().ty;
+
         let ty = self.encode_type_with_args(ty);
-        let pointer = self.compile_expression(args[0], thir);
-        let pointee = self.compile_expression(args[1], thir);
+        let pointer = self.compile_expression_inner(pointer);
+        let pointee = self.compile_expression_inner(pointee);
 
         super::core_preds::maybe_uninit(pointer, ty, pointee)
     }
 
-    fn compile_points_to_slice(
-        &mut self,
-        args: &[ExprId],
-        fn_def_ty: Ty<'tcx>,
-        thir: &Thir<'tcx>,
-    ) -> Assertion {
-        let ty = match fn_def_ty.kind() {
-            TyKind::FnDef(_, substs) => substs.last().unwrap().expect_ty(),
-            _ => panic!("compile points_to_slice wentwrong"),
-        };
-        let pointer = self.compile_expression(args[0], thir);
-        let size = self.compile_expression(args[1], thir);
-        let pointees = self.compile_expression(args[2], thir);
-
-        let typ = self.encode_array_type(self.subst(ty), size);
-        super::core_preds::value(pointer, typ, pointees)
-    }
-
-    fn compile_points_to(&mut self, args: &[ExprId], thir: &Thir<'tcx>) -> Assertion {
-        assert!(args.len() == 2, "Pure call must have one argument");
-        // The type in the points_to is the type of the pointee.
-        let ty = self.encode_type_with_args(thir.exprs[args[1]].ty);
-        let left = self.compile_expression(args[0], thir);
-        let right = self.compile_expression(args[1], thir);
-        let left_ty = self.subst(thir.exprs[args[0]].ty);
-        // If the type is a box or a nonnull, we need to access its pointer.
-        let (left, pfs) = if left_ty.is_box() {
-            // boxes have to be block pointers.
-            // We don't have that at the moment however, we need to encode
-            // The idea of a "freeable" resource.
-            let loc = GExpr::LVar(self.new_temp());
-            let proj = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), proj.clone()].into();
-            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
-            let box_ = self.make_box(ptr.clone());
-            let eq = Formula::Eq {
-                left: Box::new(box_),
-                right: Box::new(left),
-            };
-            let eq = Assertion::Pure(eq);
-            let pfs = Assertion::star(typing, eq);
-            (ptr, pfs)
-        } else if self.is_nonnull(left_ty) {
-            // FIXME: this is technically not correct,
-            // we would need to annotate the pointsTo to make sure that's true.
-            let loc = GExpr::LVar(self.new_temp());
-            let proj = GExpr::LVar(self.new_temp());
-            let ptr: Expr = [loc.clone(), proj.clone()].into();
-            let typing = Assertion::Types(vec![(loc, Type::ObjectType), (proj, Type::ListType)]);
-            let non_null = self.make_nonnull(ptr.clone());
-            let eq = Formula::Eq {
-                left: Box::new(non_null),
-                right: Box::new(left),
-            };
-            let eq = Assertion::Pure(eq);
-            let pfs = Assertion::star(typing, eq);
-            (ptr, pfs)
-        } else if ty_utils::is_mut_ref(left_ty) && self.prophecies_enabled() {
-            (left.lnth(0), Assertion::Emp)
-        } else {
-            (left, Assertion::Emp)
-        };
-        Assertion::star(pfs, super::core_preds::value(left, ty, right))
-    }
-
-    fn compile_points_to_new(
+    fn compile_points_to(
         &mut self,
         src: gilsonite::Expr<'tcx>,
         tgt: gilsonite::Expr<'tcx>,
@@ -903,6 +354,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         };
         Assertion::star(pfs, super::core_preds::value(left, ty, right))
     }
+
     pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let gilsonite = gilsonite::GilsoniteBuilder::new(thir.clone(), self.tcx());
         let _asrt = gilsonite.build_assert(e);
@@ -949,7 +401,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 }
                 Assertion::Pred { name, params }
             }
-            AssertKind::PointsTo { src, tgt } => self.compile_points_to_new(src, tgt),
+            AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
             AssertKind::Emp => Assertion::Emp,
             AssertKind::Error(e) => fatal!(self, "{e}"),
             AssertKind::Observation { formula } => {
@@ -970,6 +422,35 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let model = self.compile_expression_inner(model);
                 super::core_preds::observer(prophecy, typ, model)
             }
+            AssertKind::PointsToSlice {
+                src,
+                size,
+                pointees,
+            } => {
+                let ty = src.ty.builtin_deref(true).unwrap().ty;
+                let pointer = self.compile_expression_inner(src);
+                let size = self.compile_expression_inner(size);
+                let pointees = self.compile_expression_inner(pointees);
+
+                let typ = self.encode_array_type(self.subst(ty), size);
+                super::core_preds::value(pointer, typ, pointees)
+            }
+            AssertKind::Uninit { pointer } => {
+                let ty = pointer.ty.builtin_deref(true).unwrap().ty;
+                let pointer = self.compile_expression_inner(pointer);
+                let typ = self.encode_type_with_args(ty);
+
+                super::core_preds::uninit(pointer, typ)
+            }
+            AssertKind::ManyUninits { pointer, size } => self.compile_many_uninits(pointer, size),
+            AssertKind::MaybeUninit { pointer, pointee } => {
+                self.compile_maybe_uninit(pointer, pointee)
+            }
+            AssertKind::ManyMaybeUninits {
+                pointer,
+                pointees,
+                size,
+            } => self.compile_many_maybe_uninits(pointer, size, pointees),
         }
     }
 
@@ -1057,19 +538,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn resolve(e: ExprId, thir: &Thir<'tcx>) -> ExprId {
-        let expr = &thir.exprs[e];
-        match &expr.kind {
-            ExprKind::Scope {
-                region_scope: _,
-                lint_level: _,
-                value,
-            } => Self::resolve(*value, thir),
-            ExprKind::Use { source } => Self::resolve(*source, thir),
-            _ => e,
-        }
-    }
-
     pub(crate) fn resolve_array(&self, e: ExprId, thir: &Thir<'tcx>) -> Vec<ExprId> {
         let expr = &thir.exprs[e];
         match &expr.kind {
@@ -1119,16 +587,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             _ => fatal!(self, "Can't resolve definition: {:?}", expr),
         }
-    }
-
-    fn compile_formula_closure(mut self) -> Formula {
-        let (thir, ret_expr) = get_thir!(self, self.body_id);
-        let block = &thir[self.resolve_block(ret_expr, &thir).unwrap()];
-        if !block.stmts.is_empty() || block.expr.is_none() {
-            fatal!(self, "formula closure is malformed")
-        }
-
-        self.compile_formula(block.expr.unwrap(), &thir)
     }
 
     pub fn compile_abstract(mut self) -> Pred {
@@ -1353,8 +811,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     BinOp::Eq => GExpr::eq_expr(left, right),
                     BinOp::Lt => todo!(),
                     BinOp::Le => todo!(),
-                    BinOp::Ge => todo!(),
-                    BinOp::Gt => todo!(),
                     BinOp::Ne => todo!(),
                     BinOp::Sub => GExpr::minus(left, right),
                     BinOp::Add => GExpr::plus(left, right),
@@ -1449,9 +905,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     SeqOp::Head => args.remove(0).lst_head(),
                     SeqOp::Tail => args.remove(0).lst_tail(),
                     SeqOp::Len => args.remove(0).lst_len(),
-                    SeqOp::At => todo!(),
-                    SeqOp::Sub => todo!(),
-                    SeqOp::Repeat => todo!(),
+
+                    SeqOp::At => args.remove(0).lnth_e(args.remove(0)),
+                    SeqOp::Sub => args.remove(0).lst_sub_e(args.remove(0), args.remove(0)),
+                    SeqOp::Repeat => args.remove(0).repeat(args.remove(0)),
                 }
             }
             ExprKind::Error(e) => fatal!(self, "{e}"),

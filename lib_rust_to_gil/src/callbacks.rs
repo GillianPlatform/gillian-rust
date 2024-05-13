@@ -101,6 +101,7 @@ pub fn get_body<'tcx>(
         // SAFETY: For soundness we need to ensure that the bodies have
         // the same lifetime (`'tcx`), which they had before they were
         // stored in the thread local.
-        map.remove(&def_id).map(|body| unsafe { std::mem::transmute(body) })
+        map.remove(&def_id)
+            .map(|body| unsafe { std::mem::transmute(body) })
     })
 }

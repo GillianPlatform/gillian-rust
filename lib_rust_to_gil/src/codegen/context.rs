@@ -70,7 +70,7 @@ impl RegionInfo<'_, '_> {
         self.region_names
             .get(&repr)
             .map(|s| s.to_string())
-            .unwrap_or_else(|| lifetime_param_name(&repr.as_u32().to_string()) )
+            .unwrap_or_else(|| lifetime_param_name(&repr.as_u32().to_string()))
     }
 }
 
