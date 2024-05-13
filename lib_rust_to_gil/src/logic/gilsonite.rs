@@ -1,6 +1,7 @@
+use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::{
-    mir::{BorrowKind, Place},
+    mir::{self, BorrowKind, Place},
     thir::{self, AdtExpr, ExprId, LocalVarId, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt},
 };
@@ -17,9 +18,9 @@ enum ExprKind<'tcx> {
         substs: GenericArgsRef<'tcx>,
         args: Vec<Expr<'tcx>>,
     },
-
-    Eq {
+    BinOp {
         left: Box<Expr<'tcx>>,
+        op: BinOp,
         right: Box<Expr<'tcx>>,
     },
     Constructor {
@@ -38,6 +39,39 @@ enum ExprKind<'tcx> {
     Var {
         id: LocalVarId,
     },
+    Integer {
+        value: u128,
+    },
+    // Unclear whether this is worth distinguishing in the AST or just delegating this to the backend
+    SeqNil,
+    SeqOp {
+        op: SeqOp,
+        args: Vec<Expr<'tcx>>,
+    },
+}
+
+#[derive(Debug)]
+enum SeqOp {
+    Append,
+    Prepend,
+    Concat,
+    Head,
+    Tail,
+    Len,
+    At,
+    Sub,
+    Repeat,
+}
+#[derive(Debug)]
+enum BinOp {
+    Eq,
+    Lt,
+    Le,
+    Ge,
+    Gt,
+    Ne,
+    Sub,
+    Add,
 }
 
 #[derive(Debug)]
@@ -261,6 +295,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     fields,
                 }
             }
+            thir::ExprKind::Tuple { fields } => {
+                let fields = fields.iter().map(|f| self.build_expression(*f)).collect();
+
+                ExprKind::Tuple { fields }
+            }
             thir::ExprKind::Borrow {
                 borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
                 arg,
@@ -284,6 +323,39 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     _ => todo!("unsupported {arg:?}"),
                 }
             }
+            thir::ExprKind::Literal { lit, neg: false } => match lit.node {
+                LitKind::Int(i, _) => ExprKind::Integer { value: i.get() },
+                _ => self
+                    .tcx
+                    .dcx()
+                    .fatal(format!("Unsupported literal {:?}", expr)),
+            },
+            thir::ExprKind::Field {
+                lhs,
+                variant_index: _,
+                name,
+            } => {
+                let lhs = self.build_expression(*lhs);
+                ExprKind::Field {
+                    lhs: Box::new(lhs),
+                    field: *name,
+                }
+            }
+            thir::ExprKind::Binary { op, lhs, rhs } => {
+                let lhs = self.build_expression(*lhs);
+
+                let rhs = self.build_expression(*rhs);
+                let op = match op {
+                    mir::BinOp::Sub => BinOp::Sub,
+                    _ => todo!(),
+                };
+
+                ExprKind::BinOp {
+                    left: Box::new(lhs),
+                    op,
+                    right: Box::new(rhs),
+                }
+            }
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
@@ -294,8 +366,62 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         let left = Box::new(self.build_expression(args[0]));
                         let right = Box::new(self.build_expression(args[1]));
 
-                        ExprKind::Eq { left, right }
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Eq,
+                            right,
+                        }
                     }
+                    Some(LogicStubs::FormulaLessEq) => {
+                        assert!(args.len() == 2, "Equal call must have two arguments");
+                        let left = Box::new(self.build_expression(args[0]));
+                        let right = Box::new(self.build_expression(args[1]));
+
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Le,
+                            right,
+                        }
+                    }
+                    Some(LogicStubs::FormulaLess) => {
+                        assert!(args.len() == 2, "Equal call must have two arguments");
+                        let left = Box::new(self.build_expression(args[0]));
+                        let right = Box::new(self.build_expression(args[1]));
+
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Lt,
+                            right,
+                        }
+                    }
+                    Some(LogicStubs::SeqNil) => ExprKind::SeqNil,
+                    Some(
+                        a @ (LogicStubs::SeqAppend
+                        | LogicStubs::SeqPrepend
+                        | LogicStubs::SeqConcat
+                        | LogicStubs::SeqHead
+                        | LogicStubs::SeqTail
+                        | LogicStubs::SeqLen
+                        | LogicStubs::SeqAt
+                        | LogicStubs::SeqSub
+                        | LogicStubs::SeqRepeat),
+                    ) => {
+                        let args = args.iter().map(|a| self.build_expression(*a)).collect();
+                        let op = match a {
+                            LogicStubs::SeqAppend => SeqOp::Append,
+                            LogicStubs::SeqPrepend => SeqOp::Prepend,
+                            LogicStubs::SeqConcat => SeqOp::Concat,
+                            LogicStubs::SeqHead => SeqOp::Head,
+                            LogicStubs::SeqTail => SeqOp::Tail,
+                            LogicStubs::SeqLen => SeqOp::Len,
+                            LogicStubs::SeqAt => SeqOp::At,
+                            LogicStubs::SeqSub => SeqOp::Sub,
+                            LogicStubs::SeqRepeat => SeqOp::Repeat,
+                            _ => unreachable!(),
+                        };
+                        ExprKind::SeqOp { op, args }
+                    }
+
                     // Some(LogicStubs::FormulaNotEqual) => {
                     //     assert!(args.len() == 2, "NotEqual call must have two arguments");
                     //     let left = Box::new(self.build_expression(args[0]));
@@ -348,6 +474,20 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     //     let right = self.build_formula(args[1]);
                     //     left.implies(right)
                     // }
+                    //
+                    None => {
+                        let ty::FnDef(def_id, substs) = *ty.kind() else {
+                            unreachable!()
+                        };
+
+                        let args = args.iter().map(|a| self.build_expression(*a)).collect();
+
+                        ExprKind::Call {
+                            def_id,
+                            substs,
+                            args,
+                        }
+                    }
                     _ => self
                         .tcx
                         .dcx()

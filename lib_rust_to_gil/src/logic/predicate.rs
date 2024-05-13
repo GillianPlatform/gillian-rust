@@ -380,13 +380,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .collect();
                 fields.into()
             }
-            ExprKind::Field {
-                lhs,
-                variant_index: _,
-                name,
-            } if matches!(self.subst(thir[*lhs].ty).kind(), TyKind::Tuple(..)) => {
-                self.compile_expression(*lhs, thir).lnth(name.as_u32())
-            }
             ExprKind::Borrow {
                 borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
                 arg,
@@ -433,6 +426,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         arg
                     ),
                 }
+            }
+            ExprKind::Field {
+                lhs,
+                variant_index: _,
+                name,
+            } if matches!(self.subst(thir[*lhs].ty).kind(), TyKind::Tuple(..)) => {
+                self.compile_expression(*lhs, thir).lnth(name.as_u32())
             }
             ExprKind::Field {
                 lhs,
@@ -856,9 +856,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
         let gilsonite = gilsonite::GilsoniteBuilder::new(thir.clone(), self.tcx());
-        let asrt = gilsonite.build_assert(e);
-
-        dbg!(asrt);
+        let _asrt = gilsonite.build_assert(e);
+        // dbg!(_asrt);
 
         let expr = &thir.exprs[e];
         if !self.is_assertion_ty(self.subst(expr.ty)) {
