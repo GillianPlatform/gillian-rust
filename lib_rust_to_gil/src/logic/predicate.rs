@@ -403,7 +403,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
             AssertKind::Emp => Assertion::Emp,
-            AssertKind::Error(e) => fatal!(self, "{e}"),
             AssertKind::Observation { formula } => {
                 let formula = self.compile_formula_inner(formula);
                 core_preds::observation(formula)
@@ -735,8 +734,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_formula_body(&mut self, formula: gilsonite::FormulaKind<'tcx>) -> Formula {
         use gilsonite::{EOp, FOp, FormulaKind};
         match formula {
-            FormulaKind::True => Formula::True,
-            FormulaKind::False => Formula::False,
+            // FormulaKind::True => Formula::True,
+            // FormulaKind::False => Formula::False,
             FormulaKind::FOp { left, op, right } => {
                 let left = self.compile_formula_body(*left);
                 let right = self.compile_formula_body(*right);
@@ -818,7 +817,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::Constructor {
                 def_id,
-                args: _,
+                _args: _,
                 fields,
                 variant_index,
             } => {
@@ -911,7 +910,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     SeqOp::Repeat => args.remove(0).repeat(args.remove(0)),
                 }
             }
-            ExprKind::Error(e) => fatal!(self, "{e}"),
             ExprKind::ZST => vec![].into(),
             ExprKind::SetProphecy { mut_ref, prophecy } => {
                 self.assert_prophecies_enabled("using `Prophecised::assign`");

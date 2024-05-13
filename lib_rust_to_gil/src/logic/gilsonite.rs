@@ -26,7 +26,7 @@ pub enum ExprKind<'tcx> {
     },
     Constructor {
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        _args: GenericArgsRef<'tcx>,
         fields: Vec<Expr<'tcx>>,
         variant_index: VariantIdx,
     },
@@ -49,7 +49,6 @@ pub enum ExprKind<'tcx> {
         op: SeqOp,
         args: Vec<Expr<'tcx>>,
     },
-    Error(String),
     ZST,
     SetProphecy {
         mut_ref: Box<Expr<'tcx>>,
@@ -65,8 +64,8 @@ pub enum ExprKind<'tcx> {
 
 #[derive(Debug)]
 pub enum FormulaKind<'tcx> {
-    True,
-    False,
+    // True,
+    // False,
     FOp {
         left: Box<FormulaKind<'tcx>>,
         op: FOp,
@@ -92,6 +91,7 @@ pub enum FOp {
 
 /// Expression operations
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum EOp {
     Lt,
     Le,
@@ -113,7 +113,9 @@ pub enum SeqOp {
     Sub,
     Repeat,
 }
+
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum BinOp {
     Eq,
     Lt,
@@ -164,7 +166,6 @@ pub enum AssertKind<'tcx> {
         tgt: Expr<'tcx>,
     },
     Emp,
-    Error(String),
     Observation {
         formula: Formula<'tcx>,
     },
@@ -594,7 +595,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                 ExprKind::Constructor {
                     def_id: adt_def.did(),
-                    args,
+                    _args: args,
                     variant_index: *variant_index,
                     fields,
                 }
