@@ -48,6 +48,7 @@ enum ExprKind<'tcx> {
         op: SeqOp,
         args: Vec<Expr<'tcx>>,
     },
+    Error(String),
 }
 
 #[derive(Debug)]
@@ -115,6 +116,7 @@ enum AssertKind<'tcx> {
         tgt: Expr<'tcx>,
     },
     Emp,
+    Error(String),
     // ... other core predicates
 }
 
@@ -172,14 +174,14 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         AssertKind::PointsTo { src, tgt }
                     }
                     // Other core predicates
-                    Some(LogicStubs::AssertObservation) => todo!(),
-                    Some(LogicStubs::AssertPointsToSlice) => todo!(),
-                    Some(LogicStubs::AssertUninit) => todo!(),
-                    Some(LogicStubs::AssertManyUninits) => todo!(),
-                    Some(LogicStubs::AssertMaybeUninit) => todo!(),
-                    Some(LogicStubs::AssertManyMaybeUninits) => todo!(),
-                    Some(LogicStubs::ProphecyObserver) => todo!(),
-                    Some(LogicStubs::ProphecyController) => todo!(),
+                    Some(LogicStubs::AssertObservation) => AssertKind::Error("AssertObservation".into()),
+                    Some(LogicStubs::AssertPointsToSlice) => AssertKind::Error("AssertPointsToSlice".into()),
+                    Some(LogicStubs::AssertUninit) => AssertKind::Error("AssertUninit".into()),
+                    Some(LogicStubs::AssertManyUninits) => AssertKind::Error("AssertManyUninits".into()),
+                    Some(LogicStubs::AssertMaybeUninit) => AssertKind::Error("AssertMaybeUninit".into()),
+                    Some(LogicStubs::AssertManyMaybeUninits) => AssertKind::Error("AssertManyMaybeUninits".into()),
+                    Some(LogicStubs::ProphecyObserver) => AssertKind::Error("ProphecyObserver".into()),
+                    Some(LogicStubs::ProphecyController) => AssertKind::Error("ProphecyController".into()),
                     Some(LogicStubs::OwnPred) | None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
@@ -421,60 +423,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         };
                         ExprKind::SeqOp { op, args }
                     }
-
-                    // Some(LogicStubs::FormulaNotEqual) => {
-                    //     assert!(args.len() == 2, "NotEqual call must have two arguments");
-                    //     let left = Box::new(self.build_expression(args[0]));
-                    //     let right = Box::new(self.build_expression(args[1]));
-                    //     left.eq_f(*right).fnot()
-                    // }
-                    // Some(LogicStubs::FormulaLessEq) => {
-                    //     assert!(args.len() == 2, "LessEq call must have two arguments");
-                    //     let ty = self.thir.exprs[args[0]].ty;
-                    //     if ty.is_integral() {
-                    //         let left = Box::new(self.build_expression(args[0]));
-                    //         let right = Box::new(self.build_expression(args[1]));
-                    //         Formula::ILessEq { left, right }
-                    //     } else {
-                    //         self.tcx
-                    //             .dcx()
-                    //             .fatal(format!("Used <= in formula for unknown type: {}", ty))
-                    //     }
-                    // }
-                    // Some(LogicStubs::FormulaLess) => {
-                    //     assert!(args.len() == 2, "Less call must have two arguments");
-                    //     let ty = self.thir.exprs[args[0]].ty;
-                    //     if ty.is_integral() {
-                    //         let left = Box::new(self.build_expression(args[0]));
-                    //         let right = Box::new(self.build_expression(args[1]));
-                    //         Formula::ILess { left, right }
-                    //     } else {
-                    //         self.tcx
-                    //             .dcx()
-                    //             .fatal(format!("Used < in formula for unknown type: {}", ty))
-                    //     }
-                    // }
-                    // Some(LogicStubs::FormulaAnd) => {
-                    //     let left = self.build_formula(args[0]);
-                    //     let right = self.build_formula(args[1]);
-                    //     left.and(right)
-                    // }
-                    // Some(LogicStubs::FormulaOr) => {
-                    //     let left = self.build_formula(args[0]);
-                    //     let right = self.build_formula(args[1]);
-                    //     left.or(right)
-                    // }
-                    // Some(LogicStubs::FormulaNeg) => {
-                    //     let inner = Box::new(self.build_formula(args[0]));
-                    //     Formula::Not(inner)
-                    // }
-                    // Some(LogicStubs::FormulaForall) => self.compile_forall(args[0]),
-                    // Some(LogicStubs::FormulaImplication) => {
-                    //     let left = self.build_formula(args[0]);
-                    //     let right = self.build_formula(args[1]);
-                    //     left.implies(right)
-                    // }
-                    //
+                    Some(LogicStubs::ProphecyGetValue) => ExprKind::Error("ProphecyGetValue".into()),
                     None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
@@ -487,6 +436,12 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             substs,
                             args,
                         }
+                    }
+                    Some(a) => {
+                       self
+                        .tcx
+                        .dcx()
+                        .fatal(format!("{:?} unsupported stub in expression", a))
                     }
                     _ => self
                         .tcx
