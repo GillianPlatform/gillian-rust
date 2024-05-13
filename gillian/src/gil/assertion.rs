@@ -1,4 +1,4 @@
-use super::{expr, print_utils::separated_display, visitors::GilVisitorMut};
+use super::{print_utils::separated_display, visitors::GilVisitorMut};
 use std::{collections::HashMap, fmt::Display};
 
 use super::{Expr, Formula, Type};
@@ -15,7 +15,6 @@ pub enum Assertion {
         params: Vec<Expr>,
     },
     Pure(Formula),
-    Pure2(expr::Formula),
     Types(Vec<(Expr, Type)>),
     GA {
         name: String,
@@ -99,7 +98,6 @@ impl Display for Assertion {
                 write!(f, ")")
             }
             Pure(formula) => formula.fmt(f),
-            Pure2(formula) => formula.fmt(f),
             Types(types) => {
                 write!(f, "types(")?;
                 let mut first = true;

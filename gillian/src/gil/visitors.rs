@@ -26,11 +26,6 @@ macro_rules! make_gil_visitor {
           self.super_formula(formula);
         }
 
-        fn visit_formula2(&mut self, formula: &$($mutability)? crate::gil::expr::Formula) {
-          self.super_formula2(formula);
-        }
-
-
         fn visit_expr(&mut self, expr: &$($mutability)? Expr) {
           self.super_expr(expr);
         }
@@ -74,11 +69,6 @@ macro_rules! make_gil_visitor {
             Assertion::Pure(formula) => {
               self.visit_formula(formula);
             },
-
-            Assertion::Pure2(formula) => {
-              self.visit_formula2(formula);
-            },
-
             Assertion::Types(tys) => {
               for (expr, ty) in tys {
                 self.visit_expr(expr);
@@ -136,17 +126,6 @@ macro_rules! make_gil_visitor {
               self.visit_formula(formula);
             }
           }
-        }
-
-        fn super_formula2(&mut self, formula: &$($mutability)? crate::gil::expr::Formula) {
-          for (_, ty) in &$($mutability)? formula.quantified {
-            if let Some(ty) = ty {
-              self.visit_type(ty);
-            }
-          }
-
-          self.visit_expr(&$($mutability)? * formula.formula)
-
         }
 
         fn super_cmd(&mut self, cmd: &$($mutability)? Cmd) {
@@ -282,8 +261,6 @@ macro_rules! make_gil_visitor {
                 self.visit_expr(expr);
               }
             }
-            Expr::True => (),
-            Expr::False => (),
           }
         }
 

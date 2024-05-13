@@ -1,11 +1,10 @@
 use super::print_utils::separated_display;
 use super::visitors::GilVisitorMut;
-use super::{BinOp, Literal, NOp, Type, UnOp};
+use super::{BinOp, Literal, NOp, UnOp};
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
 use std::collections::HashMap;
 use std::fmt;
-use std::path::Display;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -33,33 +32,6 @@ pub enum Expr {
     },
     EList(Vec<Expr>),
     ESet(Vec<Expr>),
-    True,
-    False,
-}
-
-#[derive(Debug, Clone)]
-pub struct Formula {
-    pub quantified: Vec<(String, Option<Type>)>,
-    pub formula: Box<Expr>,
-}
-
-impl std::fmt::Display for Formula {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(forall ")?;
-        let mut first = true;
-        for (name, typ) in &self.quantified {
-            if first {
-                first = false;
-            } else {
-                write!(f, ", ")?;
-            }
-            write!(f, "{}", name)?;
-            if let Some(typ) = typ {
-                write!(f, ": {}", typ)?;
-            }
-        }
-        write!(f, ". {})", self.formula)
-    }
 }
 
 impl std::ops::Not for Expr {
@@ -587,8 +559,6 @@ impl fmt::Display for Expr {
                 separated_display(vec, ", ", f)?;
                 f.write_str(" }-")
             }
-            True => write!(f, "True"),
-            False => write!(f, "False"),
         }
     }
 }
