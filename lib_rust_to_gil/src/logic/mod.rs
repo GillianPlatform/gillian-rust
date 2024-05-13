@@ -13,6 +13,7 @@ pub(crate) mod param_collector;
 mod predicate;
 pub(crate) mod traits;
 mod utils;
+mod gilsonite;
 
 pub(crate) use predicate::PredCtx;
 

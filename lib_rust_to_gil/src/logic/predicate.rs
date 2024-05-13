@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::gilsonite;
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, is_borrow};
 use crate::signature::build_signature;
@@ -854,6 +855,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     pub fn compile_assertion(&mut self, e: ExprId, thir: &Thir<'tcx>) -> Assertion {
+        let gilsonite = gilsonite::GilsoniteBuilder::new(thir.clone(), self.tcx());
+        let asrt = gilsonite.build_assert(e);
+
+        dbg!(asrt);
+
         let expr = &thir.exprs[e];
         if !self.is_assertion_ty(self.subst(expr.ty)) {
             fatal!(self, "{:?} is not the assertion type", self.subst(expr.ty))
