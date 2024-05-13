@@ -2,8 +2,8 @@ use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue},
-    thir::{self, AdtExpr, ExprId, LocalVarId, Thir},
-    ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind},
+    thir::{self, AdtExpr, ClosureExpr, ExprId, LocalVarId, Thir},
+    ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
 use rustc_span::Symbol;
@@ -367,7 +367,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             } => {
                 let stub = self.get_stub(*ty);
                 match stub {
-                    Some(LogicStubs::FormulaForall) => todo!(),
+                    Some(LogicStubs::FormulaForall) => self.build_forall_body(args[0]),
                     _ => Formula {
                         bound_vars: Vec::new(),
                         body: self.build_formula_body(id),
@@ -378,6 +378,39 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 .tcx
                 .dcx()
                 .fatal(format!("Unsupported formula: {:?}", expr)),
+        }
+    }
+
+    fn build_forall_body(&self, id: ExprId) -> Formula<'tcx> {
+        match &self.thir[id].kind {
+            thir::ExprKind::Scope { value, .. } => self.build_forall_body(*value),
+            thir::ExprKind::Closure(box ClosureExpr {
+                closure_id,
+                args: UpvarArgs::Closure(args),
+                ..
+            }) => {
+                let name = self.tcx.fn_arg_names(*closure_id)[0];
+                let ty = args
+                    .as_closure()
+                    .sig()
+                    .input(0)
+                    .skip_binder()
+                    .tuple_fields()[0];
+                let (thir, expr) = self.tcx.thir_body(closure_id).unwrap();
+                let body = Self {
+                    thir: thir.borrow().clone(),
+                    tcx: self.tcx,
+                }
+                .build_formula_body(expr);
+                Formula {
+                    bound_vars: vec![(name.name, ty)],
+                    body,
+                }
+            }
+            kind => self
+                .tcx
+                .dcx()
+                .fatal(format!("Unexpected quantified form: {:?}", kind)),
         }
     }
 
@@ -394,6 +427,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 lint_level: _,
                 value,
             } => self.build_formula_body(*value),
+
             thir::ExprKind::Use { source } => self.build_formula_body(*source),
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
