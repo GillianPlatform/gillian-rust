@@ -42,7 +42,7 @@ impl<'tcx> ProgCtx<'tcx> {
         let body = with_facts.body.clone();
         let borrow_set = with_facts.borrow_set.clone();
         let region_ctxt = with_facts.region_inference_context.clone();
-        let ctx = GilCtxt::new(&mut self.global_env, &body, &*borrow_set, &*region_ctxt);
+        let ctx = GilCtxt::new(&mut self.global_env, &body, &borrow_set, &region_ctxt);
 
         let mut proc = ctx.push_body();
 

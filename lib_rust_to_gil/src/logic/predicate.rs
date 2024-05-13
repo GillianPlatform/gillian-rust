@@ -727,8 +727,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_formula_inner(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
         assert!(formula.bound_vars.is_empty());
 
-        let f = self.compile_formula_body(formula.body);
-        f
+        
+        self.compile_formula_body(formula.body)
     }
 
     fn compile_formula_body(&mut self, formula: gilsonite::FormulaKind<'tcx>) -> Formula {

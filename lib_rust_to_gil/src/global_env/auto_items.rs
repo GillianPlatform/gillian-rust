@@ -1,4 +1,4 @@
-use rustc_middle::ty::{List, ParamTy};
+use rustc_middle::ty::ParamTy;
 
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::builtins::LogicStubs;

@@ -8,7 +8,7 @@ use rustc_middle::ty::{GenericParamDefKind, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
-    codegen::typ_encoding::{lifetime_param_name, region_name, type_param_name},
+    codegen::typ_encoding::{lifetime_param_name, type_param_name},
     logic::PredCtx,
     prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},

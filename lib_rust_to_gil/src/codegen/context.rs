@@ -189,7 +189,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             global_env.tcx(),
         );
         GilCtxt {
-            locals_in_memory: locals_in_memory_for_mir(&mir),
+            locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
             switch_label_counter: 0,
             gil_body: ProcBody::default(),
@@ -217,7 +217,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn mir(&self) -> &'body Body<'tcx> {
-        &self.mir
+        self.mir
     }
 
     pub fn _location(&self, scope: &SourceScope) {
