@@ -1,8 +1,6 @@
 use crate::signature::build_signature;
-use crate::{config::ExecMode, prelude::*, utils::polymorphism::HasGenericArguments};
+use crate::{config::ExecMode, prelude::*};
 use rustc_middle::mir::pretty::write_mir_fn;
-
-impl<'tcx> HasGenericArguments<'tcx> for GilCtxt<'tcx, '_> {}
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {

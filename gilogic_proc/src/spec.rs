@@ -12,7 +12,7 @@ mod aux {
 
     use crate::gilogic_syn::LvarDecl;
 
-    pub(crate) struct CommaSepLvarDecl(pub Punctuated<LvarDecl, Token![,]>);
+    pub(crate) struct CommaSepLvarDecl(#[allow(dead_code)] pub Punctuated<LvarDecl, Token![,]>);
 
     impl Parse for CommaSepLvarDecl {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
@@ -20,7 +20,7 @@ mod aux {
         }
     }
 
-    pub(crate) struct LvarsAttr(pub CommaSepLvarDecl);
+    pub(crate) struct LvarsAttr(#[allow(dead_code)] pub CommaSepLvarDecl);
     impl Parse for LvarsAttr {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
             input.parse::<Token![=]>()?;

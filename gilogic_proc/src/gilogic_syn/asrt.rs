@@ -18,6 +18,7 @@ mod kw {
     syn::custom_keyword!(ensures);
 }
 
+#[allow(dead_code)]
 pub struct Specification {
     pub forall: Option<kw::forall>,
     pub lvars: Punctuated<LvarDecl, Token![,]>,

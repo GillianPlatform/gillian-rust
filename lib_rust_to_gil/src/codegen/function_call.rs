@@ -136,7 +136,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
 
-
         // if callee_has_regions {
         let sig = self.tcx().fn_sig(def_id);
         let ssig = sig.instantiate(self.tcx(), substs);
@@ -174,7 +173,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
 
         poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty).unwrap();
-        tbl.values().map(|a| a.first()).flatten().copied().collect()
+        tbl.values().filter_map(|a| a.first()).copied().collect()
     }
 
     pub fn push_function_call(
@@ -277,8 +276,6 @@ pub enum PoorManUnificationError<'tcx> {
     /// General error for when we don't have types of the same shape
     #[allow(dead_code)]
     Mismatch(Ty<'tcx>, Ty<'tcx>),
-    /// Tried to unify two different regions
-    RegionMismatch(Region<'tcx>, Region<'tcx>),
 }
 
 type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;

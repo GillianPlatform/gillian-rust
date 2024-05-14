@@ -1,6 +1,5 @@
 use crate::location_table::LocationTable;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::PoloniusOutput;
 use rustc_borrowck::consumers::RegionInferenceContext;
@@ -127,8 +126,7 @@ fn region_info<'body, 'tcx>(
     for (ix, (name, vids)) in tbl.into_iter().enumerate() {
         for (v, w) in vids.iter().tuple_windows() {
             assert!(regioncx.eval_equal(v.as_var(), w.as_var()));
-        };
-
+        }
 
         let vid = vids.first().unwrap().as_var();
         let vid = reborrows.get(&vid).unwrap_or(&vid);

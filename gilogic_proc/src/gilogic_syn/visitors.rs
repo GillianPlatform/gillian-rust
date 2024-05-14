@@ -2,6 +2,7 @@ use super::asrt::*;
 
 macro_rules! make_visitor {
   ($visitor_trait_name: ident, $($mutability:ident)?) => {
+    #[allow(dead_code)]
     pub trait $visitor_trait_name {
 
       fn visit_term(&mut self, term: &$($mutability)? Term) {

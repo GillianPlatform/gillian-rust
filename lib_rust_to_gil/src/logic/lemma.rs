@@ -9,7 +9,6 @@ use crate::temp_gen::TempGenerator;
 use crate::{
     codegen::typ_encoding::TypeEncoder,
     prelude::{fatal, HasDefId, HasTyCtxt},
-    utils::polymorphism::HasGenericArguments,
 };
 
 struct LemmaSig {
@@ -46,7 +45,6 @@ impl<'tcx> HasGlobalEnv<'tcx> for LemmaCtx<'tcx, '_> {
     }
 }
 
-impl<'tcx> HasGenericArguments<'tcx> for LemmaCtx<'tcx, '_> {}
 impl<'tcx> TypeEncoder<'tcx> for LemmaCtx<'tcx, '_> {}
 
 impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
