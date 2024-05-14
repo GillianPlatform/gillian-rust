@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use names::bb_label;
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
@@ -92,24 +90,26 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         def_id: DefId,
         substs: GenericArgsRef<'tcx>,
         operands: &[Spanned<Operand<'tcx>>],
+        ret_ty: Ty<'tcx>,
     ) -> Vec<Expr> {
         let callee_has_regions = operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
 
-        if callee_has_regions {
-            let sig = self.tcx().fn_sig(def_id);
-            let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.lifetimes_for_call(ssig, operands);
+        let sig = self.tcx().fn_sig(def_id);
+        let ssig = sig.instantiate(self.tcx(), substs);
+        let regions = self.lifetimes_for_call(ssig, operands, ret_ty);
 
-            args.extend(
-                regions
-                    .into_iter()
-                    .map(|r| r.as_var())
-                    .map(|v| self.region_info.name_region(v))
-                    .map(Expr::PVar),
-            );
-        }
+        regions.iter().cloned().for_each(|r| self.create_region(r));
+
+        args.extend(
+            regions
+                .into_iter()
+                .map(|r| r.as_var())
+                .map(|v| self.region_info.name_region(v))
+                .map(Expr::PVar),
+        );
+
         for ty_arg in substs {
             if let Some(e) = self.encode_generic_arg(ty_arg) {
                 args.push(e.into())
@@ -127,6 +127,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         def_id: DefId,
         substs: GenericArgsRef<'tcx>,
         operands: &[Spanned<Operand<'tcx>>],
+        ret_ty: Ty<'tcx>,
     ) -> Vec<Expr> {
         let params = param_collector::collect_params_on_args(substs);
         let callee_has_regions =
@@ -135,19 +136,19 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
 
-        if callee_has_regions {
-            let sig = self.tcx().fn_sig(def_id);
-            // let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.lifetimes_for_call(sig.skip_binder(), operands);
+        // if callee_has_regions {
+        let sig = self.tcx().fn_sig(def_id);
+        // let ssig = sig.instantiate(self.tcx(), substs);
+        let regions = self.lifetimes_for_call(sig.skip_binder(), operands, ret_ty);
 
-            args.extend(
-                regions
-                    .into_iter()
-                    .map(|r| r.as_var())
-                    .map(|v| self.region_info.name_region(v))
-                    .map(Expr::PVar),
-            );
-        }
+        args.extend(
+            regions
+                .into_iter()
+                .map(|r| r.as_var())
+                .map(|v| self.region_info.name_region(v))
+                .map(Expr::PVar),
+        );
+        // }
         for ty_arg in params.parameters {
             args.push(self.encode_type(ty_arg).into())
         }
@@ -162,14 +163,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         &mut self,
         sig: PolyFnSig<'tcx>,
         args: &[Spanned<Operand<'tcx>>],
+        ret_ty: Ty<'tcx>,
     ) -> Vec<Region<'tcx>> {
         let mut tbl = IndexMap::new();
+        eprintln!("{sig:?}");
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());
-            poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap();
+            poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap_or_else(|e| panic!("{e:?}"));
         }
-     
-        tbl.values().copied().collect()
+
+        eprintln!("{:?} u {:?}", sig.output().skip_binder(), ret_ty);
+        poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty).unwrap();
+        tbl.values().flatten().copied().collect()
     }
 
     pub fn push_function_call(
@@ -186,9 +191,10 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
         let call_kind = self.identify_call_kind(def_id, substs);
 
+        let dest_ty = destination.ty(&self.mir().local_decls, self.tcx()).ty;
         match call_kind {
             CallKind::Lemma(fname) => {
-                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands, dest_ty);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::ApplyLem {
                     lemma_name: fname,
                     parameters: gil_args,
@@ -197,7 +203,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::Fold(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands, dest_ty);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::Fold {
                     pred_name: fname,
                     parameters: gil_args,
@@ -206,7 +212,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::Unfold(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands, dest_ty);
                 let call = Cmd::Logic(LCmd::SL(SLCmd::Unfold {
                     pred_name: fname,
                     parameters: gil_args,
@@ -216,7 +222,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(call);
             }
             CallKind::PolyFn(fname) => {
-                let gil_args = self.all_args_for_fn_call(def_id, substs, operands);
+                let gil_args = self.all_args_for_fn_call(def_id, substs, operands, dest_ty);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
                     variable: ivar.clone(),
@@ -230,7 +236,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_place_write(destination, Expr::PVar(ivar), call_ret_ty);
             }
             CallKind::MonoFn(fname) => {
-                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands);
+                let gil_args = self.only_param_args_for_fn_call(def_id, substs, operands, dest_ty);
                 let ivar = self.temp_var();
                 let call = Cmd::Call {
                     variable: ivar.clone(),
@@ -269,13 +275,16 @@ pub enum PoorManUnificationError<'tcx> {
     /// Currently we don't do normalization so lets just error out here.
     Alias,
     /// General error for when we don't have types of the same shape
+    #[allow(dead_code)]
     Mismatch(Ty<'tcx>, Ty<'tcx>),
+    /// Tried to unify two different regions
+    RegionMismatch(Region<'tcx>, Region<'tcx>),
 }
 
 type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;
 
 pub fn poor_man_unification<'tcx>(
-    tbl: &mut IndexMap<Region<'tcx>, Region<'tcx>>,
+    tbl: &mut IndexMap<Region<'tcx>, IndexSet<Region<'tcx>>>,
     lhs: Ty<'tcx>,
     rhs: Ty<'tcx>,
 ) -> PoorManUnificationResult<'tcx, ()> {
@@ -289,9 +298,7 @@ pub fn poor_man_unification<'tcx>(
             for (s, t) in s.into_iter().zip(t.into_iter()) {
                 match (s.unpack(), t.unpack()) {
                     (GenericArgKind::Lifetime(l), GenericArgKind::Lifetime(j)) => {
-                        if *tbl.entry(l).or_insert(j) != j {
-                            return Err(PoorManUnificationError::Mismatch(lhs, rhs));
-                        }
+                        tbl.entry(l).or_default().insert(j);
                     }
                     (GenericArgKind::Type(t), GenericArgKind::Type(u)) => {
                         poor_man_unification(tbl, t, u)?
@@ -308,9 +315,7 @@ pub fn poor_man_unification<'tcx>(
         (TyKind::Slice(t), TyKind::Slice(u)) => poor_man_unification(tbl, *t, *u),
         (TyKind::RawPtr(t, _), TyKind::RawPtr(u, _)) => poor_man_unification(tbl, *t, *u),
         (TyKind::Ref(r, t, _), TyKind::Ref(s, u, _)) => {
-            if *tbl.entry(*r).or_insert(*s) != *s {
-                return Err(PoorManUnificationError::Mismatch(lhs, rhs));
-            }
+            tbl.entry(*r).or_default().insert(*s);
 
             poor_man_unification(tbl, *t, *u)
         }

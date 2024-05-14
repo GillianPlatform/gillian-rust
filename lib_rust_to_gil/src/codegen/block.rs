@@ -102,11 +102,28 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             return;
         }
         self.push_label(bb_label(bb));
-        for stmt in &bb_data.statements {
+        let mut loc = Location {
+            block: bb,
+            statement_index: 0,
+        };
+        for stmt in bb_data.statements.iter() {
+            // let ix = self.location_table.start_index(loc);
+            // let regions = self.polonius.origins_live_at(ix.as_usize().into());
+            // let mix = self.location_table.mid_index(loc);
+            // let mregions = self.polonius.origins_live_at(mix.as_usize().into());
+
+            // eprintln!("{loc:?} {regions:?} {stmt:?} {mregions:?}");
             self.push_statement(stmt);
+            loc = loc.successor_within_block();
         }
-        if let Some(terminator) = &bb_data.terminator {
-            self.push_terminator(terminator);
-        }
+        // let ix = self.location_table.start_index(loc);
+        // let regions = self.polonius.origins_live_at(ix.as_usize().into());
+
+        // let mix = self.location_table.mid_index(loc);
+        // let mregions = self.polonius.origins_live_at(mix.as_usize().into());
+
+        // eprintln!("{loc:?} {regions:?} {:?} {mregions:?}", bb_data.terminator().kind);
+
+        self.push_terminator(bb_data.terminator())
     }
 }

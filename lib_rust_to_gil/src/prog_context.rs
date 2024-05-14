@@ -1,5 +1,11 @@
+use std::rc::Rc;
+use std::str::FromStr;
+
+use polonius_engine::{Algorithm, Output};
+
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
+use crate::location_table::LocationTable;
 use crate::logic::{compile_logic, LogicItem};
 use crate::prelude::*;
 use crate::signature::build_signature;
@@ -42,7 +48,20 @@ impl<'tcx> ProgCtx<'tcx> {
         let body = with_facts.body.clone();
         let borrow_set = with_facts.borrow_set.clone();
         let region_ctxt = with_facts.region_inference_context.clone();
-        let ctx = GilCtxt::new(&mut self.global_env, &body, &borrow_set, &region_ctxt);
+        let location_table = LocationTable::new(&body);
+        let output_facts = {
+            let algorithm = Algorithm::from_str("Hybrid").unwrap();
+            let input_facts = with_facts.input_facts.clone().unwrap();
+            Rc::new(Output::compute(&*input_facts, algorithm, true))
+        };
+        let ctx = GilCtxt::new(
+            &mut self.global_env,
+            &body,
+            &borrow_set,
+            &region_ctxt,
+            output_facts,
+            location_table,
+        );
 
         let mut proc = ctx.push_body();
 
