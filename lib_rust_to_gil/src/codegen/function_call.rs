@@ -136,7 +136,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
 
-
         // if callee_has_regions {
         let sig = self.tcx().fn_sig(def_id);
         let ssig = sig.instantiate(self.tcx(), substs);

@@ -1,5 +1,4 @@
 /// Taken from rustc. The MIT license applies to this file.
-
 use rustc_index::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
@@ -44,7 +43,10 @@ impl LocationTable {
             })
             .collect();
 
-        Self { num_points, statements_before_block }
+        Self {
+            num_points,
+            statements_before_block,
+        }
     }
 
     pub fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
@@ -52,13 +54,19 @@ impl LocationTable {
     }
 
     pub fn start_index(&self, location: Location) -> LocationIndex {
-        let Location { block, statement_index } = location;
+        let Location {
+            block,
+            statement_index,
+        } = location;
         let start_index = self.statements_before_block[block];
         LocationIndex::from_usize(start_index + statement_index * 2)
     }
 
     pub fn mid_index(&self, location: Location) -> LocationIndex {
-        let Location { block, statement_index } = location;
+        let Location {
+            block,
+            statement_index,
+        } = location;
         let start_index = self.statements_before_block[block];
         LocationIndex::from_usize(start_index + statement_index * 2 + 1)
     }
@@ -90,9 +98,15 @@ impl LocationTable {
 
         let statement_index = (point_index - first_index) / 2;
         if index.is_start() {
-            RichLocation::Start(Location { block, statement_index })
+            RichLocation::Start(Location {
+                block,
+                statement_index,
+            })
         } else {
-            RichLocation::Mid(Location { block, statement_index })
+            RichLocation::Mid(Location {
+                block,
+                statement_index,
+            })
         }
     }
 }

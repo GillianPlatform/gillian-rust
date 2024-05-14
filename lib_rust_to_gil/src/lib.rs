@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(cell_leak)]
+extern crate polonius_engine;
 extern crate rustc_ast;
 extern crate rustc_borrowck;
 extern crate rustc_codegen_ssa;
@@ -23,7 +24,6 @@ extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
-extern crate polonius_engine;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
@@ -43,12 +43,12 @@ mod prelude {
 
 mod codegen;
 mod global_env;
+pub mod location_table;
 mod logic;
 mod prog_context;
 mod signature;
 mod temp_gen;
 pub mod utils;
-pub mod location_table;
 
 pub mod callbacks;
 pub mod config;
