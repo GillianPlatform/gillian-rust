@@ -18,6 +18,8 @@ serde_json = "1.0"
 num-bigint = "0.4"
 indexmap = "2.2"
 once_map = "0.4"
+itertools = "0.12.1"
+
 
 [package.metadata.rust-analyzer]
 rustc_private = true

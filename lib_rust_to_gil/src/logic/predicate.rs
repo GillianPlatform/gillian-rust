@@ -8,7 +8,7 @@ use crate::signature::{build_signature, Signature};
 use crate::{
     codegen::{
         place::{GilPlace, GilProj},
-        typ_encoding::{lifetime_param_name, type_param_name},
+        typ_encoding::type_param_name,
     },
     logic::{core_preds, param_collector},
     prelude::*,

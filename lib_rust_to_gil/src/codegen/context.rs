@@ -1,5 +1,8 @@
+use crate::location_table::LocationTable;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use rustc_borrowck::borrow_set::BorrowSet;
+use rustc_borrowck::consumers::PoloniusOutput;
 use rustc_borrowck::consumers::RegionInferenceContext;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
@@ -8,6 +11,7 @@ use rustc_middle::ty::RegionVid;
 use rustc_span::def_id::DefId;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use super::names::{gil_temp_from_id, temp_name_from_local};
 use super::typ_encoding::lifetime_param_name;
@@ -23,7 +27,12 @@ pub struct GilCtxt<'tcx, 'body> {
     next_label: Option<String>,
     mir: &'body Body<'tcx>,
     pub region_info: RegionInfo<'body, 'tcx>,
+    #[allow(dead_code)]
+    pub polonius: Rc<PoloniusOutput>,
+    #[allow(dead_code)]
+    pub location_table: LocationTable,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
+    pub(super) activated_borrows: HashSet<RegionVid>,
 }
 
 impl<'tcx, 'body> HasTyCtxt<'tcx> for GilCtxt<'tcx, 'body> {
@@ -112,15 +121,23 @@ fn region_info<'body, 'tcx>(
         poor_man_unification(&mut tbl, *sig_in, arg_ty.ty).unwrap();
     }
 
-
     // Build a name for each representative
     let mut names = HashMap::new();
-    for (ix, (name, vid)) in tbl.into_iter().enumerate() {
-        let vid = vid.as_var();
+    use itertools::Itertools;
+    for (ix, (name, vids)) in tbl.into_iter().enumerate() {
+        for (v, w) in vids.iter().tuple_windows() {
+            assert!(regioncx.eval_equal(v.as_var(), w.as_var()));
+        };
+
+
+        let vid = vids.first().unwrap().as_var();
         let vid = reborrows.get(&vid).unwrap_or(&vid);
         let scc = regioncx.constraint_sccs().scc(*vid);
         let repr = reprs[&scc.as_u32()];
-        names.insert(repr, region_name(name).unwrap_or_else(|| lifetime_param_name(&ix.to_string())));
+        names.insert(
+            repr,
+            region_name(name).unwrap_or_else(|| lifetime_param_name(&ix.to_string())),
+        );
     }
 
     RegionInfo {
@@ -175,6 +192,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         body: &'body Body<'tcx>,
         borrow_set: &'body BorrowSet<'tcx>,
         regioncx: &'body RegionInferenceContext<'tcx>,
+        polonius: Rc<PoloniusOutput>,
+        location_table: LocationTable,
     ) -> Self {
         let mir = body;
 
@@ -196,6 +215,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             mir,
             region_info,
             global_env,
+            polonius,
+            location_table,
+            activated_borrows: HashSet::default(),
         }
     }
 

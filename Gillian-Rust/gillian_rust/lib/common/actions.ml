@@ -7,6 +7,10 @@ type t =
   | Deinit
   | Free
   | Load_discr
+  (* Lifetime things *)
+  | New_lft
+  | Kill_lft
+  (* Size things *)
   | Size_of
   | Is_zst
     (* We can optimise this without computing param sizes in most cases *)
@@ -34,10 +38,10 @@ let of_name = function
   | "load_value" -> Load_value
   | "store_value" -> Store_value
   | "copy_nonoverlapping" -> Copy_nonoverlapping
-  | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
-  | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | "deinit" -> Deinit
   | "free" -> Free
+  | "new_lft" -> New_lft
+  | "kill_lft" -> Kill_lft
   | "size_of" -> Size_of
   | "is_zst" -> Is_zst
   | "ty_is_unsized" -> Ty_is_unsized
@@ -45,6 +49,8 @@ let of_name = function
   | "pcy_alloc" -> Pcy_alloc
   | "pcy_assign" -> Pcy_assign
   | "pcy_resolve" -> Pcy_resolve
+  | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
+  | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
@@ -54,6 +60,8 @@ let to_name = function
   | Copy_nonoverlapping -> "copy_nonoverlapping"
   | Deinit -> "deinit"
   | Free -> "free"
+  | New_lft -> "new_lft"
+  | Kill_lft -> "kill_lft"
   | Size_of -> "size_of"
   | Is_zst -> "is_zst"
   | Ty_is_unsized -> "ty_is_unsized"

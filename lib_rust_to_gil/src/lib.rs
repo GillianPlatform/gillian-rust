@@ -23,6 +23,7 @@ extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
+extern crate polonius_engine;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;
@@ -47,6 +48,7 @@ mod prog_context;
 mod signature;
 mod temp_gen;
 pub mod utils;
+pub mod location_table;
 
 pub mod callbacks;
 pub mod config;

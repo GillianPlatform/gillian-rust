@@ -40,7 +40,6 @@ pub fn compile_logic<'tcx, 'genv>(
         if is_borrow(did, tcx) {
             global_env.inner_pred(pred.name.clone());
         };
-
         vec![LogicItem::Pred(pred)]
     } else if is_lemma(did, tcx) {
         lemma::LemmaCtx::new(
