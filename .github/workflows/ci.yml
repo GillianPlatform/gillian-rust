@@ -36,7 +36,7 @@ jobs:
           path: "Gillian-Rust/_opam"
           key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-
+            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1
       - run: opam install . --deps-only --with-test --locked
         working-directory: "Gillian-Rust"
