@@ -61,8 +61,12 @@ fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F
 
 fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
     for param in &defs.params {
-        if let GenericParamDefKind::Const { is_host_effect: true, .. } = param.kind {
-            continue
+        if let GenericParamDefKind::Const {
+            is_host_effect: true,
+            ..
+        } = param.kind
+        {
+            continue;
         }
         f(param);
     }
@@ -87,12 +91,6 @@ pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // TODO: refactor all this, I should only go through it once.
     // Plus, I could just build a nice iterator.
-
-    #[deprecated]
-    fn has_generic_lifetimes(&self) -> bool {
-        has_generic_lifetimes(self.did(), self.tcx())
-    }
-
     #[deprecated]
     fn generic_types(&self) -> Vec<(u32, Symbol)> {
         generic_types(self.did(), self.tcx())

@@ -57,6 +57,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamCollector<'tcx> {
 
     fn visit_region(&mut self, _r: Region<'tcx>) -> Self::Result {
         self.regions = true;
-        ()
+        
     }
 }

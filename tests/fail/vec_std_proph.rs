@@ -33,6 +33,7 @@ impl TryReserveError {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum TryReserveErrorKind {
     /// Error due to the comxputed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).

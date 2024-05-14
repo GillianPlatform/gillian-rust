@@ -24,9 +24,9 @@ pred "extract_x::<T>$$extract_proof$$post"(+pty_T0, +p, +x, +y):
 (pty_T0 == #pty_T0) * (p == #p) * (x == #x) * (y == #y) * types(#lvar_6: Obj, #lvar_7: List) * (#p == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#x == {{ #lvar_8, #lvar_9 }}) * types(#lvar_10: Obj, #lvar_11: List) * (#y == {{ #lvar_10, #lvar_11 }}) * "<&mut T as gilogic::Ownable>::own$$inner"(pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }});
 
 
-pred "wp_ref_mut_xy::<T>"(+pLft_a, +pty_T0, +REFERENCE, x, y):
+pred "wp_ref_mut_xy::<T>"(+pLft_0, +pty_T0, +REFERENCE, x, y):
 "wp::<T>"(pty_T0, #SELF, #x, #y) * <value>(l-nth(#REFERENCE, 0i), l-nth(#REFERENCE, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF) * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * (y == #y) * (x == #x) * (REFERENCE == #REFERENCE);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_0; true);
 
 
 pred "<WP<T> as gilogic::Ownable>::own"(+pty_T0, +self):
@@ -82,8 +82,8 @@ lemma "extract_x::<T>"(pLft_a, pty_T0, p)[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 
 
-lemma "freeze_xy::<T>"(pLft_a, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(pLft_a, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["wp_ref_mut_xy::<T>"(pLft_a, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_0; true)]]
+lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_0; true)]]
 
 
 spec "WP::<T>::assign_first"(pLft_a, pty_T0, m_1self, m_2x)

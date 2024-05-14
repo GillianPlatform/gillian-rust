@@ -89,10 +89,10 @@ impl Callbacks for ToGil {
 /// Trys to retrieve the promoted MIR for a body from a thread local cache.
 /// The cache is populated when rustc runs the `mir_borrowck` query.
 /// After a body was retrieved, calling this function again for the same `def_id` will return `None`.
-pub fn get_body<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn get_body(
+    tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> Option<BodyWithBorrowckFacts<'tcx>> {
+) -> Option<BodyWithBorrowckFacts<'_>> {
     // trigger borrow checking
     let _ = tcx.mir_borrowck(def_id);
 
@@ -101,6 +101,7 @@ pub fn get_body<'tcx>(
         // SAFETY: For soundness we need to ensure that the bodies have
         // the same lifetime (`'tcx`), which they had before they were
         // stored in the thread local.
-        map.remove(&def_id).map(|body| unsafe { std::mem::transmute(body) })
+        map.remove(&def_id)
+            .map(|body| unsafe { std::mem::transmute(body) })
     })
 }

@@ -8,6 +8,7 @@ pub(crate) mod builtins;
 pub(crate) mod core_preds;
 mod dummy_pre;
 mod extract_lemma_utils;
+mod gilsonite;
 mod lemma;
 pub(crate) mod param_collector;
 mod predicate;

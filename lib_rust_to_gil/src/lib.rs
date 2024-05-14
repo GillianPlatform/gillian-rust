@@ -3,6 +3,7 @@
 #![feature(box_patterns)]
 #![feature(cell_leak)]
 extern crate rustc_ast;
+extern crate rustc_borrowck;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -22,7 +23,6 @@ extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
-extern crate rustc_borrowck;
 
 mod prelude {
     pub(crate) use crate::codegen::context::GilCtxt;

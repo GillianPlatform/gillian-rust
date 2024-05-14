@@ -1,8 +1,8 @@
 use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::traits::ResolvedImpl;
-use crate::{callbacks, prelude::*};
 use crate::utils::attrs::is_gillian_spec;
+use crate::{callbacks, prelude::*};
 use crate::{config::Config, logic::traits::TraitSolver};
 use indexmap::IndexMap;
 use once_map::OnceMap;
@@ -597,7 +597,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub(crate) fn body_with_facts(&self, def_id: LocalDefId) -> &BodyWithBorrowckFacts<'tcx> {
         self.bodies.insert(def_id, |_| {
             let body = callbacks::get_body(self.tcx, def_id)
-            .unwrap_or_else(|| panic!("did not find body for {def_id:?}"));
+                .unwrap_or_else(|| panic!("did not find body for {def_id:?}"));
             Box::new(body)
         })
     }

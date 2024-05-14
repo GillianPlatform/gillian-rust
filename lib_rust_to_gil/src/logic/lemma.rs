@@ -1,16 +1,12 @@
-use super::utils::get_thir;
 use super::LogicItem;
 use crate::signature::{build_signature, ParamKind};
 use crate::{prelude::*, signature};
 use gillian::gil::{Assertion, Expr, LCmd, Lemma, SLCmd};
 use rustc_hir::def_id::DefId;
-use rustc_middle::thir::{Param, Pat, PatKind};
 use rustc_middle::ty::GenericArgs;
 
-use crate::codegen::typ_encoding::lifetime_param_name;
 use crate::temp_gen::TempGenerator;
 use crate::{
-    codegen::typ_encoding::type_param_name,
     codegen::typ_encoding::TypeEncoder,
     prelude::{fatal, HasDefId, HasTyCtxt},
     utils::polymorphism::HasGenericArguments,
@@ -69,51 +65,14 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         }
     }
 
-    fn extract_param(&self, param: &Param<'tcx>) -> String {
-        match &param.pat {
-            Some(box Pat {
-                kind:
-                    PatKind::Binding {
-                        // mutability: _,
-                        name,
-                        var: _,
-                        subpattern,
-                        is_primary,
-                        mode: _,
-                        ty: _,
-                    },
-                ..
-            }) => {
-                if !is_primary {
-                    fatal!(self, "Predicate parameters must be primary");
-                }
-                if subpattern.is_some() {
-                    fatal!(self, "Predicate parameters cannot have subpatterns");
-                }
-                name.to_string()
-            }
-            _ => fatal!(self, "Predicate parameters must be variables"),
-        }
-    }
-
     fn lemma_name(&self) -> String {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
         self.global_env.just_pred_name_with_args(self.did, args)
     }
 
-    fn sig(&self) -> LemmaSig {
-        let (thir, _) = get_thir!(self);
-        let lft_params = if self.has_generic_lifetimes() {
-            Some(lifetime_param_name("a")).into_iter()
-        } else {
-            None.into_iter()
-        };
-        let type_params = self
-            .generic_types()
-            .into_iter()
-            .map(|x| type_param_name(x.0, x.1));
-        let args = thir.params.iter().map(|p| self.extract_param(p));
-        let params = lft_params.chain(type_params).chain(args).collect();
+    fn sig(&mut self) -> LemmaSig {
+        let sig = build_signature(self.global_env, self.did());
+        let params = sig.physical_args().map(|a| a.name().to_string()).collect();
         LemmaSig {
             name: self.lemma_name(),
             params,
@@ -126,7 +85,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let sig = self.sig();
 
         if self.is_extract_lemma {
-            let defs = self.compile_extract_lemma(&sig, self.did);
+            let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
             res.extend(defs);
         }
         if self.trusted {
@@ -136,7 +95,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             let mut lemma = Lemma {
                 name: name.clone(),
                 params: sig.params,
-                // params: sig.args.iter().map(|a| a.name().to_string()).collect(),
                 hyp: Assertion::Emp,
                 concs: Vec::new(),
                 proof: None,
@@ -162,8 +120,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         res
     }
 
-    fn compile_extract_lemma(&mut self, sig: &LemmaSig, id: DefId) -> Vec<LogicItem> {
-        let name = sig.name.clone() + "$$extract_proof";
+    fn compile_extract_lemma(&mut self, name: String, id: DefId) -> Vec<LogicItem> {
+        let name = name.clone() + "$$extract_proof";
         let post_name = name.clone() + "$$post";
         let pre_name = name.clone() + "$$pre";
 

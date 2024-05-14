@@ -30,14 +30,14 @@ pub fn lifetime_param_name(name: &str) -> String {
     format!("pLft_{}", name)
 }
 
-pub fn region_name(reg: Region) -> String {
+pub fn region_name(reg: Region) -> Option<String> {
     // Drop the '
     if let Some(nm) = reg.get_name() {
-        lifetime_param_name(&nm.as_str()[1..])
+        Some(lifetime_param_name(&nm.as_str()[1..]))
     } else if reg.is_var() {
-        lifetime_param_name(&reg.as_var().as_u32().to_string())
+        Some(lifetime_param_name(&reg.as_var().as_u32().to_string()))
     } else {
-        lifetime_param_name("anon")
+        None
     }
 }
 

@@ -5,7 +5,7 @@ macro_rules! get_thir {
 
     ($s:expr, $did:expr) => {{
         let ___thir = $s.tcx().thir_body($did.as_local().unwrap_or_else(|| {
-            fatal!(
+            crate::prelude::fatal!(
                 $s,
                 "non-local predicate {:?}",
                 $s.global_env().just_pred_name($did)
@@ -14,7 +14,7 @@ macro_rules! get_thir {
         if let Ok((___thir, ___expr)) = ___thir {
             (___thir.borrow(), ___expr)
         } else {
-            fatal!($s, "Predicate body failed to typecheck for {:?}", $did)
+            crate::prelude::fatal!($s, "Predicate body failed to typecheck for {:?}", $did)
         }
     }};
 }
