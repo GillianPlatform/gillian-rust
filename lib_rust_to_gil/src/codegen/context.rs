@@ -1,6 +1,5 @@
 use crate::location_table::LocationTable;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::PoloniusOutput;
 use rustc_borrowck::consumers::RegionInferenceContext;

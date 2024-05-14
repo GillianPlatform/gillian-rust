@@ -276,8 +276,6 @@ pub enum PoorManUnificationError<'tcx> {
     /// General error for when we don't have types of the same shape
     #[allow(dead_code)]
     Mismatch(Ty<'tcx>, Ty<'tcx>),
-    /// Tried to unify two different regions
-    RegionMismatch(Region<'tcx>, Region<'tcx>),
 }
 
 type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;

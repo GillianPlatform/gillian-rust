@@ -19,6 +19,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         })
     }
 
+    #[allow(dead_code)]
     pub fn push_kill_lifetime(&mut self, lft_name: String) {
         self.push_cmd(Cmd::Action {
             variable: names::unused_var(),
