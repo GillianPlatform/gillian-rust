@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::RegionInferenceContext;
 use rustc_middle::mir::visit::PlaceContext;
@@ -99,7 +100,7 @@ fn region_info<'body, 'tcx>(
             .or_insert(reg);
     }
 
-    let mut tbl = HashMap::new();
+    let mut tbl = IndexMap::new();
 
     for (sig_in, arg_ty) in sig
         .skip_binder()
@@ -111,17 +112,15 @@ fn region_info<'body, 'tcx>(
         poor_man_unification(&mut tbl, *sig_in, arg_ty.ty).unwrap();
     }
 
+
     // Build a name for each representative
     let mut names = HashMap::new();
-    for (name, vid) in tbl {
+    for (ix, (name, vid)) in tbl.into_iter().enumerate() {
         let vid = vid.as_var();
         let vid = reborrows.get(&vid).unwrap_or(&vid);
-        // if let Some(name) = name.get_name() {
         let scc = regioncx.constraint_sccs().scc(*vid);
         let repr = reprs[&scc.as_u32()];
-        // eprintln!("{name:?} : {repr:?}");
-        names.insert(repr, region_name(name));
-        // }
+        names.insert(repr, region_name(name).unwrap_or_else(|| lifetime_param_name(&ix.to_string())));
     }
 
     RegionInfo {

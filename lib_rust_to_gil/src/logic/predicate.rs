@@ -4,7 +4,7 @@ use super::gilsonite;
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, is_borrow};
 use crate::logic::gilsonite::SeqOp;
-use crate::signature::build_signature;
+use crate::signature::{build_signature, Signature};
 use crate::{
     codegen::{
         place::{GilPlace, GilProj},
@@ -43,6 +43,7 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     var_map: HashMap<LocalVarId, GExpr>,
     local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
     lvars: IndexMap<Symbol, Ty<'tcx>>,
+    sig: Signature<'tcx>,
 }
 
 impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
@@ -85,6 +86,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         args: GenericArgsRef<'tcx>,
     ) -> Self {
         PredCtx {
+            sig: build_signature(global_env, body_id),
             temp_gen,
             global_env,
             body_id,
@@ -182,7 +184,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             if !has_generic_lifetimes(self.body_id, self.tcx()) {
                 fatal!(self, "Borrow without a lifetime? {:?}", self.pred_name());
             }
-            core_preds::alive_lft(Expr::PVar(lifetime_param_name("a")))
+            let lft = self.sig.lifetimes().next().unwrap();
+            core_preds::alive_lft(Expr::PVar(lft.to_string()))
         })
     }
 
@@ -213,7 +216,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
 
         let generic_lft_params = if has_generic_lifetimes {
-            Some(lifetime_param_name("a")).into_iter()
+            let lft = self.sig.lifetimes().next().unwrap();
+            Some(lft.to_string()).into_iter()
         } else {
             None.into_iter()
         };
@@ -390,7 +394,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             "predicate calling another one, it has a lifetime param but not self?"
                         )
                     };
-                    params.push(Expr::PVar(lifetime_param_name("a")));
+                    let lft = self.sig.lifetimes().next().unwrap();
+
+                    params.push(Expr::PVar(lft.to_string()));
                 }
                 for tyarg in ty_params.parameters {
                     let tyarg = self.encode_type(tyarg);
@@ -529,7 +535,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         {
             inner
         } else {
-            let lft_param = lifetime_param_name("a");
+            let lft_param = self.sig.lifetimes().next().unwrap();
             Assertion::star(
                 inner,
                 super::core_preds::alive_lft(Expr::LVar(format!("#{lft_param}"))),
@@ -727,7 +733,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_formula_inner(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
         assert!(formula.bound_vars.is_empty());
 
-        
         self.compile_formula_body(formula.body)
     }
 

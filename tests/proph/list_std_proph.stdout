@@ -134,7 +134,7 @@ proc "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, m_1self, m_2node) {
         g_16 := l-nth(g_17, 0i);
         m_7 := g_16;
         g_18 := m_7;
-        g_19 := "<&mut T std::convert::Into<U>>::into"({{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_18);
+        g_19 := "<&mut T std::convert::Into<U>>::into"(pLft_8, {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_18);
         m_6 := g_19;
         goto bb2;
   bb2:  g_20 := m_6;
@@ -319,7 +319,7 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, m_1self) {
 };
 
 spec "LinkedList::<T>::pop_front"(pLft_0, pty_T0, m_1self, current, proph)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(pLft_a, #pty_T0, #m_1self, {{ #current, #proph }}) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List) * (#m_1self == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }}) * (proph == #proph) * (current == #current) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #m_1self, {{ #current, #proph }}) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List) * (#m_1self == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }}) * (proph == #proph) * (current == #current) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((#current = {{  }}) and (#proph = {{  }})) and (#ret_repr = {{ 0i, {{  }} }})) or (((not (#current = {{  }})) and (#proph = (cdr #current))) and (#ret_repr = {{ 1i, {{ (car #current) }} }}))); ) * <lft>(#pLft_0; true)]]
 normal
 
@@ -332,7 +332,7 @@ proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, m_1self) {
         g_1 := l-nth(g_2, 0i);
         m_4 := g_1;
         g_3 := m_4;
-        g_4 := "LinkedList::<T>::pop_front_node"(pLft_anon, pty_T0, g_3);
+        g_4 := "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, g_3);
         u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }}, g_4);
         goto bb1;
   bb1:  g_6 := [load_discr](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }});
@@ -387,7 +387,7 @@ proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, m_1self) {
 };
 
 spec "LinkedList::<T>::push_front"(pLft_0, pty_T0, m_1self, m_2elt, current, proph, elt_repr)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(pLft_a, #pty_T0, #m_1self, {{ #current, #proph }}) * <observation>(((l-len #current) i< 18446744073709551615i); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #m_2elt, #elt_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List) * (#m_1self == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }}) * (elt_repr == #elt_repr) * (proph == #proph) * (current == #current) * (m_2elt == #m_2elt) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #m_1self, {{ #current, #proph }}) * <observation>(((l-len #current) i< 18446744073709551615i); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #m_2elt, #elt_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List) * (#m_1self == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }}) * (elt_repr == #elt_repr) * (proph == #proph) * (current == #current) * (m_2elt == #m_2elt) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["<() as gilogic::prophecies::Ownable>::own"(ret, {{  }}) * <observation>((#proph = l+ ({{ #elt_repr }}, #current)); ) * <lft>(#pLft_0; true)]]
 normal
 
@@ -410,7 +410,7 @@ proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, m_1self, m_2elt) {
         goto bb2;
   bb2:  g_8 := m_4;
         g_9 := m_5;
-        g_10 := "LinkedList::<T>::push_front_node"(pLft_anon, pty_T0, g_8, g_9);
+        g_10 := "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, g_8, g_9);
         m_3 := g_10;
         goto bb3;
   bb3:  g_12 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);

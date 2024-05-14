@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
+use indexmap::IndexMap;
 use names::bb_label;
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
@@ -95,10 +96,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let callee_has_regions = operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
+
         if callee_has_regions {
             let sig = self.tcx().fn_sig(def_id);
-            // let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.check_func_call(sig.skip_binder(), operands);
+            let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.lifetimes_for_call(ssig, operands);
 
             args.extend(
                 regions
@@ -132,10 +134,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args = Vec::with_capacity(
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
+
         if callee_has_regions {
             let sig = self.tcx().fn_sig(def_id);
             // let ssig = sig.instantiate(self.tcx(), substs);
-            let regions = self.check_func_call(sig.skip_binder(), operands);
+            let regions = self.lifetimes_for_call(sig.skip_binder(), operands);
 
             args.extend(
                 regions
@@ -155,17 +158,17 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         args
     }
 
-    pub fn check_func_call(
+    pub fn lifetimes_for_call(
         &mut self,
         sig: PolyFnSig<'tcx>,
         args: &[Spanned<Operand<'tcx>>],
     ) -> Vec<Region<'tcx>> {
-        let mut tbl = HashMap::new();
+        let mut tbl = IndexMap::new();
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());
             poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap();
         }
-
+     
         tbl.values().copied().collect()
     }
 
@@ -272,7 +275,7 @@ pub enum PoorManUnificationError<'tcx> {
 type PoorManUnificationResult<'tcx, T> = Result<T, PoorManUnificationError<'tcx>>;
 
 pub fn poor_man_unification<'tcx>(
-    tbl: &mut HashMap<Region<'tcx>, Region<'tcx>>,
+    tbl: &mut IndexMap<Region<'tcx>, Region<'tcx>>,
     lhs: Ty<'tcx>,
     rhs: Ty<'tcx>,
 ) -> PoorManUnificationResult<'tcx, ()> {

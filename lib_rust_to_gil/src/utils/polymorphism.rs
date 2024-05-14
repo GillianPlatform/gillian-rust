@@ -91,12 +91,6 @@ pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
 pub trait HasGenericArguments<'tcx>: HasDefId + HasTyCtxt<'tcx> {
     // TODO: refactor all this, I should only go through it once.
     // Plus, I could just build a nice iterator.
-
-    #[deprecated]
-    fn has_generic_lifetimes(&self) -> bool {
-        has_generic_lifetimes(self.did(), self.tcx())
-    }
-
     #[deprecated]
     fn generic_types(&self) -> Vec<(u32, Symbol)> {
         generic_types(self.did(), self.tcx())
