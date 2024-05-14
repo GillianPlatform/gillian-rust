@@ -146,6 +146,24 @@ let execute_free mem args =
       make_branch ~mem:{ mem with heap = new_heap; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for free"
 
+let execute_new_lft mem args =
+  let { lfts; _ } = mem in
+  match args with
+  | [] ->
+      let+ lft, lfts = Lft_ctx.new_lft lfts in
+      let lft = Lft.to_expr lft in
+      Ok (make_branch ~mem:{ mem with lfts } ~rets:[ lft ] ())
+  | _ -> Fmt.failwith "Invalid arguments for new_lft"
+
+let execute_kill_lft mem args =
+  let { lfts; _ } = mem in
+  match args with
+  | [ lft ] ->
+      let lft = Lft.of_expr lft in
+      let++ lfts = Lft_ctx.kill lfts lft in
+      make_branch ~mem:{ mem with lfts } ()
+  | _ -> Fmt.failwith "Invalid arguments for kill_lft"
+
 let execute_cons_value mem args =
   let { heap; tyenv; lk; _ } = mem in
   match args with
@@ -552,6 +570,8 @@ let execute_action ~action_name mem args =
     | Load_discr -> execute_load_discr mem args
     | Copy_nonoverlapping -> execute_copy_nonoverlapping mem args
     | Free -> execute_free mem args
+    | New_lft -> execute_new_lft mem args
+    | Kill_lft -> execute_kill_lft mem args
     | Size_of -> execute_size_of mem args
     | Is_zst -> execute_is_zst mem args
     | Pcy_alloc -> execute_pcy_alloc mem args

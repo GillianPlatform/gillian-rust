@@ -1,4 +1,5 @@
 open Gillian.Utils.Prelude
+module DR = Monadic.Delayed_result
 module LftMap = Map.Make (Lft)
 
 type t = bool LftMap.t [@@deriving yojson]
@@ -22,11 +23,16 @@ let produce t lft status =
   | Some false, false -> Some t (* <lft>(#l, false) is pure *)
   | Some _, _ -> None
 
+let new_lft t =
+  let open Monadic.Delayed.Syntax in
+  let+ lft = Lft.fresh () in
+  (lft, LftMap.add lft true t)
+
 let kill t loc =
   match LftMap.find_opt loc t with
-  | None -> Error (Err.Missing_lifetime loc)
-  | Some false -> Error (Err.Double_kill_lifetime loc)
-  | Some true -> Ok (LftMap.add loc false t)
+  | None -> DR.error (Err.Missing_lifetime loc)
+  | Some false -> DR.error (Err.Double_kill_lifetime loc)
+  | Some true -> DR.ok (LftMap.add loc false t)
 
 let check_status ~expected t loc =
   match LftMap.find_opt loc t with
