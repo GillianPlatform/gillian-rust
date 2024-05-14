@@ -315,8 +315,6 @@ impl<'tcx> TupleOwn<'tcx> {
         let ty_param_left = param_collector::collect_params_on_args(own_left.1);
         let ty_param_right = param_collector::collect_params_on_args(own_right.1);
 
-        eprintln!("{ty_param_left:?} {ty_param_right:?}");
-
         let lvar_x = Expr::LVar("#x".into());
         let lvar_y = Expr::LVar("#y".into());
         let eq = slf.eq_f([lvar_x.clone(), lvar_y.clone()]).into_asrt();

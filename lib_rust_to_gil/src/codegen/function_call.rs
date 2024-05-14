@@ -136,10 +136,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
 
+
         // if callee_has_regions {
         let sig = self.tcx().fn_sig(def_id);
-        // let ssig = sig.instantiate(self.tcx(), substs);
-        let regions = self.lifetimes_for_call(sig.skip_binder(), operands, ret_ty);
+        let ssig = sig.instantiate(self.tcx(), substs);
+        let regions = self.lifetimes_for_call(ssig, operands, ret_ty);
 
         args.extend(
             regions
@@ -166,15 +167,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         ret_ty: Ty<'tcx>,
     ) -> Vec<Region<'tcx>> {
         let mut tbl = IndexMap::new();
-        eprintln!("{sig:?}");
+
         for (sig_in, arg) in sig.skip_binder().inputs().iter().zip(args) {
             let arg_ty = arg.node.ty(self.mir(), self.tcx());
             poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap_or_else(|e| panic!("{e:?}"));
         }
 
-        eprintln!("{:?} u {:?}", sig.output().skip_binder(), ret_ty);
         poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty).unwrap();
-        tbl.values().flatten().copied().collect()
+        tbl.values().map(|a| a.first()).flatten().copied().collect()
     }
 
     pub fn push_function_call(
