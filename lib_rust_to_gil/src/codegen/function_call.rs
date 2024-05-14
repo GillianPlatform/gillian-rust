@@ -173,7 +173,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         }
 
         poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty).unwrap();
-        tbl.values().map(|a| a.first()).flatten().copied().collect()
+        tbl.values().filter_map(|a| a.first()).copied().collect()
     }
 
     pub fn push_function_call(

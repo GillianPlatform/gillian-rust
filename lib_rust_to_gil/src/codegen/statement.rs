@@ -42,7 +42,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 }
 
-fn region<'tcx>(ty: Ty<'tcx>) -> Option<Region<'tcx>> {
+fn region(ty: Ty<'_>) -> Option<Region<'_>> {
     match ty.kind() {
         TyKind::Ref(r, _, _) => Some(*r),
         _ => None,
