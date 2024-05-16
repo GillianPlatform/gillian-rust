@@ -232,7 +232,7 @@ dependencies = [
  "pearlite-syn",
  "proc-macro2",
  "quote",
- "syn 1.0.103",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -624,11 +624,11 @@ dependencies = [
 [[package]]
 name = "pearlite-syn"
 version = "0.2.0"
-source = "git+https://github.com/xldenis/creusot?rev=639bc912ddc793b9cd56255c47158533b3c33c56#639bc912ddc793b9cd56255c47158533b3c33c56"
+source = "git+https://github.com/xldenis/creusot?rev=71d106a96530ba3b4a00620cccda8eb351ff5bc7#71d106a96530ba3b4a00620cccda8eb351ff5bc7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.103",
+ "syn 2.0.43",
 ]
 
 [[package]]
