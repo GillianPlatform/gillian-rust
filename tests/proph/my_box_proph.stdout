@@ -5,7 +5,10 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil";
 
 pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
-(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #model) * (model == #model) * (self == #self);
+  (#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #model)
+  * (model == #model)
+  * (self == #self);
 
 
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +self, model);

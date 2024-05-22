@@ -5,19 +5,22 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
 pred "<MyBox<T> as gilogic::Ownable>::own"(+pty_T0, +self):
-(#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v) * "<T as gilogic::Ownable>::own"(pty_T0, #v) * (self == #self);
+  (#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v)
+  * "<T as gilogic::Ownable>::own"(pty_T0, #v)
+  * (self == #self);
 
 
 abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
 
 
 pred "<&mut MyBox<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
-<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
+  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v)
+  * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
 guard: <lft>(lft; true);
 
-
 pred "<&mut MyBox<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
-<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v) * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
+  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v)
+  * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
 
 
 spec "MyBox::<T>::write"(pty_T0, m_1self, m_2v)

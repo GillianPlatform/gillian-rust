@@ -1,5 +1,7 @@
 use std::fmt;
 
+use pretty::{DocAllocator, Pretty};
+
 #[derive(Debug, Copy, Clone)]
 pub enum Type {
     UndefinedType,
@@ -14,6 +16,28 @@ pub enum Type {
     ListType,
     TypeType,
     SetType,
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Type
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, allocator: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            Type::UndefinedType => allocator.text("Undefined"),
+            Type::NullType => allocator.text("Null"),
+            Type::EmptyType => allocator.text("Empty"),
+            Type::NoneType => allocator.text("None"),
+            Type::BoolType => allocator.text("Bool"),
+            Type::IntType => allocator.text("Int"),
+            Type::NumberType => allocator.text("Num"),
+            Type::StringType => allocator.text("Str"),
+            Type::ObjectType => allocator.text("Obj"),
+            Type::ListType => allocator.text("List"),
+            Type::TypeType => allocator.text("Type"),
+            Type::SetType => allocator.text("Set"),
+        }
+    }
 }
 
 impl fmt::Display for Type {

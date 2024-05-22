@@ -1,8 +1,9 @@
 use super::print_utils::separated_display;
 use super::visitors::GilVisitorMut;
-use super::{BinOp, Literal, NOp, UnOp};
+use super::Literal;
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
+use pretty::{docs, DocAllocator, Pretty};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -91,6 +92,296 @@ from_array!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 impl From<Vec<Expr>> for Expr {
     fn from(lst: Vec<Expr>) -> Self {
         Self::EList(lst)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum NOp {
+    LstCat,
+    SetUnion,
+    SetInter,
+}
+
+impl fmt::Display for NOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use NOp::*;
+        match self {
+            LstCat => write!(f, "l+"),
+            SetUnion => write!(f, "-u-"),
+            SetInter => write!(f, "-i-"),
+        }
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for NOp
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            NOp::LstCat => alloc.text("l+"),
+            NOp::SetUnion => alloc.text("-u-"),
+            NOp::SetInter => alloc.text("-i-"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UnOp {
+    IUnaryMinus,
+    FUnaryMinus,
+    UNot,
+    BitwiseNot,
+    M_isNaN,
+    M_abs,
+    M_acos,
+    M_asin,
+    M_atan,
+    M_ceil,
+    M_cos,
+    M_exp,
+    M_floor,
+    M_log,
+    M_round,
+    M_sgn,
+    M_sin,
+    M_sqrt,
+    M_tan,
+    ToStringOp,
+    ToIntOp,
+    ToUint16Op,
+    ToUint32Op,
+    ToInt32Op,
+    ToNumberOp,
+    TypeOf,
+    Car,
+    Cdr,
+    LstLen,
+    LstRev,
+    SetToList,
+    StrLen,
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for UnOp
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        use UnOp::*;
+        match self {
+            IUnaryMinus => alloc.text("i-"),
+            FUnaryMinus => alloc.text("-"),
+            UNot => alloc.text("not"),
+            BitwiseNot => alloc.text("~"),
+            M_isNaN => alloc.text("isNaN"),
+            M_abs => alloc.text("m_abs"),
+            M_acos => alloc.text("m_acos"),
+            M_asin => alloc.text("m_asin"),
+            M_atan => alloc.text("m_atan"),
+            M_ceil => alloc.text("m_ceil"),
+            M_cos => alloc.text("m_cos"),
+            M_exp => alloc.text("m_exp"),
+            M_floor => alloc.text("m_floor"),
+            M_log => alloc.text("m_log"),
+            M_round => alloc.text("m_round"),
+            M_sgn => alloc.text("m_sgn"),
+            M_sin => alloc.text("m_sin"),
+            M_sqrt => alloc.text("m_sqrt"),
+            M_tan => alloc.text("m_tan"),
+            ToStringOp => alloc.text("num_to_string"),
+            ToIntOp => alloc.text("num_to_int"),
+            ToUint16Op => alloc.text("num_to_uint16"),
+            ToInt32Op => alloc.text("num_to_int32"),
+            ToUint32Op => alloc.text("num_to_uint32"),
+            ToNumberOp => alloc.text("string_to_num"),
+            TypeOf => alloc.text("typeOf"),
+            Car => alloc.text("car"),
+            Cdr => alloc.text("cdr"),
+            LstLen => alloc.text("l-len"),
+            LstRev => alloc.text("l-rev"),
+            SetToList => alloc.text("set_to_list"),
+            StrLen => alloc.text("s-len"),
+        }
+    }
+}
+
+impl fmt::Display for UnOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use UnOp::*;
+        match self {
+            IUnaryMinus => write!(f, "i-"),
+            FUnaryMinus => write!(f, "-"),
+            UNot => write!(f, "not"),
+            BitwiseNot => write!(f, "~"),
+            M_isNaN => write!(f, "isNaN"),
+            M_abs => write!(f, "m_abs"),
+            M_acos => write!(f, "m_acos"),
+            M_asin => write!(f, "m_asin"),
+            M_atan => write!(f, "m_atan"),
+            M_ceil => write!(f, "m_ceil"),
+            M_cos => write!(f, "m_cos"),
+            M_exp => write!(f, "m_exp"),
+            M_floor => write!(f, "m_floor"),
+            M_log => write!(f, "m_log"),
+            M_round => write!(f, "m_round"),
+            M_sgn => write!(f, "m_sgn"),
+            M_sin => write!(f, "m_sin"),
+            M_sqrt => write!(f, "m_sqrt"),
+            M_tan => write!(f, "m_tan"),
+            ToStringOp => write!(f, "num_to_string"),
+            ToIntOp => write!(f, "num_to_int"),
+            ToUint16Op => write!(f, "num_to_uint16"),
+            ToInt32Op => write!(f, "num_to_int32"),
+            ToUint32Op => write!(f, "num_to_uint32"),
+            ToNumberOp => write!(f, "string_to_num"),
+            TypeOf => write!(f, "typeOf"),
+            Car => write!(f, "car"),
+            Cdr => write!(f, "cdr"),
+            LstLen => write!(f, "l-len"),
+            LstRev => write!(f, "l-rev"),
+            StrLen => write!(f, "s-len"),
+            SetToList => write!(f, "set_to_list"),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum BinOp {
+    Equal,
+    ILessThan,
+    ILessThanEqual,
+    IPlus,
+    IMinus,
+    ITimes,
+    IDiv,
+    IMod,
+    FLessThan,
+    FLessThanEqual,
+    FPlus,
+    FMinus,
+    FTimes,
+    FDiv,
+    FMod,
+    SLessThan,
+    BAnd,
+    BOr,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    SignedRightShift,
+    UnsignedRightShift,
+    BitwiseAndL,
+    BitwiseOrL,
+    BitwiseXorL,
+    LeftShiftL,
+    SignedRightShiftL,
+    UnsignedRightShiftL,
+    M_atan2,
+    M_pow,
+    LstNth,
+    LstRepeat,
+    StrCat,
+    StrNth,
+    SetDiff,
+    BSetMem,
+    BSetSub,
+}
+
+impl fmt::Display for BinOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use BinOp::*;
+        match self {
+            Equal => write!(f, "="),
+            ILessThan => write!(f, "i<"),
+            ILessThanEqual => write!(f, "i<="),
+            IPlus => write!(f, "i+"),
+            IMinus => write!(f, "i-"),
+            ITimes => write!(f, "i*"),
+            IDiv => write!(f, "i/"),
+            IMod => write!(f, "i%"),
+            FLessThan => write!(f, "<"),
+            FLessThanEqual => write!(f, "<="),
+            FPlus => write!(f, "+"),
+            FMinus => write!(f, "-"),
+            FTimes => write!(f, "*"),
+            FDiv => write!(f, "/"),
+            FMod => write!(f, "%"),
+            SLessThan => write!(f, "s<"),
+            BAnd => write!(f, "and"),
+            BOr => write!(f, "or"),
+            BitwiseAnd => write!(f, "&"),
+            BitwiseOr => write!(f, "|"),
+            BitwiseXor => write!(f, "^"),
+            LeftShift => write!(f, "<<"),
+            SignedRightShift => write!(f, ">>"),
+            UnsignedRightShift => write!(f, ">>>"),
+            BitwiseAndL => write!(f, "&l"),
+            BitwiseOrL => write!(f, "|l"),
+            BitwiseXorL => write!(f, "^l"),
+            LeftShiftL => write!(f, "<<l"),
+            SignedRightShiftL => write!(f, ">>l"),
+            UnsignedRightShiftL => write!(f, ">>>l"),
+            M_atan2 => write!(f, "m_atan2"),
+            M_pow => write!(f, "**"),
+            LstNth => write!(f, "l-nth"),
+            LstRepeat => write!(f, "l-repeat"),
+            StrCat => write!(f, "++"),
+            StrNth => write!(f, "s-nth"),
+            SetDiff => write!(f, "-d-"),
+            BSetMem => write!(f, "-e-"),
+            BSetSub => write!(f, "-s-"),
+        }
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for BinOp
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        use BinOp::*;
+        match self {
+            Equal => alloc.text("="),
+            ILessThan => alloc.text("i<"),
+            ILessThanEqual => alloc.text("i<="),
+            IPlus => alloc.text("i+"),
+            IMinus => alloc.text("i-"),
+            ITimes => alloc.text("i*"),
+            IDiv => alloc.text("i/"),
+            IMod => alloc.text("i%"),
+            FLessThan => alloc.text("<"),
+            FLessThanEqual => alloc.text("<="),
+            FPlus => alloc.text("+"),
+            FMinus => alloc.text("-"),
+            FTimes => alloc.text("*"),
+            FDiv => alloc.text("/"),
+            FMod => alloc.text("%"),
+            SLessThan => alloc.text("s<"),
+            BAnd => alloc.text("and"),
+            BOr => alloc.text("or"),
+            BitwiseAnd => alloc.text("&"),
+            BitwiseOr => alloc.text("|"),
+            BitwiseXor => alloc.text("^"),
+            LeftShift => alloc.text("<<"),
+            SignedRightShift => alloc.text(">>"),
+            UnsignedRightShift => alloc.text(">>>"),
+            BitwiseAndL => alloc.text("&l"),
+            BitwiseOrL => alloc.text("|l"),
+            BitwiseXorL => alloc.text("^l"),
+            LeftShiftL => alloc.text("<<l"),
+            SignedRightShiftL => alloc.text(">>l"),
+            UnsignedRightShiftL => alloc.text(">>>l"),
+            M_atan2 => alloc.text("m_atan2"),
+            M_pow => alloc.text("**"),
+            LstNth => alloc.text("l-nth"),
+            LstRepeat => alloc.text("l-repeat"),
+            StrCat => alloc.text("++"),
+            StrNth => alloc.text("s-nth"),
+            SetDiff => alloc.text("-d-"),
+            BSetMem => alloc.text("-e-"),
+            BSetSub => alloc.text("-s-"),
+        }
     }
 }
 
@@ -516,6 +807,67 @@ impl Expr {
     pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         let mut visitor = super::visitors::SubstPVar::new(mapping);
         visitor.visit_expr(self);
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a Expr
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            Expr::Lit(lit) => lit.pretty(alloc),
+            Expr::PVar(var) | Expr::LVar(var) | Expr::ALoc(var) => alloc.text(var),
+            Expr::UnOp { operator, operand } => operator
+                .pretty(alloc)
+                .append(alloc.space())
+                .append(operand.pretty(alloc)),
+            Expr::BinOp {
+                operator,
+                left_operand,
+                right_operand,
+            } => match operator {
+                BinOp::LstNth | BinOp::StrNth | BinOp::LstRepeat => {
+                    alloc.text(operator.to_string()).append(
+                        left_operand
+                            .pretty(alloc)
+                            .append(alloc.text(", "))
+                            .append(right_operand.pretty(alloc))
+                            .parens(),
+                    )
+                }
+
+                _ => left_operand
+                    .pretty(alloc)
+                    .append(alloc.space())
+                    .append(operator.pretty(alloc))
+                    .append(alloc.space())
+                    .append(right_operand.pretty(alloc)),
+            },
+            Expr::LstSub {
+                list,
+                start,
+                length,
+            } => alloc.text("l-sub").append(
+                alloc
+                    .intersperse([&**list, &**start, &**length], ", ")
+                    .parens(),
+            ),
+            Expr::EList(vec) => docs![
+                alloc,
+                alloc.space(),
+                alloc.intersperse(vec, ", "),
+                alloc.space()
+            ]
+            .enclose("{{", "}}"),
+            Expr::ESet(vec) => alloc
+                .text("-{ ")
+                .append(alloc.intersperse(vec, ", "))
+                .append(alloc.text(" }-")),
+            Expr::NOp { operator, operands } => operator
+                .pretty(alloc)
+                .append(alloc.intersperse(operands, ", ").parens()),
+        }
     }
 }
 

@@ -5,7 +5,7 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
 pred "<MyInt as gilogic::Ownable>::own"(+self):
-(0i i<=# l-nth(#self, 0i)) * (l-nth(#self, 0i) i<=# 10i) * (self == #self);
+  (0i i<=# l-nth(#self, 0i)) * (l-nth(#self, 0i) i<=# 10i) * (self == #self);
 
 
 proc "MyInt::new"(m_1x) {
