@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use pretty::{DocAllocator, Pretty};
+
 use super::{Assertion, Expr, Literal, Type};
 
 #[derive(Debug, Clone)]
@@ -187,6 +189,95 @@ impl Formula {
     }
 }
 
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a Formula
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, allocator: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        use Formula::*;
+        match self {
+            True => allocator.text("True"),
+            False => allocator.text("False"),
+            Not(fml) => allocator
+                .text("(! ")
+                .append(fml.pretty(allocator))
+                .append(")"),
+            And { left, right } => left
+                .pretty(allocator)
+                .append(" /\\ ")
+                .append(right.pretty(allocator))
+                .parens(),
+            Or { left, right } => left
+                .pretty(allocator)
+                .append(" \\/ ")
+                .append(right.pretty(allocator))
+                .parens(),
+            Eq { left, right } => left
+                .pretty(allocator)
+                .append(" == ")
+                .append(right.pretty(allocator))
+                .parens(),
+            Impl { left, right } => left
+                .pretty(allocator)
+                .append(" ==> ")
+                .append(right.pretty(allocator))
+                .parens(),
+            ILess { left, right } => left
+                .pretty(allocator)
+                .append(" i<# ")
+                .append(right.pretty(allocator))
+                .parens(),
+            ILessEq { left, right } => left
+                .pretty(allocator)
+                .append(" i<=# ")
+                .append(right.pretty(allocator))
+                .parens(),
+            FLess { left, right } => left
+                .pretty(allocator)
+                .append(" <# ")
+                .append(right.pretty(allocator))
+                .parens(),
+            FLessEq { left, right } => left
+                .pretty(allocator)
+                .append(" <=# ")
+                .append(right.pretty(allocator))
+                .parens(),
+            StrLess { left, right } => left
+                .pretty(allocator)
+                .append(" s<# ")
+                .append(right.pretty(allocator))
+                .parens(),
+            SetMem { left, right } => left
+                .pretty(allocator)
+                .append(" --e-- ")
+                .append(right.pretty(allocator))
+                .parens(),
+            SetSub { left, right } => left
+                .pretty(allocator)
+                .append(" --s-- ")
+                .append(right.pretty(allocator))
+                .parens(),
+            ForAll {
+                quantified,
+                formula,
+            } => allocator
+                .text("forall ")
+                .append(allocator.intersperse(
+                    quantified.iter().map(|(name, ty)| {
+                        if let Some(ty) = ty {
+                            allocator.text(format!("{}: {}", name, ty))
+                        } else {
+                            allocator.text(name)
+                        }
+                    }),
+                    ", ",
+                ))
+                .append(". ")
+                .append(formula.pretty(allocator))
+                .parens(),
+        }
+    }
+}
 impl Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Formula::*;

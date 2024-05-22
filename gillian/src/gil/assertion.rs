@@ -1,3 +1,5 @@
+use pretty::{docs, DocAllocator, Pretty};
+
 use super::{print_utils::separated_display, visitors::GilVisitorMut};
 use std::{collections::HashMap, fmt::Display};
 
@@ -82,6 +84,78 @@ impl FromIterator<Assertion> for Assertion {
 impl From<Formula> for Assertion {
     fn from(value: Formula) -> Self {
         Assertion::Pure(value)
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a Assertion
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            Assertion::Emp => alloc.text("emp"),
+            Assertion::Star { left, right } => {
+                docs![alloc, &**left, alloc.line(), "* ", &**right].group()
+            }
+            Assertion::Pred { name, params } => {
+                let name = super::print_utils::maybe_quoted(name);
+
+                alloc.text(name.clone()).append(
+                    alloc
+                        .intersperse(
+                            params.iter().map(|expr| expr.pretty(alloc)),
+                            alloc.text(", "),
+                        )
+                        .parens(),
+                )
+            }
+            Assertion::Pure(formula) => formula.pretty(alloc),
+            Assertion::Types(types) => alloc.text("types").append(
+                alloc
+                    .intersperse(
+                        types.iter().map(|(expr, ty)| {
+                            expr.pretty(alloc).append(": ").append(ty.pretty(alloc))
+                        }),
+                        alloc.text(", "),
+                    )
+                    .parens(),
+            ),
+            Assertion::GA { name, ins, outs } => alloc
+                .text(super::print_utils::maybe_quoted(name))
+                .enclose("<", ">")
+                .append(
+                    alloc
+                        .intersperse(ins.iter().map(|expr| expr.pretty(alloc)), alloc.text(", "))
+                        .append("; ")
+                        .append(alloc.intersperse(
+                            outs.iter().map(|expr| expr.pretty(alloc)),
+                            alloc.text(", "),
+                        ))
+                        .parens(),
+                ),
+            Assertion::Wand { lhs, rhs } => alloc
+                .text(super::print_utils::maybe_quoted(&lhs.0))
+                .append(
+                    alloc
+                        .intersperse(
+                            lhs.1.iter().map(|expr| expr.pretty(alloc)),
+                            alloc.text(", "),
+                        )
+                        .parens(),
+                )
+                .append(" -* ")
+                .append(
+                    alloc.text(super::print_utils::maybe_quoted(&rhs.0)).append(
+                        alloc
+                            .intersperse(
+                                rhs.1.iter().map(|expr| expr.pretty(alloc)),
+                                alloc.text(", "),
+                            )
+                            .parens(),
+                    ),
+                )
+                .parens(),
+        }
     }
 }
 

@@ -17,6 +17,28 @@ where
     Ok(())
 }
 
+pub(crate) fn maybe_quoted(s: &str) -> String {
+    if s.is_empty() {
+        panic!("Empty string for function or predicate identifier");
+    }
+    let mut first = true;
+
+    let needs_quotes = !s.chars().all(|c| {
+        if first {
+            first = false;
+            c.is_alphabetic()
+        } else {
+            c == '_' || c.is_alphanumeric()
+        }
+    });
+
+    if needs_quotes {
+        format!("\"{}\"", s)
+    } else {
+        format!("{}", s)
+    }
+}
+
 pub(crate) fn write_maybe_quoted(s: &str, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if s.is_empty() {
         panic!("Empty string for function or predicate identifier");

@@ -1,6 +1,7 @@
 use super::print_utils::separated_display;
 use super::{Constant, Type};
 use num_bigint::BigInt;
+use pretty::{DocAllocator, Pretty};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -35,6 +36,29 @@ impl Literal {
     }
 }
 
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a Literal
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            Literal::Undefined => alloc.text("undefined"),
+            Literal::Null => alloc.text("null"),
+            Literal::Empty => alloc.text("empty"),
+            Literal::Constant(ct) => ct.pretty(alloc),
+            Literal::Bool(b) => alloc.text(if *b { "true" } else { "false" }),
+            Literal::Int(i) => alloc.text(format!("{}i", i)),
+            Literal::Num(f) => alloc.text(format!("{}", f)),
+            Literal::String(s) => alloc.text(format!("\"{}\"", s)),
+            Literal::Loc(loc) => alloc.text(&**loc),
+            Literal::Type(typ) => typ.pretty(alloc),
+            Literal::LList(vec) => alloc
+                .intersperse(vec.iter().map(|lit| lit.pretty(alloc)), alloc.text(", "))
+                .enclose("{{", "}}"),
+            Literal::Nono => alloc.text("none"),
+        }
+    }
+}
 macro_rules! from_int {
     ($t: ty) => {
         impl From<$t> for Literal {

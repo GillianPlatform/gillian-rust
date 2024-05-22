@@ -5,19 +5,22 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
 pred "<Option<T> as gilogic::Ownable>::own"(+pty_T0, +self):
-(#self == {{ 0i, {{  }} }}) * (self == #self), (#self == {{ 1i, {{ #x }} }}) * "<T as gilogic::Ownable>::own"(pty_T0, #x) * (self == #self);
+  (#self == {{ 0i, {{  }} }}) * (self == #self), (#self == {{ 1i, {{ #x }} }})
+  * "<T as gilogic::Ownable>::own"(pty_T0, #x)
+  * (self == #self);
 
 
 abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
 
 
 pred "<&mut Option<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
-<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v) * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
+  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
+  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
 guard: <lft>(lft; true);
 
-
 pred "<&mut Option<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
-<value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v) * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
+  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
+  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
 
 
 spec "Option::<T>::new"(pty_T0, m_1x)
