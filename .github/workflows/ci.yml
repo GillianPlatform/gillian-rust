@@ -17,11 +17,11 @@ jobs:
     steps:
       # Basic setups
       - uses: actions/checkout@v3
-      # - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
       
-      # - run: cargo build
-      # - run: cargo check
-      # - run: cargo clippy
+      - run: cargo build
+      - run: cargo check
+      - run: cargo clippy
       
       # OCaml setup and build/test
       - uses: ocaml/setup-ocaml@v2
@@ -33,12 +33,11 @@ jobs:
         env:
           cache-name: cache-ocaml
         with:
-          path: ${{ github.workspace }}/Gillian-Rust/_opam
+          path: _opam
           key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
           restore-keys: |
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1
-      - run: opam switch list 
       - run: opam install . --deps-only --with-test --locked
         working-directory: "Gillian-Rust"
       - run: opam exec -- dune build @all
