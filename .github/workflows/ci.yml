@@ -33,7 +33,11 @@ jobs:
         env:
           cache-name: cache-ocaml
         with:
+<<<<<<< Updated upstream
           path: "Gillian-Rust/_opam"
+=======
+          path: ${{ github.workspace }}/Gillian-Rust/_opam
+>>>>>>> Stashed changes
           key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
           restore-keys: |
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
