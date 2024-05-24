@@ -4,7 +4,6 @@ use super::gilsonite::{self, Assert, SpecTerm};
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, is_borrow};
 use crate::logic::gilsonite::SeqOp;
-use crate::logic::traits::resolve_candidate;
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
     codegen::place::{GilPlace, GilProj},
@@ -25,8 +24,6 @@ use rustc_type_ir::fold::TypeFoldable;
 /// Vestigial signature type
 pub(crate) struct PredSig {
     name: String,
-    ins: Vec<usize>,
-    guard: Option<Assertion>,
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
@@ -65,6 +62,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub(crate) fn new(
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
+        // The outermost scope within which this predicate is used.
+        // This determines what hte paramenv that we will use during trait resolution is.
+        // caller_id: DefId,
         body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
@@ -98,7 +98,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn encode_type_with_args(&mut self, ty: Ty<'tcx>) -> EncodedType {
-        self.encode_type(self.subst(ty))
+        self.encode_type(ty)
     }
 
     fn assert_prophecies_enabled(&self, msg: &str) {
@@ -190,12 +190,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ins.sort();
         }
 
-        let guard = self.guard();
+        // let guard = self.guard();
 
         PredSig {
             name: self.pred_name(),
-            ins,
-            guard,
+            // guard,
         }
     }
 
@@ -270,7 +269,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         tgt: gilsonite::Expr<'tcx>,
     ) -> Assertion {
         let ty = self.encode_type_with_args(tgt.ty);
-        let left_ty = self.subst(src.ty);
+        let left_ty = src.ty;
         let left = self.compile_expression_inner(src);
         let right = self.compile_expression_inner(tgt);
         // If the type is a box or a nonnull, we need to access its pointer.
@@ -316,6 +315,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn compile_assertion(&mut self, assert: Assert<'tcx>) -> Assertion {
         assert!(self.local_toplevel_asrts.is_empty());
         let assert = self.subst(assert);
+
         let mut assert = self.compile_assertion_inner(assert);
         assert = std::mem::take(&mut self.local_toplevel_asrts)
             .into_iter()
@@ -336,17 +336,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 args,
             } => {
                 let param_env = self.tcx().param_env(self.body_id);
-                let (name, substs) = self
+                let param_env = EarlyBinder::bind(param_env).instantiate(self.tcx(), self.args);
+                let (name, def_id, substs) = self
                     .global_env_mut()
                     .resolve_predicate_param_env(param_env, def_id, substs);
 
                 let ty_params = param_collector::collect_params_on_args(substs)
-                    .with_consider_arguments(args.iter().map(|id| self.subst(id.ty)));
-                let mut params = Vec::with_capacity(
-                    ty_params.parameters.len() + (ty_params.regions as usize) + args.len(),
-                );
+                    .with_consider_arguments(args.iter().map(|id| id.ty));
+                let mut params = Vec::new();
+                let has_regions = build_signature(self.global_env, def_id, substs)
+                    .lifetimes()
+                    .count()
+                    > 0;
 
-                if ty_params.regions {
+                if has_regions {
                     if self.sig.lifetimes().next().is_none() {
                         fatal!(
                             self,
@@ -358,7 +361,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     params.push(Expr::PVar(lft.to_string()));
                 }
                 for tyarg in ty_params.parameters {
-                    let tyarg = self.encode_type(tyarg);
+                    let tyarg = self.encode_param_ty(tyarg);
                     params.push(tyarg.into());
                 }
                 for arg in args.into_iter() {
@@ -374,14 +377,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             AssertKind::ProphecyController { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let typ = self.encode_type(self.unwrap_prophecy_ty(self.subst(prophecy.ty)));
+                let typ = self.encode_type(self.unwrap_prophecy_ty(prophecy.ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
                 super::core_preds::controller(prophecy, typ, model)
             }
             AssertKind::ProphecyObserver { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let typ = self.encode_type(self.unwrap_prophecy_ty(self.subst(prophecy.ty)));
+                let typ = self.encode_type(self.unwrap_prophecy_ty(prophecy.ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
                 super::core_preds::observer(prophecy, typ, model)
@@ -396,7 +399,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let size = self.compile_expression_inner(size);
                 let pointees = self.compile_expression_inner(pointees);
 
-                let typ = self.encode_array_type(self.subst(ty), size);
+                let typ = self.encode_array_type(ty, size);
                 super::core_preds::value(pointer, typ, pointees)
             }
             AssertKind::Uninit { pointer } => {
@@ -443,13 +446,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             definitions: vec![],
             ins,
             pure: false,
-            guard: sig.guard,
+            guard: self.guard(),
         }
     }
 
     pub(crate) fn compile_concrete(mut self) -> Pred {
         let sig = self.sig();
         let name = sig.name.clone();
+
+        eprintln!("compiling {:?}", self.body_id);
 
         let real_sig = build_signature(self.global_env, self.body_id, self.args);
         let raw_definitions = self.global_env.predicate(self.body_id).clone().disjuncts;
@@ -498,7 +503,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             definitions,
             ins,
             pure: false,
-            guard: sig.guard,
+            guard: self.guard(),
         }
     }
 
@@ -671,10 +676,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 fields.into()
             }
             ExprKind::Field { lhs, field } => {
-                if matches!(self.subst(lhs.ty).kind(), TyKind::Tuple(..)) {
+                if matches!(lhs.ty.kind(), TyKind::Tuple(..)) {
                     self.compile_expression_inner(*lhs).lnth(field.as_u32())
                 } else if lhs.ty.is_any_ptr() {
-                    let ty = self.subst(lhs.ty.builtin_deref(true).unwrap().ty);
+                    let ty = lhs.ty.builtin_deref(true).unwrap().ty;
                     let gil_derefed = self.compile_expression_inner(*lhs);
                     let mut place = GilPlace::base(gil_derefed, ty);
                     if ty.is_enum() {
@@ -690,7 +695,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         place.into_expr_ptr()
                     }
                 } else {
-                    match self.subst(lhs.ty).ty_adt_def() {
+                    match lhs.ty.ty_adt_def() {
                         Some(adt) => {
                             if adt.is_struct() {
                                 let lhs = self.compile_expression_inner(*lhs);
@@ -748,7 +753,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::GetValue { mut_ref } => {
                 self.assert_prophecies_enabled("using `Prophecy::value`");
-                let ty = self.unwrap_prophecy_ty(self.subst(mut_ref.ty));
+                let ty = self.unwrap_prophecy_ty(mut_ref.ty);
                 let prophecy = self.compile_expression_inner(*mut_ref);
                 let value = self.temp_lvar(ty);
                 let ty = self.encode_type(ty);

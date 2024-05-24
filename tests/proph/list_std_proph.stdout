@@ -43,20 +43,19 @@ pred "<LinkedList<T> as ShallowModel>::shallow_model"(+pty_T0, +self_, v):
   (#self_ == #v) * (v == #v) * (self_ == #self_);
 
 
-abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +self, model);
+abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
-pred "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own$$inner"(+lft, +pty_T0, +self):
-  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #value)
-  * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "adt", "Seq", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
-  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
-guard: <lft>(lft; true);
-
-pred "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
-  (self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }})
-  * <pcy_value>(#pcy, {{  }}, {{ "adt", "Seq", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #future)
-  * <value_observer>(#pcy, {{  }}, {{ "adt", "Seq", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #current)
-  * "<LinkedList<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
+pred "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>"(pLft_erased, pty_T0, #self)
+  * <value_observer>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}; #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}; #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, {{  }}: List)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, {{ #lvar_3, {{  }} }} }})
+  * (model == #model)
+  * (self == #self);
 
 
 pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, +model):
@@ -68,11 +67,23 @@ pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +s
   * (self == #self);
 
 
-pred "<LinkedList<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(+lft, +pty_T0, +self):
-  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #value)
-  * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "adt", "Seq", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
-  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
-guard: <lft>(lft; true);
+pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>"(+pLft_a, +pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
+
 
 proc "Node::<T>::new"(pty_T0, element) {
         m_1element := element;

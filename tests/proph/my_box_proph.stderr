@@ -1,4 +1,7 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+DefId(0:18 ~ my_box_proph[3aec]::{impl#0}::own)
+compiling DefId(0:18 ~ my_box_proph[3aec]::{impl#0}::own)
+DefId(0:20 ~ my_box_proph[3aec]::{impl#1}::write_spec_ce3db276_e1f4_4eb0_8031_81080fbe3770)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*(_1.0: *mut T))
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2

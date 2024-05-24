@@ -3,7 +3,9 @@ use crate::logic::param_collector;
 use crate::prelude::*;
 use indexmap::{IndexMap, IndexSet};
 use names::bb_label;
-use rustc_middle::ty::{AliasTy, GenericArgKind, GenericArgsRef, PolyFnSig, Region};
+use rustc_middle::ty::{
+    AliasTy, GenericArgKind, GenericArgsRef, PolyFnSig, Region, TypeVisitableExt,
+};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::VariantIdx;
 
@@ -51,11 +53,15 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 CallKind::Unfold(name)
             }
             Some(FnStubs::MutRefProphecyAutoUpdate) => {
-                let name = self.global_env_mut().register_pcy_auto_update(substs);
+                let param_env = self.tcx().param_env(self.did());
+                let name = self
+                    .global_env_mut()
+                    .register_pcy_auto_update(param_env, substs);
                 CallKind::MonoFn(name)
             }
             Some(FnStubs::MutRefResolve) => {
-                let name = self.global_env_mut().register_resolver(substs);
+                let param_env = self.tcx().param_env(self.did());
+                let name = self.global_env_mut().register_resolver(param_env, substs);
                 CallKind::MonoFn(name)
             }
             _ if crate::utils::attrs::is_lemma(did, self.tcx()) => {
@@ -129,9 +135,12 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         operands: &[Spanned<Operand<'tcx>>],
         ret_ty: Ty<'tcx>,
     ) -> Vec<Expr> {
+        let has_regions =
+            substs.has_free_regions() || substs.has_bound_regions() || substs.has_erased_regions();
+
         let params = param_collector::collect_params_on_args(substs);
         let callee_has_regions =
-            params.regions || operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
+            has_regions || operands.iter().any(|op| self.operand_ty(&op.node).is_ref());
         let mut args = Vec::with_capacity(
             (callee_has_regions as usize) + params.parameters.len() + operands.len(),
         );
@@ -150,7 +159,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         );
         // }
         for ty_arg in params.parameters {
-            args.push(self.encode_type(ty_arg).into())
+            args.push(self.encode_param_ty(ty_arg).into())
         }
         for op in operands {
             let op = self.push_encode_operand(&op.node);

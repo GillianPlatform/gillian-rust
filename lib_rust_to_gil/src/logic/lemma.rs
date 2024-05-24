@@ -266,7 +266,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             .clone()
             .star(Assertion::wand(post_call_tup, pre_call_tup.clone()));
 
-        // eprintln!("args {:?}", sig.args);
         // Something weird about the lifetimes here
         let params = sig.args.iter().filter_map(|p| match p {
             ParamKind::Generic(t) => Some(t.to_string()),

@@ -7,6 +7,9 @@ macro_rules! unreachable {
     ($x:expr) => {
         panic!()
     };
+    () => {
+        panic!()
+    };
 }
 
 #[allow(non_snake_case)]
@@ -42,10 +45,27 @@ macro_rules! stubbed_ownable {
     };
 }
 
+// impl<T : Ownable> &mut  T {
+//     #[borrow]
+//     fn mut_ref_inner(self) -> RustAssertion {
+//         assertion!(|v| (self -> v) * v.own())
+//     }
+// }
+
 impl<T: Ownable> Ownable for &mut T {
-    #[rustc_diagnostic_item = "gillian::ownable::mut_ref_own"]
+    #[cfg(gillian)]
+    #[gillian::borrow]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
+        gilogic::__stubs::defs([assertion!(|v| (self -> v) * v.own())])
+        // gilogic::__stubs::defs([|v| (this -> v) * v.own()])
+    }
+
+    #[cfg(not(gillian))]
+    #[gillian::borrow]
+    fn own(self) -> RustAssertion {
+        unreachable!("")
     }
 }
 

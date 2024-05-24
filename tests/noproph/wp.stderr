@@ -1,7 +1,26 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+DefId(0:19 ~ wp[e568]::wp)
+compiling DefId(0:19 ~ wp[e568]::wp)
+DefId(0:22 ~ wp[e568]::extract_y_spec_ba5b1caa_b485_4558_bd87_dd090757e176)
+DefId(0:27 ~ wp[e568]::extract_y)
+DefId(0:30 ~ wp[e568]::extract_x_spec_5eadb784_7d60_45e4_a464_2066533447f2)
+DefId(0:35 ~ wp[e568]::extract_x)
+DefId(0:40 ~ wp[e568]::freeze_xy_spec_f94bc09a_8f4a_4c8c_8552_76cfb2738f13)
+DefId(0:44 ~ wp[e568]::freeze_xy)
+DefId(0:46 ~ wp[e568]::wp_ref_mut_xy)
+compiling DefId(0:46 ~ wp[e568]::wp_ref_mut_xy)
+DefId(0:49 ~ wp[e568]::{impl#1}::own)
+compiling DefId(0:49 ~ wp[e568]::{impl#1}::own)
+DefId(0:51 ~ wp[e568]::{impl#0}::assign_first_spec_108a2a3a_6f63_4142_a6d3_1ac0f2502c91)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+DefId(0:57 ~ wp[e568]::{impl#0}::first_mut_spec_443f7863_c87a_4cef_b4a4_b70c525e6427)
+DefId(0:63 ~ wp[e568]::{impl#0}::second_mut_spec_e1d84177_32d9_4cee_a246_d6bc5bbc023d)
+compiling DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
+DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
+compiling DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
+DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
 warning: fields `x` and `y` are never read
   --> ../tests/noproph/wp.rs:10:5
    |

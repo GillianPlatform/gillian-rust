@@ -11,6 +11,7 @@ use crate::logic::{compile_logic, LogicItem};
 use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
+use crate::utils::attrs::{is_gillian_spec, is_predicate};
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -94,13 +95,48 @@ impl<'tcx> ProgCtx<'tcx> {
         }
     }
 
+    fn only_metadata(&mut self, global_env: &mut GlobalEnv<'tcx>) {
+        for key in self.tcx().hir().body_owners() {
+            let did = key.to_def_id();
+            if self.tcx.def_kind(key) == DefKind::AnonConst {
+                continue;
+            }
+
+            // For every spec and predicate to be loaded.
+            if crate::utils::attrs::should_translate(did, self.tcx()) {
+                if crate::utils::attrs::is_logic(did, self.tcx()) {
+                    if is_predicate(did, self.tcx()) {
+                        global_env.predicate(did);
+
+                    }
+                    if is_gillian_spec(did, self.tcx()).is_some() {
+                        global_env.gilsonite_spec(did);
+
+                    }
+                }
+            }
+        }
+    }
+
     pub(crate) fn compile_prog(
         tcx: TyCtxt<'tcx>,
         global_env: &mut GlobalEnv<'tcx>,
         config: Config,
     ) -> (ParsingUnit, BinaryMetadata<'tcx>) {
+        let is_dep = config.is_dep;
         let mut this = Self::new(tcx, config);
-        let prog = this.final_prog(global_env);
-        (prog, global_env.metadata())
+        if is_dep {
+            this.only_metadata(global_env);
+            (
+                ParsingUnit {
+                    prog: Prog::default(),
+                    init_data: serde_json::Value::Null,
+                },
+                global_env.metadata(),
+            )
+        } else {
+            let prog = this.final_prog(global_env);
+            (prog, global_env.metadata())
+        }
     }
 }

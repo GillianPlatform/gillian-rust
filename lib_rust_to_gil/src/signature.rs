@@ -2,14 +2,15 @@ use std::collections::HashMap;
 
 use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 
+use indexmap::IndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{GenericArgsRef, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{EarlyBinder, GenericArgsRef, GenericParamDefKind, ParamTy, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
-    logic::{param_collector::collect_regions, PredCtx},
+    logic::{param_collector::{collect_params, collect_regions}, PredCtx},
     prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},
     utils::attrs::{is_lemma, is_predicate},
@@ -259,21 +260,19 @@ pub fn build_signature<'tcx>(
     // TODO: Fix, this is wrong in a context where we are building a substitution for an (id, subst) pair, consider
     // the case of a function `fn<T>(..)` where we apply `T = (U, V)`, we should build something which looks more like `fn<U,V>`.
     // This means I don't think we want to use the generics at all?
-    let generics = tcx.generics_of(id);
 
     let mut args = Vec::new();
     let sig = tcx.fn_sig(id).instantiate(tcx, subst);
 
     let mut regions = collect_regions(sig.inputs()).regions;
     regions.extend(collect_regions(sig.output()).regions);
-
-    for (ix, r) in regions.into_iter().enumerate() {
+    for (ix, r) in regions.iter().enumerate() {
         match r.kind() {
             rustc_type_ir::RegionKind::ReVar(_) => todo!("re var??"),
             rustc_type_ir::RegionKind::ReErased => args.push(ParamKind::Lifetime(Symbol::intern(
                 &lifetime_param_name("erased"),
             ))),
-            rustc_type_ir::RegionKind::ReBound(_, br) => {
+            rustc_type_ir::RegionKind::ReBound(_, _) => {
                 let nm = if let Some(nm) = r.get_name() {
                     lifetime_param_name(&nm.as_str()[1..])
                 } else {
@@ -297,19 +296,14 @@ pub fn build_signature<'tcx>(
         }
     }
 
-    fill_item(tcx, generics, &mut |param| {
-        let name = param.name;
-        let arg = match param.kind {
-            GenericParamDefKind::Lifetime => ParamKind::Lifetime(name),
-            GenericParamDefKind::Type { .. } => {
-                ParamKind::Generic(Symbol::intern(&type_param_name(param.index, name)))
-            }
-            GenericParamDefKind::Const { .. } => {
-                fatal!(global_env, "constant parameters are unsupported")
-            }
-        };
+    let params : IndexSet<_> = collect_params(sig.inputs()).chain(collect_params(sig.output())).collect();
+
+    for pty in params {
+        let arg = ParamKind::Generic(Symbol::intern(&type_param_name(pty.index, pty.name)));
+
         args.push(arg)
-    });
+
+    }
 
     let fn_args = tcx
         .fn_arg_names(id)

@@ -1,8 +1,14 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+DefId(0:18 ~ std_option[dc02]::{impl#0}::own)
+compiling DefId(0:18 ~ std_option[dc02]::{impl#0}::own)
+DefId(0:21 ~ std_option[dc02]::{impl#1}::new_spec_e80dbf1c_def3_471b_830c_bd6c935e56b3)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+DefId(0:25 ~ std_option[dc02]::{impl#1}::put_spec_2af368c4_2a5e_4f08_9252_2168a266badd)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*_1)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+compiling DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
+DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
 [TIMESTAMP DEBUG rust_to_gil] Correct!

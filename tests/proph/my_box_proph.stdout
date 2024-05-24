@@ -11,7 +11,7 @@ pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   * (self == #self);
 
 
-abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +self, model);
+abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
 spec "MyBox::<T>::write"(pty_T0, self, v, sm, vm)

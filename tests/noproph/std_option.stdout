@@ -10,17 +10,21 @@ pred "<Option<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   * (self == #self);
 
 
-abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
+abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
-pred "<&mut Option<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
-  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
-guard: <lft>(lft; true);
+pred "<&mut Option<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
+  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
+guard: <lft>(pLft_erased; true);
 
-pred "<&mut Option<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
-  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
+pred "<&mut Option<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
+  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
 
 
 spec "Option::<T>::new"(pty_T0, x)

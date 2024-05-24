@@ -7,15 +7,40 @@ warning: unused imports: `Prophecy`, `observer`
    = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+DefId(0:29 ~ wp_proph[6031]::wp)
+compiling DefId(0:29 ~ wp_proph[6031]::wp)
+DefId(0:32 ~ wp_proph[6031]::wp_ref_mut_inner_xy)
+compiling DefId(0:32 ~ wp_proph[6031]::wp_ref_mut_inner_xy)
+DefId(0:36 ~ wp_proph[6031]::wp_ref_mut_inner_xy_____fold)
+DefId(0:39 ~ wp_proph[6031]::wp_ref_mut_inner_xy_____unfold)
+DefId(0:45 ~ wp_proph[6031]::freeze_xy_spec_ed6a3310_4f09_4f27_bc79_ae3b7b0539cd)
+DefId(0:50 ~ wp_proph[6031]::freeze_xy)
+DefId(0:53 ~ wp_proph[6031]::wp_ref_mut_inner_xy2)
+compiling DefId(0:53 ~ wp_proph[6031]::wp_ref_mut_inner_xy2)
+DefId(0:56 ~ wp_proph[6031]::wp_ref_mut_xy2)
+compiling DefId(0:56 ~ wp_proph[6031]::wp_ref_mut_xy2)
+DefId(0:60 ~ wp_proph[6031]::{impl#1}::own)
+compiling DefId(0:60 ~ wp_proph[6031]::{impl#1}::own)
+DefId(0:62 ~ wp_proph[6031]::{impl#0}::new_spec_d17ed4a9_8d0a_48ea_81af_ebb4545189b1)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+DefId(0:66 ~ wp_proph[6031]::{impl#0}::assign_first_spec_3019b1b5_12fc_4c16_b493_e28eab64ce70)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+DefId(0:70 ~ wp_proph[6031]::{impl#0}::first_mut_spec_4c9cf8d9_87a0_4399_8db1_c8e1ec4f6745)
+compiling DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
+DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
+compiling DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
+DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
+compiling DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
+DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
+compiling DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
+DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
 warning: unused variable: `v_x`
   --> ../tests/proph/wp_proph.rs:42:17
    |

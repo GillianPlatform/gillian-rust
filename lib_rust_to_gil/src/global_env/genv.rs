@@ -279,48 +279,26 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.item_queue.mark_as_done(pred_name);
     }
 
-    #[deprecated = "This function is unsound. Use `resolve_predicate_param_env` instead"]
-    pub fn resolve_predicate(
-        &mut self,
-        did: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> (String, GenericArgsRef<'tcx>) {
-        let (instance, item) = match self.resolve_candidate(did, args) {
-            ResolvedImpl::Param => {
-                let instance = Instance::new(did, args);
-                let item = AutoItem::ParamPred(instance);
-                (instance, item)
-            }
-            ResolvedImpl::Impl(instance) => {
-                let item = AutoItem::MonoPred(instance);
-                (instance, item)
-            }
-        };
-        let name = self.just_pred_name_instance(instance);
-        self.item_queue.push(name.clone(), item);
-        (name, instance.args)
-    }
-
     pub fn resolve_predicate_param_env(
         &mut self,
         param_env: ParamEnv<'tcx>,
         did: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> (String, GenericArgsRef<'tcx>) {
+    ) -> (String, DefId, GenericArgsRef<'tcx>) {
         let (instance, item) = match resolve_candidate(self.tcx, param_env, did, args) {
             ResolvedImpl::Param => {
                 let instance = Instance::new(did, args);
-                let item = AutoItem::ParamPred(instance);
+                let item = AutoItem::ParamPred(param_env, instance);
                 (instance, item)
             }
             ResolvedImpl::Impl(instance) => {
-                let item = AutoItem::MonoPred(instance);
+                let item = AutoItem::MonoPred(param_env, instance);
                 (instance, item)
             }
         };
         let name = self.just_pred_name_instance(instance);
         self.item_queue.push(name.clone(), item);
-        (name, instance.args)
+        (name, instance.def_id(), instance.args)
     }
 
     pub(crate) fn inner_pred(&mut self, pred: String) -> String {
@@ -329,25 +307,41 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for(&mut self, ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
+    pub fn get_own_pred_for2(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> (String, DefId, GenericArgsRef<'tcx>) {
         let general_own = self.get_own_def_did();
         let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_predicate(general_own, subst)
+        self.resolve_predicate_param_env(param_env, general_own, subst)
     }
 
-    pub fn register_resolver(&mut self, args: GenericArgsRef<'tcx>) -> String {
+    pub fn register_resolver(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
         let def_id = self.get_prophecy_resolve_did();
         let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue
-            .push(name.clone(), Resolver::new(name.clone(), args).into());
+        self.item_queue.push(
+            name.clone(),
+            Resolver::new(param_env, name.clone(), args).into(),
+        );
         name
     }
 
-    pub fn register_pcy_auto_update(&mut self, args: GenericArgsRef<'tcx>) -> String {
+    pub fn register_pcy_auto_update(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
         let def_id = self.get_prophecy_auto_update_did();
         let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue
-            .push(name.clone(), PcyAutoUpdate::new(name.clone(), args).into());
+        self.item_queue.push(
+            name.clone(),
+            PcyAutoUpdate::new(param_env, name.clone(), args).into(),
+        );
         name
     }
 

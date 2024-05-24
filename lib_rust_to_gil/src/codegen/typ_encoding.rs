@@ -166,6 +166,10 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
         EncodedType([Expr::from("array"), self.encode_type(ty).into(), size].into())
     }
 
+    fn encode_param_ty(&mut self, pty: ParamTy) -> EncodedType {
+        EncodedType(Expr::PVar(type_param_name(pty.index, pty.name)))
+    }
+
     fn encode_type(&mut self, ty: Ty<'tcx>) -> EncodedType {
         match ty.kind() {
             TyKind::Never => panic!("Should not encode never for memory"),
@@ -247,9 +251,7 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
                 self.encode_array_type(*ty, sz_i.into())
             }
             // In this case, we use what's expected to be the correct variable name for that type parameter.
-            TyKind::Param(ParamTy { index, name }) => {
-                EncodedType(Expr::PVar(type_param_name(*index, *name)))
-            }
+            TyKind::Param(pty) => self.encode_param_ty(*pty),
             TyKind::Alias(AliasKind::Projection, AliasTy { args, def_id, .. }) => {
                 let name = self.tcx().item_name(*def_id);
                 let args: Vec<_> = args

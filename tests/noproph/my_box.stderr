@@ -1,10 +1,16 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+DefId(0:17 ~ my_box[fdf9]::{impl#0}::own)
+compiling DefId(0:17 ~ my_box[fdf9]::{impl#0}::own)
+DefId(0:19 ~ my_box[fdf9]::{impl#1}::write_spec_9d8813c0_385c_4f1d_a7b8_09be41dc0fec)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*(_1.0: *mut T))
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+DefId(0:23 ~ my_box[fdf9]::{impl#1}::update_spec_6a94e2e2_f420_4859_817a_e87033234c7c)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*((*_1).0: *mut T))
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+compiling DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
+DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
 warning: struct `MyBox` is never constructed
  --> ../tests/noproph/my_box.rs:4:8
   |

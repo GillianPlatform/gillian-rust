@@ -43,6 +43,7 @@ impl<'tcx> Metadata<'tcx> {
         for cnum in external_crates(tcx) {
             let base_path = gillian_metadata_base_path(tcx, overrides, cnum);
             let binary_path = gillian_metadata_binary_path(base_path.clone());
+
             if let Some(metadata) = load_binary_metadata(tcx, cnum, &binary_path) {
                 for (def_id, summary) in metadata.assertions.into_iter() {
                     meta.assertions.insert(def_id, summary);

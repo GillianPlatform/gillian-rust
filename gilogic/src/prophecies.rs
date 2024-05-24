@@ -6,6 +6,9 @@ macro_rules! unreachable {
     ($x:expr) => {
         panic!()
     };
+    () => {
+        panic!()
+    };
 }
 
 /*
@@ -27,21 +30,21 @@ pub trait Ownable {
     #[gillian::decl::pred_ins = "0"]
     fn own(self, model: Self::RepresentationTy) -> RustAssertion;
 
-    #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner"]
-    #[gillian::decl::pred_ins = "0"]
-    fn ref_mut_inner(&mut self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
-    }
+    // #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner"]
+    // #[gillian::decl::pred_ins = "0"]
+    // fn ref_mut_inner(&mut self) -> RustAssertion {
+    //     unreachable!("Implemented in GIL")
+    // }
 
-    #[rustc_diagnostic_item = "gillian::unfold::pcy::ownable::ref_mut_inner"]
-    fn ref_mut_inner_____unfold(&mut self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
-    }
+    // #[rustc_diagnostic_item = "gillian::unfold::pcy::ownable::ref_mut_inner"]
+    // fn ref_mut_inner_____unfold(&mut self) -> RustAssertion {
+    //     unreachable!("Implemented in GIL")
+    // }
 
-    #[rustc_diagnostic_item = "gillian::fold::pcy::ownable::ref_mut_inner"]
-    fn ref_mut_inner_____fold(&mut self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
-    }
+    // #[rustc_diagnostic_item = "gillian::fold::pcy::ownable::ref_mut_inner"]
+    // fn ref_mut_inner_____fold(&mut self) -> RustAssertion {
+    //     unreachable!("Implemented in GIL")
+    // }
 }
 
 macro_rules! own_int {
@@ -60,13 +63,45 @@ macro_rules! own_int {
         own_int!($($ts),+);
     };
 }
+use gilogic::macros::borrow;
+
+// impl<T : Ownable> &mut T {
+//     #[borrow]
+//     #[rustc_allow_incoherent_impl]
+//     fn mut_ref_inner(self) -> RustAssertion {
+//         assertion!(|v, repr| (self -> v) * v.own(repr) * controller(self.prophecy(), repr))
+//     }
+// }
+//
+
+#[borrow]
+fn mut_ref_inner_proph<'a, U: Ownable>(this: In<&'a mut U>) -> RustAssertion {
+    assertion!(|v, repr| (this -> v) * v.own(repr) * controller(this.prophecy(), repr))
+}
+
+// #[borrow]
+// fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+//     assertion!(|v_x: T, v_y: T, v_x_m: T::RepresentationTy, v_y_m: T::RepresentationTy|
+//         (p -> WP { x, y }) *
+//         wp(WP { x, y }, x, y, (v_x_m, v_y_m)) * controller(p.prophecy(), (v_x_m, v_y_m))
+//     )
+// }
 
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
+    fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
+        gilogic::__stubs::defs([assertion!(|a, b| (model == (a, b))
+            * mut_ref_inner_proph(self)
+            * observer(self.prophecy(), a)
+            * (self.prophecy().value() == b))])
+    }
 
-    #[rustc_diagnostic_item = "gillian::pcy::ownable::mut_ref_own"]
-    fn own(self, _model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
-        unreachable!("Implemented in GIL")
+    #[cfg(not(gillian))]
+    fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
+        unreachable!("")
     }
 }
 

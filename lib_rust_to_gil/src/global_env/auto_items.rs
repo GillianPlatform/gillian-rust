@@ -1,18 +1,28 @@
-use rustc_middle::ty::ParamTy;
+use rustc_middle::ty::{ParamEnv, ParamTy};
 
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::builtins::LogicStubs;
 use crate::logic::{core_preds, param_collector, PredCtx};
+use crate::utils::attrs::is_borrow;
 use crate::{prelude::*, temp_gen};
 
 pub(super) struct PcyAutoUpdate<'tcx> {
+    param_env: ParamEnv<'tcx>,
     updater_name: String,
     args: GenericArgsRef<'tcx>,
 }
 
 impl<'tcx> PcyAutoUpdate<'tcx> {
-    pub fn new(updater_name: String, args: GenericArgsRef<'tcx>) -> Self {
-        Self { updater_name, args }
+    pub fn new(
+        param_env: ParamEnv<'tcx>,
+        updater_name: String,
+        args: GenericArgsRef<'tcx>,
+    ) -> Self {
+        Self {
+            param_env,
+            updater_name,
+            args,
+        }
     }
 
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
@@ -28,12 +38,13 @@ impl<'tcx> PcyAutoUpdate<'tcx> {
         let pcy = mutref.lnth(1);
         let value_cp =
             core_preds::value(pointer, global_env.encode_type(inner_ty), pointee.clone());
-        let (own_pred_name, instance_args) = global_env.get_own_pred_for(inner_ty);
+        let (own_pred_name, _, instance_args) =
+            global_env.get_own_pred_for2(self.param_env, inner_ty);
         let collected_params = param_collector::collect_params_on_args(instance_args);
         let ty_params = collected_params
             .parameters
             .iter()
-            .map(|ty| global_env.encode_type(*ty).into());
+            .map(|ty| global_env.encode_param_ty(*ty).into());
         let own_pred_call = Assertion::Pred {
             name: own_pred_name,
             params: ty_params
@@ -60,8 +71,7 @@ impl<'tcx> PcyAutoUpdate<'tcx> {
         let mut params = Vec::with_capacity(collected_params.parameters.len() + 2);
         params.push("pLft_a".to_owned());
         for ty_param in collected_params.parameters {
-            let ParamTy { index, name } = crate::utils::ty::extract_param_ty(ty_param);
-            let name = type_param_name(index, name);
+            let name = type_param_name(ty_param.index, ty_param.name);
             params.push(name);
         }
         params.push("mut_ref".to_owned());
@@ -98,13 +108,19 @@ impl<'tcx> From<PcyAutoUpdate<'tcx>> for AutoItem<'tcx> {
 /// ```
 /// where `mut_ref_own_name` corresponds to `[&'lft mut TY<T, U>]::own`
 pub(super) struct Resolver<'tcx> {
+    param_env: ParamEnv<'tcx>,
     resolver_name: String,
     args: GenericArgsRef<'tcx>,
 }
 
 impl<'tcx> Resolver<'tcx> {
-    pub fn new(resolver_name: String, args: GenericArgsRef<'tcx>) -> Self {
+    pub fn new(
+        param_env: ParamEnv<'tcx>,
+        resolver_name: String,
+        args: GenericArgsRef<'tcx>,
+    ) -> Self {
         Self {
+            param_env,
             resolver_name,
             args,
         }
@@ -115,22 +131,20 @@ impl<'tcx> Resolver<'tcx> {
         let future = Expr::LVar("#future".to_string());
         let mut_ref = "mut_ref".to_string();
         let ty = global_env.tcx().erase_regions_ty(self.args.type_at(0));
-        let (mut_ref_own_name, inner_subst) = global_env.get_own_pred_for(ty);
+        let (mut_ref_own_name, _, inner_subst) = global_env.get_own_pred_for2(self.param_env, ty);
         let inner_subst_params = param_collector::collect_params_on_args(inner_subst);
         let pred_params = inner_subst_params
             .parameters
             .into_iter()
-            .map(|ty| {
-                let TyKind::Param(ParamTy { index, name }) = *ty.kind() else {
-                    panic!("unexpected parameter type??")
-                };
-                let name = name.to_string();
-                type_param_name(index, Symbol::intern(&name))
-            })
+            .map(|ty| type_param_name(ty.index, ty.name))
             .chain(std::iter::once(mut_ref));
-        let pred_params = std::iter::once(String::from("lft")).chain(pred_params);
+        let pred_params: Vec<_> = std::iter::once(String::from("lft"))
+            .chain(pred_params)
+            .collect();
         let own_params = pred_params
             .clone()
+            .into_iter()
+            // .cloned()
             .map(Expr::PVar)
             .chain(std::iter::once(
                 vec![current.clone(), future.clone()].into(),
@@ -144,7 +158,7 @@ impl<'tcx> Resolver<'tcx> {
         let posts = vec![resolved_observation];
         let spec = Spec {
             name: self.resolver_name,
-            params: pred_params.collect(),
+            params: pred_params,
             sspecs: vec![SingleSpec {
                 pre,
                 posts,
@@ -159,18 +173,25 @@ impl<'tcx> Resolver<'tcx> {
 // At which point, this code will yeet.
 // This corresponds to the predicate [&mut inner_ty].own
 struct MutRefOwn<'tcx> {
+    /// We store the paramenv since we delay code generation until `add_to_prog` is called
+    param_env: ParamEnv<'tcx>,
     pred_name: String,
     inner_ty: Ty<'tcx>,
 }
 
 impl<'tcx> MutRefOwn<'tcx> {
-    fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
+    fn of_instance(
+        param_env: ParamEnv<'tcx>,
+        instance: Instance<'tcx>,
+        global_env: &GlobalEnv<'tcx>,
+    ) -> Option<Self> {
         let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
         if let Some(LogicStubs::MutRefOwnPred) = stub {
             // If the first argument is a region, then we have
             let ty = instance.args.type_at(1);
             let name = global_env.just_pred_name_instance(instance);
             return Some(Self {
+                param_env,
                 pred_name: name,
                 inner_ty: ty,
             });
@@ -182,6 +203,7 @@ impl<'tcx> MutRefOwn<'tcx> {
         let ty = self.inner_ty;
         let name = self.pred_name.clone() + "$$inner";
         MutRefInner {
+            param_env: self.param_env,
             pred_name: name,
             inner_ty: ty,
         }
@@ -191,14 +213,15 @@ impl<'tcx> MutRefOwn<'tcx> {
         let own = global_env.get_own_def_did();
 
         let Self {
+            param_env,
             pred_name,
             inner_ty,
         } = self;
 
         let old_subst = global_env.tcx().mk_args(&[(inner_ty).into()]);
-        let inner_resolved = global_env.resolve_predicate(own, old_subst);
+        let inner_resolved = global_env.resolve_predicate_param_env(param_env, own, old_subst);
         let generic_params = std::iter::once(("lft".to_string(), None)).chain(
-            inner_resolved.1.iter().enumerate().map(|(i, k)| {
+            inner_resolved.2.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
                 (name, None)
@@ -208,7 +231,7 @@ impl<'tcx> MutRefOwn<'tcx> {
             .clone()
             .chain([("self".to_string(), Some(Type::ListType))])
             .collect();
-        let mut num_params = inner_resolved.1.len() + 2;
+        let mut num_params = inner_resolved.2.len() + 2;
 
         let slf: Expr = Expr::PVar("self".to_string());
         let (definitions, guard) = if global_env.config.prophecies {
@@ -232,8 +255,8 @@ impl<'tcx> MutRefOwn<'tcx> {
             let observer =
                 crate::logic::core_preds::observer(full_pcy, encoded_model_type, current);
             let ref_mut_inner_def_did = global_env.get_ref_mut_inner_did();
-            let (ref_mut_inner_pred_name, _) =
-                global_env.resolve_predicate(ref_mut_inner_def_did, old_subst);
+            let (ref_mut_inner_pred_name, _, _) =
+                global_env.resolve_predicate_param_env(param_env, ref_mut_inner_def_did, old_subst);
             let ref_mut_inner_call = Assertion::Pred {
                 name: ref_mut_inner_pred_name,
                 params: generic_params
@@ -282,18 +305,24 @@ impl<'tcx> MutRefOwn<'tcx> {
 }
 
 pub struct MutRefInner<'tcx> {
+    param_env: ParamEnv<'tcx>,
     pred_name: String,
     inner_ty: Ty<'tcx>,
 }
 
 impl<'tcx> MutRefInner<'tcx> {
-    fn of_instance(instance: Instance<'tcx>, global_env: &GlobalEnv<'tcx>) -> Option<Self> {
+    fn of_instance(
+        param_env: ParamEnv<'tcx>,
+        instance: Instance<'tcx>,
+        global_env: &GlobalEnv<'tcx>,
+    ) -> Option<Self> {
         let stub = LogicStubs::of_def_id(instance.def_id(), global_env.tcx());
         if let Some(LogicStubs::RefMutInner) = stub {
             // If the first argument is a region, then we have
             let ty = instance.args.type_at(0);
             let name = global_env.just_pred_name_instance(instance);
             return Some(Self {
+                param_env,
                 pred_name: name,
                 inner_ty: ty,
             });
@@ -308,7 +337,7 @@ impl<'tcx> MutRefInner<'tcx> {
                 "Please use --prophecies to use prophetic features"
             )
         }
-        let own = global_env.get_own_pred_for(self.inner_ty);
+        let own = global_env.get_own_pred_for2(self.param_env, self.inner_ty);
         let repr_ty = global_env.get_repr_ty_for(self.inner_ty).unwrap();
         let slf = Expr::PVar("self".to_string());
         let pointer = slf.clone().lnth(0);
@@ -321,7 +350,7 @@ impl<'tcx> MutRefInner<'tcx> {
         );
         let controller =
             core_preds::controller(slf.lnth(1), global_env.encode_type(repr_ty), repr.clone());
-        let params = own.1.iter().enumerate().map(|(i, k)| {
+        let params = own.2.iter().enumerate().map(|(i, k)| {
             let name = k.to_string();
             type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
         });
@@ -357,8 +386,8 @@ impl<'tcx> MutRefInner<'tcx> {
 pub(super) enum AutoItem<'tcx> {
     PcyAutoUpdate(PcyAutoUpdate<'tcx>),
     Resolver(Resolver<'tcx>),
-    ParamPred(Instance<'tcx>),
-    MonoPred(Instance<'tcx>),
+    ParamPred(ParamEnv<'tcx>, Instance<'tcx>),
+    MonoPred(ParamEnv<'tcx>, Instance<'tcx>),
 }
 
 impl<'tcx> From<Resolver<'tcx>> for AutoItem<'tcx> {
@@ -372,18 +401,18 @@ impl<'tcx> AutoItem<'tcx> {
         match self {
             Self::PcyAutoUpdate(pcy_auto_update) => pcy_auto_update.add_to_prog(prog, global_env),
             Self::Resolver(resolver) => resolver.add_to_prog(prog, global_env),
-            Self::ParamPred(instance) => {
+            Self::ParamPred(_, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
                 let pred = PredCtx::new(global_env, temp_gen, instance.def_id(), instance.args)
                     .compile_abstract();
                 prog.add_pred(pred);
             }
-            Self::MonoPred(instance) => {
+            Self::MonoPred(param_env, instance) => {
                 // This is the place where we create monomorphised items.
                 // Some of them (from gilogic, because we don't do multi-crate yet) we have to manually shim.
                 // This is annoying but fixable long term.
                 // Some others we just compile monomorphized.
-                if let Some(mut_ref_own) = MutRefOwn::of_instance(instance, global_env) {
+                if let Some(mut_ref_own) = MutRefOwn::of_instance(param_env, instance, global_env) {
                     // INCREDIBLY HACKY
                     if global_env.config.prophecies {
                         mut_ref_own.inner().add_to_prog(prog, global_env);
@@ -395,7 +424,9 @@ impl<'tcx> AutoItem<'tcx> {
                     return;
                 }
 
-                if let Some(mut_ref_inner) = MutRefInner::of_instance(instance, global_env) {
+                if let Some(mut_ref_inner) =
+                    MutRefInner::of_instance(param_env, instance, global_env)
+                {
                     mut_ref_inner.add_to_prog(prog, global_env);
                     return;
                 }
@@ -422,6 +453,11 @@ impl<'tcx> AutoItem<'tcx> {
                         instance.args,
                     )
                     .compile_concrete();
+                    // HACK clean up when "AutoItem" is fixed
+                    eprintln!("{:?}", instance.def_id());
+                    if is_borrow(instance.def_id(), global_env.tcx()) {
+                        global_env.inner_pred(pred.name.clone());
+                    };
                     prog.add_pred(pred);
                 } else {
                     fatal!(

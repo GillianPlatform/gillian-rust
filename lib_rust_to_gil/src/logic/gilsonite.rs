@@ -342,14 +342,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
-                if self
-                    .tcx
-                    .crate_name(LOCAL_CRATE)
-                    .as_str()
-                    .contains("gilogic")
-                {
-                    eprintln!("p {}", PrintExpr(&self.thir, id));
-                }
                 match self.get_stub(*ty) {
                     Some(LogicStubs::AssertPure) => {
                         let formula = self.build_formula(args[0]);
@@ -549,14 +541,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
-                if self
-                    .tcx
-                    .crate_name(LOCAL_CRATE)
-                    .as_str()
-                    .contains("gilogic")
-                {
-                    eprintln!("f {}", PrintExpr(&self.thir, id));
-                }
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(LogicStubs::FormulaEqual) => {
@@ -870,17 +854,14 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         }
                     }
                     Some(LogicStubs::MutRefGetProphecy) => {
-                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         ExprKind::GetProphecy { mut_ref }
                     }
                     Some(LogicStubs::ProphecyGetValue) => {
-                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         ExprKind::GetValue { mut_ref }
                     }
                     Some(LogicStubs::MutRefSetProphecy) => {
-                        // self.asser/t_prophecies_enabled("using `Prophecised::assign`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         let prophecy = Box::new(self.build_expression(args[1]));
                         ExprKind::SetProphecy { mut_ref, prophecy }

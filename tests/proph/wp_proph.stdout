@@ -70,43 +70,50 @@ pred "<WP<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   * (self == #self);
 
 
-abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_Self0, +self, model);
+abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
-pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own$$inner"(+lft, +pty_T0, +self):
-  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #value)
-  * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
-  * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
-guard: <lft>(lft; true);
-
-pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
-  (self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }})
-  * <pcy_value>(#pcy, {{  }}, {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #future)
-  * <value_observer>(#pcy, {{  }}, {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #current)
-  * "<WP<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
-
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+lft, +pty_T0, +self):
-  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), pty_T0; #value)
-  * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #repr)
-  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
-guard: <lft>(lft; true);
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own"(+lft, +pty_T0, +self: List, model):
-  (self == {{ #ptr, {{ #pcy, {{  }} }} }}) * (model == {{ #current, #future }})
-  * <pcy_value>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #future)
-  * <value_observer>(#pcy, {{  }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #current)
-  * "<T as gilogic::prophecies::Ownable>::ref_mut_inner"(lft, pty_T0, self);
+pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(pLft_erased, pty_T0, #self)
+  * <value_observer>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, {{  }}: List)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, {{ #lvar_3, {{  }} }} }})
+  * (model == #model)
+  * (self == #self);
 
 
-pred "<WP<T> as gilogic::prophecies::Ownable>::ref_mut_inner"(+lft, +pty_T0, +self):
-  <value>(l-nth(l-nth(self, 0i), 0i), l-nth(l-nth(self, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #value)
-  * <pcy_controller>(l-nth(l-nth(self, 1i), 0i), l-nth(l-nth(self, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
-  * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #value, #repr);
-guard: <lft>(lft; true);
+pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<T>"(pLft_erased, pty_T0, #self)
+  * <value_observer>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, {{  }}: List)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, {{ #lvar_3, {{  }} }} }})
+  * (model == #model)
+  * (self == #self);
 
-abstract pred "<T as gilogic::prophecies::Ownable>::ref_mut_inner"(+pLft_0, +pty_Self0, +self);
 
+pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(+pLft_a, +pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<T>"(+pLft_a, +pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
 
 pred "wp_ref_mut_inner_xy::<T>$$inner"(+pty_T0, +p, x, y):
   <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; {{ #x, #y }})
@@ -132,6 +139,24 @@ pred "wp_ref_mut_inner_xy2::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
   * (y == #y)
   * (x == #x)
   * (REFERENCE == #REFERENCE);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ pty_T0 }} }}; #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
+  * (this == #this);
 
 
 lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List) * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }}) * (MODEL == #MODEL) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
