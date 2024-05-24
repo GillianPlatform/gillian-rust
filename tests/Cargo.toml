@@ -1,0 +1,10 @@
+[package]
+name = "ui_test"
+version = "0.1.0-dev"
+edition = "2021"
+
+[dependencies]
+gilogic = { version = "*", path = "../gilogic" }
+
+[lib]
+path = "dummy.rs"
