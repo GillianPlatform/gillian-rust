@@ -89,8 +89,18 @@ own_int!(
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     type RepresentationTy = (T::RepresentationTy, U::RepresentationTy);
 
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0,1"]
+    fn own(self, model: (T::RepresentationTy, U::RepresentationTy)) -> RustAssertion {
+        gilogic::__stubs::defs([assertion!(|l, r| (model == (l, r))
+            * self.0.own(l)
+            * self.1.own(r))])
+    }
+
+    #[cfg(not(gillian))]
     fn own(self, _model: (T::RepresentationTy, U::RepresentationTy)) -> RustAssertion {
-        unreachable!("Implemented in GIL")
+        unreachable!("Implemented in GIL");
     }
 }
 

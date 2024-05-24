@@ -4,6 +4,7 @@ use super::gilsonite::{self, Assert, SpecTerm};
 use super::utils::get_thir;
 use super::{builtins::LogicStubs, is_borrow};
 use crate::logic::gilsonite::SeqOp;
+use crate::logic::traits::resolve_candidate;
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
     codegen::place::{GilPlace, GilProj},
@@ -334,7 +335,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 substs,
                 args,
             } => {
-                let (name, substs) = self.global_env_mut().resolve_predicate(def_id, substs);
+                let param_env = self.tcx().param_env(self.body_id);
+                let (name, substs) = self
+                    .global_env_mut()
+                    .resolve_predicate_param_env(param_env, def_id, substs);
 
                 let ty_params = param_collector::collect_params_on_args(substs)
                     .with_consider_arguments(args.iter().map(|id| self.subst(id.ty)));

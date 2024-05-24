@@ -27,4 +27,11 @@ macro_rules! fatal {
   };
 }
 
+macro_rules! fatal2 {
+  ($e: expr, $($tts:tt)*) => {
+      $e.dcx().fatal(format!($($tts)*))
+  };
+}
+
 pub(crate) use fatal;
+pub(crate) use fatal2;

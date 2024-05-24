@@ -311,7 +311,6 @@ pub fn build_signature<'tcx>(
         args.push(arg)
     });
 
-
     let fn_args = tcx
         .fn_arg_names(id)
         .iter()
