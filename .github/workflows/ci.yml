@@ -10,19 +10,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  rust:
     runs-on: ubuntu-latest
-
     steps:
       # Basic setups
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       
       - run: cargo build
       - run: cargo check
       - run: cargo clippy
-      
+
+  gil:
+    runs-on: ubuntu-latest
+    steps:
+      # Basic setups
+      - uses: actions/checkout@v4
       # OCaml setup and build/test
       - uses: ocaml/setup-ocaml@v2
         with:
@@ -36,7 +39,7 @@ jobs:
           path: _opam
           key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
+            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1-${{ hashFiles('**/*.opam') }}-
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.1
       - run: opam install . --deps-only --with-test --locked
         working-directory: "Gillian-Rust"
@@ -45,12 +48,14 @@ jobs:
       - run: opam exec -- dune test
         working-directory: "Gillian-Rust"
 
-      # External tests
-      - run: ./test_all.sh
+      # Run Gillian-Rust on the generated code
+      - run: ./test_ci_gil.sh
       
       # Cleanup _opam before updating cache
       - if: ${{ steps.cache-ocaml.outputs.cache-hit != 'true' }}
         name: Cleanup _opam before updating cache
         continue-on-error: true
-        run: opam clean
+        run: |
+          opam clean
+          ls
         working-directory: "Gillian-Rust"
