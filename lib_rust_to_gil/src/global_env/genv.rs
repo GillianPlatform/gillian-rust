@@ -1,7 +1,7 @@
 use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
 use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
-use crate::logic::traits::ResolvedImpl;
+use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
 use crate::utils::attrs::is_gillian_spec;
@@ -12,7 +12,7 @@ use once_map::OnceMap;
 use rustc_borrowck::consumers::BodyWithBorrowckFacts;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{
-    AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ReprOptions,
+    AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ParamEnv, ReprOptions,
 };
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -279,12 +279,35 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.item_queue.mark_as_done(pred_name);
     }
 
+    #[deprecated = "This function is unsound. Use `resolve_predicate_param_env` instead"]
     pub fn resolve_predicate(
         &mut self,
         did: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> (String, GenericArgsRef<'tcx>) {
         let (instance, item) = match self.resolve_candidate(did, args) {
+            ResolvedImpl::Param => {
+                let instance = Instance::new(did, args);
+                let item = AutoItem::ParamPred(instance);
+                (instance, item)
+            }
+            ResolvedImpl::Impl(instance) => {
+                let item = AutoItem::MonoPred(instance);
+                (instance, item)
+            }
+        };
+        let name = self.just_pred_name_instance(instance);
+        self.item_queue.push(name.clone(), item);
+        (name, instance.args)
+    }
+
+    pub fn resolve_predicate_param_env(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        did: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> (String, GenericArgsRef<'tcx>) {
+        let (instance, item) = match resolve_candidate(self.tcx, param_env, did, args) {
             ResolvedImpl::Param => {
                 let instance = Instance::new(did, args);
                 let item = AutoItem::ParamPred(instance);
