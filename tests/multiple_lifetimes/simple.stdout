@@ -14,10 +14,12 @@ pred "<&mut i32 as gilogic::Ownable>::own$$inner"(+self: List):
   * "<i32 as gilogic::Ownable>::own"(#v);
 
 
-proc swap_borrows(pLft_a, pLft_b, m_1x, m_2y) {
+proc swap_borrows(pLft_a, pLft_b, x, y) {
+        m_1x := x;
         g_0 := m_1x;
         m_1x := [alloc]({{ "ref", true, "i32" }});
         u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, g_0);
+        m_2y := y;
         g_1 := m_2y;
         m_2y := [alloc]({{ "ref", true, "i32" }});
         u := [store_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, g_1);
@@ -42,15 +44,17 @@ proc swap_borrows(pLft_a, pLft_b, m_1x, m_2y) {
         return
 };
 
-spec fst(pLft_a, pLft_b, m_1x, m_2y)
-[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_1x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_2y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#m_2y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1x == {{ #lvar_0, #lvar_1 }}) * (m_2y == #m_2y) * (m_1x == #m_1x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
+spec fst(pLft_a, pLft_b, x, y)
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
 [["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
 normal
 
-proc fst(pLft_a, pLft_b, m_1x, m_2y) {
+proc fst(pLft_a, pLft_b, x, y) {
+        m_1x := x;
         g_0 := m_1x;
         m_1x := [alloc]({{ "ref", true, "i32" }});
         u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, g_0);
+        m_2y := y;
         m_3 := [alloc]({{ "ref", true, "i32" }});
   bb0:  g_2 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "i32" }}, true);
         g_1 := l-nth(g_2, 0i);
@@ -70,12 +74,14 @@ proc fst(pLft_a, pLft_b, m_1x, m_2y) {
         return
 };
 
-spec snd(pLft_a, pLft_b, m_1x, m_2y)
-[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_1x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #m_2y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#m_2y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1x == {{ #lvar_0, #lvar_1 }}) * (m_2y == #m_2y) * (m_1x == #m_1x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
+spec snd(pLft_a, pLft_b, x, y)
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
 [["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
 normal
 
-proc snd(pLft_a, pLft_b, m_1x, m_2y) {
+proc snd(pLft_a, pLft_b, x, y) {
+        m_1x := x;
+        m_2y := y;
         g_0 := m_2y;
         m_2y := [alloc]({{ "ref", true, "i32" }});
         u := [store_value](l-nth(m_2y, 0i), l-nth(m_2y, 1i), {{ "ref", true, "i32" }}, g_0);

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use indexmap::IndexSet;
 use rustc_middle::ty::Region;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
@@ -23,6 +24,20 @@ where
     let mut collector = ParamCollector::new();
     v.visit_with(&mut collector);
     collector
+}
+
+pub fn collect_regions<'tcx, V>(v: V) -> RegionsCollector<'tcx>
+where
+    V: TypeVisitable<TyCtxt<'tcx>>,
+{
+    let mut collector = RegionsCollector::default();
+    v.visit_with(&mut collector);
+    collector
+}
+
+#[derive(Debug, Default)]
+pub struct RegionsCollector<'tcx> {
+    pub regions: IndexSet<Region<'tcx>>,
 }
 
 impl<'tcx> ParamCollector<'tcx> {
@@ -57,5 +72,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamCollector<'tcx> {
 
     fn visit_region(&mut self, _r: Region<'tcx>) -> Self::Result {
         self.regions = true;
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for RegionsCollector<'tcx> {
+    fn visit_region(&mut self, _r: Region<'tcx>) -> Self::Result {
+        self.regions.insert(_r);
     }
 }

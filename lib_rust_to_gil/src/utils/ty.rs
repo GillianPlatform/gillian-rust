@@ -39,7 +39,7 @@ pub fn is_mut_ref_of_param_ty(ty: Ty) -> bool {
 }
 
 pub fn is_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-    tcx.layout_of(ParamEnv::reveal_all().and(ty))
+    tcx.layout_of(ParamEnv::reveal_all().and(tcx.erase_regions(ty)))
         .unwrap()
         .is_zst()
 }

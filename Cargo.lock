@@ -242,6 +242,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "creusot-metadata"
+version = "0.2.0"
+source = "git+https://github.com/xldenis/creusot?rev=9cee2464#9cee2464ce4238d514c6ec6f700b37a178b4f956"
+dependencies = [
+ "indexmap 1.9.3",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -331,7 +339,7 @@ dependencies = [
 name = "gillian"
 version = "0.1.0"
 dependencies = [
- "indexmap",
+ "indexmap 2.2.6",
  "num-bigint",
  "num-traits",
  "pretty",
@@ -360,6 +368,12 @@ name = "gimli"
 version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
+
+[[package]]
+name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
@@ -399,12 +413,22 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+dependencies = [
+ "autocfg",
+ "hashbrown 0.12.3",
+]
+
+[[package]]
+name = "indexmap"
 version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.14.3",
 ]
 
 [[package]]
@@ -471,9 +495,10 @@ checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
 name = "lib_rtg"
 version = "0.1.0"
 dependencies = [
+ "creusot-metadata",
  "env_logger",
  "gillian",
- "indexmap",
+ "indexmap 2.2.6",
  "itertools",
  "log",
  "num-bigint",
@@ -585,7 +610,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a05092df80cfce3eca08e79881dd82c9c369ba7abb6405c2377689b74649b4aa"
 dependencies = [
  "ahash",
- "hashbrown",
+ "hashbrown 0.14.3",
  "parking_lot",
  "stable_deref_trait",
 ]
@@ -631,7 +656,7 @@ dependencies = [
 [[package]]
 name = "pearlite-syn"
 version = "0.2.0"
-source = "git+https://github.com/xldenis/creusot?rev=71d106a96530ba3b4a00620cccda8eb351ff5bc7#71d106a96530ba3b4a00620cccda8eb351ff5bc7"
+source = "git+https://github.com/xldenis/creusot?rev=9cee2464#9cee2464ce4238d514c6ec6f700b37a178b4f956"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -773,7 +798,7 @@ dependencies = [
  "lib_rtg",
  "log",
  "toml",
- "ui_test",
+ "ui_test 0.22.3",
 ]
 
 [[package]]
@@ -1029,6 +1054,13 @@ name = "typed-arena"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
+
+[[package]]
+name = "ui_test"
+version = "0.1.0-dev"
+dependencies = [
+ "gilogic",
+]
 
 [[package]]
 name = "ui_test"

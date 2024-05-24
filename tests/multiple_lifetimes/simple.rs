@@ -1,5 +1,6 @@
 //@check-pass
 extern crate gilogic;
+
 use gilogic::macros::*;
 use gilogic::Ownable;
 
@@ -9,13 +10,13 @@ fn swap_borrows<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'b mut i32, &'a mu
 }
 
 #[show_safety]
-fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'a mut i32) {
+fn fst<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'a mut i32 {
   x
 }
 
 
 #[show_safety]
-fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> (&'b mut i32) {
+fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'b mut i32 {
   y
 }
 

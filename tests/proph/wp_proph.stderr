@@ -6,6 +6,7 @@ warning: unused imports: `Prophecy`, `observer`
    |
    = note: `#[warn(unused_imports)]` on by default
 
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
@@ -15,6 +16,72 @@ warning: unused imports: `Prophecy`, `observer`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: 1 warning emitted
+warning: unused variable: `v_x`
+  --> ../tests/proph/wp_proph.rs:42:17
+   |
+42 |     assertion!(|v_x: T, v_y: T, v_x_m: T::RepresentationTy, v_y_m: T::RepresentationTy|
+   |                 ^^^ help: if this is intentional, prefix it with an underscore: `_v_x`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `v_y`
+  --> ../tests/proph/wp_proph.rs:42:25
+   |
+42 |     assertion!(|v_x: T, v_y: T, v_x_m: T::RepresentationTy, v_y_m: T::RepresentationTy|
+   |                         ^^^ help: if this is intentional, prefix it with an underscore: `_v_y`
+
+warning: unused variable: `p`
+  --> ../tests/proph/wp_proph.rs:41:40
+   |
+41 | fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+   |                                        ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: unused variable: `x`
+  --> ../tests/proph/wp_proph.rs:41:62
+   |
+41 | fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+   |                                                              ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: unused variable: `y`
+  --> ../tests/proph/wp_proph.rs:41:76
+   |
+41 | fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+   |                                                                            ^ help: if this is intentional, prefix it with an underscore: `_y`
+
+warning: struct `WP` is never constructed
+  --> ../tests/proph/wp_proph.rs:14:8
+   |
+14 | struct WP<T> {
+   |        ^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: struct `N` is never constructed
+  --> ../tests/proph/wp_proph.rs:19:8
+   |
+19 | struct N<T> {
+   |        ^
+
+warning: function `wp_ref_mut_inner_xy_____fold` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:41:4
+   |
+41 | fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+   |    ^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `wp_ref_mut_inner_xy_fold`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: function `wp_ref_mut_inner_xy_____unfold` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:41:4
+   |
+41 | fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+   |    ^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `wp_ref_mut_inner_xy_unfold`
+
+warning: variable `REFERENCE` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:58:12
+   |
+58 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `reference`
+
+warning: 11 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

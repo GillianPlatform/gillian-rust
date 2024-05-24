@@ -19,6 +19,8 @@ use crate::codegen::typ_encoding::region_name;
 use crate::prelude::*;
 
 pub struct GilCtxt<'tcx, 'body> {
+    /// The set of locals which are used to interact with the heap.
+    /// These locals will require specific modeling in Gillian, so we distinguish them
     locals_in_memory: HashSet<Local>,
     gil_body: ProcBody,
     gil_temp_counter: usize,
@@ -243,7 +245,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
-    fn original_name_from_local(&self, local: Local) -> Option<String> {
+    pub fn original_name_from_local(&self, local: Local) -> Option<String> {
         self.mir()
             .var_debug_info
             .iter()
@@ -301,6 +303,7 @@ fn locals_in_memory_for_mir(body: &Body) -> HashSet<Local> {
     visitor.into_hashset()
 }
 
+// Determines the set of locals is used to access the heap: as the base of a borrow, addr_of or discriminant operation.
 #[derive(Default)]
 struct ReferencedLocalsVisitor(HashSet<Local>);
 

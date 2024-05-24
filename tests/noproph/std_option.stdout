@@ -23,12 +23,13 @@ pred "<&mut Option<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
   * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v);
 
 
-spec "Option::<T>::new"(pty_T0, m_1x)
-[[ "<T as gilogic::Ownable>::own"(#pty_T0, #m_1x) * (m_1x == #m_1x) * (pty_T0 == #pty_T0) ]]
+spec "Option::<T>::new"(pty_T0, x)
+[[ "<T as gilogic::Ownable>::own"(#pty_T0, #x) * (x == #x) * (pty_T0 == #pty_T0) ]]
 [["<Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
 normal
 
-proc "Option::<T>::new"(pty_T0, m_1x) {
+proc "Option::<T>::new"(pty_T0, x) {
+        m_1x := x;
   bb0:  g_0 := m_1x;
         m_2 := g_0;
         g_1 := m_2;
@@ -41,15 +42,17 @@ proc "Option::<T>::new"(pty_T0, m_1x) {
   rlab: return
 };
 
-spec "Option::<T>::put"(pLft_0, pty_T0, m_1self, m_2x)
-[[ "<&mut Option<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2x) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_2x == #m_2x) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+spec "Option::<T>::put"(pLft_0, pty_T0, self, x)
+[[ "<&mut Option<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #x) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (x == #x) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
 normal
 
-proc "Option::<T>::put"(pLft_0, pty_T0, m_1self, m_2x) {
+proc "Option::<T>::put"(pLft_0, pty_T0, self, x) {
+        m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, g_0);
+        m_2x := x;
   bb0:  g_1 := m_2x;
         m_4 := g_1;
         g_2 := m_4;

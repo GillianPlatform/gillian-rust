@@ -2,8 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::Span;
 use std::collections::HashMap;
 use syn::{
-    parse::Parse, spanned::Spanned, visit::Visit, visit_mut::VisitMut, Ident, ImplItem, ItemImpl,
-    Path, Token, Type,
+    parse::Parse, parse_quote, spanned::Spanned, visit::Visit, visit_mut::VisitMut, Ident,
+    ImplItem, ItemImpl, Path, Token, Type,
 };
 
 use super::{subst::VarSubst, *};
@@ -177,6 +177,7 @@ impl FreezeMutRefOwn {
         predicate.name = args.inner_predicate_name.clone();
         predicate.attributes = vec![];
         predicate.generics = own_impl.generics.clone();
+
         let mut new_receiver_name = Ident::new("REFERENCE", Span::call_site());
         let self_mut_ref = {
             let self_ty = (*own_impl.self_ty).clone();
@@ -239,6 +240,8 @@ impl FreezeMutRefOwn {
     fn freeze_outer(predicate: &mut Predicate, own_impl: &ItemImpl, args: &FreezeMutRefOwnArgs) {
         let name = &args.predicate_name;
         predicate.generics = own_impl.generics.clone();
+        predicate.generics.params.insert(0, parse_quote! { 'gil });
+
         let generics = &predicate.generics;
         let inner_pred_name = &args.inner_predicate_name;
         let frozen_vars = &args.frozen_variables;
@@ -250,7 +253,7 @@ impl FreezeMutRefOwn {
         visitor.visit_block(predicate.body.as_ref().unwrap());
         let frozen_vars_ty = visitor.into_inner().frozen_vars_ty;
         let outer = quote! {
-            fn #name #generics (REFERENCE: In<&mut #impl_ty>, model: (<&mut #impl_ty as Ownable>::RepresentationTy), #(#frozen_vars: #frozen_vars_ty),*) {
+            fn #name #generics (REFERENCE: In<&'gil mut #impl_ty>, model: (<&'gil mut #impl_ty as Ownable>::RepresentationTy), #(#frozen_vars: #frozen_vars_ty),*) {
                 assertion!(|current: <#impl_ty as Ownable>::RepresentationTy|
                     (model == (current, REFERENCE.prophecy().value())) *
                     ::gilogic::prophecies::observer(REFERENCE.prophecy(), current) *

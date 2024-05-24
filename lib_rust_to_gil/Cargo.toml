@@ -19,6 +19,7 @@ num-bigint = "0.4"
 indexmap = "2.2"
 once_map = "0.4"
 itertools = "0.12.1"
+creusot-metadata = { git = "https://github.com/xldenis/creusot", rev = "9cee2464" }
 
 
 [package.metadata.rust-analyzer]

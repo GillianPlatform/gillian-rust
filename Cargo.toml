@@ -9,4 +9,6 @@ members = [
   "gilogic_proc",
   "gilogic",
   "creusillian",
+  "tests",
 ]
+

@@ -2,18 +2,19 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use polonius_engine::{Algorithm, Output};
+use rustc_hir::def::DefKind;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
 use crate::location_table::LocationTable;
 use crate::logic::{compile_logic, LogicItem};
+use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
     prog: gillian::gil::Prog,
-    global_env: GlobalEnv<'tcx>,
     temp_gen: TempGenerator,
 }
 
@@ -27,14 +28,13 @@ impl<'tcx> ProgCtx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         Self {
             prog: gillian::gil::Prog::new(runtime::imports(config.prophecies)),
-            global_env: GlobalEnv::new(tcx, config),
             temp_gen: TempGenerator::new(),
             tcx,
         }
     }
 
-    fn compile_logic(&mut self, did: DefId) {
-        for logic_item in compile_logic(did, self.tcx(), &mut self.global_env, &mut self.temp_gen) {
+    fn compile_logic(&mut self, global_env: &mut GlobalEnv<'tcx>, did: DefId) {
+        for logic_item in compile_logic(did, self.tcx(), global_env, &mut self.temp_gen) {
             match logic_item {
                 LogicItem::Pred(pred) => self.prog.add_pred(pred),
                 LogicItem::Lemma(lemma) => self.prog.add_lemma(lemma),
@@ -42,9 +42,10 @@ impl<'tcx> ProgCtx<'tcx> {
         }
     }
 
-    fn compile_fn(&mut self, did: DefId) {
-        let sig = build_signature(&mut self.global_env, did);
-        let with_facts = self.global_env.body_with_facts(did.expect_local());
+    fn compile_fn(&mut self, global_env: &mut GlobalEnv<'tcx>, did: DefId) {
+        let args = GenericArgs::identity_for_item(self.tcx(), did);
+        let sig = build_signature(global_env, did, args);
+        let with_facts = global_env.body_with_facts(did.expect_local());
         let body = with_facts.body.clone();
         let borrow_set = with_facts.borrow_set.clone();
         let region_ctxt = with_facts.region_inference_context.clone();
@@ -55,7 +56,7 @@ impl<'tcx> ProgCtx<'tcx> {
             Rc::new(Output::compute(&*input_facts, algorithm, true))
         };
         let ctx = GilCtxt::new(
-            &mut self.global_env,
+            global_env,
             &body,
             &borrow_set,
             &region_ctxt,
@@ -65,32 +66,41 @@ impl<'tcx> ProgCtx<'tcx> {
 
         let mut proc = ctx.push_body();
 
-        proc.spec = sig.to_gil_spec(&mut self.global_env, proc.name.clone());
+        proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
         self.prog.add_proc(proc);
     }
 
-    fn final_prog(mut self) -> ParsingUnit {
+    fn final_prog(&mut self, global_env: &mut GlobalEnv<'tcx>) -> ParsingUnit {
         for key in self.tcx().hir().body_owners() {
             let did = key.to_def_id();
+            if self.tcx.def_kind(key) == DefKind::AnonConst {
+                continue;
+            }
+
             if crate::utils::attrs::should_translate(did, self.tcx()) {
                 if crate::utils::attrs::is_logic(did, self.tcx()) {
-                    self.compile_logic(did);
+                    self.compile_logic(global_env, did);
                 } else {
-                    self.compile_fn(did);
+                    self.compile_fn(global_env, did);
                 }
             }
         }
 
-        self.global_env.flush_remaining_defs_to_prog(&mut self.prog);
-        let init_data = self.global_env.serialized_adt_declarations();
+        global_env.flush_remaining_defs_to_prog(&mut self.prog);
+        let init_data = global_env.serialized_adt_declarations();
         ParsingUnit {
-            prog: self.prog,
+            prog: std::mem::take(&mut self.prog),
             init_data,
         }
     }
 
-    pub(crate) fn compile_prog(tcx: TyCtxt<'tcx>, config: Config) -> ParsingUnit {
-        let this = Self::new(tcx, config);
-        this.final_prog()
+    pub(crate) fn compile_prog(
+        tcx: TyCtxt<'tcx>,
+        global_env: &mut GlobalEnv<'tcx>,
+        config: Config,
+    ) -> (ParsingUnit, BinaryMetadata<'tcx>) {
+        let mut this = Self::new(tcx, config);
+        let prog = this.final_prog(global_env);
+        (prog, global_env.metadata())
     }
 }

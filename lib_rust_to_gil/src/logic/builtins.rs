@@ -60,7 +60,7 @@ pub(crate) enum LogicStubs {
     // as soon as we support cross-crate compilation.
     OwnPred,
     MutRefOwnPred,
-    OptionOwnPred,
+    // OptionOwnPred,
     TupleOwnPred,
     RefMutInner,
     InstantiateLVars,
@@ -109,9 +109,6 @@ impl LogicStubs {
                 "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Self::OwnPred),
                 "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
                     Some(Self::MutRefOwnPred)
-                }
-                "gillian::ownable::option_own" | "gillian::pcy::ownable::option_own" => {
-                    Some(Self::OptionOwnPred)
                 }
                 "gillian::ownable::tuple_own" | "gillian::pcy::ownable::tuple_own" => {
                     Some(Self::TupleOwnPred)

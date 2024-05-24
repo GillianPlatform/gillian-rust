@@ -1,1 +1,20 @@
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+warning: struct `MyInt` is never constructed
+ --> ../tests/noproph/tiny_int.rs:9:8
+  |
+9 | struct MyInt(u32);
+  |        ^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `new` is never used
+  --> ../tests/noproph/tiny_int.rs:19:8
+   |
+18 | impl MyInt {
+   | ---------- associated function in this implementation
+19 |     fn new(x: u32) -> Option<Self> {
+   |        ^^^
+
+warning: 2 warnings emitted
+
 [TIMESTAMP DEBUG rust_to_gil] Correct!

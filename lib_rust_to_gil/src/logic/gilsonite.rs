@@ -1,18 +1,21 @@
 use rustc_ast::LitKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue},
-    thir::{self, AdtExpr, ClosureExpr, ExprId, LocalVarId, Thir},
+    thir::{self, AdtExpr, ClosureExpr, ExprId, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
 use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
+use crate::logic::predicate::fn_args_and_tys;
+
 use super::builtins::LogicStubs;
 
 /// Pure logical terms, must have no spatial or resource component.
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum ExprKind<'tcx> {
     Call {
         def_id: DefId,
@@ -38,10 +41,10 @@ pub enum ExprKind<'tcx> {
         field: FieldIdx,
     },
     Var {
-        id: LocalVarId,
+        id: Symbol,
     },
     Integer {
-        value: u128,
+        value: u64,
     },
     // Unclear whether this is worth distinguishing in the AST or just delegating this to the backend
     SeqNil,
@@ -62,7 +65,7 @@ pub enum ExprKind<'tcx> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum FormulaKind<'tcx> {
     // True,
     // False,
@@ -82,7 +85,7 @@ pub enum FormulaKind<'tcx> {
 }
 
 /// Propositional operators
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum FOp {
     Impl,
     Or,
@@ -90,7 +93,7 @@ pub enum FOp {
 }
 
 /// Expression operations
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 #[allow(dead_code)]
 pub enum EOp {
     Lt,
@@ -101,7 +104,7 @@ pub enum EOp {
     SetSub,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum SeqOp {
     Append,
     Prepend,
@@ -114,7 +117,7 @@ pub enum SeqOp {
     Repeat,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 #[allow(dead_code)]
 pub enum BinOp {
     Eq,
@@ -125,24 +128,29 @@ pub enum BinOp {
     Add,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct Formula<'tcx> {
     pub bound_vars: Vec<(Symbol, Ty<'tcx>)>,
     pub body: FormulaKind<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct Expr<'tcx> {
     pub kind: ExprKind<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct Assert<'tcx> {
     pub kind: AssertKind<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+pub struct Predicate<'tcx> {
+    pub disjuncts: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assert<'tcx>)>,
+}
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<'tcx> {
     /// Separating conjunction
     Star {
@@ -201,6 +209,14 @@ pub enum AssertKind<'tcx> {
     // ... other core predicates
 }
 
+#[derive(Debug, Clone, TyDecodable, TyEncodable)]
+pub struct SpecTerm<'tcx> {
+    pub uni: Vec<(Symbol, Ty<'tcx>)>,
+    pub pre: Assert<'tcx>,
+    pub exi: Vec<(Symbol, Ty<'tcx>)>,
+    pub post: Assert<'tcx>,
+}
+
 pub struct GilsoniteBuilder<'tcx> {
     thir: Thir<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -211,9 +227,98 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         Self { thir, tcx }
     }
 
-    pub fn build_assert(&self, expr: ExprId) -> Assert<'tcx> {
+    pub(crate) fn build_assert(&self, expr: ExprId) -> Assert<'tcx> {
         Assert {
             kind: self.build_assert_kind(expr),
+        }
+    }
+
+    fn build_quantified_assert(&self, expr: ExprId) -> (Vec<(Symbol, Ty<'tcx>)>, Assert<'tcx>) {
+        self.peel_lvar_bindings(expr, |this, expr| this.build_assert(expr))
+    }
+
+    pub fn build_predicate(&self, expr: ExprId) -> Predicate<'tcx> {
+        let defs = self.resolve_definitions(expr);
+        let aserts = defs
+            .into_iter()
+            .map(|eid| self.build_quantified_assert(eid));
+
+        Predicate {
+            disjuncts: aserts.collect(),
+        }
+    }
+
+    pub fn build_spec(&self, expr: ExprId) -> SpecTerm<'tcx> {
+        let (uni, (pre, post)) = self.peel_lvar_bindings(expr, |this, expr| {
+            let expr = this.peel_scope(expr);
+            let thir::ExprKind::Call {
+                ty, fun: _, args, ..
+            } = &this.thir[expr].kind
+            else {
+                unreachable!("ill formed specification block {:?}", this.thir[expr])
+            };
+
+            let Some(LogicStubs::Spec) = this.get_stub(*ty) else {
+                unreachable!("ill formed specification block")
+            };
+
+            let pre = this.build_assert(args[0]);
+
+            let post = this.peel_lvar_bindings(args[1], |this, expr| this.build_assert(expr));
+
+            (pre, post)
+        });
+
+        SpecTerm {
+            uni,
+            pre,
+            exi: post.0,
+            post: post.1,
+        }
+    }
+
+    fn resolve_definitions(&self, e: ExprId) -> Vec<ExprId> {
+        let expr = &self.thir.exprs[e];
+        match &expr.kind {
+            thir::ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.resolve_definitions(*value),
+            thir::ExprKind::Use { source } => self.resolve_definitions(*source),
+            thir::ExprKind::Block { block } => {
+                let block = &self.thir.blocks[*block];
+                assert!(block.stmts.is_empty());
+
+                self.resolve_definitions(block.expr.unwrap())
+            }
+
+            thir::ExprKind::Call { ty, args, .. }
+                if self.get_stub(*ty) == Some(LogicStubs::PredDefs) =>
+            {
+                assert!(args.len() == 1, "Defs call must have one argument");
+                self.resolve_array(args[0])
+            }
+            e => unreachable!("{e:?}"),
+        }
+    }
+
+    pub(crate) fn resolve_array(&self, e: ExprId) -> Vec<ExprId> {
+        let expr = &self.thir[e];
+        match &expr.kind {
+            thir::ExprKind::Scope {
+                region_scope: _,
+                lint_level: _,
+                value,
+            } => self.resolve_array(*value),
+            thir::ExprKind::Use { source } => self.resolve_array(*source),
+            thir::ExprKind::Block { block } => {
+                let block = &self.thir[*block];
+                assert!(block.stmts.is_empty());
+                self.resolve_array(block.expr.unwrap())
+            }
+            thir::ExprKind::Array { fields } => fields.to_vec(),
+            _ => unreachable!(),
         }
     }
 
@@ -230,10 +335,21 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 lint_level: _,
                 value,
             } => self.build_assert_kind(*value),
+            thir::ExprKind::Block { block } if self.thir[*block].stmts.is_empty() => {
+                self.build_assert_kind(self.thir[*block].expr.unwrap())
+            }
             thir::ExprKind::Use { source } => self.build_assert_kind(*source),
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
+                if self
+                    .tcx
+                    .crate_name(LOCAL_CRATE)
+                    .as_str()
+                    .contains("gilogic")
+                {
+                    eprintln!("p {}", PrintExpr(&self.thir, id));
+                }
                 match self.get_stub(*ty) {
                     Some(LogicStubs::AssertPure) => {
                         let formula = self.build_formula(args[0]);
@@ -333,7 +449,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             _ => self
                 .tcx
                 .dcx()
-                .fatal(format!("Can't compile assertion yet: {:?}", expr)),
+                .fatal(format!("Can't parse assertion yet: {:?}", expr)),
         }
     }
 
@@ -433,6 +549,14 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
+                if self
+                    .tcx
+                    .crate_name(LOCAL_CRATE)
+                    .as_str()
+                    .contains("gilogic")
+                {
+                    eprintln!("f {}", PrintExpr(&self.thir, id));
+                }
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(LogicStubs::FormulaEqual) => {
@@ -531,13 +655,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let i = sci
                     .try_to_int(sci.size())
                     .expect("Cannot fail because we chose the right size");
-                ExprKind::Integer { value: i as u128 }
+                ExprKind::Integer { value: i as u64 }
             }
             (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Uint(..)) => {
                 let i = sci
                     .try_to_uint(sci.size())
                     .expect("Cannot fail because we chose the right size");
-                ExprKind::Integer { value: i }
+                ExprKind::Integer { value: i as u64 }
             }
             _ => self
                 .tcx
@@ -556,8 +680,12 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 value,
             } => self.build_expression_kind(*value),
             thir::ExprKind::Use { source } => self.build_expression_kind(*source),
-            thir::ExprKind::UpvarRef { var_hir_id, .. } => ExprKind::Var { id: *var_hir_id },
-            thir::ExprKind::VarRef { id } => ExprKind::Var { id: *id },
+            thir::ExprKind::UpvarRef { var_hir_id, .. } => ExprKind::Var {
+                id: self.tcx.hir().name(var_hir_id.0),
+            },
+            thir::ExprKind::VarRef { id } => ExprKind::Var {
+                id: self.tcx.hir().name(id.0),
+            },
             thir::ExprKind::NamedConst {
                 def_id,
                 args,
@@ -629,7 +757,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 }
             }
             thir::ExprKind::Literal { lit, neg: false } => match lit.node {
-                LitKind::Int(i, _) => ExprKind::Integer { value: i.get() },
+                LitKind::Int(i, _) => ExprKind::Integer {
+                    value: i.get() as u64,
+                },
                 _ => self
                     .tcx
                     .dcx()
@@ -777,7 +907,139 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 value,
             } => self.peel_scope(*value),
             thir::ExprKind::Use { source } => self.peel_scope(*source),
+            thir::ExprKind::Block { block } if self.thir[*block].stmts.is_empty() => {
+                self.peel_scope(self.thir[*block].expr.unwrap())
+            }
             _ => e,
         }
     }
+
+    /// Removes any bindings for lvars surrounding an assertion and adds them to the environment.
+    fn peel_lvar_bindings<A>(
+        &self,
+        mut e: ExprId,
+        mut k: impl FnMut(&Self, ExprId) -> A,
+    ) -> (Vec<(Symbol, Ty<'tcx>)>, A) {
+        e = self.peel_scope(e);
+
+        match &self.thir[e].kind {
+            thir::ExprKind::Call { ty, args, .. }
+                if self.get_stub(*ty) == Some(LogicStubs::InstantiateLVars) =>
+            {
+                let thir::ExprKind::Closure(clos) = &self.thir[self.peel_scope(args[0])].kind
+                else {
+                    unreachable!()
+                };
+
+                let mut lvars = Vec::new();
+                for (nm, ty) in fn_args_and_tys(self.tcx, clos.closure_id.to_def_id()) {
+                    lvars.push((nm, ty));
+                }
+
+                let (thir, expr) = self.tcx.thir_body(clos.closure_id).unwrap();
+
+                let inner = Self::new(thir.borrow().clone(), self.tcx);
+                let x = k(&inner, expr);
+
+                (lvars, x)
+            }
+            thir::ExprKind::Block { block } => {
+                let block = &self.thir[*block];
+                assert!(block.stmts.is_empty());
+
+                // let StmtKind::Expr { expr, .. }  = thir[block.stmts[0]].kind else { panic!() };
+                self.peel_lvar_bindings(block.expr.unwrap(), k)
+            }
+            _ => (Vec::new(), k(self, e)),
+        }
+    }
+}
+
+struct PrintExpr<'a, 'tcx>(&'a Thir<'tcx>, ExprId);
+
+impl std::fmt::Display for PrintExpr<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        print_thir_expr(f, self.0, self.1)
+    }
+}
+
+fn print_thir_expr<'tcx>(
+    fmt: &mut std::fmt::Formatter,
+    thir: &Thir<'tcx>,
+    expr_id: ExprId,
+) -> std::fmt::Result {
+    match &thir[expr_id].kind {
+        thir::ExprKind::Call { fun, args, ty, .. } => {
+            print_thir_expr(fmt, thir, *fun)?;
+            let TyKind::FnDef(_, sub) = ty.kind() else {
+                unreachable!()
+            };
+            write!(fmt, "<{:?}>", sub)?;
+            write!(fmt, "(")?;
+            for a in args.iter() {
+                print_thir_expr(fmt, thir, *a)?;
+                write!(fmt, ",")?;
+            }
+            write!(fmt, ")")?;
+        }
+        thir::ExprKind::Deref { arg } => {
+            write!(fmt, "* ")?;
+            print_thir_expr(fmt, thir, *arg)?;
+        }
+        thir::ExprKind::Borrow { borrow_kind, arg } => {
+            match borrow_kind {
+                BorrowKind::Shared => write!(fmt, "& ")?,
+                BorrowKind::Fake(..) => write!(fmt, "&fake ")?,
+                BorrowKind::Mut { .. } => write!(fmt, "&mut ")?,
+            };
+
+            print_thir_expr(fmt, thir, *arg)?;
+        }
+        thir::ExprKind::Field {
+            lhs,
+            variant_index,
+            name,
+        } => {
+            print_thir_expr(fmt, thir, *lhs)?;
+            let ty = thir[expr_id].ty;
+            let (var_name, field_name) = match ty.kind() {
+                TyKind::Adt(def, _) => {
+                    let var = &def.variants()[*variant_index];
+                    (var.name.to_string(), var.fields[*name].name.to_string())
+                }
+                TyKind::Tuple(_) => ("_".into(), format!("{name:?}")),
+                _ => ("closure_field".into(), "closure_field".into()),
+            };
+
+            write!(fmt, " as {var_name} . {field_name}")?;
+        }
+        thir::ExprKind::Index { lhs, index } => {
+            print_thir_expr(fmt, thir, *lhs)?;
+            write!(fmt, "[")?;
+            print_thir_expr(fmt, thir, *index)?;
+            write!(fmt, "]")?;
+        }
+        thir::ExprKind::ZstLiteral { .. } => match thir[expr_id].ty.kind() {
+            TyKind::FnDef(id, _) => write!(fmt, "{id:?}")?,
+            _ => write!(fmt, "zst")?,
+        },
+        thir::ExprKind::Literal { lit, neg } => {
+            if *neg {
+                write!(fmt, "-")?;
+            }
+
+            write!(fmt, "{}", lit.node)?;
+        }
+        thir::ExprKind::Use { source } => print_thir_expr(fmt, thir, *source)?,
+        thir::ExprKind::VarRef { id } => {
+            write!(fmt, "{:?}", id.0)?;
+        }
+        thir::ExprKind::Scope { value, .. } => {
+            print_thir_expr(fmt, thir, *value)?;
+        }
+        _ => {
+            write!(fmt, "{:?}", thir[expr_id])?;
+        }
+    }
+    Ok(())
 }

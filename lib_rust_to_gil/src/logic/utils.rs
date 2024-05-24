@@ -11,10 +11,13 @@ macro_rules! get_thir {
                 $s.global_env().just_pred_name($did)
             )
         }));
-        if let Ok((___thir, ___expr)) = ___thir {
-            (___thir.borrow(), ___expr)
-        } else {
-            crate::prelude::fatal!($s, "Predicate body failed to typecheck for {:?}", $did)
+        match ___thir {
+            Ok((thir, expr)) => (thir.borrow(), expr),
+            Err(e) => crate::prelude::fatal!(
+                $s,
+                "Predicate body failed to typecheck for {:?} {e:?}",
+                $did
+            ),
         }
     }};
 }

@@ -91,11 +91,6 @@ pub(crate) fn should_translate(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_none()
 }
 
-pub(crate) fn is_function_specification(def_id: DefId, tcx: TyCtxt) -> bool {
-    is_specification(def_id, tcx)
-        && get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "for_lemma"]).is_none()
-}
-
 pub(crate) fn is_trusted_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),

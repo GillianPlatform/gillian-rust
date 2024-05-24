@@ -69,7 +69,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     }
 
     fn sig(&mut self) -> LemmaSig {
-        let sig = build_signature(self.global_env, self.did());
+        let args = GenericArgs::identity_for_item(self.tcx(), self.did());
+        let sig = build_signature(self.global_env, self.did(), args);
         let params = sig.physical_args().map(|a| a.name().to_string()).collect();
         LemmaSig {
             name: self.lemma_name(),
@@ -99,8 +100,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 variant: None,
                 existentials: Vec::new(),
             };
-
-            let sig = build_signature(self.global_env, self.did);
+            let args = GenericArgs::identity_for_item(self.tcx(), self.did());
+            let sig = build_signature(self.global_env, self.did, args);
 
             let ss = sig
                 .to_gil_spec(self.global_env, name)
@@ -122,8 +123,9 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let name = name.clone() + "$$extract_proof";
         let post_name = name.clone() + "$$post";
         let pre_name = name.clone() + "$$pre";
+        let args = GenericArgs::identity_for_item(self.tcx(), self.did());
 
-        let sig = signature::build_signature(self.global_env, id);
+        let sig = signature::build_signature(self.global_env, id, args);
 
         let mut fresh = TempGenerator::new();
 
