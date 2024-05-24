@@ -81,16 +81,22 @@ let compile ~out_dir file =
   let no_ext = Filename.chop_extension (Filename.basename file) in
   let pp_opts = Fmt.(list ~sep:(any " ") string) in
   let options = options ~out_dir () in
-  let command = Fmt.str "%a cargo run -- %s %a" pp_opts (env ()) file pp_opts options in
-  Logging.normal (fun m -> m "%s" command);
-  let exit_code = R_config.in_compiler_root (fun () -> Sys.command command) in
-  let* () =
+  let out_file = Filename.concat out_dir (no_ext ^ ".gil") in
+
+  let* () = if String.equal (Filename.extension file) ".stdout" then begin
+    let exit_code = Sys.command (Fmt.str "cp %s %s" file out_file) in
     match exit_code with
     | 0 -> Ok ()
-    | _ -> Error ()
-  in
-  let out_file = Filename.concat out_dir (no_ext ^ ".gil") in
-  Ok out_file
+    | _ -> Error () 
+  end else begin 
+    let command = Fmt.str "%a cargo run -- %s %a" pp_opts (env ()) file pp_opts options in
+    Logging.normal (fun m -> m "%s" command);
+    let exit_code = R_config.in_compiler_root (fun () -> Sys.command command) in
+      match exit_code with
+      | 0 -> Ok ()
+      | _ -> Error () 
+  end in
+Ok out_file
 
 let expand_and_stop ~out_dir file =
   let pp_opts = Fmt.(list ~sep:(any " ") string) in
