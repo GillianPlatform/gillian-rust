@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr};
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ExecMode {
@@ -37,6 +37,7 @@ pub struct Config {
     pub mode: ExecMode,
     pub prophecies: bool,
     pub in_test: bool,
+    pub overrides: HashMap<String, String>,
 }
 
 impl Config {
@@ -53,6 +54,7 @@ impl Config {
             mode,
             prophecies,
             in_test,
+            overrides: HashMap::new(),
         }
     }
 }

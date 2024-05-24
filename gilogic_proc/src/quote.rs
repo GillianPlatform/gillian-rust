@@ -12,31 +12,31 @@ impl Formula {
                 BinOp::Eq(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                      ::gilogic::__stubs::equal(#left, #right)
+                      gilogic::__stubs::equal(#left, #right)
                     ));
                 }
                 BinOp::Le(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                      ::gilogic::__stubs::less_eq(#left, #right)
+                      gilogic::__stubs::less_eq(#left, #right)
                     ));
                 }
                 BinOp::Lt(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                      ::gilogic::__stubs::less(#left, #right)
+                      gilogic::__stubs::less(#left, #right)
                     ));
                 }
                 BinOp::Gt(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                      ::gilogic::__stubs::less(#right, #left)
+                      gilogic::__stubs::less(#right, #left)
                     ));
                 }
                 BinOp::Ge(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                        ::gilogic::__stubs::less(#right, #left)
+                        gilogic::__stubs::less(#right, #left)
                     ));
                 }
                 BinOp::And(tok) => {
@@ -44,7 +44,7 @@ impl Formula {
                     let left = Self::encode_inner(left)?;
                     let right = Self::encode_inner(right)?;
                     tokens.extend(quote_spanned!(span=>
-                        ::gilogic::__stubs::and(#left, #right)
+                        gilogic::__stubs::and(#left, #right)
                     ));
                 }
                 BinOp::Or(tok) => {
@@ -52,13 +52,13 @@ impl Formula {
                     let left = Self::encode_inner(left)?;
                     let right = Self::encode_inner(right)?;
                     tokens.extend(quote_spanned!(span=>
-                        ::gilogic::__stubs::or(#left, #right)
+                        gilogic::__stubs::or(#left, #right)
                     ));
                 }
                 BinOp::Ne(tok) => {
                     let span = tok.span();
                     tokens.extend(quote_spanned!(span=>
-                        ::gilogic::__stubs::not_equal(#left, #right)
+                        gilogic::__stubs::not_equal(#left, #right)
                     ));
                 }
                 _ => {
@@ -85,7 +85,7 @@ impl Formula {
                 let mut ts = Self::encode_inner(term)?;
                 for arg in args {
                     ts = quote! {
-                        ::gilogic::__stubs::forall(
+                        gilogic::__stubs::forall(
                             #[gillian::no_translate]
                             |#arg| { #ts }
                         )
@@ -103,7 +103,7 @@ impl Formula {
                 let hyp = Self::encode_inner(hyp)?;
                 let cons = Self::encode_inner(cons)?;
                 tokens.extend(quote_spanned! {span=>
-                    ::gilogic::__stubs::implication(#hyp, #cons)
+                    gilogic::__stubs::implication(#hyp, #cons)
                 });
             }
             _ => {
@@ -136,18 +136,18 @@ impl AsrtFragment {
         match self {
             Self::Emp(emp) => {
                 let span = emp.span();
-                Ok(quote_spanned!(span=> ::gilogic::__stubs::emp()))
+                Ok(quote_spanned!(span=> gilogic::__stubs::emp()))
             }
             Self::PointsTo(AsrtPointsTo { left, right, .. }) => {
-                Ok(quote!(::gilogic::__stubs::PointsTo::points_to(#left, #right)))
+                Ok(quote!(gilogic::__stubs::PointsTo::points_to(#left, #right)))
             }
             Self::Pure(formula) => {
                 let formula = formula.encode()?;
-                Ok(quote!(::gilogic::__stubs::pure(#formula)))
+                Ok(quote!(gilogic::__stubs::pure(#formula)))
             }
             Self::Observation(obs) => {
                 let observation = obs.encode()?;
-                Ok(quote!(::gilogic::__stubs::observation(#observation)))
+                Ok(quote!(gilogic::__stubs::observation(#observation)))
             }
             Self::PredCall(call) => Ok(call.to_token_stream()),
         }
@@ -162,13 +162,13 @@ impl Specification {
             fragments.fold(first, |acc, fragment| {
                 let acc = acc?;
                 let right = fragment.encode()?;
-                Ok(quote!(::gilogic::__stubs::star(#acc, #right)))
+                Ok(quote!(gilogic::__stubs::star(#acc, #right)))
             })?
         };
 
         let rvars = self.rvars.iter();
         let postcond_tokens = quote!({
-            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#rvars),*| {
+            gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#rvars),*| {
                 #def
             })
         });
@@ -181,16 +181,16 @@ impl Specification {
             fragments.fold(first, |acc, fragment| {
                 let acc = acc?;
                 let right = fragment.encode()?;
-                Ok(quote!(::gilogic::__stubs::star(#acc, #right)))
+                Ok(quote!(gilogic::__stubs::star(#acc, #right)))
             })?
         };
 
         let lvars = self.lvars.iter();
 
         Ok(quote! {
-            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
-                ::gilogic::__stubs::spec(#precond_tokens, #postcond_tokens)
-            })
+            unsafe { gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
+                gilogic::__stubs::spec(#precond_tokens, #postcond_tokens)
+            }) }
         })
     }
 }
@@ -206,11 +206,11 @@ impl Assertion {
             fragments.fold(first, |acc, fragment| {
                 let acc = acc?;
                 let right = fragment.encode()?;
-                Ok(quote!(::gilogic::__stubs::star(#acc, #right)))
+                Ok(quote!(gilogic::__stubs::star(#acc, #right)))
             })?
         };
         tokens.extend(quote!({
-            ::gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
+            gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
                 #def
             })
         }));
@@ -261,7 +261,7 @@ impl ToTokens for Predicate {
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
               #(#attributes)*
-              fn #name #generics (#args) -> ::gilogic::RustAssertion {
+              fn #name #generics (#args) -> gilogic::RustAssertion {
                 unreachable!()
               }
             }),
@@ -280,10 +280,10 @@ impl ToTokens for Predicate {
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
                   #(#attributes)*
-                  fn #name #generics (#args) -> ::gilogic::RustAssertion
+                  fn #name #generics (#args) -> gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {
-                    tokens.extend(quote!(::gilogic::__stubs::defs([#(#stmts),*])));
+                    tokens.extend(quote!(gilogic::__stubs::defs([#(#stmts),*])));
                 })
             }
         }
@@ -341,6 +341,7 @@ impl ToTokens for frozen_borrow::FreezeMutRefOwn {
         tokens.extend(quote! {
 
             #[lemma]
+            #[allow(non_snake_case)]
             #[specification(
                 requires { REFERENCE.own() }
                 exists #(#additional_args),*.
@@ -383,7 +384,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
             #[lemma]
             #[specification(
-                forall MODEL: <&mut #own_impl_ty as ::gilogic::prophecies::Ownable>::RepresentationTy.
+                forall MODEL: <&mut #own_impl_ty as gilogic::prophecies::Ownable>::RepresentationTy.
                 requires { REFERENCE.own(MODEL) }
                 exists #(#additional_args),*.
                 ensures { #outer_name(REFERENCE, MODEL, #(#additional_args),*) }
@@ -406,6 +407,8 @@ impl ToTokens for ExtractLemma {
 
         quote! {
             #[gillian::extract_lemma]
+            #[allow(unused_variables)]
+            #[allow(dead_code)]
             #lemma
         }
         .to_tokens(tokens);

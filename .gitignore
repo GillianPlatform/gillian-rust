@@ -6,3 +6,6 @@ lib
 rustc-ice-*
 open_doc.sh
 *.gil
+*.rmeta
+*.gmeta
+*.rlib

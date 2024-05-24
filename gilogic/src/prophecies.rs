@@ -1,4 +1,12 @@
+use crate as gilogic;
 use crate::tys::RustAssertion;
+use gilogic::macros::assertion;
+
+macro_rules! unreachable {
+    ($x:expr) => {
+        panic!()
+    };
+}
 
 /*
 Here's an idea:
@@ -16,9 +24,11 @@ pub trait Ownable {
     type RepresentationTy;
 
     #[rustc_diagnostic_item = "gillian::pcy::ownable::own"]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self, model: Self::RepresentationTy) -> RustAssertion;
 
     #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner"]
+    #[gillian::decl::pred_ins = "0"]
     fn ref_mut_inner(&mut self) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }
@@ -39,7 +49,7 @@ macro_rules! own_int {
         impl Ownable for $t {
             type RepresentationTy = $t;
 
-            fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
+            fn own(self, _model: $t) -> RustAssertion {
                 unreachable!("Implemented in GIL")
             }
         }
@@ -55,7 +65,7 @@ impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
 
     #[rustc_diagnostic_item = "gillian::pcy::ownable::mut_ref_own"]
-    fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
+    fn own(self, _model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }
 }
@@ -79,7 +89,7 @@ own_int!(
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     type RepresentationTy = (T::RepresentationTy, U::RepresentationTy);
 
-    fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
+    fn own(self, _model: (T::RepresentationTy, U::RepresentationTy)) -> RustAssertion {
         unreachable!("Implemented in GIL")
     }
 }
@@ -87,8 +97,20 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
 impl<T: Ownable> Ownable for Option<T> {
     type RepresentationTy = Option<T::RepresentationTy>;
 
-    #[rustc_diagnostic_item = "gillian::pcy::ownable::option_own"]
-    fn own(self, _model: Self::RepresentationTy) -> RustAssertion {
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0,1"]
+    fn own(self, model: Option<T::RepresentationTy>) -> RustAssertion {
+        gilogic::__stubs::defs([
+            assertion!((self == None) * (model == None)),
+            assertion!(|ax: T, repr: _| (self == Some(ax))
+                * <T as Ownable>::own(ax, repr)
+                * (model == Some(repr))),
+        ])
+    }
+
+    #[cfg(not(gillian))]
+    fn own(self, _model: Option<T::RepresentationTy>) -> RustAssertion {
         unreachable!("Implemented in GIL");
     }
 }
@@ -96,18 +118,22 @@ impl<T: Ownable> Ownable for Option<T> {
 pub trait Prophecised {
     type ProphecyTy;
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::get_prophecy"]
     fn prophecy(self) -> Self::ProphecyTy;
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::set_prophecy"]
     fn with_prophecy(self, pcy: Self::ProphecyTy) -> Self;
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::prophecy_auto_update"]
     fn prophecy_auto_update(self);
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::resolve"]
     fn prophecy_resolve(self);
@@ -119,11 +145,11 @@ where
 {
     type ProphecyTy = Prophecy<T::RepresentationTy>;
 
-    fn prophecy(self) -> Self::ProphecyTy {
+    fn prophecy(self) -> Prophecy<T::RepresentationTy> {
         unreachable!("Implemented in GIL")
     }
 
-    fn with_prophecy(self, _pcy: Self::ProphecyTy) -> Self {
+    fn with_prophecy(self, _pcy: Prophecy<T::RepresentationTy>) -> Self {
         unreachable!("Implemented in GIL")
     }
 
@@ -140,30 +166,35 @@ where
 pub struct Prophecy<T: ?Sized>(core::marker::PhantomData<T>);
 
 impl<T> Prophecy<T> {
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::get_value"]
     pub fn value(self) -> T {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::resolve"]
     pub fn resolve(self) {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::assign"]
     pub fn assign(self, _v: T) {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::assign_proph"]
     pub fn assign_proph(self, _v: Prophecy<T>) {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::rebased"]
     pub fn rebased(self) -> Self {
@@ -172,12 +203,14 @@ impl<T> Prophecy<T> {
 }
 
 impl<T, U> Prophecy<(T, U)> {
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::field::2::0"]
     pub fn field_0(self) -> Prophecy<T> {
         unreachable!("Implemented in GIL")
     }
 
+    #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::prophecy::field::2::1"]
     pub fn field_1(self) -> Prophecy<U> {
@@ -185,16 +218,18 @@ impl<T, U> Prophecy<(T, U)> {
     }
 }
 
+#[gillian::no_translate]
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::prophecy::controller"]
 pub fn controller<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
-    unreachable!()
+    unreachable!("")
 }
 
+#[gillian::no_translate]
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::prophecy::observer"]
 pub fn observer<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
-    unreachable!()
+    unreachable!("")
 }
 
 #[macro_export]

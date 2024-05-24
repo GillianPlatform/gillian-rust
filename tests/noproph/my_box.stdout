@@ -23,15 +23,17 @@ pred "<&mut MyBox<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
   * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v);
 
 
-spec "MyBox::<T>::write"(pty_T0, m_1self, m_2v)
-[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2v) * (m_2v == #m_2v) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) ]]
+spec "MyBox::<T>::write"(pty_T0, self, v)
+[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #v) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
 [["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
 normal
 
-proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
+proc "MyBox::<T>::write"(pty_T0, self, v) {
+        m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "adt", "MyBox", {{ pty_T0 }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, g_0);
+        m_2v := v;
   bb0:  g_1 := m_2v;
         m_4 := g_1;
         goto bb1;
@@ -52,15 +54,17 @@ proc "MyBox::<T>::write"(pty_T0, m_1self, m_2v) {
         return
 };
 
-spec "MyBox::<T>::update"(pLft_0, pty_T0, m_1self, m_2v)
-[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #m_1self) * "<T as gilogic::Ownable>::own"(#pty_T0, #m_2v) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#m_1self == {{ #lvar_0, #lvar_1 }}) * (m_2v == #m_2v) * (m_1self == #m_1self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+spec "MyBox::<T>::update"(pLft_0, pty_T0, self, v)
+[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #v) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
 normal
 
-proc "MyBox::<T>::update"(pLft_0, pty_T0, m_1self, m_2v) {
+proc "MyBox::<T>::update"(pLft_0, pty_T0, self, v) {
+        m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }}, g_0);
+        m_2v := v;
   bb0:  g_1 := m_2v;
         m_4 := g_1;
         goto bb1;

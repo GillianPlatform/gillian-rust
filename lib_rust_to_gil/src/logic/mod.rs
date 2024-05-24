@@ -7,12 +7,12 @@ use crate::utils::attrs::*;
 pub(crate) mod builtins;
 pub(crate) mod core_preds;
 mod extract_lemma_utils;
-mod gilsonite;
+pub mod gilsonite;
 mod lemma;
 pub(crate) mod param_collector;
 mod predicate;
 pub(crate) mod traits;
-mod utils;
+pub mod utils;
 
 pub(crate) use predicate::PredCtx;
 

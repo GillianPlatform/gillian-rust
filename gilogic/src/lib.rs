@@ -5,6 +5,7 @@
 #![feature(ptr_internals)]
 #![feature(allocator_api)]
 #![feature(tuple_trait, unboxed_closures)]
+#![feature(stmt_expr_attributes, proc_macro_hygiene)]
 #![register_tool(gillian)]
 
 mod tys;

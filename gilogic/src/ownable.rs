@@ -1,8 +1,18 @@
+use crate as gilogic;
+use crate::macros::*;
+
 use crate::RustAssertion;
+
+macro_rules! unreachable {
+    ($x:expr) => {
+        panic!()
+    };
+}
 
 #[allow(non_snake_case)]
 pub trait Ownable {
     #[rustc_diagnostic_item = "gillian::ownable::own"]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion;
 
     #[rustc_diagnostic_item = "gillian::unfold::own::open"]
@@ -49,9 +59,19 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
 }
 
 impl<T: Ownable> Ownable for Option<T> {
-    #[rustc_diagnostic_item = "gillian::ownable::option_own"]
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
-        unreachable!("Implemented in GIL");
+        gilogic::__stubs::defs([
+            assertion!((self == None)),
+            assertion!(|ax: T| (self == Some(ax)) * <T as Ownable>::own(ax)),
+        ])
+    }
+
+    #[cfg(not(gillian))]
+    fn own(self) -> RustAssertion {
+        unreachable!("")
     }
 }
 

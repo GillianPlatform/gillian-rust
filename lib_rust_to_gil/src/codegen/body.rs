@@ -5,12 +5,21 @@ use rustc_middle::mir::pretty::write_mir_fn;
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     fn push_alloc_local_decls(&mut self, mir: &Body<'tcx>) {
         mir.local_decls().iter_enumerated().for_each(|(loc, decl)| {
+            if mir.local_kind(loc) == LocalKind::Arg {
+                self.push_cmd(Cmd::Assignment {
+                    variable: self.name_from_local(loc),
+                    assigned_expr: Expr::PVar(self.original_name_from_local(loc).unwrap()),
+                });
+            };
+
             if self.local_is_in_store(loc) {
                 return;
             }
+
             if let TyKind::Never = decl.ty.kind() {
                 return;
             }
+
             match mir.local_kind(loc) {
                 LocalKind::Arg => {
                     let temp = self.temp_var();
@@ -50,7 +59,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn args(&mut self) -> Vec<String> {
-        let sig = build_signature(self.global_env, self.did());
+        let args = GenericArgs::identity_for_item(self.tcx(), self.did());
+        let sig = build_signature(self.global_env, self.did(), args);
 
         sig.physical_args().map(|a| a.name().to_string()).collect()
     }

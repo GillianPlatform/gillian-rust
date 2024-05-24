@@ -1,6 +1,9 @@
 use super::auto_items::*;
 use crate::logic::core_preds::{self, alive_lft};
+use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::ResolvedImpl;
+use crate::logic::utils::get_thir;
+use crate::metadata::{BinaryMetadata, Metadata};
 use crate::utils::attrs::is_gillian_spec;
 use crate::{callbacks, prelude::*};
 use crate::{config::Config, logic::traits::TraitSolver};
@@ -98,6 +101,13 @@ pub struct GlobalEnv<'tcx> {
     // Mapping from specification -> item
     pub(crate) prog_map: HashMap<DefId, DefId>,
 
+    /// Assertions & specifications from external dependencies
+    metadata: Metadata<'tcx>,
+
+    assertions: OnceMap<DefId, Box<gilsonite::Predicate<'tcx>>>,
+
+    spec_terms: OnceMap<DefId, Box<gilsonite::SpecTerm<'tcx>>>,
+
     bodies: OnceMap<LocalDefId, Box<BodyWithBorrowckFacts<'tcx>>>,
 }
 
@@ -159,6 +169,9 @@ impl<'tcx> GlobalEnv<'tcx> {
         ]);
 
         let (spec_map, prog_map) = Self::build_gillian_spec_map(tcx);
+
+        let metadata = Metadata::load(tcx, &config.overrides);
+
         Self {
             config,
             tcx,
@@ -166,10 +179,13 @@ impl<'tcx> GlobalEnv<'tcx> {
             item_queue,
             spec_map,
             prog_map,
+            metadata,
             mut_ref_owns: Default::default(),
             mut_ref_inners: Default::default(),
             inner_preds: Default::default(),
             bodies: Default::default(),
+            assertions: Default::default(),
+            spec_terms: Default::default(),
         }
     }
 
@@ -509,6 +525,30 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.add_inner_pred_to_prog(prog);
     }
 
+    pub fn predicate(&self, def_id: DefId) -> &gilsonite::Predicate<'tcx> {
+        if !def_id.is_local() {
+            return self.metadata.predicate(def_id).unwrap();
+        }
+
+        self.assertions.insert(def_id, |_| {
+            let (thir, e) = get_thir!(self, def_id);
+            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+            Box::new(g.build_predicate(e))
+        })
+    }
+
+    pub fn gilsonite_spec(&self, def_id: DefId) -> &SpecTerm<'tcx> {
+        if !def_id.is_local() {
+            return self.metadata.specificaiton(def_id).unwrap();
+        }
+
+        self.spec_terms.insert(def_id, |_| {
+            let (thir, e) = get_thir!(self, def_id);
+            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+            Box::new(g.build_spec(e))
+        })
+    }
+
     fn serialize_repr(&self, repr: &ReprOptions) -> serde_json::Value {
         if repr.int.is_some() || repr.align.is_some() || repr.pack.is_some() {
             fatal!(
@@ -573,7 +613,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     // This takes a self, because it's the last thing that should be done with the global env.
     // After that, encoding any type might lead to compilation forgetting to include it in the
     // initialization data.
-    pub fn serialized_adt_declarations(mut self) -> serde_json::Value {
+    pub(crate) fn serialized_adt_declarations(&mut self) -> serde_json::Value {
         use serde_json::{Map, Value};
         let mut obj: Map<String, Value> = Map::new();
         while let Some((adt, ())) = self.adt_queue.pop() {
@@ -600,5 +640,9 @@ impl<'tcx> GlobalEnv<'tcx> {
                 .unwrap_or_else(|| panic!("did not find body for {def_id:?}"));
             Box::new(body)
         })
+    }
+
+    pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
     }
 }

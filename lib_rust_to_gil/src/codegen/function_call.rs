@@ -3,7 +3,7 @@ use crate::logic::param_collector;
 use crate::prelude::*;
 use indexmap::{IndexMap, IndexSet};
 use names::bb_label;
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef, PolyFnSig, Region};
+use rustc_middle::ty::{AliasTy, GenericArgKind, GenericArgsRef, PolyFnSig, Region};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::VariantIdx;
 
@@ -318,8 +318,9 @@ pub fn poor_man_unification<'tcx>(
         }
         (TyKind::FnDef(_, _), TyKind::FnDef(_, _)) if lhs == rhs => Ok(()),
         (TyKind::FnPtr(i), TyKind::FnPtr(j)) if i == j => Ok(()),
-        (TyKind::Dynamic(_, _, _), TyKind::Dynamic(_, _, _)) => {
-            Err(PoorManUnificationError::DynObject)
+        (TyKind::Dynamic(p, r, k), TyKind::Dynamic(q, s, l)) if p == q && k == l => {
+            tbl.entry(*r).or_default().insert(*s);
+            Ok(())
         }
         (TyKind::Closure(_, _), TyKind::Closure(_, _)) => {
             Err(PoorManUnificationError::ClosureOrGenerator)
@@ -335,7 +336,35 @@ pub fn poor_man_unification<'tcx>(
             .iter()
             .zip(us.iter())
             .try_for_each(|(t, u)| poor_man_unification(tbl, t, u)),
-        (TyKind::Alias(_, _), TyKind::Alias(_, _)) => Err(PoorManUnificationError::Alias),
+        (
+            TyKind::Alias(
+                k,
+                AliasTy {
+                    args: a, def_id: d, ..
+                },
+            ),
+            TyKind::Alias(
+                l,
+                AliasTy {
+                    args: b, def_id: c, ..
+                },
+            ),
+        ) if k == l && d == c => {
+            for (s, t) in a.into_iter().zip(b.into_iter()) {
+                match (s.unpack(), t.unpack()) {
+                    (GenericArgKind::Lifetime(l), GenericArgKind::Lifetime(j)) => {
+                        tbl.entry(l).or_default().insert(j);
+                    }
+                    (GenericArgKind::Type(t), GenericArgKind::Type(u)) => {
+                        poor_man_unification(tbl, t, u)?
+                    }
+                    (GenericArgKind::Const(_), GenericArgKind::Const(_)) => {}
+                    _ => unreachable!("expected and provided subst don't have same shape"),
+                }
+            }
+            Ok(())
+        }
+
         (TyKind::Param(p), TyKind::Param(q)) if p == q => Ok(()),
         (TyKind::Bound(_, _), TyKind::Bound(_, _)) => Err(PoorManUnificationError::BoundVar),
         (TyKind::Placeholder(p), TyKind::Placeholder(q)) if p == q => Ok(()),

@@ -143,6 +143,8 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
                 }])
             }
             Param(ParamTy { index, name: _ }) => json!(["Param", index]),
+            // TODO(xavier): FIXME HACK FIX
+            Foreign(_) => json!(["Foreign", {}]),
             _ => fatal!(
                 self,
                 "Cannot serialize this type to json yet: {:?}",

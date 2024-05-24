@@ -7,7 +7,7 @@ use rustc_interface::{interface::Compiler, Queries};
 use rustc_middle::ty::TyCtxt;
 
 use super::config::Config;
-use crate::utils::cleanup_logic::cleanup_logic;
+use crate::{global_env::GlobalEnv, metadata, utils::cleanup_logic::cleanup_logic};
 
 #[derive(Debug)]
 pub struct ToGil {
@@ -37,6 +37,14 @@ impl Callbacks for ToGil {
                 tcx.alloc_steal_mir(mir)
             };
 
+            // providers.mir_drops_elaborated_and_const_checked = |tcx, def_id| {
+            //     let mir = (rustc_interface::DEFAULT_QUERY_PROVIDERS
+            //         .mir_drops_elaborated_and_const_checked)(tcx, def_id);
+            //     let mut mir = mir.steal();
+            //     remove_ghost_closures(tcx, &mut mir);
+            //     tcx.alloc_steal_mir(mir)
+            // };
+
             providers.mir_borrowck = |tcx, def_id| {
                 let opts = ConsumerOptions::PoloniusInputFacts;
 
@@ -63,7 +71,9 @@ impl Callbacks for ToGil {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            let prog = super::prog_context::ProgCtx::compile_prog(tcx, self.opts.clone());
+            let mut global_env = GlobalEnv::new(tcx, self.opts.clone());
+            let (prog, metadata) =
+                super::prog_context::ProgCtx::compile_prog(tcx, &mut global_env, self.opts.clone());
             let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);
 
             if self.opts.in_test {
@@ -78,11 +88,13 @@ impl Callbacks for ToGil {
                         .fatal(format!("Error writing in GIL file: {}", err))
                 }
             }
+
+            metadata::dump_exports(tcx, metadata, &None);
         });
 
         compiler.sess.dcx().abort_if_errors();
 
-        Compilation::Stop
+        Compilation::Continue
     }
 }
 

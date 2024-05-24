@@ -7,6 +7,7 @@ extern crate rustc_session;
 use std::process::Command;
 
 use lib_rtg::*;
+use rustc_driver::RunCompiler;
 use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
 
 fn sysroot_path() -> String {
@@ -25,6 +26,9 @@ fn sysroot_path() -> String {
     String::from_utf8(output.stdout).unwrap().trim().to_owned()
 }
 
+struct DefaultCallbacks;
+impl rustc_driver::Callbacks for DefaultCallbacks {}
+
 fn main() {
     let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
     // TODO: Custom ICE hook
@@ -34,19 +38,41 @@ fn main() {
 
     let mut args: Vec<_> = std::env::args().collect();
 
-    let opts = config::Config::of_env();
+    let is_wrapper = args.get(1).map(|s| s.contains("rustc")).unwrap_or(false);
 
-    args.push(format!("--sysroot={}", sysroot_path()));
-    args.push("-Cpanic=abort".to_owned());
-    args.push("-Zmir-opt-level=0".to_owned());
-    args.push("--crate-type=lib".to_owned());
-    args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
+    if is_wrapper {
+        args.remove(1);
+    }
 
-    utils::init();
-    let mut to_gil = callbacks::ToGil::new(opts);
+    let normal_rustc = args.iter().any(|arg| arg.starts_with("--print"));
+    let primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
-    match rustc_driver::RunCompiler::new(&args, &mut to_gil).run() {
-        Ok(_) => log::debug!("Correct!"),
-        Err(_) => log::debug!("Incorrect!"),
+    let has_contracts = args
+        .iter()
+        .any(|arg| arg == "gilogic" || arg.contains("gilogic="));
+
+    // Did the user ask to compile this crate? Either they explicitly invoked `creusot-rustc` or this is a primary package.
+    let user_asked_for = !is_wrapper || primary_package;
+
+    if normal_rustc || !(user_asked_for || has_contracts) {
+        return RunCompiler::new(&args, &mut DefaultCallbacks {})
+            .run()
+            .unwrap();
+    } else {
+        let opts = config::Config::of_env();
+
+        args.push(format!("--sysroot={}", sysroot_path()));
+        args.push("-Cpanic=abort".to_owned());
+        args.push("-Zmir-opt-level=0".to_owned());
+        args.push("--crate-type=lib".to_owned());
+        args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
+
+        utils::init();
+        let mut to_gil = callbacks::ToGil::new(opts);
+
+        match rustc_driver::RunCompiler::new(&args, &mut to_gil).run() {
+            Ok(_) => log::debug!("Correct!"),
+            Err(_) => log::debug!("Incorrect!"),
+        }
     }
 }

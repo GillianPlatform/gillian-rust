@@ -4,12 +4,12 @@ use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, GenericParamDefKind, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
-    logic::PredCtx,
+    logic::{param_collector::collect_regions, PredCtx},
     prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},
     utils::attrs::{is_lemma, is_predicate},
@@ -64,6 +64,14 @@ impl<'tcx> Signature<'tcx> {
     pub fn lifetimes(&self) -> impl Iterator<Item = Symbol> + '_ + Captures<'tcx> {
         self.args.iter().filter_map(move |arg| match arg {
             ParamKind::Lifetime(nm) => Some(*nm),
+            _ => None,
+        })
+    }
+
+    /// Returns all type parameters.
+    pub fn type_params(&self) -> impl Iterator<Item = Symbol> + '_ + Captures<'tcx> {
+        self.args.iter().filter_map(move |arg| match arg {
+            ParamKind::Generic(nm) => Some(*nm),
             _ => None,
         })
     }
@@ -233,51 +241,59 @@ fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
     }
 }
 
-pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Signature<'tcx> {
-    assert!(matches!(
-        global_env.tcx().def_kind(id),
-        DefKind::Fn | DefKind::AssocFn
-    ));
+pub fn build_signature<'tcx>(
+    global_env: &mut GlobalEnv<'tcx>,
+    id: DefId,
+    subst: GenericArgsRef<'tcx>,
+) -> Signature<'tcx> {
+    assert!(
+        matches!(
+            global_env.tcx().def_kind(id),
+            DefKind::Fn | DefKind::AssocFn
+        ),
+        "{:?}",
+        global_env.tcx().def_kind(id)
+    );
     let tcx = global_env.tcx();
 
+    // TODO: Fix, this is wrong in a context where we are building a substitution for an (id, subst) pair, consider
+    // the case of a function `fn<T>(..)` where we apply `T = (U, V)`, we should build something which looks more like `fn<U,V>`.
+    // This means I don't think we want to use the generics at all?
     let generics = tcx.generics_of(id);
 
     let mut args = Vec::new();
+    let sig = tcx.fn_sig(id).instantiate(tcx, subst);
 
-    let lifetimes = tcx.fn_sig(id).skip_binder().bound_vars();
+    let mut regions = collect_regions(sig.inputs()).regions;
+    regions.extend(collect_regions(sig.output()).regions);
 
-    use rustc_middle::ty::BoundVariableKind;
-    for (ix, l) in lifetimes.iter().enumerate() {
-        match l {
-            BoundVariableKind::Region(r) => {
-                use rustc_middle::ty::BoundRegionKind;
-                let nm = match r {
-                    BoundRegionKind::BrAnon => lifetime_param_name(&ix.to_string()),
-                    BoundRegionKind::BrNamed(_, _) => {
-                        if let Some(nm) = r.get_name() {
-                            lifetime_param_name(&nm.as_str()[1..])
-                        } else {
-                            lifetime_param_name(&ix.to_string())
-                        }
-                    }
-                    BoundRegionKind::BrEnv => lifetime_param_name(&ix.to_string()),
+    for (ix, r) in regions.into_iter().enumerate() {
+        match r.kind() {
+            rustc_type_ir::RegionKind::ReVar(_) => todo!("re var??"),
+            rustc_type_ir::RegionKind::ReErased => args.push(ParamKind::Lifetime(Symbol::intern(
+                &lifetime_param_name("erased"),
+            ))),
+            rustc_type_ir::RegionKind::ReBound(_, br) => {
+                let nm = if let Some(nm) = r.get_name() {
+                    lifetime_param_name(&nm.as_str()[1..])
+                } else {
+                    lifetime_param_name(&ix.to_string())
                 };
-
                 args.push(ParamKind::Lifetime(Symbol::intern(&nm)));
-                // eprintln!("{l:?}");
-                // args.push(region_name(r))
-                // TODO(xavier): Once we can properly compile lifetimes in predicate terms we can re-enable this
-                // if let Some(nm) = rk.get_name() {
-                //     args.push(ParamKind::Lifetime(Symbol::intern(&format!(
-                //         "pLft_{}",
-                //         &nm.as_str()[1..]
-                //     ))))
-                // } else {
-                //     args.push(ParamKind::Lifetime(Symbol::intern(&format!("pLft_{ix}"))))
-                // }
             }
-
-            _ => fatal!(global_env, "unsupported late bound variable"),
+            rustc_type_ir::RegionKind::ReEarlyParam(_) => {
+                let nm = if let Some(nm) = r.get_name() {
+                    lifetime_param_name(&nm.as_str()[1..])
+                } else {
+                    lifetime_param_name(&ix.to_string())
+                };
+                args.push(ParamKind::Lifetime(Symbol::intern(&nm)));
+            }
+            rustc_type_ir::RegionKind::ReLateParam(_) => todo!("ReLateParam"),
+            rustc_type_ir::RegionKind::ReStatic => todo!("ReStatic"),
+            rustc_type_ir::RegionKind::RePlaceholder(_) => todo!("RePlaceHolder"),
+            rustc_type_ir::RegionKind::ReError(_) => todo!("ReError"),
+            // k => unreachable!("ILLEGAL REGION {k:?} {args:?}")
         }
     }
 
@@ -295,6 +311,7 @@ pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Sig
         args.push(arg)
     });
 
+
     let fn_args = tcx
         .fn_arg_names(id)
         .iter()
@@ -303,11 +320,11 @@ pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Sig
 
     let mut subst = HashMap::new();
 
-    for ((ix, nm), ty) in fn_args {
+    for ((_, nm), ty) in fn_args {
         let prog_name: Symbol = if is_lemma(id, tcx) || is_predicate(id, tcx) {
             nm.name
         } else {
-            Symbol::intern(&format!("m_{}{}", ix + 1, nm))
+            Symbol::intern(&format!("{}", nm))
         };
         args.push(ParamKind::Program(prog_name, *ty.skip_binder()));
         subst.insert(nm.name.to_string(), Expr::PVar(prog_name.to_string()));
@@ -336,6 +353,29 @@ pub fn build_signature<'tcx>(global_env: &mut GlobalEnv<'tcx>, id: DefId) -> Sig
     );
 
     Signature { args, contract }
+}
+
+pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {
+    let Some(ins_attr) = crate::utils::attrs::get_attr(
+        tcx.get_attrs_unchecked(id),
+        &["gillian", "decl", "pred_ins"],
+    ) else {
+        tcx.dcx()
+            .fatal(format!("Predicate {id:?} doesn't have ins attribute"))
+    };
+
+    let Some(str_arg) = ins_attr.value_str() else {
+        tcx.dcx().fatal("Predicate ins attribute must be a string")
+    };
+    let str_arg = str_arg.as_str().to_owned();
+
+    if str_arg.is_empty() {
+        return vec![];
+    }
+    str_arg
+        .split(',')
+        .map(|s| s.parse().expect("Ins should be a list of parameter number"))
+        .collect()
 }
 
 fn make_wf_asrt<'tcx>(
