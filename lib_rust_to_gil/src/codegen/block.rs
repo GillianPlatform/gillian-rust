@@ -121,7 +121,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         // let mix = self.location_table.mid_index(loc);
         // let mregions = self.polonius.origins_live_at(mix.as_usize().into());
 
-
         self.push_terminator(bb_data.terminator())
     }
 }

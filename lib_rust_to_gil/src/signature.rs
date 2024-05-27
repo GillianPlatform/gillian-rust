@@ -5,13 +5,16 @@ use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 use indexmap::IndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{EarlyBinder, GenericArgsRef, GenericParamDefKind, ParamTy, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
-    logic::{param_collector::{collect_params, collect_regions}, PredCtx},
-    prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
+    logic::{
+        param_collector::{collect_params, collect_regions},
+        PredCtx,
+    },
+    prelude::{ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},
     utils::attrs::{is_lemma, is_predicate},
 };
@@ -220,27 +223,6 @@ impl<'tcx> Signature<'tcx> {
         })
     }
 }
-use rustc_middle::ty::{GenericParamDef, Generics};
-
-fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F) {
-    if let Some(def_id) = defs.parent {
-        let parent_defs = tcx.generics_of(def_id);
-        fill_item(tcx, parent_defs, f);
-    }
-    fill_single(defs, f)
-}
-
-fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
-    for param in &defs.params {
-        if let GenericParamDefKind::Const { .. } = param.kind {
-            panic!("Const Generics are not handled for now");
-        }
-        if let GenericParamDefKind::Lifetime = param.kind {
-            continue;
-        }
-        f(param);
-    }
-}
 
 pub fn build_signature<'tcx>(
     global_env: &mut GlobalEnv<'tcx>,
@@ -296,13 +278,14 @@ pub fn build_signature<'tcx>(
         }
     }
 
-    let params : IndexSet<_> = collect_params(sig.inputs()).chain(collect_params(sig.output())).collect();
+    let params: IndexSet<_> = collect_params(sig.inputs())
+        .chain(collect_params(sig.output()))
+        .collect();
 
     for pty in params {
         let arg = ParamKind::Generic(Symbol::intern(&type_param_name(pty.index, pty.name)));
 
         args.push(arg)
-
     }
 
     let fn_args = tcx

@@ -1,5 +1,5 @@
 use rustc_ast::LitKind;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue},
@@ -936,6 +936,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 }
 
+#[allow(dead_code)]
 struct PrintExpr<'a, 'tcx>(&'a Thir<'tcx>, ExprId);
 
 impl std::fmt::Display for PrintExpr<'_, '_> {
@@ -944,6 +945,7 @@ impl std::fmt::Display for PrintExpr<'_, '_> {
     }
 }
 
+#[allow(dead_code)]
 fn print_thir_expr<'tcx>(
     fmt: &mut std::fmt::Formatter,
     thir: &Thir<'tcx>,

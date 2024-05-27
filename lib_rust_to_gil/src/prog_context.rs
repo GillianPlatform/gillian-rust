@@ -107,11 +107,9 @@ impl<'tcx> ProgCtx<'tcx> {
                 if crate::utils::attrs::is_logic(did, self.tcx()) {
                     if is_predicate(did, self.tcx()) {
                         global_env.predicate(did);
-
                     }
                     if is_gillian_spec(did, self.tcx()).is_some() {
                         global_env.gilsonite_spec(did);
-
                     }
                 }
             }
