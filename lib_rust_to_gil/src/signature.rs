@@ -273,7 +273,7 @@ pub fn build_signature<'tcx>(
             rustc_type_ir::RegionKind::ReErased => args.push(ParamKind::Lifetime(Symbol::intern(
                 &lifetime_param_name("erased"),
             ))),
-            rustc_type_ir::RegionKind::ReBound(_, _) => {
+            rustc_type_ir::RegionKind::ReBound(_, br) => {
                 let nm = if let Some(nm) = r.get_name() {
                     lifetime_param_name(&nm.as_str()[1..])
                 } else {

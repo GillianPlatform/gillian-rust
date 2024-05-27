@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::{BoundVariableKind, GenericParamDefKind};
+use rustc_middle::ty::{BoundVariableKind, GenericParamDef, GenericParamDefKind, Generics};
 
 fn has_lifetimes_generics(did: DefId, tcx: TyCtxt) -> bool {
     let defs = tcx.generics_of(did);
@@ -28,4 +28,41 @@ pub fn has_generic_lifetimes(did: DefId, tcx: TyCtxt) -> bool {
         || crate::utils::attrs::get_pre_for_post(did, tcx)
             .is_some_and(|did| has_generic_lifetimes(did, tcx))
         || has_lifetimes_generics(did, tcx)
+}
+
+fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F) {
+    if let Some(def_id) = defs.parent {
+        let parent_defs = tcx.generics_of(def_id);
+        fill_item(tcx, parent_defs, f);
+    }
+    fill_single(defs, f)
+}
+
+fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
+    for param in &defs.params {
+        if let GenericParamDefKind::Const {
+            is_host_effect: true,
+            ..
+        } = param.kind
+        {
+            continue;
+        }
+        f(param);
+    }
+}
+
+pub fn generic_types(did: DefId, tcx: TyCtxt) -> Vec<(u32, Symbol)> {
+    let defs = tcx.generics_of(did);
+    let mut vec = Vec::with_capacity(defs.count());
+    fill_item(tcx, defs, &mut |param| {
+        if let GenericParamDefKind::Const { .. } = param.kind {
+            panic!("Const Generics are not handled for now");
+        }
+        if let GenericParamDefKind::Lifetime = param.kind {
+            return;
+        }
+
+        vec.push((param.index, param.name))
+    });
+    vec
 }

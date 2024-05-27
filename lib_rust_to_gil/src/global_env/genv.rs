@@ -225,6 +225,12 @@ impl<'tcx> GlobalEnv<'tcx> {
             .expect("Could not find gilogic::Ownable")
     }
 
+    pub fn get_ref_mut_inner_did(&self) -> DefId {
+        self.tcx()
+            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::ref_mut_inner"))
+            .expect("Couldn't find gillian::pcy::ownable::ref_mut_inner")
+    }
+
     pub fn get_repr_ty_did(&self) -> DefId {
         self.tcx()
             .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))

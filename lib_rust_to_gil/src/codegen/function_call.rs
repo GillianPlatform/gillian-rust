@@ -265,10 +265,14 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum PoorManUnificationError<'tcx> {
+    /// Unclear what rules should apply to dyn objects
+    DynObject,
     /// Too lazy to implement closures for the moment given that gillian-rust doesn't support them anyways
     ClosureOrGenerator,
     /// I don't understand how these actually work and what we need to do here
     BoundVar,
+    /// Currently we don't do normalization so lets just error out here.
+    Alias,
     /// General error for when we don't have types of the same shape
     #[allow(dead_code)]
     Mismatch(Ty<'tcx>, Ty<'tcx>),
