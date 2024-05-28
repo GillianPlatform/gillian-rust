@@ -76,9 +76,9 @@ abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
   (#model == {{ #a, #b }})
   * "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(pLft_erased, pty_T0, #self)
-  * <value_observer>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #a)
+  * <value_observer>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #a)
   * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #lvar_0)
+  * <pcy_value>(l-nth(l-nth(#self, 1i), 0i), l-nth(l-nth(#self, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #lvar_0)
   * types(#lvar_1: Obj, #lvar_2: List, {{  }}: List)
   * (#self == {{ {{ #lvar_1, #lvar_2 }}, {{ #lvar_3, {{  }} }} }})
   * (model == #model)
@@ -100,7 +100,7 @@ pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +sel
 pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(+pLft_a, +pty_T0, +this):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
   * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
-  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
   * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
   * (this == #this);
@@ -144,7 +144,7 @@ pred "wp_ref_mut_inner_xy2::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
 pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>$$inner"(+pty_T0, +this):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
   * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
-  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "proj", "RepresentationTy", {{ {{ "adt", "WP", {{ pty_T0 }} }} }} }}; #repr)
+  * <pcy_controller>(l-nth(l-nth(#this, 1i), 0i), l-nth(l-nth(#this, 1i), 1i), {{ "tuple", {{ {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }} }} }}; #repr)
   * types(#lvar_0: Obj, #lvar_1: List, {{  }}: List)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, {{ #lvar_2, {{  }} }} }})
   * (this == #this);

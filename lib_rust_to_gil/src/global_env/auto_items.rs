@@ -386,7 +386,7 @@ impl<'tcx> MutRefInner<'tcx> {
 pub(super) enum AutoItem<'tcx> {
     PcyAutoUpdate(PcyAutoUpdate<'tcx>),
     Resolver(Resolver<'tcx>),
-    ParamPred(Instance<'tcx>),
+    ParamPred(ParamEnv<'tcx>, Instance<'tcx>),
     MonoPred(ParamEnv<'tcx>, Instance<'tcx>),
 }
 
@@ -401,9 +401,9 @@ impl<'tcx> AutoItem<'tcx> {
         match self {
             Self::PcyAutoUpdate(pcy_auto_update) => pcy_auto_update.add_to_prog(prog, global_env),
             Self::Resolver(resolver) => resolver.add_to_prog(prog, global_env),
-            Self::ParamPred(instance) => {
+            Self::ParamPred(param_env, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
-                let pred = PredCtx::new(global_env, temp_gen, instance.def_id(), instance.args)
+                let pred = PredCtx::new(global_env, temp_gen, param_env, instance.def_id(), instance.args)
                     .compile_abstract();
                 prog.add_pred(pred);
             }
@@ -440,6 +440,7 @@ impl<'tcx> AutoItem<'tcx> {
                     let pred = PredCtx::new(
                         global_env,
                         &mut temp_gen::TempGenerator::new(),
+                        param_env,
                         instance.def_id(),
                         instance.args,
                     )
@@ -449,6 +450,7 @@ impl<'tcx> AutoItem<'tcx> {
                     let pred = PredCtx::new(
                         global_env,
                         &mut temp_gen::TempGenerator::new(),
+                        param_env,
                         instance.def_id(),
                         instance.args,
                     )

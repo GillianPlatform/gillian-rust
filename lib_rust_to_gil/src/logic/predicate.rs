@@ -15,6 +15,7 @@ use crate::{
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use indexmap::IndexMap;
 
+use rustc_middle::ty::ParamEnv;
 use rustc_middle::{
     thir::{LocalVarId, PatKind, Thir},
     ty::{AdtKind, EarlyBinder},
@@ -27,6 +28,7 @@ pub(crate) struct PredSig {
 }
 
 pub(crate) struct PredCtx<'tcx, 'genv> {
+    param_env: ParamEnv<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
     temp_gen: &'genv mut TempGenerator,
     /// Identifier of the item providing the body (aka specification).
@@ -65,6 +67,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         // The outermost scope within which this predicate is used.
         // This determines what hte paramenv that we will use during trait resolution is.
         // caller_id: DefId,
+        param_env: ParamEnv<'tcx>,
         body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
@@ -74,6 +77,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             global_env,
             body_id,
             args,
+            param_env,
             var_map: HashMap::new(),
             local_toplevel_asrts: Vec::new(),
             lvars: Default::default(),
@@ -86,7 +90,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         body_id: DefId,
     ) -> Self {
         let args = GenericArgs::identity_for_item(global_env.tcx(), body_id);
-        Self::new(global_env, temp_gen, body_id, args)
+        let param_env = global_env.tcx().param_env(body_id);
+        Self::new(global_env, temp_gen, param_env, body_id, args)
     }
 
     fn prophecies_enabled(&self) -> bool {
@@ -335,8 +340,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 substs,
                 args,
             } => {
-                let param_env = self.tcx().param_env(self.body_id);
-                let param_env = EarlyBinder::bind(param_env).instantiate(self.tcx(), self.args);
+                let param_env = self.param_env;
                 let (name, def_id, substs) = self
                     .global_env_mut()
                     .resolve_predicate_param_env(param_env, def_id, substs);
@@ -377,14 +381,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             AssertKind::ProphecyController { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let typ = self.encode_type(self.unwrap_prophecy_ty(prophecy.ty));
+                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, prophecy.ty).unwrap_or(prophecy.ty);
+                let typ = self.encode_type(self.unwrap_prophecy_ty(ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
                 super::core_preds::controller(prophecy, typ, model)
             }
             AssertKind::ProphecyObserver { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let typ = self.encode_type(self.unwrap_prophecy_ty(prophecy.ty));
+                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, prophecy.ty).unwrap_or(prophecy.ty);
+                let typ = self.encode_type(self.unwrap_prophecy_ty(ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
                 super::core_preds::observer(prophecy, typ, model)
@@ -751,7 +757,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::GetValue { mut_ref } => {
                 self.assert_prophecies_enabled("using `Prophecy::value`");
-                let ty = self.unwrap_prophecy_ty(mut_ref.ty);
+                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, mut_ref.ty).unwrap_or(mut_ref.ty);
+                let ty = self.unwrap_prophecy_ty(ty);
                 let prophecy = self.compile_expression_inner(*mut_ref);
                 let value = self.temp_lvar(ty);
                 let ty = self.encode_type(ty);

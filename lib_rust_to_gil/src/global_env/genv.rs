@@ -288,7 +288,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         let (instance, item) = match resolve_candidate(self.tcx, param_env, did, args) {
             ResolvedImpl::Param => {
                 let instance = Instance::new(did, args);
-                let item = AutoItem::ParamPred(instance);
+                let item = AutoItem::ParamPred(param_env, instance);
                 (instance, item)
             }
             ResolvedImpl::Impl(instance) => {
