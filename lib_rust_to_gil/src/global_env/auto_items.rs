@@ -454,7 +454,6 @@ impl<'tcx> AutoItem<'tcx> {
                     )
                     .compile_concrete();
                     // HACK clean up when "AutoItem" is fixed
-                    eprintln!("{:?}", instance.def_id());
                     if is_borrow(instance.def_id(), global_env.tcx()) {
                         global_env.inner_pred(pred.name.clone());
                     };

@@ -28,7 +28,6 @@ pub fn compile_logic<'tcx, 'genv>(
     global_env: &'genv mut GlobalEnv<'tcx>,
     temp_gen: &'genv mut TempGenerator,
 ) -> Vec<LogicItem> {
-    eprintln!("{did:?}");
     if is_abstract_predicate(did, tcx) {
         let pred = predicate::PredCtx::new_with_identity_args(global_env, temp_gen, did)
             .compile_abstract();

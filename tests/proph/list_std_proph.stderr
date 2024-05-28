@@ -1,32 +1,15 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-DefId(0:46 ~ list_std_proph[4767]::{impl#0}::shallow_model)
-compiling DefId(0:46 ~ list_std_proph[4767]::{impl#0}::shallow_model)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-DefId(0:48 ~ list_std_proph[4767]::dll_seg)
-compiling DefId(0:48 ~ list_std_proph[4767]::dll_seg)
-DefId(0:52 ~ list_std_proph[4767]::{impl#2}::own)
-compiling DefId(0:52 ~ list_std_proph[4767]::{impl#2}::own)
-DefId(0:54 ~ list_std_proph[4767]::{impl#3}::shallow_model)
-compiling DefId(0:54 ~ list_std_proph[4767]::{impl#3}::shallow_model)
-DefId(0:56 ~ list_std_proph[4767]::{impl#4}::new_spec_380bb805_c499_4dc2_84a2_d729f07b79d2)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-DefId(0:60 ~ list_std_proph[4767]::{impl#4}::pop_front_spec_3b19727c_3237_43a4_9b7b_1dbb92c1a87a)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-DefId(0:64 ~ list_std_proph[4767]::{impl#4}::push_front_spec_c30cd9a2_737f_4b86_950e_346704d7bb0f)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-compiling DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
-DefId(20:213 ~ gilogic[8049]::prophecies::{impl#0}::own)
-compiling DefId(20:269 ~ gilogic[8049]::prophecies::{impl#2}::own)
-DefId(20:269 ~ gilogic[8049]::prophecies::{impl#2}::own)
-compiling DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
-DefId(20:201 ~ gilogic[8049]::prophecies::mut_ref_inner_proph)
 warning: associated function `shallow_model` is never used
   --> ../tests/proph/list_std_proph.rs:29:8
    |

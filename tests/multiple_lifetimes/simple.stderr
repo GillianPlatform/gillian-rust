@@ -1,5 +1,4 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-DefId(0:9 ~ simple[d6ea]::fst_spec_15d57891_48b9_42ec_9cc2_f95df287dab8)
 warning: unused variable: `y`
   --> ../tests/multiple_lifetimes/simple.rs:13:33
    |
@@ -8,15 +7,12 @@ warning: unused variable: `y`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-DefId(0:17 ~ simple[d6ea]::snd_spec_9d539363_def2_4fce_a949_89417687c2e0)
 warning: unused variable: `x`
   --> ../tests/multiple_lifetimes/simple.rs:19:16
    |
 19 | fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'b mut i32 {
    |                ^ help: if this is intentional, prefix it with an underscore: `_x`
 
-compiling DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
-DefId(20:155 ~ gilogic[8049]::ownable::{impl#0}::own)
 warning: function `swap_borrows` is never used
  --> ../tests/multiple_lifetimes/simple.rs:8:4
   |

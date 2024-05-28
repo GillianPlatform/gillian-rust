@@ -454,8 +454,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let sig = self.sig();
         let name = sig.name.clone();
 
-        eprintln!("compiling {:?}", self.body_id);
-
         let real_sig = build_signature(self.global_env, self.body_id, self.args);
         let raw_definitions = self.global_env.predicate(self.body_id).clone().disjuncts;
 
