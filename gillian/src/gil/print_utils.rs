@@ -35,7 +35,7 @@ pub(crate) fn maybe_quoted(s: &str) -> String {
     if needs_quotes {
         format!("\"{}\"", s)
     } else {
-        format!("{}", s)
+        s.to_string()
     }
 }
 

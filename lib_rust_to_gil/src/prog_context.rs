@@ -103,14 +103,14 @@ impl<'tcx> ProgCtx<'tcx> {
             }
 
             // For every spec and predicate to be loaded.
-            if crate::utils::attrs::should_translate(did, self.tcx()) {
-                if crate::utils::attrs::is_logic(did, self.tcx()) {
-                    if is_predicate(did, self.tcx()) {
-                        global_env.predicate(did);
-                    }
-                    if is_gillian_spec(did, self.tcx()).is_some() {
-                        global_env.gilsonite_spec(did);
-                    }
+            if crate::utils::attrs::should_translate(did, self.tcx())
+                && crate::utils::attrs::is_logic(did, self.tcx())
+            {
+                if is_predicate(did, self.tcx()) {
+                    global_env.predicate(did);
+                }
+                if is_gillian_spec(did, self.tcx()).is_some() {
+                    global_env.gilsonite_spec(did);
                 }
             }
         }

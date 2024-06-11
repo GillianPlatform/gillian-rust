@@ -48,10 +48,8 @@ impl<'tcx> Metadata<'tcx> {
                 for (def_id, summary) in metadata.assertions.into_iter() {
                     meta.assertions.insert(def_id, summary);
                 }
-            } else {
-                if tcx.crate_name(cnum).as_str() == "gilogic" {
-                    tcx.dcx().fatal("Could not load metadata for gilogic")
-                }
+            } else if tcx.crate_name(cnum).as_str() == "gilogic" {
+                tcx.dcx().fatal("Could not load metadata for gilogic")
             }
         }
 

@@ -946,9 +946,9 @@ impl std::fmt::Display for PrintExpr<'_, '_> {
 }
 
 #[allow(dead_code)]
-fn print_thir_expr<'tcx>(
+fn print_thir_expr(
     fmt: &mut std::fmt::Formatter,
-    thir: &Thir<'tcx>,
+    thir: &Thir,
     expr_id: ExprId,
 ) -> std::fmt::Result {
     match &thir[expr_id].kind {

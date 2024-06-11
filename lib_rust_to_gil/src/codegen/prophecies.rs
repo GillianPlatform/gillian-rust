@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-use rustc_middle::{mir::Place, ty::Ty};
-
 use gillian::gil::Expr;
 
 use super::context::GilCtxt;
