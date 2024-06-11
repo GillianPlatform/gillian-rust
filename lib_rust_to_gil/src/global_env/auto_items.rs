@@ -55,18 +55,10 @@ impl<'tcx> PcyAutoUpdate<'tcx> {
             assertion: value_cp.star(own_pred_call),
             existentials: vec![new_repr.clone()],
         });
-
-        let repr_ty = global_env.get_repr_ty_for(inner_ty).unwrap();
-        let repr_ty = global_env.encode_type(repr_ty).into();
         let assign = Cmd::Action {
             variable: "u".to_owned(),
             action_name: crate::codegen::memory::action_names::PCY_ASSIGN.to_string(),
-            parameters: vec![
-                pcy.clone().lnth(0),
-                pcy.lnth(1),
-                repr_ty,
-                Expr::LVar(new_repr),
-            ],
+            parameters: vec![pcy.clone(), Expr::LVar(new_repr)],
         };
         let mut params = Vec::with_capacity(collected_params.parameters.len() + 2);
         params.push("pLft_a".to_owned());
@@ -245,15 +237,8 @@ impl<'tcx> MutRefOwn<'tcx> {
             let current = Expr::LVar("#current".to_string());
             let model = Expr::PVar("model".to_string());
             let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
-            let model_type = global_env.get_repr_ty_for(inner_ty).unwrap();
-            let encoded_model_type = global_env.encode_type(model_type);
-            let pcy_value = crate::logic::core_preds::pcy_value(
-                full_pcy.clone(),
-                encoded_model_type.clone(),
-                future,
-            );
-            let observer =
-                crate::logic::core_preds::observer(full_pcy, encoded_model_type, current);
+            let pcy_value = crate::logic::core_preds::pcy_value(full_pcy.clone(), future);
+            let observer = crate::logic::core_preds::observer(full_pcy, current);
             let ref_mut_inner_def_did = global_env.get_ref_mut_inner_did();
             let (ref_mut_inner_pred_name, _, _) =
                 global_env.resolve_predicate_param_env(param_env, ref_mut_inner_def_did, old_subst);
@@ -338,7 +323,6 @@ impl<'tcx> MutRefInner<'tcx> {
             )
         }
         let own = global_env.get_own_pred_for2(self.param_env, self.inner_ty);
-        let repr_ty = global_env.get_repr_ty_for(self.inner_ty).unwrap();
         let slf = Expr::PVar("self".to_string());
         let pointer = slf.clone().lnth(0);
         let pointee = Expr::LVar("#value".to_string());
@@ -348,8 +332,7 @@ impl<'tcx> MutRefInner<'tcx> {
             global_env.encode_type(self.inner_ty),
             pointee.clone(),
         );
-        let controller =
-            core_preds::controller(slf.lnth(1), global_env.encode_type(repr_ty), repr.clone());
+        let controller = core_preds::controller(slf.lnth(1), repr.clone());
         let params = own.2.iter().enumerate().map(|(i, k)| {
             let name = k.to_string();
             type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
@@ -403,8 +386,14 @@ impl<'tcx> AutoItem<'tcx> {
             Self::Resolver(resolver) => resolver.add_to_prog(prog, global_env),
             Self::ParamPred(param_env, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
-                let pred = PredCtx::new(global_env, temp_gen, param_env, instance.def_id(), instance.args)
-                    .compile_abstract();
+                let pred = PredCtx::new(
+                    global_env,
+                    temp_gen,
+                    param_env,
+                    instance.def_id(),
+                    instance.args,
+                )
+                .compile_abstract();
                 prog.add_pred(pred);
             }
             Self::MonoPred(param_env, instance) => {

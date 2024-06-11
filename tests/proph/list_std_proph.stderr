@@ -1,13 +1,3 @@
-warning: unused imports: `Prophecised`, `mutref_auto_resolve`
- --> ../tests/proph/list_std_proph.rs:6:5
-  |
-6 |     mutref_auto_resolve,
-  |     ^^^^^^^^^^^^^^^^^^^
-7 |     prophecies::{Ownable, Prophecised},
-  |                           ^^^^^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` on by default
-
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
@@ -15,32 +5,11 @@ warning: unused imports: `Prophecised`, `mutref_auto_resolve`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-warning: fields `head`, `tail`, and `len` are never read
-  --> ../tests/proph/list_std_proph.rs:14:5
-   |
-13 | pub struct LinkedList<T> {
-   |            ---------- fields in this struct
-14 |     head: Option<NonNull<Node<T>>>,
-   |     ^^^^
-15 |     tail: Option<NonNull<Node<T>>>,
-   |     ^^^^
-16 |     len: usize,
-   |     ^^^
-   |
-   = note: `#[warn(dead_code)]` on by default
-
-warning: fields `next`, `prev`, and `element` are never read
-  --> ../tests/proph/list_std_proph.rs:21:5
-   |
-20 | struct Node<T> {
-   |        ---- fields in this struct
-21 |     next: Option<NonNull<Node<T>>>,
-   |     ^^^^
-22 |     prev: Option<NonNull<Node<T>>>,
-   |     ^^^^
-23 |     element: T,
-   |     ^^^^^^^
-
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: associated function `shallow_model` is never used
   --> ../tests/proph/list_std_proph.rs:29:8
    |
@@ -49,18 +18,9 @@ warning: associated function `shallow_model` is never used
 ...
 29 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
    |        ^^^^^^^^^^^^^
-
-warning: associated items `new` and `into_element` are never used
-  --> ../tests/proph/list_std_proph.rs:42:8
    |
-41 | impl<T> Node<T> {
-   | --------------- associated items in this implementation
-42 |     fn new(element: T) -> Self {
-   |        ^^^
-...
-50 |     fn into_element(self: Box<Self>) -> T {
-   |        ^^^^^^^^^^^^
+   = note: `#[warn(dead_code)]` on by default
 
-warning: 5 warnings emitted
+warning: 1 warning emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

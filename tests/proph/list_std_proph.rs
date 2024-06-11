@@ -110,7 +110,7 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    /// Adds the given node to the front of the list.
+    // / Adds the given node to the front of the list.
     // #[requires(|elem: T, current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, new_v: T::RepresentationTy|
     //     self.own((current, proph)) *
     //     (current.len() < usize::MAX) *
@@ -167,32 +167,32 @@ impl<T: Ownable> LinkedList<T> {
     // }
     // )]
 
-    // #[specification(forall current, proph.
-    //     requires { self.own((current, proph)) }
-    //     exists ret_repr.
-    //     ensures { 
-    //         ret.own(ret_repr) *
-    //         $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-    //          || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$}
-    // )]
-    // pub fn pop_front(&mut self) -> Option<T> {
-    //     // Original implementation uses map
-    //     let res = match self.pop_front_node() {
-    //         None => None,
-    //         Some(node) => Some(node.into_element()),
-    //     };
-    //     mutref_auto_resolve!(self); // <- Unique thing added
-    //     res
-    // }
+    #[specification(forall current, proph.
+        requires { self.own((current, proph)) }
+        exists ret_repr.
+        ensures { 
+            ret.own(ret_repr) *
+            $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+             || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$}
+    )]
+    pub fn pop_front(&mut self) -> Option<T> {
+        // Original implementation uses map
+        let res = match self.pop_front_node() {
+            None => None,
+            Some(node) => Some(node.into_element()),
+        };
+        mutref_auto_resolve!(self); // <- Unique thing added
+        res
+    }
 
-    // #[specification(forall current, proph, elt_repr.
-    //     requires { self.own((current, proph)) * $current.len() < usize::MAX$ * elt.own(elt_repr) }
-    //     ensures { ret.own(()) * $proph == current.prepend(elt_repr)$ }
-    // )]
-    // pub fn push_front(&mut self, elt: T) {
-    //     self.push_front_node(Box::new(Node::new(elt)));
-    //     mutref_auto_resolve!(self); // <- Unique thing added
-    // }
+    #[specification(forall current, proph, elt_repr.
+        requires { self.own((current, proph)) * (current.len() < usize::MAX) * elt.own(elt_repr) }
+        ensures { ret.own(()) * $proph == current.prepend(elt_repr)$ }
+    )]
+    pub fn push_front(&mut self, elt: T) {
+        self.push_front_node(Box::new(Node::new(elt)));
+        mutref_auto_resolve!(self); // <- Unique thing added
+    }
 
     // #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]
     // #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * vdll.shallow_repr(vdata))]

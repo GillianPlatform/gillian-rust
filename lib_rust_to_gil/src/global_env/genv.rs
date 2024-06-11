@@ -359,7 +359,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             return;
         }
         let mut_ref_inners = std::mem::take(&mut self.mut_ref_inners);
-        for (inner_ty, (name, repr_ty)) in mut_ref_inners.iter() {
+        for (inner_ty, (name, _repr_ty)) in mut_ref_inners.iter() {
             // Some of this code already exists in the next function, it could somehow be factored out.
             let symbol = Symbol::intern("gillian::pcy::ownable::own");
             let own = self
@@ -374,8 +374,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             let repr = Expr::LVar("#repr".to_string());
             let points_to =
                 core_preds::value(pointer, self.encode_type(*inner_ty), pointee.clone());
-            let controller =
-                core_preds::controller(slf.lnth(1), self.encode_type(*repr_ty), repr.clone());
+            let controller = core_preds::controller(slf.lnth(1), repr.clone());
             let params = instance.args.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
@@ -439,21 +438,14 @@ impl<'tcx> GlobalEnv<'tcx> {
                 num_params += 1;
                 let ptr = Expr::LVar("#ptr".to_string());
                 let pcy = Expr::LVar("#pcy".to_string());
-                let full_pcy: Expr = [pcy, vec![].into()].into();
-                let self_deconstr_formula = slf.clone().eq_f([ptr, full_pcy.clone()]);
+                let self_deconstr_formula = slf.clone().eq_f([ptr, pcy.clone()]);
                 let future = Expr::LVar("#future".to_string());
                 let current = Expr::LVar("#current".to_string());
                 let model = Expr::PVar("model".to_string());
                 let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
                 let model_type = self.get_repr_ty_for(*inner_ty).unwrap();
-                let encoded_model_type = self.encode_type(model_type);
-                let pcy_value = crate::logic::core_preds::pcy_value(
-                    full_pcy.clone(),
-                    encoded_model_type.clone(),
-                    future,
-                );
-                let observer =
-                    crate::logic::core_preds::observer(full_pcy, encoded_model_type, current);
+                let pcy_value = crate::logic::core_preds::pcy_value(pcy.clone(), future);
+                let observer = crate::logic::core_preds::observer(pcy, current);
                 let ref_mut_inner_pred_name = format!("<{} as Ownable>::ref_mut_inner", inner_ty);
                 self.mut_ref_inners
                     .insert(*inner_ty, (ref_mut_inner_pred_name.clone(), model_type));

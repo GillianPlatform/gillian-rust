@@ -381,19 +381,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             AssertKind::ProphecyController { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, prophecy.ty).unwrap_or(prophecy.ty);
-                let typ = self.encode_type(self.unwrap_prophecy_ty(ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
-                super::core_preds::controller(prophecy, typ, model)
+                super::core_preds::controller(prophecy, model)
             }
             AssertKind::ProphecyObserver { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, prophecy.ty).unwrap_or(prophecy.ty);
-                let typ = self.encode_type(self.unwrap_prophecy_ty(ty));
                 let prophecy = self.compile_expression_inner(prophecy);
                 let model = self.compile_expression_inner(model);
-                super::core_preds::observer(prophecy, typ, model)
+                super::core_preds::observer(prophecy, model)
             }
             AssertKind::PointsToSlice {
                 src,
@@ -757,13 +753,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::GetValue { mut_ref } => {
                 self.assert_prophecies_enabled("using `Prophecy::value`");
-                let ty = self.tcx().try_normalize_erasing_regions(self.param_env, mut_ref.ty).unwrap_or(mut_ref.ty);
+                let ty = self
+                    .tcx()
+                    .try_normalize_erasing_regions(self.param_env, mut_ref.ty)
+                    .unwrap_or(mut_ref.ty);
                 let ty = self.unwrap_prophecy_ty(ty);
                 let prophecy = self.compile_expression_inner(*mut_ref);
                 let value = self.temp_lvar(ty);
-                let ty = self.encode_type(ty);
                 self.local_toplevel_asrts
-                    .push(core_preds::pcy_value(prophecy, ty, value.clone()));
+                    .push(core_preds::pcy_value(prophecy, value.clone()));
                 value
             }
         }

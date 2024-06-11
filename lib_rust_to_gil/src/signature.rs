@@ -432,13 +432,12 @@ fn make_is_mut_ref_proph_ref_asrt(fresh: &mut TempGenerator, e: Expr) -> Asserti
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let pcy = temp_lvar(fresh);
-    let pcy_proj = Expr::from(vec![]);
     let types = Assertion::Types(vec![
         (loc.clone(), Type::ObjectType),
         (proj.clone(), Type::ListType),
-        (pcy_proj.clone(), Type::ListType),
+        (pcy.clone(), Type::ObjectType),
     ]);
-    types.star(e.eq_f([[loc, proj], [pcy, pcy_proj]]).into_asrt())
+    types.star(e.eq_f([[loc, proj].into(), pcy]).into_asrt())
 }
 
 fn temp_lvar(fresh: &mut TempGenerator) -> Expr {

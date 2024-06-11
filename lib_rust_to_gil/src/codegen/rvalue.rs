@@ -55,7 +55,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         )
                     } else {
                         let gil_place = self.push_get_gil_place(place);
-                        let prophecy = self.push_create_prophecy_for(place);
+                        let prophecy = self.push_alloc_prophecy();
                         [gil_place.into_expr_ptr(), prophecy].into()
                     }
                 } else {
