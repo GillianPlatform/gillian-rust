@@ -17,14 +17,6 @@ pub fn collect_params_on_args(args: GenericArgsRef) -> ParamCollector {
     collector
 }
 
-pub fn collect_params<'tcx, V>(v: V) -> ParamCollector<'tcx>
-where
-    V: TypeVisitable<TyCtxt<'tcx>>,
-{
-    let mut collector = ParamCollector::new();
-    v.visit_with(&mut collector);
-    collector
-}
 
 pub fn collect_regions<'tcx, V>(v: V) -> RegionsCollector<'tcx>
 where
