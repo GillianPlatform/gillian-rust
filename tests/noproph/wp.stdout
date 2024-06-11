@@ -70,18 +70,22 @@ pred "<WP<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   "wp::<T>"(pty_T0, #self, #x, #y) * (self == #self);
 
 
-abstract pred "<T as gilogic::Ownable>::own"(+pty_Self0, +self);
+abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
-pred "<&mut T as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), pty_T0; #v)
-  * "<T as gilogic::Ownable>::own"(pty_T0, #v);
-guard: <lft>(lft; true);
+pred "<&mut T as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), pty_T0; #v)
+  * "<T as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
+guard: <lft>(pLft_erased; true);
 
-pred "<&mut WP<T> as gilogic::Ownable>::own"(+lft, +pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
-  * "<WP<T> as gilogic::Ownable>::own"(pty_T0, #v);
-guard: <lft>(lft; true);
+pred "<&mut WP<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
+guard: <lft>(pLft_erased; true);
 
 pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
   "wp::<T>"(pty_T0, #SELF, #x, #y)
@@ -94,14 +98,18 @@ pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
   * (REFERENCE == #REFERENCE);
 
 
-pred "<&mut T as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), pty_T0; #v)
-  * "<T as gilogic::Ownable>::own"(pty_T0, #v);
+pred "<&mut T as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), pty_T0; #v)
+  * "<T as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
 
 
-pred "<&mut WP<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
-  * "<WP<T> as gilogic::Ownable>::own"(pty_T0, #v);
+pred "<&mut WP<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::Ownable>::own"(pty_T0, #v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
 
 
 lemma "extract_y::<T>$$extract_proof"(pty_T0, p)[[ "extract_y::<T>$$extract_proof$$pre"(#pty_T0, #p, #x, #y) ]]

@@ -16,6 +16,8 @@ type t =
   | Unhandled of string
   | MissingBlock of string
   | Missing_pcy of string
+  | Missing_observer of string
+  | Missing_controller of string
   | Missing_lifetime of Lft.t
   | Missing_proj of (string * Projections.t * Qty.t)
     (* Something could be only partially missing *)
@@ -30,7 +32,8 @@ let recovery_tactic =
   function
   | Too_symbolic e | Invalid_loc e | Invalid_value (_, e) -> try_unfold [ e ]
   | Missing_lifetime e -> try_fold [ Lft.to_expr e ]
-  | MissingBlock l | Missing_pcy l -> try_unfold [ Expr.loc_from_loc_name l ]
+  | MissingBlock l | Missing_pcy l | Missing_controller l | Missing_observer l
+    -> try_unfold [ Expr.loc_from_loc_name l ]
   | Invalid_free_pointer (loc, proj) -> try_unfold [ loc; proj ]
   | Missing_observation f -> (
       match Formula.to_expr f with
@@ -58,6 +61,8 @@ let pp ft =
   | Use_after_free s -> pf ft "Use after free: %s" s
   | MissingBlock s -> pf ft "MissingBlock: %s" s
   | Missing_pcy s -> pf ft "Missing prophecy: %s" s
+  | Missing_observer s -> pf ft "Missing observer: %s" s
+  | Missing_controller s -> pf ft "Missing controller: %s" s
   | Missing_proj (loc, proj, qty) ->
       pf ft "%a missing projections at location %s: %a" Qty.pp qty loc
         Projections.pp proj

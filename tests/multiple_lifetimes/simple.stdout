@@ -4,14 +4,18 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
 
-pred "<&mut i32 as gilogic::Ownable>::own"(+lft, +self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), "i32"; #v)
-  * "<i32 as gilogic::Ownable>::own"(#v);
-guard: <lft>(lft; true);
+pred "<&mut i32 as gilogic::Ownable>::own"(+pLft_erased, +self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), "i32"; #v)
+  * "<i32 as gilogic::Ownable>::own"(#v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
+guard: <lft>(pLft_erased; true);
 
-pred "<&mut i32 as gilogic::Ownable>::own$$inner"(+self: List):
-  <value>(l-nth(self, 0i), l-nth(self, 1i), "i32"; #v)
-  * "<i32 as gilogic::Ownable>::own"(#v);
+pred "<&mut i32 as gilogic::Ownable>::own$$inner"(+self):
+  <value>(l-nth(#self, 0i), l-nth(#self, 1i), "i32"; #v)
+  * "<i32 as gilogic::Ownable>::own"(#v)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
 
 
 proc swap_borrows(pLft_a, pLft_b, x, y) {

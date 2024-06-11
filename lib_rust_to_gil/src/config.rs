@@ -38,6 +38,7 @@ pub struct Config {
     pub prophecies: bool,
     pub in_test: bool,
     pub overrides: HashMap<String, String>,
+    pub is_dep: bool,
 }
 
 impl Config {
@@ -50,11 +51,14 @@ impl Config {
         );
         let prophecies = std::env::var("GILLIAN_PROPHECIES").is_ok();
 
+        let is_dep = std::env::var("GILLIAN_DEPENDENCY").is_ok();
+
         Config {
             mode,
             prophecies,
             in_test,
             overrides: HashMap::new(),
+            is_dep,
         }
     }
 }

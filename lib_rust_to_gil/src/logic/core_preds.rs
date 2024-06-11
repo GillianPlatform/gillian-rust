@@ -78,32 +78,26 @@ pub(crate) fn alive_lft(lft: Expr) -> Assertion {
     }
 }
 
-pub(crate) fn observer(prophecy: Expr, typ: EncodedType, model: Expr) -> Assertion {
-    let pcy_var = prophecy.clone().lnth(0);
-    let proj = prophecy.lnth(1);
+pub(crate) fn observer(prophecy: Expr, model: Expr) -> Assertion {
     Assertion::GA {
         name: pred_names::OBSERVER.to_string(),
-        ins: vec![pcy_var, proj, typ.into()],
+        ins: vec![prophecy],
         outs: vec![model],
     }
 }
 
-pub(crate) fn controller(prophecy: Expr, typ: EncodedType, model: Expr) -> Assertion {
-    let pcy_var = prophecy.clone().lnth(0);
-    let proj = prophecy.lnth(1);
+pub(crate) fn controller(prophecy: Expr, model: Expr) -> Assertion {
     Assertion::GA {
         name: pred_names::CONTROLLER.to_string(),
-        ins: vec![pcy_var, proj, typ.into()],
+        ins: vec![prophecy],
         outs: vec![model],
     }
 }
 
-pub(crate) fn pcy_value(prophecy: Expr, ty: EncodedType, value: Expr) -> Assertion {
-    let pcy_var = prophecy.clone().lnth(0);
-    let proj = prophecy.lnth(1);
+pub(crate) fn pcy_value(prophecy: Expr, value: Expr) -> Assertion {
     Assertion::GA {
         name: pred_names::PCY_VALUE.to_string(),
-        ins: vec![pcy_var, proj, ty.into()],
+        ins: vec![prophecy],
         outs: vec![value],
     }
 }

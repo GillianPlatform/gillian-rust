@@ -60,6 +60,9 @@ fn build_config(path: PathBuf) -> Config {
         "RUSTC_WRAPPER".into(),
         Some(env!("CARGO_BIN_EXE_rust_to_gil").into()),
     ));
+    dep_builder
+        .envs
+        .push(("GILLIAN_DEPENDENCY".into(), Some("1".into())));
     // dep_builder.program = PathBuf::from(env!("CARGO_BIN_EXE_rust_to_gil"));
 
     config.dependency_builder = dep_builder;

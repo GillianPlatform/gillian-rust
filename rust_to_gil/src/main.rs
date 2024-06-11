@@ -31,6 +31,8 @@ impl rustc_driver::Callbacks for DefaultCallbacks {}
 
 fn main() {
     let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+
+    std::env::set_var("RUST_BACKTRACE", "1");
     // TODO: Custom ICE hook
     rustc_driver::install_ice_hook("https://github.com/GillianPlatform/rust-to-gil", |_| ());
 

@@ -1,5 +1,5 @@
 use rustc_ast::LitKind;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue},
@@ -342,14 +342,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
-                if self
-                    .tcx
-                    .crate_name(LOCAL_CRATE)
-                    .as_str()
-                    .contains("gilogic")
-                {
-                    eprintln!("p {}", PrintExpr(&self.thir, id));
-                }
                 match self.get_stub(*ty) {
                     Some(LogicStubs::AssertPure) => {
                         let formula = self.build_formula(args[0]);
@@ -549,14 +541,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
-                if self
-                    .tcx
-                    .crate_name(LOCAL_CRATE)
-                    .as_str()
-                    .contains("gilogic")
-                {
-                    eprintln!("f {}", PrintExpr(&self.thir, id));
-                }
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(LogicStubs::FormulaEqual) => {
@@ -870,17 +854,14 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         }
                     }
                     Some(LogicStubs::MutRefGetProphecy) => {
-                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         ExprKind::GetProphecy { mut_ref }
                     }
                     Some(LogicStubs::ProphecyGetValue) => {
-                        // self.assert_prophecies_enabled("using `Prophecised::prophecy`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         ExprKind::GetValue { mut_ref }
                     }
                     Some(LogicStubs::MutRefSetProphecy) => {
-                        // self.asser/t_prophecies_enabled("using `Prophecised::assign`");
                         let mut_ref = Box::new(self.build_expression(args[0]));
                         let prophecy = Box::new(self.build_expression(args[1]));
                         ExprKind::SetProphecy { mut_ref, prophecy }
@@ -955,6 +936,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 }
 
+#[allow(dead_code)]
 struct PrintExpr<'a, 'tcx>(&'a Thir<'tcx>, ExprId);
 
 impl std::fmt::Display for PrintExpr<'_, '_> {
@@ -963,9 +945,10 @@ impl std::fmt::Display for PrintExpr<'_, '_> {
     }
 }
 
-fn print_thir_expr<'tcx>(
+#[allow(dead_code)]
+fn print_thir_expr(
     fmt: &mut std::fmt::Formatter,
-    thir: &Thir<'tcx>,
+    thir: &Thir,
     expr_id: ExprId,
 ) -> std::fmt::Result {
     match &thir[expr_id].kind {

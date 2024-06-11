@@ -279,48 +279,26 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.item_queue.mark_as_done(pred_name);
     }
 
-    #[deprecated = "This function is unsound. Use `resolve_predicate_param_env` instead"]
-    pub fn resolve_predicate(
-        &mut self,
-        did: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> (String, GenericArgsRef<'tcx>) {
-        let (instance, item) = match self.resolve_candidate(did, args) {
-            ResolvedImpl::Param => {
-                let instance = Instance::new(did, args);
-                let item = AutoItem::ParamPred(instance);
-                (instance, item)
-            }
-            ResolvedImpl::Impl(instance) => {
-                let item = AutoItem::MonoPred(instance);
-                (instance, item)
-            }
-        };
-        let name = self.just_pred_name_instance(instance);
-        self.item_queue.push(name.clone(), item);
-        (name, instance.args)
-    }
-
     pub fn resolve_predicate_param_env(
         &mut self,
         param_env: ParamEnv<'tcx>,
         did: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> (String, GenericArgsRef<'tcx>) {
+    ) -> (String, DefId, GenericArgsRef<'tcx>) {
         let (instance, item) = match resolve_candidate(self.tcx, param_env, did, args) {
             ResolvedImpl::Param => {
                 let instance = Instance::new(did, args);
-                let item = AutoItem::ParamPred(instance);
+                let item = AutoItem::ParamPred(param_env, instance);
                 (instance, item)
             }
             ResolvedImpl::Impl(instance) => {
-                let item = AutoItem::MonoPred(instance);
+                let item = AutoItem::MonoPred(param_env, instance);
                 (instance, item)
             }
         };
         let name = self.just_pred_name_instance(instance);
         self.item_queue.push(name.clone(), item);
-        (name, instance.args)
+        (name, instance.def_id(), instance.args)
     }
 
     pub(crate) fn inner_pred(&mut self, pred: String) -> String {
@@ -329,25 +307,41 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for(&mut self, ty: Ty<'tcx>) -> (String, GenericArgsRef<'tcx>) {
+    pub fn get_own_pred_for2(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> (String, DefId, GenericArgsRef<'tcx>) {
         let general_own = self.get_own_def_did();
         let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_predicate(general_own, subst)
+        self.resolve_predicate_param_env(param_env, general_own, subst)
     }
 
-    pub fn register_resolver(&mut self, args: GenericArgsRef<'tcx>) -> String {
+    pub fn register_resolver(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
         let def_id = self.get_prophecy_resolve_did();
         let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue
-            .push(name.clone(), Resolver::new(name.clone(), args).into());
+        self.item_queue.push(
+            name.clone(),
+            Resolver::new(param_env, name.clone(), args).into(),
+        );
         name
     }
 
-    pub fn register_pcy_auto_update(&mut self, args: GenericArgsRef<'tcx>) -> String {
+    pub fn register_pcy_auto_update(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
         let def_id = self.get_prophecy_auto_update_did();
         let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue
-            .push(name.clone(), PcyAutoUpdate::new(name.clone(), args).into());
+        self.item_queue.push(
+            name.clone(),
+            PcyAutoUpdate::new(param_env, name.clone(), args).into(),
+        );
         name
     }
 
@@ -365,7 +359,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             return;
         }
         let mut_ref_inners = std::mem::take(&mut self.mut_ref_inners);
-        for (inner_ty, (name, repr_ty)) in mut_ref_inners.iter() {
+        for (inner_ty, (name, _repr_ty)) in mut_ref_inners.iter() {
             // Some of this code already exists in the next function, it could somehow be factored out.
             let symbol = Symbol::intern("gillian::pcy::ownable::own");
             let own = self
@@ -380,8 +374,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             let repr = Expr::LVar("#repr".to_string());
             let points_to =
                 core_preds::value(pointer, self.encode_type(*inner_ty), pointee.clone());
-            let controller =
-                core_preds::controller(slf.lnth(1), self.encode_type(*repr_ty), repr.clone());
+            let controller = core_preds::controller(slf.lnth(1), repr.clone());
             let params = instance.args.iter().enumerate().map(|(i, k)| {
                 let name = k.to_string();
                 type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
@@ -445,21 +438,14 @@ impl<'tcx> GlobalEnv<'tcx> {
                 num_params += 1;
                 let ptr = Expr::LVar("#ptr".to_string());
                 let pcy = Expr::LVar("#pcy".to_string());
-                let full_pcy: Expr = [pcy, vec![].into()].into();
-                let self_deconstr_formula = slf.clone().eq_f([ptr, full_pcy.clone()]);
+                let self_deconstr_formula = slf.clone().eq_f([ptr, pcy.clone()]);
                 let future = Expr::LVar("#future".to_string());
                 let current = Expr::LVar("#current".to_string());
                 let model = Expr::PVar("model".to_string());
                 let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
                 let model_type = self.get_repr_ty_for(*inner_ty).unwrap();
-                let encoded_model_type = self.encode_type(model_type);
-                let pcy_value = crate::logic::core_preds::pcy_value(
-                    full_pcy.clone(),
-                    encoded_model_type.clone(),
-                    future,
-                );
-                let observer =
-                    crate::logic::core_preds::observer(full_pcy, encoded_model_type, current);
+                let pcy_value = crate::logic::core_preds::pcy_value(pcy.clone(), future);
+                let observer = crate::logic::core_preds::observer(pcy, current);
                 let ref_mut_inner_pred_name = format!("<{} as Ownable>::ref_mut_inner", inner_ty);
                 self.mut_ref_inners
                     .insert(*inner_ty, (ref_mut_inner_pred_name.clone(), model_type));

@@ -67,7 +67,7 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 
     let res: TokenStream = quote! {
       #[gillian::borrow]
-      #[::gilogic::macros::predicate]
+      #[gilogic::macros::predicate]
     //   #lifetimes
       #item
 

@@ -336,6 +336,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gil_deps"
+version = "0.1.0-dev"
+dependencies = [
+ "gilogic",
+]
+
+[[package]]
 name = "gillian"
 version = "0.1.0"
 dependencies = [
@@ -798,7 +805,7 @@ dependencies = [
  "lib_rtg",
  "log",
  "toml",
- "ui_test 0.22.3",
+ "ui_test",
 ]
 
 [[package]]
@@ -1054,13 +1061,6 @@ name = "typed-arena"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
-
-[[package]]
-name = "ui_test"
-version = "0.1.0-dev"
-dependencies = [
- "gilogic",
-]
 
 [[package]]
 name = "ui_test"

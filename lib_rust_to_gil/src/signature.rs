@@ -2,15 +2,19 @@ use std::collections::HashMap;
 
 use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 
+use indexmap::IndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{GenericArgsRef, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
-    logic::{param_collector::collect_regions, PredCtx},
-    prelude::{fatal, ty_utils, GlobalEnv, HasTyCtxt},
+    logic::{
+        param_collector::{collect_params, collect_regions},
+        PredCtx,
+    },
+    prelude::{ty_utils, GlobalEnv, HasTyCtxt},
     temp_gen::{self, TempGenerator},
     utils::attrs::{is_lemma, is_predicate},
 };
@@ -219,27 +223,6 @@ impl<'tcx> Signature<'tcx> {
         })
     }
 }
-use rustc_middle::ty::{GenericParamDef, Generics};
-
-fn fill_item<F: FnMut(&GenericParamDef)>(tcx: TyCtxt, defs: &Generics, f: &mut F) {
-    if let Some(def_id) = defs.parent {
-        let parent_defs = tcx.generics_of(def_id);
-        fill_item(tcx, parent_defs, f);
-    }
-    fill_single(defs, f)
-}
-
-fn fill_single<F: FnMut(&GenericParamDef)>(defs: &Generics, f: &mut F) {
-    for param in &defs.params {
-        if let GenericParamDefKind::Const { .. } = param.kind {
-            panic!("Const Generics are not handled for now");
-        }
-        if let GenericParamDefKind::Lifetime = param.kind {
-            continue;
-        }
-        f(param);
-    }
-}
 
 pub fn build_signature<'tcx>(
     global_env: &mut GlobalEnv<'tcx>,
@@ -259,21 +242,19 @@ pub fn build_signature<'tcx>(
     // TODO: Fix, this is wrong in a context where we are building a substitution for an (id, subst) pair, consider
     // the case of a function `fn<T>(..)` where we apply `T = (U, V)`, we should build something which looks more like `fn<U,V>`.
     // This means I don't think we want to use the generics at all?
-    let generics = tcx.generics_of(id);
 
     let mut args = Vec::new();
     let sig = tcx.fn_sig(id).instantiate(tcx, subst);
 
     let mut regions = collect_regions(sig.inputs()).regions;
     regions.extend(collect_regions(sig.output()).regions);
-
-    for (ix, r) in regions.into_iter().enumerate() {
+    for (ix, r) in regions.iter().enumerate() {
         match r.kind() {
             rustc_type_ir::RegionKind::ReVar(_) => todo!("re var??"),
             rustc_type_ir::RegionKind::ReErased => args.push(ParamKind::Lifetime(Symbol::intern(
                 &lifetime_param_name("erased"),
             ))),
-            rustc_type_ir::RegionKind::ReBound(_, br) => {
+            rustc_type_ir::RegionKind::ReBound(_, _) => {
                 let nm = if let Some(nm) = r.get_name() {
                     lifetime_param_name(&nm.as_str()[1..])
                 } else {
@@ -297,19 +278,15 @@ pub fn build_signature<'tcx>(
         }
     }
 
-    fill_item(tcx, generics, &mut |param| {
-        let name = param.name;
-        let arg = match param.kind {
-            GenericParamDefKind::Lifetime => ParamKind::Lifetime(name),
-            GenericParamDefKind::Type { .. } => {
-                ParamKind::Generic(Symbol::intern(&type_param_name(param.index, name)))
-            }
-            GenericParamDefKind::Const { .. } => {
-                fatal!(global_env, "constant parameters are unsupported")
-            }
-        };
+    let params: IndexSet<_> = collect_params(sig.inputs())
+        .chain(collect_params(sig.output()))
+        .collect();
+
+    for pty in params {
+        let arg = ParamKind::Generic(Symbol::intern(&type_param_name(pty.index, pty.name)));
+
         args.push(arg)
-    });
+    }
 
     let fn_args = tcx
         .fn_arg_names(id)
@@ -455,13 +432,12 @@ fn make_is_mut_ref_proph_ref_asrt(fresh: &mut TempGenerator, e: Expr) -> Asserti
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let pcy = temp_lvar(fresh);
-    let pcy_proj = Expr::from(vec![]);
     let types = Assertion::Types(vec![
         (loc.clone(), Type::ObjectType),
         (proj.clone(), Type::ListType),
-        (pcy_proj.clone(), Type::ListType),
+        (pcy.clone(), Type::ObjectType),
     ]);
-    types.star(e.eq_f([[loc, proj], [pcy, pcy_proj]]).into_asrt())
+    types.star(e.eq_f([[loc, proj].into(), pcy]).into_asrt())
 }
 
 fn temp_lvar(fresh: &mut TempGenerator) -> Expr {

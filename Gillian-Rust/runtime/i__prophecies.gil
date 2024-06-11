@@ -25,7 +25,7 @@ proc "gilogic::prophecies::Prophecy::<T>::assign"(ty, pcy, value) {
 };
 
 proc "gilogic::prophecies::Prophecy::<T>::resolve"(ty, pcy) {
-  u := [pcy_resolve](l-nth(pcy, 0i), l-nth(pcy, 1i), ty);
+  u := [pcy_resolve](pcy);
   ret := {{ }};
   return
 };

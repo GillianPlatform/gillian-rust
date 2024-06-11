@@ -5,10 +5,10 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, borrow, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
+        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
     },
     mutref_auto_resolve,
-    prophecies::{controller, observer, Ownable, Prophecised, Prophecy},
+    prophecies::{Ownable, Prophecised},
 };
 
 struct WP<T> {
@@ -34,14 +34,6 @@ fn wp<T: Ownable>(
         (y -> N { v: v_y, o: x }) *
         v_x.own(v_x_m) * v_y.own(v_y_m) *
         (model == (v_x_m, v_y_m))
-    )
-}
-
-#[borrow]
-fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
-    assertion!(|v_x: T, v_y: T, v_x_m: T::RepresentationTy, v_y_m: T::RepresentationTy|
-        (p -> WP { x, y }) *
-        wp(WP { x, y }, x, y, (v_x_m, v_y_m)) * controller(p.prophecy(), (v_x_m, v_y_m))
     )
 }
 
