@@ -11,6 +11,8 @@ use syn::{
     BinOp, Error, Ident,
 };
 
+mod anf;
+
 struct Ctx {
     created_vars: u32,
     models: Vec<(Ident, TokenStream)>,
@@ -142,6 +144,7 @@ impl Ctx {
         }
     }
 
+    
     fn translate_assertion(&mut self, term: Term) -> syn::Result<TokenStream> {
         match term {
             Term::Binary(TermBinary {
