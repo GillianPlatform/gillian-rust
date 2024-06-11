@@ -1,5 +1,6 @@
 use crate as gilogic;
 use crate::tys::RustAssertion;
+use gilogic::macros::assertion;
 
 macro_rules! unreachable {
     ($x:expr) => {

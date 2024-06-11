@@ -1,12 +1,11 @@
 use super::auto_items::*;
-use crate::logic::core_preds::{self, alive_lft};
+use crate::config::Config;
 use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
 use crate::utils::attrs::is_gillian_spec;
 use crate::{callbacks, prelude::*};
-use crate::{config::Config, logic::traits::TraitSolver};
 use indexmap::IndexMap;
 use once_map::OnceMap;
 use rustc_borrowck::consumers::BodyWithBorrowckFacts;
@@ -17,8 +16,6 @@ use rustc_middle::ty::{
 use serde_json::{self, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
-
-use crate::codegen::typ_encoding::type_param_name;
 
 pub(super) struct QueueOnce<K, V> {
     queue: VecDeque<(K, V)>,
@@ -90,9 +87,6 @@ pub struct GlobalEnv<'tcx> {
     pub(super) adt_queue: QueueOnce<AdtDef<'tcx>, ()>,
 
     pub(super) item_queue: QueueOnce<String, AutoItem<'tcx>>,
-    pub(super) mut_ref_owns: IndexMap<Ty<'tcx>, String>, // TODO: convert to item.
-    // MUTREF_TY -> (RESOLVER_NAME, MUTREF_OWN_NAME, INNER_SUBST)
-    pub(super) mut_ref_inners: IndexMap<Ty<'tcx>, (String, Ty<'tcx>)>, // TODO: convert to item.
     // Borrow preds for which an $$inner version should be derived.
     pub(super) inner_preds: IndexMap<String, String>,
 
@@ -180,8 +174,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             spec_map,
             prog_map,
             metadata,
-            mut_ref_owns: Default::default(),
-            mut_ref_inners: Default::default(),
             inner_preds: Default::default(),
             bodies: Default::default(),
             assertions: Default::default(),
@@ -225,12 +217,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             .expect("Could not find gilogic::Ownable")
     }
 
-    pub fn get_repr_ty_did(&self) -> DefId {
-        self.tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::pcy::ownable::representation_ty"))
-            .expect("Couldn't find gillian::ownable::representation_ty")
-    }
-
     pub fn get_prophecy_resolve_did(&self) -> DefId {
         self.tcx()
             .get_diagnostic_item(Symbol::intern("gillian::mut_ref::resolve"))
@@ -241,11 +227,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.tcx()
             .get_diagnostic_item(Symbol::intern("gillian::mut_ref::prophecy_auto_update"))
             .expect("Couldn't find gillian::mut_ref::prophecy_auto_update")
-    }
-
-    pub fn get_repr_ty_for(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let repr_ty_id = self.get_repr_ty_did();
-        self.resolve_associated_type(repr_ty_id, ty)
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -345,151 +326,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    // Has to be called after add_mut_ref_owns_to_prog,
-    // Since it's the one adding the right things to the map.
-    // In the map, the type used as is the *inner* type, not the mutable reference.
-    fn add_mut_ref_inners_to_prog(&mut self, prog: &mut Prog) {
-        if !self.config.prophecies {
-            return;
-        }
-        let mut_ref_inners = std::mem::take(&mut self.mut_ref_inners);
-        for (inner_ty, (name, _repr_ty)) in mut_ref_inners.iter() {
-            // Some of this code already exists in the next function, it could somehow be factored out.
-            let symbol = Symbol::intern("gillian::pcy::ownable::own");
-            let own = self
-                .tcx()
-                .get_diagnostic_item(symbol)
-                .expect("Could not find gilogic::Ownable");
-            let subst = self.tcx().mk_args(&[(*inner_ty).into()]);
-            let instance = self.resolve_candidate(own, subst).expect_impl(self);
-            let slf = Expr::PVar("self".to_string());
-            let pointer = slf.clone().lnth(0);
-            let pointee = Expr::LVar("#value".to_string());
-            let repr = Expr::LVar("#repr".to_string());
-            let points_to =
-                core_preds::value(pointer, self.encode_type(*inner_ty), pointee.clone());
-            let controller = core_preds::controller(slf.lnth(1), repr.clone());
-            let params = instance.args.iter().enumerate().map(|(i, k)| {
-                let name = k.to_string();
-                type_param_name(i.try_into().unwrap(), Symbol::intern(&name))
-            });
-            let own_call = Assertion::Pred {
-                name: self.just_pred_name_instance(instance),
-                params: params
-                    .clone()
-                    .map(Expr::PVar)
-                    .chain([pointee, repr].into_iter())
-                    .collect(),
-            };
-            let definitions = vec![points_to.star(controller).star(own_call)];
-            let all_params: Vec<_> = std::iter::once("lft".to_string())
-                .chain(params)
-                .chain(std::iter::once("self".to_string()))
-                .map(|x| (x, None))
-                .collect();
-            let pred = Pred {
-                name: name.to_string(),
-                num_params: all_params.len(),
-                ins: (0..all_params.len()).collect(),
-                params: all_params,
-                definitions,
-                pure: false,
-                abstract_: false,
-                facts: vec![],
-                guard: Some(alive_lft(Expr::PVar("lft".to_string()))),
-            };
-            prog.add_pred(pred);
-        }
-    }
-
-    fn add_mut_ref_owns_to_prog(&mut self, prog: &mut Prog) {
-        let mut_ref_owns = std::mem::take(&mut self.mut_ref_owns);
-        let own = self.get_own_def_did();
-        for (ty, name) in mut_ref_owns.iter() {
-            let inner_ty = match ty.kind() {
-                TyKind::Ref(_, inner_ty, Mutability::Mut) => inner_ty,
-                _ => unreachable!("Something that isn't a mutref was added to the mutrefs in genv"),
-            };
-            let old_subst = self.tcx().mk_args(&[(*inner_ty).into()]);
-
-            let instance = self.resolve_candidate(own, old_subst).expect_impl(self);
-            let generic_params = std::iter::once(("lft".to_string(), None)).chain(
-                instance.args.iter().enumerate().map(|(i, k)| {
-                    let name = k.to_string();
-                    let name = type_param_name(i.try_into().unwrap(), Symbol::intern(&name));
-                    (name, None)
-                }),
-            );
-            let mut params: Vec<_> = generic_params
-                .clone()
-                .chain([("self".to_string(), Some(Type::ListType))].into_iter())
-                .collect();
-            let mut num_params = instance.args.len() + 2;
-
-            let slf: Expr = Expr::PVar("self".to_string());
-            let (definitions, guard) = if self.config.prophecies {
-                params.push(("model".to_string(), None));
-                num_params += 1;
-                let ptr = Expr::LVar("#ptr".to_string());
-                let pcy = Expr::LVar("#pcy".to_string());
-                let self_deconstr_formula = slf.clone().eq_f([ptr, pcy.clone()]);
-                let future = Expr::LVar("#future".to_string());
-                let current = Expr::LVar("#current".to_string());
-                let model = Expr::PVar("model".to_string());
-                let model_deconstr_formula = model.clone().eq_f([current.clone(), future.clone()]);
-                let model_type = self.get_repr_ty_for(*inner_ty).unwrap();
-                let pcy_value = crate::logic::core_preds::pcy_value(pcy.clone(), future);
-                let observer = crate::logic::core_preds::observer(pcy, current);
-                let ref_mut_inner_pred_name = format!("<{} as Ownable>::ref_mut_inner", inner_ty);
-                self.mut_ref_inners
-                    .insert(*inner_ty, (ref_mut_inner_pred_name.clone(), model_type));
-                let ref_mut_inner_call = Assertion::Pred {
-                    name: ref_mut_inner_pred_name,
-                    params: generic_params
-                        .map(|(ty, _)| Expr::PVar(ty))
-                        .chain(std::iter::once(slf))
-                        .collect(),
-                };
-                let definition = self_deconstr_formula
-                    .into_asrt()
-                    .star(model_deconstr_formula.into_asrt())
-                    .star(pcy_value)
-                    .star(observer)
-                    .star(ref_mut_inner_call);
-                (vec![definition], None)
-            } else {
-                let slf = Expr::PVar("self".to_string());
-                let v = Expr::LVar("#v".to_string());
-                let pt =
-                    crate::logic::core_preds::value(slf, self.encode_type(*inner_ty), v.clone());
-                let params = generic_params
-                    .skip(1)
-                    .map(|(ty, _)| Expr::PVar(ty))
-                    .chain(std::iter::once(v))
-                    .collect();
-                let own = Assertion::Pred {
-                    name: self.just_pred_name_instance(instance),
-                    params,
-                };
-                let guard = crate::logic::core_preds::alive_lft(Expr::PVar("lft".to_string()));
-                (vec![pt.star(own)], Some(guard))
-            };
-
-            let pred = Pred {
-                name: name.clone(),
-                num_params,
-                params,
-                ins: (0..num_params - (self.config.prophecies as usize)).collect(),
-                definitions,
-                pure: false,
-                abstract_: false,
-                facts: vec![],
-                guard,
-            };
-            prog.add_pred(pred);
-        }
-    }
-
     fn add_inner_pred_to_prog(&mut self, prog: &mut Prog) {
         let inner_preds = std::mem::take(&mut self.inner_preds);
         for (pred, inner_pred) in inner_preds {
@@ -523,8 +359,6 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     pub fn flush_remaining_defs_to_prog(&mut self, prog: &mut Prog) {
         self.add_items_to_prog(prog);
-        self.add_mut_ref_owns_to_prog(prog);
-        self.add_mut_ref_inners_to_prog(prog);
         self.add_inner_pred_to_prog(prog);
     }
 
