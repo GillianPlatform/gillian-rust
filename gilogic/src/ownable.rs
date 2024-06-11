@@ -1,6 +1,3 @@
-use crate as gilogic;
-use crate::macros::*;
-
 use crate::RustAssertion;
 
 macro_rules! unreachable {

@@ -67,10 +67,13 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 
     let res: TokenStream = quote! {
       #[gillian::borrow]
+      #[allow(unused_variables)]
       #[gilogic::macros::predicate]
     //   #lifetimes
       #item
 
+      #[allow(non_snake_case)]
+      #[allow(unused_variables)]
       #[gillian::predicate::fold]
       #[rustc_diagnostic_item = #fold_ident_diag]
     //   #lifetimes
@@ -78,6 +81,8 @@ pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
         unreachable!()
       }
 
+      #[allow(non_snake_case)]
+      #[allow(unused_variables)]
       #[gillian::predicate::unfold]
       #[rustc_diagnostic_item = #unfold_ident_diag]
     //   #lifetimes
