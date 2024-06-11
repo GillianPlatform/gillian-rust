@@ -1,4 +1,8 @@
 use crate::RustAssertion;
+#[allow(unused_imports)]
+use crate as gilogic;
+#[allow(unused_imports)]
+use crate::macros::*;
 
 macro_rules! unreachable {
     ($x:expr) => {
