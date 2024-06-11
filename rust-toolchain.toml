@@ -5,8 +5,6 @@ components = [
   "rustc-dev",
   "llvm-tools-preview",
   "rustfmt",
-  "miri",
-  "miri",
   "rustc",
   "rust-src",
   "clippy",
