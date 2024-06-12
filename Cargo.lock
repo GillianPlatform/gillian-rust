@@ -340,6 +340,7 @@ dependencies = [
 name = "gil_deps"
 version = "0.1.0-dev"
 dependencies = [
+ "creusillian",
  "gilogic",
 ]
 
