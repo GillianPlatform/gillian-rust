@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 gilogic = { version = "*", path = "../gilogic" }
+creusillian = { version = "*", path = "../creusillian" }
 
 [lib]
 path = "dummy.rs"
