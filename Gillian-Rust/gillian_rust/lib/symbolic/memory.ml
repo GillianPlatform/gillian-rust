@@ -466,6 +466,13 @@ let execute_ty_is_unsized mem args =
       | _ -> DR.ok (make_branch ~mem ~rets:[ Expr.bool false ] ()))
   | _ -> Fmt.failwith "Invalid arguments for ty_is_unsized"
 
+let execute_check_obs_sat mem args =
+  match args with
+  | [] ->
+      let+ () = Obs_ctx.check_sat mem.obs_ctx in
+      Ok (make_branch ~mem ())
+  | _ -> Fmt.failwith "Invalid arguments for check_obs_sat"
+
 let pp_branch fmt branch =
   let _, values = branch in
   Fmt.pf fmt "Returns: %a@.(Ignoring heap)" (Fmt.Dump.list Expr.pp) values
@@ -534,7 +541,9 @@ let execute_action ~action_name mem args =
     | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args
     | Ty_is_unsized -> execute_ty_is_unsized mem args
-    | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action)
+    | Check_obs_sat -> execute_check_obs_sat mem args
+    | Deinit -> Fmt.failwith "Deinit not implemented yet"
+    (* | _ -> Fmt.failwith "unhandled action: %s" (Actions.to_name action) *)
   in
   Logging.verbose (fun fmt ->
       fmt "Resulting in: %a" (Fmt.Dump.result ~ok:pp_branch ~error:pp_err) res);
