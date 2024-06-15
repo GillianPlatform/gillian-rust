@@ -37,11 +37,10 @@ jobs:
           cache-name: cache-ocaml
         with:
           path: _opam
-          key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.2-${{ hashFiles('**/*.opam') }}-${{ hashFiles('**/*.opam.locked') }}
+          key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.2-${{ hashFiles('**/*.opam') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-ocaml5.2-${{ hashFiles('**/*.opam') }}-
             ${{ runner.os }}-${{ env.cache-name }}-ocaml5.2
-      - run: opam install . --deps-only --with-test --locked
+      - run: opam install . --deps-only --with-test
         working-directory: "Gillian-Rust"
       - run: opam exec -- dune build @all
         working-directory: "Gillian-Rust"
