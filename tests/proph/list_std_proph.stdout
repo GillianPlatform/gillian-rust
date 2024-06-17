@@ -234,7 +234,7 @@ proc "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, self, node) {
         u := [store_value](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_47);
         g_49 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
         g_48 := l-nth(g_49, 0i);
-        u := "i__lang_assert"((not g_48), "Ugly assert message for now");
+        u := "i__lang_assert"((not g_48), "overflow check failed");
         goto bb9;
   bb9:  g_51 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
         g_50 := l-nth(g_51, 0i);
@@ -341,7 +341,7 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
         u := [store_value](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_42);
         g_44 := [load_value](l-nth(m_15, 0i), l+ (l-nth(m_15, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
         g_43 := l-nth(g_44, 0i);
-        u := "i__lang_assert"((not g_43), "Ugly assert message for now");
+        u := "i__lang_assert"((not g_43), "overflow check failed");
         goto bb13;
   bb13: g_46 := [load_value](l-nth(m_15, 0i), l+ (l-nth(m_15, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
         g_45 := l-nth(g_46, 0i);

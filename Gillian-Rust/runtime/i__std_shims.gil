@@ -54,6 +54,19 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
      er: fail[TYPERR]("Invalid discr")
 };
 
+(* pub fn map<U, F>(self, f: F) -> Option<U> where F: FnOnce(T) -> U  *)
+proc "std::option::Option::<T>::map"(T, U, F, opt, fname) {
+          discr := l-nth(opt, 0i);
+          goto [discr = 0i] nn so;
+     nn:  ret := {{ 0i, {{ }} }};
+          return; 
+          (* The last argument is the closure name *)
+     so:  val := l-nth(l-nth(opt, 1i), 0i);
+          res := f(U, val);
+          ret := {{ 1i, {{ res }} }};
+          return
+};
+
 proc "std::option::Option::<T>::ok_or"(T_ok, T_err, opt, err) {
          goto [l-nth(opt, 0i) = 1i] ok er;
      ok: ret := {{ 0i, l-nth(opt, 1i) }}; (* Ok res; *)

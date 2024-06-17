@@ -8,10 +8,13 @@ fn main() -> Result<()> {
         .program
         .envs
         .push(("GILLIAN_PROPHECIES".into(), Some("1".into())));
-    run_tests(config1)?;
     let config = build_config(PathBuf::from("../tests/multiple_lifetimes"));
-    run_tests(config);
-    run_tests(config2)
+    let config3 = build_config(PathBuf::from("../tests/pass"));
+    run_tests(config1)?;
+    run_tests(config)?;
+    run_tests(config2)?;
+    run_tests(config3)?;
+    Ok(())
 }
 
 fn build_config(path: PathBuf) -> Config {

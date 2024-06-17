@@ -2,6 +2,21 @@ use super::names::*;
 use crate::prelude::*;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
+    fn assert_kind_to_msg_str(&self, assert_kind: &AssertKind<Operand>) -> String {
+        match assert_kind {
+            AssertKind::BoundsCheck { .. } => "bounds check failed".to_string(),
+            AssertKind::Overflow(..) => "overflow check failed".to_string(),
+            AssertKind::OverflowNeg(..) => "negation overflow".to_string(),
+            AssertKind::DivisionByZero(..) => "division by zero".to_string(),
+            AssertKind::RemainderByZero(..) => "remainder by zero".to_string(),
+            AssertKind::ResumedAfterReturn(..) => "resumed after return".to_string(),
+            AssertKind::ResumedAfterPanic(..) => "resumed after panic".to_string(),
+            AssertKind::MisalignedPointerDereference { .. } => {
+                "misaligned pointer dereference".to_string()
+            }
+        }
+    }
+
     pub fn push_terminator(&mut self, terminator: &Terminator<'tcx>) {
         match &terminator.kind {
             TerminatorKind::FalseUnwind {
@@ -29,11 +44,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             TerminatorKind::Assert {
                 cond: op,
                 expected,
-                msg: _,
+                msg,
                 target,
                 unwind: _,
             } => {
-                let msg = "Ugly assert message for now".to_string();
+                let msg = self.assert_kind_to_msg_str(msg);
                 let cond = self.push_encode_operand(op);
                 let to_assert = if *expected { cond } else { !cond };
                 let assert_call = runtime::lang_assert(to_assert, msg);

@@ -366,6 +366,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn zst_value_of_type(&self, ty: Ty<'tcx>) -> Literal {
         match ty.kind() {
             TyKind::Tuple(_) if ty.tuple_fields().iter().next().is_none() => vec![].into(),
+            TyKind::FnDef(did, args) => {
+                let name = self.tcx().def_path_str_with_args(did, args);
+                // In GIL, function identifiers are strings.
+                name.into()
+            }
             _ => fatal!(self, "Cannot encode zst of type {:#?} yet", ty),
         }
     }
