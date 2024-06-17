@@ -371,7 +371,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     Some(LogicStubs::AssertPointsToSlice) => {
                         let src = self.build_expression(args[0]);
                         let size = self.build_expression(args[1]);
-                        let pointees = self.build_expression(args[1]);
+                        let pointees = self.build_expression(args[2]);
 
                         // TODO unify with PointsTo
                         AssertKind::PointsToSlice {

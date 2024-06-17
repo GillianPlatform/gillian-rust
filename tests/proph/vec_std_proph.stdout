@@ -28,7 +28,7 @@ pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
   * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
   * (#cap == 0i)
-  * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #len)
+  * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #values)
   * "all_own::<T>"(pty_T0, #values, #model)
   * (l-len #values == l-len #model)
   * "std::mem::size_of"(pty_T0, #lvar_0)
@@ -38,7 +38,7 @@ pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
   * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
   * (#len i<=# #cap)
-  * <value>(l-nth(#lvar_3, 0i), l-nth(#lvar_3, 1i), {{ "array", pty_T0, #len }}; #len)
+  * <value>(l-nth(#lvar_3, 0i), l-nth(#lvar_3, 1i), {{ "array", pty_T0, #len }}; #values)
   * (l-len #values == l-len #model)
   * "all_own::<T>"(pty_T0, #values, #model)
   * <many_maybe_uninits>(l-nth(#lvar_5, 0i), l-nth(#lvar_5, 1i), pty_T0, #cap i- #len; #rest)
@@ -930,8 +930,8 @@ proc capacity_overflow() {
         return
 };
 
-proc handle_alloc_error(_layout) {
-        m_1_layout := _layout;
+proc handle_alloc_error(layout) {
+        m_1layout := layout;
         m_6 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
         m_8 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
   bb0:  g_0 := [new_lft]();
@@ -1007,10 +1007,18 @@ spec "Vec::<T>::new"(pty_T0)
 normal
 
 proc "Vec::<T>::new"(pty_T0) {
-  bb0:  g_0 := "RawVec::<T>::NEW"(pty_T0);
-        m_0 := {{ g_0, 0i }};
-        g_1 := m_0;
-        ret := g_1;
+  bb0:  g_0 := "<T as std::mem::SizedTypeProperties>::IS_ZST"(pty_T0);
+        m_2 := g_0;
+        g_1 := m_2;
+        goto [g_1] bb1 bb2;
+  bb1:  m_1 := {{  }};
+        goto bb3;
+  bb2:  m_1 := {{  }};
+        goto bb3;
+  bb3:  g_2 := "RawVec::<T>::NEW"(pty_T0);
+        m_0 := {{ g_2, 0i }};
+        g_3 := m_0;
+        ret := g_3;
         goto rlab;
   rlab: return
 };

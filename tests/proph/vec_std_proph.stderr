@@ -16,25 +16,17 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   |
   = note: `#[warn(stable_features)]` on by default
 
-warning: unused variable: `buf`
-   --> ../tests/proph/vec_std_proph.rs:319:24
-    |
-319 |             |ptr, cap, buf: RawVec<T>, len, values, rest| (std::mem::size_of::<T>() > 0)
-    |                        ^^^ help: if this is intentional, prefix it with an underscore: `_buf`
-    |
-    = note: `#[warn(unused_variables)]` on by default
-
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:53:5
+  --> ../tests/proph/vec_std_proph.rs:61:5
    |
-49 | enum AllocInit {
+57 | enum AllocInit {
    |      --------- variant in this enum
 ...
-53 |     Zeroed,
+61 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: 4 warnings emitted
+warning: 3 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

@@ -17,6 +17,14 @@ use std::alloc::{Allocator, Layout, LayoutError};
 use std::mem::{self, SizedTypeProperties};
 use std::ptr::{NonNull, Unique};
 
+macro_rules! branch {
+    ($cond:expr) => {
+        if $cond {
+        } else {
+        }
+    };
+}
+
 pub struct TryReserveError {
     kind: TryReserveErrorKind,
 }
@@ -279,7 +287,8 @@ fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
 
-fn handle_alloc_error(_layout: Layout) -> ! {
+#[allow(unused_variables)]
+fn handle_alloc_error(layout: Layout) -> ! {
     panic!("allocation failed!")
 }
 
@@ -315,21 +324,19 @@ impl<T: Ownable> Ownable for Vec<T> {
                 * all_own(values, model)
                 * (values.len() == model.len())
         );
-        assertion!(
-            |ptr, cap, buf: RawVec<T>, len, values, rest| (std::mem::size_of::<T>() > 0)
-                * (self
-                    == Vec {
-                        buf: RawVec { ptr, cap },
-                        len
-                    })
-                * cap.own(cap)
-                * len.own(len)
-                * (len <= cap)
-                * ptr.as_ptr().points_to_slice(len, values)
-                * (values.len() == model.len())
-                * all_own(values, model)
-                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
-        )
+        assertion!(|ptr, cap, len, values, rest| (std::mem::size_of::<T>() > 0)
+            * (self
+                == Vec {
+                    buf: RawVec { ptr, cap },
+                    len
+                })
+            * cap.own(cap)
+            * len.own(len)
+            * (len <= cap)
+            * ptr.as_ptr().points_to_slice(len, values)
+            * (values.len() == model.len())
+            * all_own(values, model)
+            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
     }
 }
 
@@ -339,6 +346,7 @@ impl<T: Ownable> Vec<T> {
         ensures { ret.own(Seq::empty())}
     )]
     pub const fn new() -> Self {
+        branch!(T::IS_ZST);
         Vec {
             buf: RawVec::NEW,
             len: 0,
