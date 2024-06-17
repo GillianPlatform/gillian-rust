@@ -19,6 +19,11 @@ let prod_observation (t : t) (obs : Formula.t) : t Delayed.t =
   let* is_sat = Delayed.check_sat (Formula.conjunct (obs :: t)) in
   if is_sat then Delayed.return (obs :: t) else Delayed.vanish ()
 
+let check_sat (t : t) : unit Delayed.t =
+  let open Delayed.Syntax in
+  let* is_sat = Delayed.check_sat (Formula.conjunct t) in
+  if is_sat then Delayed.return () else Delayed.vanish ()
+
 let assertions (t : t) =
   let cp = Common.Actions.cp_to_name Observation in
   let of_formula f =

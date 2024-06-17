@@ -4,7 +4,8 @@ proc i__lang_assert(b, msg) {
         goto [b] ctn err;
   ctn:  ret := undefined;
         return;
-  err:  fail[ASSERT](msg)
+  err:  u := [check_obs_sat]();
+        fail[ASSERT](msg)
 };
 
 proc i__bool_of_lang_int(i) {

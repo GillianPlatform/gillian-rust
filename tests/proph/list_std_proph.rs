@@ -186,7 +186,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[specification(forall current, proph, elt_repr.
-        requires { self.own((current, proph)) * (current.len() < usize::MAX) * elt.own(elt_repr) }
+        requires { self.own((current, proph)) * $current.len() < usize::MAX$ * elt.own(elt_repr) }
         ensures { ret.own(()) * $proph == current.prepend(elt_repr)$ }
     )]
     pub fn push_front(&mut self, elt: T) {
