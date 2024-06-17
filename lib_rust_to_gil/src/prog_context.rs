@@ -45,7 +45,6 @@ impl<'tcx> ProgCtx<'tcx> {
 
     fn compile_fn(&mut self, global_env: &mut GlobalEnv<'tcx>, did: DefId) {
         let args = GenericArgs::identity_for_item(self.tcx(), did);
-        let sig = build_signature(global_env, did, args);
         let with_facts = global_env.body_with_facts(did.expect_local());
         let body = with_facts.body.clone();
         let borrow_set = with_facts.borrow_set.clone();
@@ -67,7 +66,12 @@ impl<'tcx> ProgCtx<'tcx> {
 
         let mut proc = ctx.push_body();
 
-        proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
+        if let DefKind::AssocConst = global_env.tcx().def_kind(did) {
+            // We can't build signatures for associated consts.
+        } else {
+            let sig = build_signature(global_env, did, args);
+            proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
+        };
         self.prog.add_proc(proc);
     }
 

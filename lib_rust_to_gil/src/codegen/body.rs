@@ -1,5 +1,7 @@
 use crate::signature::build_signature;
+use crate::utils;
 use crate::{config::ExecMode, prelude::*};
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::pretty::write_mir_fn;
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
@@ -59,10 +61,17 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     }
 
     pub fn args(&mut self) -> Vec<String> {
-        let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-        let sig = build_signature(self.global_env, self.did(), args);
+        if let DefKind::AssocConst = self.tcx().def_kind(self.did()) {
+            utils::polymorphism::generic_types(self.did(), self.tcx())
+                .into_iter()
+                .map(|x| crate::codegen::typ_encoding::type_param_name(x.0, x.1))
+                .collect()
+        } else {
+            let args = GenericArgs::identity_for_item(self.tcx(), self.did());
+            let sig = build_signature(self.global_env, self.did(), args);
 
-        sig.physical_args().map(|a| a.name().to_string()).collect()
+            sig.physical_args().map(|a| a.name().to_string()).collect()
+        }
     }
 
     pub fn push_body(mut self) -> Proc {

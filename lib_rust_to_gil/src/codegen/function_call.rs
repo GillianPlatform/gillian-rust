@@ -146,17 +146,21 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         );
 
         // if callee_has_regions {
-        let sig = self.tcx().fn_sig(def_id);
-        let ssig = sig.instantiate(self.tcx(), substs);
-        let regions = self.lifetimes_for_call(ssig, operands, ret_ty);
+        if let rustc_hir::def::DefKind::AssocConst = self.tcx().def_kind(def_id) {
+            // AssocConst don't have a signature
+        } else {
+            let sig = self.tcx().fn_sig(def_id);
+            let ssig = sig.instantiate(self.tcx(), substs);
+            let regions = self.lifetimes_for_call(ssig, operands, ret_ty);
 
-        args.extend(
-            regions
-                .into_iter()
-                .map(|r| r.as_var())
-                .map(|v| self.region_info.name_region(v))
-                .map(Expr::PVar),
-        );
+            args.extend(
+                regions
+                    .into_iter()
+                    .map(|r| r.as_var())
+                    .map(|v| self.region_info.name_region(v))
+                    .map(Expr::PVar),
+            );
+        }
         // }
         for ty_arg in params.parameters {
             args.push(self.encode_param_ty(ty_arg).into())

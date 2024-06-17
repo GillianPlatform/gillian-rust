@@ -1,4 +1,40 @@
-error: Can't encode unevaluated promoted constants yet: "capacity_overflow" Some(promoted[0]) &ReErased [&ReErased str; 1_usize]
+warning: unused import: `lemma`
+  --> ../tests/proph/vec_std_proph.rs:11:25
+   |
+11 |     macros::{assertion, lemma, predicate, specification},
+   |                         ^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
 
-error: aborting due to previous error
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
+ --> ../tests/proph/vec_std_proph.rs:5:12
+  |
+5 | #![feature(unchecked_math)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(stable_features)]` on by default
 
+warning: unused variable: `buf`
+   --> ../tests/proph/vec_std_proph.rs:319:24
+    |
+319 |             |ptr, cap, buf: RawVec<T>, len, values, rest| (std::mem::size_of::<T>() > 0)
+    |                        ^^^ help: if this is intentional, prefix it with an underscore: `_buf`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: variant `Zeroed` is never constructed
+  --> ../tests/proph/vec_std_proph.rs:53:5
+   |
+49 | enum AllocInit {
+   |      --------- variant in this enum
+...
+53 |     Zeroed,
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 4 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

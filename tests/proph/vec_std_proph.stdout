@@ -1,0 +1,1181 @@
+#begin_init_data
+{"Alignment":["Struct","ReprRust",[["0",["Adt",["AlignmentEnum",[]]]]]],"AlignmentEnum":["Enum",[["_Align1Shl0",[]],["_Align1Shl1",[]],["_Align1Shl2",[]],["_Align1Shl3",[]],["_Align1Shl4",[]],["_Align1Shl5",[]],["_Align1Shl6",[]],["_Align1Shl7",[]],["_Align1Shl8",[]],["_Align1Shl9",[]],["_Align1Shl10",[]],["_Align1Shl11",[]],["_Align1Shl12",[]],["_Align1Shl13",[]],["_Align1Shl14",[]],["_Align1Shl15",[]],["_Align1Shl16",[]],["_Align1Shl17",[]],["_Align1Shl18",[]],["_Align1Shl19",[]],["_Align1Shl20",[]],["_Align1Shl21",[]],["_Align1Shl22",[]],["_Align1Shl23",[]],["_Align1Shl24",[]],["_Align1Shl25",[]],["_Align1Shl26",[]],["_Align1Shl27",[]],["_Align1Shl28",[]],["_Align1Shl29",[]],["_Align1Shl30",[]],["_Align1Shl31",[]],["_Align1Shl32",[]],["_Align1Shl33",[]],["_Align1Shl34",[]],["_Align1Shl35",[]],["_Align1Shl36",[]],["_Align1Shl37",[]],["_Align1Shl38",[]],["_Align1Shl39",[]],["_Align1Shl40",[]],["_Align1Shl41",[]],["_Align1Shl42",[]],["_Align1Shl43",[]],["_Align1Shl44",[]],["_Align1Shl45",[]],["_Align1Shl46",[]],["_Align1Shl47",[]],["_Align1Shl48",[]],["_Align1Shl49",[]],["_Align1Shl50",[]],["_Align1Shl51",[]],["_Align1Shl52",[]],["_Align1Shl53",[]],["_Align1Shl54",[]],["_Align1Shl55",[]],["_Align1Shl56",[]],["_Align1Shl57",[]],["_Align1Shl58",[]],["_Align1Shl59",[]],["_Align1Shl60",[]],["_Align1Shl61",[]],["_Align1Shl62",[]],["_Align1Shl63",[]]]],"AllocError":["Struct","ReprRust",[]],"AllocInit":["Enum",[["Uninitialized",[]],["Zeroed",[]]]],"GillianAllocator":["Struct","ReprRust",[]],"Layout":["Struct","ReprRust",[["size",["Scalar","usize"]],["align",["Adt",["Alignment",[]]]]]],"LayoutError":["Struct","ReprRust",[]],"NonNull":["Struct","ReprRust",[["pointer",["Ptr",{"mut":false,"ty":["Param",0]}]]]],"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]],"PhantomData":["Struct","ReprRust",[]],"RawVec":["Struct","ReprRust",[["ptr",["Adt",["Unique",[["Param",0]]]]],["cap",["Scalar","usize"]]]],"Result":["Enum",[["Ok",[["Param",0]]],["Err",[["Param",1]]]]],"TryReserveError":["Struct","ReprRust",[["kind",["Adt",["TryReserveErrorKind",[]]]]]],"TryReserveErrorKind":["Enum",[["CapacityOverflow",[]],["AllocError",[["Adt",["Layout",[]]],["Tuple",[]]]]]],"Unique":["Struct","ReprRust",[["pointer",["Adt",["NonNull",[["Param",0]]]]],["_marker",["Adt",["PhantomData",[["Param",0]]]]]]],"Vec":["Struct","ReprRust",[["buf",["Adt",["RawVec",[["Param",0]]]]],["len",["Scalar","usize"]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil";
+
+axiomatic spec "<&mut Vec<T> as gilogic::prophecies::Prophecised>::prophecy_resolve"(lft, pty_T0, mut_ref)
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(lft, pty_T0, mut_ref, {{ #current, #future }}) ]]
+[[<observation>((#current = #future); )]]
+normal
+
+pred "<AllocInit as gilogic::prophecies::Ownable>::own"(+self, model):
+  (#self == #model) * (model == #model) * (self == #self);
+
+
+pred "all_own::<T>"(+pty_T0, +vs, reprs):
+  (#vs == {{  }}) * (#reprs == {{  }}) * (reprs == #reprs)
+  * (vs == #vs), (#vs == l+(#rest, {{ #x }}))
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #x, #x_repr)
+  * "all_own::<T>"(pty_T0, #rest, #rest_repr)
+  * (#reprs == l+(#rest_repr, {{ #x_repr }}))
+  * (reprs == #reprs)
+  * (vs == #vs);
+
+
+pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
+  (#lvar_0 == 0i) * (#self == {{ {{ #ptr, #cap }}, #len }})
+  * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
+  * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
+  * (#cap == 0i)
+  * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #len)
+  * "all_own::<T>"(pty_T0, #values, #model)
+  * (l-len #values == l-len #model)
+  * "std::mem::size_of"(pty_T0, #lvar_0)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_1)
+  * (model == #model)
+  * (self == #self), (0i i<# #lvar_2) * (#self == {{ {{ #ptr, #cap }}, #len }})
+  * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
+  * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
+  * (#len i<=# #cap)
+  * <value>(l-nth(#lvar_3, 0i), l-nth(#lvar_3, 1i), {{ "array", pty_T0, #len }}; #len)
+  * (l-len #values == l-len #model)
+  * "all_own::<T>"(pty_T0, #values, #model)
+  * <many_maybe_uninits>(l-nth(#lvar_5, 0i), l-nth(#lvar_5, 1i), pty_T0, #cap i- #len; #rest)
+  * "std::mem::size_of"(pty_T0, #lvar_2)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_3)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_4)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, #lvar_4, #len, #lvar_5)
+  * (model == #model)
+  * (self == #self);
+
+
+abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
+
+
+pred "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>"(pLft_erased, pty_T0, #self)
+  * <value_observer>(l-nth(#self, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (model == #model)
+  * (self == #self);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>"(+pLft_a, +pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
+  * "<Vec<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
+  * "<Vec<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+
+
+proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) {
+        m_1kind := kind;
+  bb0:  m_2 := m_1kind;
+        g_0 := m_2;
+        m_0 := {{ g_0 }};
+        g_1 := m_0;
+        ret := g_1;
+        goto rlab;
+  rlab: return
+};
+
+proc "TryReserveError::kind"(pLft_0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", false, {{ "adt", "TryReserveError", {{  }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveError", {{  }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveError", {{  }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_4 := [load_value](l-nth(g_1, 0i), l+ (l-nth(g_1, 1i), {{ {{ "f", 0i, {{ "adt", "TryReserveError", {{  }} }} }} }}), {{ "adt", "TryReserveErrorKind", {{  }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        m_0 := g_3;
+        g_5 := m_0;
+        ret := g_5;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveError", {{  }} }} }});
+        return
+};
+
+proc "<TryReserveErrorKind as std::clone::Clone>::clone"(pLft_0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", false, {{ "adt", "TryReserveErrorKind", {{  }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveErrorKind", {{  }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveErrorKind", {{  }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_4 := [load_value](l-nth(g_1, 0i), l-nth(g_1, 1i), {{ "adt", "TryReserveErrorKind", {{  }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        m_0 := g_3;
+        g_5 := m_0;
+        ret := g_5;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "TryReserveErrorKind", {{  }} }} }});
+        return
+};
+
+proc handle_reserve(result) {
+        m_1result := result;
+        g_0 := m_1result;
+        m_1result := [alloc]({{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        u := [store_value](l-nth(m_1result, 0i), l-nth(m_1result, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, g_0);
+        m_3err := [alloc]({{ "adt", "TryReserveError", {{  }} }});
+        m_4 := [alloc]({{ "adt", "TryReserveErrorKind", {{  }} }});
+  bb0:  g_2 := [load_discr](l-nth(m_1result, 0i), l-nth(m_1result, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        g_1 := l-nth(g_2, 0i);
+        m_2 := g_1;
+        g_3 := m_2;
+        goto [(g_3 = 0i)] bb3 sw0;
+  sw0:  goto [(g_3 = 1i)] bb2 sw1;
+  sw1:  goto bb1;
+  bb1:  fail [Unreachable]();
+  bb2:  goto bb4;
+  bb3:  m_0 := {{  }};
+        g_4 := m_0;
+        ret := g_4;
+        goto rlab;
+  bb4:  g_6 := [load_value](l-nth(m_1result, 0i), l+ (l-nth(m_1result, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, 1i }} }}), {{ "adt", "TryReserveError", {{  }} }}, false);
+        g_5 := l-nth(g_6, 0i);
+        u := [store_value](l-nth(m_3err, 0i), l-nth(m_3err, 1i), {{ "adt", "TryReserveError", {{  }} }}, g_5);
+        g_7 := [new_lft]();
+        pLft_3 := l-nth(g_7, 0i);
+        m_5 := m_3err;
+        g_8 := m_5;
+        g_9 := "TryReserveError::kind"(pLft_3, g_8);
+        u := [store_value](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "TryReserveErrorKind", {{  }} }}, g_9);
+        goto bb5;
+  bb5:  g_11 := [load_discr](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "TryReserveErrorKind", {{  }} }});
+        g_10 := l-nth(g_11, 0i);
+        m_6 := g_10;
+        g_12 := m_6;
+        goto [(g_12 = 0i)] bb7 sw3;
+  sw3:  goto [(g_12 = 1i)] bb8 sw4;
+  sw4:  goto bb6;
+  bb6:  fail [Unreachable]();
+  bb7:  goto bb9;
+  bb8:  g_14 := [load_value](l-nth(m_4, 0i), l+ (l-nth(m_4, 1i), {{ {{ "vf", 0i, {{ "adt", "TryReserveErrorKind", {{  }} }}, 1i }} }}), {{ "adt", "Layout", {{  }} }}, true);
+        g_13 := l-nth(g_14, 0i);
+        m_8layout := g_13;
+        m_10 := m_8layout;
+        g_15 := m_10;
+        g_16 := "handle_alloc_error"(g_15);
+        m_9 := g_16;
+  bb9:  g_17 := "capacity_overflow"();
+        m_7 := g_17;
+  rlab: u := [free](l-nth(m_1result, 0i), l-nth(m_1result, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        u := [free](l-nth(m_3err, 0i), l-nth(m_3err, 1i), {{ "adt", "TryReserveError", {{  }} }});
+        u := [free](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "TryReserveErrorKind", {{  }} }});
+        return
+};
+
+proc finish_grow(new_layout, current_memory) {
+        m_1new_layout := new_layout;
+        g_0 := m_1new_layout;
+        m_1new_layout := [alloc]({{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        u := [store_value](l-nth(m_1new_layout, 0i), l-nth(m_1new_layout, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }}, g_0);
+        m_2current_memory := current_memory;
+        g_1 := m_2current_memory;
+        m_2current_memory := [alloc]({{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }});
+        u := [store_value](l-nth(m_2current_memory, 0i), l-nth(m_2current_memory, 1i), {{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }}, g_1);
+        m_3new_layout := [alloc]({{ "adt", "Layout", {{  }} }});
+        m_10 := [alloc]({{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        m_18memory := [alloc]({{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        m_21old_layout := [alloc]({{ "adt", "Layout", {{  }} }});
+        m_44 := [alloc]({{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        m_45 := [alloc]({{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+  bb0:  g_3 := [load_discr](l-nth(m_1new_layout, 0i), l-nth(m_1new_layout, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        g_2 := l-nth(g_3, 0i);
+        m_4 := g_2;
+        g_4 := m_4;
+        goto [(g_4 = 0i)] bb2 sw0;
+  sw0:  goto [(g_4 = 1i)] bb3 sw1;
+  sw1:  goto bb1;
+  bb1:  fail [Unreachable]();
+  bb2:  goto bb4;
+  bb3:  m_8 := {{ 0i, {{  }} }};
+        g_5 := m_8;
+        m_7 := {{ g_5 }};
+        g_6 := m_7;
+        m_0 := {{ 1i, {{ g_6 }} }};
+        goto bb27;
+  bb4:  g_8 := [load_value](l-nth(m_1new_layout, 0i), l+ (l-nth(m_1new_layout, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }}, 0i }} }}), {{ "adt", "Layout", {{  }} }}, true);
+        g_7 := l-nth(g_8, 0i);
+        m_5x := g_7;
+        u := [store_value](l-nth(m_3new_layout, 0i), l-nth(m_3new_layout, 1i), {{ "adt", "Layout", {{  }} }}, m_5x);
+        g_9 := [new_lft]();
+        pLft_14 := l-nth(g_9, 0i);
+        m_12 := m_3new_layout;
+        g_10 := m_12;
+        g_11 := "std::alloc::Layout::size"(pLft_14, g_10);
+        m_11 := g_11;
+        goto bb5;
+  bb5:  g_12 := m_11;
+        g_13 := "alloc_guard"(g_12);
+        u := [store_value](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, g_13);
+        goto bb6;
+  bb6:  g_15 := [load_discr](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        g_14 := l-nth(g_15, 0i);
+        m_13 := g_14;
+        g_16 := m_13;
+        goto [(g_16 = 0i)] bb8 sw3;
+  sw3:  goto [(g_16 = 1i)] bb9 sw4;
+  sw4:  goto bb7;
+  bb7:  fail [Unreachable]();
+  bb8:  goto bb10;
+  bb9:  g_18 := [load_value](l-nth(m_10, 0i), l+ (l-nth(m_10, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, 1i }} }}), {{ "adt", "TryReserveError", {{  }} }}, false);
+        g_17 := l-nth(g_18, 0i);
+        m_15e := g_17;
+        g_19 := m_15e;
+        m_17 := g_19;
+        g_20 := m_17;
+        m_0 := {{ 1i, {{ g_20 }} }};
+        goto bb27;
+  bb10: g_22 := [load_value](l-nth(m_10, 0i), l+ (l-nth(m_10, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, 0i }} }}), {{ "tuple", {{  }} }}, true);
+        g_21 := l-nth(g_22, 0i);
+        m_14x := g_21;
+        m_9 := m_14x;
+        g_24 := [load_discr](l-nth(m_2current_memory, 0i), l-nth(m_2current_memory, 1i), {{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }});
+        g_23 := l-nth(g_24, 0i);
+        m_19 := g_23;
+        g_25 := m_19;
+        goto [(g_25 = 1i)] bb12 sw6;
+  sw6:  goto bb11;
+  bb11: g_26 := [new_lft]();
+        pLft_19 := l-nth(g_26, 0i);
+        u := [store_value](l-nth(m_44, 0i), l-nth(m_44, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, {{ $l_dangling, {{  }} }});
+        g_28 := [load_value](l-nth(m_44, 0i), l-nth(m_44, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, true);
+        g_27 := l-nth(g_28, 0i);
+        g_29 := [new_lft]();
+        pLft_18 := l-nth(g_29, 0i);
+        m_34 := g_27;
+        g_31 := [load_value](l-nth(m_3new_layout, 0i), l-nth(m_3new_layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_30 := l-nth(g_31, 0i);
+        m_36 := g_30;
+        g_32 := m_34;
+        g_33 := m_36;
+        g_34 := "std::alloc::Allocator::allocate"(pLft_18, {{ "adt", "GillianAllocator", {{  }} }}, g_32, g_33);
+        u := [store_value](l-nth(m_18memory, 0i), l-nth(m_18memory, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, g_34);
+        goto bb19;
+  bb12: goto bb13;
+  bb13: g_36 := [load_value](l-nth(m_2current_memory, 0i), l+ (l-nth(m_2current_memory, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }}, 1i }}, {{ "f", 0i, {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }}), {{ "adt", "NonNull", {{ "u8" }} }}, true);
+        g_35 := l-nth(g_36, 0i);
+        m_20ptr := g_35;
+        g_38 := [load_value](l-nth(m_2current_memory, 0i), l+ (l-nth(m_2current_memory, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }}, 1i }}, {{ "f", 1i, {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }}), {{ "adt", "Layout", {{  }} }}, true);
+        g_37 := l-nth(g_38, 0i);
+        u := [store_value](l-nth(m_21old_layout, 0i), l-nth(m_21old_layout, 1i), {{ "adt", "Layout", {{  }} }}, g_37);
+        g_39 := [new_lft]();
+        pLft_15 := l-nth(g_39, 0i);
+        m_25 := m_21old_layout;
+        g_40 := m_25;
+        g_41 := "std::alloc::Layout::align"(pLft_15, g_40);
+        m_24 := g_41;
+        goto bb14;
+  bb14: g_42 := [new_lft]();
+        pLft_16 := l-nth(g_42, 0i);
+        m_27 := m_3new_layout;
+        g_43 := m_27;
+        g_44 := "std::alloc::Layout::align"(pLft_16, g_43);
+        m_26 := g_44;
+        goto bb15;
+  bb15: g_45 := m_24;
+        g_46 := m_26;
+        m_23 := (g_45 = g_46);
+        g_47 := m_23;
+        goto [g_47] bb16 bb17;
+  bb16: m_22 := {{  }};
+        g_48 := [new_lft]();
+        pLft_20 := l-nth(g_48, 0i);
+        u := [store_value](l-nth(m_45, 0i), l-nth(m_45, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, {{ $l_dangling, {{  }} }});
+        g_50 := [load_value](l-nth(m_45, 0i), l-nth(m_45, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, true);
+        g_49 := l-nth(g_50, 0i);
+        g_51 := [new_lft]();
+        pLft_17 := l-nth(g_51, 0i);
+        m_29 := g_49;
+        m_31 := m_20ptr;
+        g_53 := [load_value](l-nth(m_21old_layout, 0i), l-nth(m_21old_layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_52 := l-nth(g_53, 0i);
+        m_32 := g_52;
+        g_55 := [load_value](l-nth(m_3new_layout, 0i), l-nth(m_3new_layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_54 := l-nth(g_55, 0i);
+        m_33 := g_54;
+        g_56 := m_29;
+        g_57 := m_31;
+        g_58 := m_32;
+        g_59 := m_33;
+        g_60 := "std::alloc::Allocator::grow"(pLft_17, {{ "adt", "GillianAllocator", {{  }} }}, g_56, g_57, g_58, g_59);
+        u := [store_value](l-nth(m_18memory, 0i), l-nth(m_18memory, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, g_60);
+        goto bb18;
+  bb17: g_61 := [new_lft]();
+        pLft_13 := l-nth(g_61, 0i);
+        g_62 := "core::panicking::panic"(pLft_0, "assertion failed: old_layout.align() == new_layout.align()");
+        m_28 := g_62;
+  bb18: goto bb20;
+  bb19: goto bb20;
+  bb20: g_64 := [load_discr](l-nth(m_18memory, 0i), l-nth(m_18memory, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        g_63 := l-nth(g_64, 0i);
+        m_37 := g_63;
+        g_65 := m_37;
+        goto [(g_65 = 0i)] bb22 sw8;
+  sw8:  goto [(g_65 = 1i)] bb23 sw9;
+  sw9:  goto bb21;
+  bb21: fail [Unreachable]();
+  bb22: goto bb24;
+  bb23: g_67 := [load_value](l-nth(m_3new_layout, 0i), l-nth(m_3new_layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_66 := l-nth(g_67, 0i);
+        m_42 := g_66;
+        m_43 := {{  }};
+        g_68 := m_42;
+        g_69 := m_43;
+        m_41 := {{ 1i, {{ g_68, g_69 }} }};
+        g_70 := m_41;
+        g_71 := "std::convert::Into::into"({{ "adt", "TryReserveErrorKind", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }}, g_70);
+        m_40 := g_71;
+        goto bb25;
+  bb24: g_73 := [load_value](l-nth(m_18memory, 0i), l+ (l-nth(m_18memory, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, 0i }} }}), {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, true);
+        g_72 := l-nth(g_73, 0i);
+        m_38x := g_72;
+        m_39 := m_38x;
+        g_74 := m_39;
+        m_0 := {{ 0i, {{ g_74 }} }};
+        goto bb26;
+  bb25: g_75 := m_40;
+        m_0 := {{ 1i, {{ g_75 }} }};
+        goto bb26;
+  bb26: goto bb28;
+  bb27: goto bb28;
+  bb28: g_76 := m_0;
+        ret := g_76;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1new_layout, 0i), l-nth(m_1new_layout, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        u := [free](l-nth(m_2current_memory, 0i), l-nth(m_2current_memory, 1i), {{ "adt", "Option", {{ {{ "tuple", {{ {{ "adt", "NonNull", {{ "u8" }} }}, {{ "adt", "Layout", {{  }} }} }} }} }} }});
+        u := [free](l-nth(m_3new_layout, 0i), l-nth(m_3new_layout, 1i), {{ "adt", "Layout", {{  }} }});
+        u := [free](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        u := [free](l-nth(m_18memory, 0i), l-nth(m_18memory, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        u := [free](l-nth(m_21old_layout, 0i), l-nth(m_21old_layout, 1i), {{ "adt", "Layout", {{  }} }});
+        u := [free](l-nth(m_44, 0i), l-nth(m_44, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        u := [free](l-nth(m_45, 0i), l-nth(m_45, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        return
+};
+
+proc "RawVec::<T>::MIN_NON_ZERO_CAP"(pty_T0) {
+  bb0:  g_0 := "std::mem::size_of"(pty_T0);
+        m_2 := g_0;
+        goto bb1;
+  bb1:  g_1 := m_2;
+        m_1 := (g_1 = 1i);
+        g_2 := m_1;
+        goto [g_2] bb2 bb3;
+  bb2:  m_0 := 8i;
+        goto bb8;
+  bb3:  g_3 := "std::mem::size_of"(pty_T0);
+        m_4 := g_3;
+        goto bb4;
+  bb4:  g_4 := m_4;
+        m_3 := (g_4 i<= 1024i);
+        g_5 := m_3;
+        goto [g_5] bb5 bb6;
+  bb5:  m_0 := 4i;
+        goto bb7;
+  bb6:  m_0 := 1i;
+        goto bb7;
+  bb7:  goto bb8;
+  bb8:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: return
+};
+
+proc "RawVec::<T>::new"(pty_T0) {
+  bb0:  g_0 := "std::ptr::Unique::<T>::dangling"(pty_T0);
+        m_1 := g_0;
+        goto bb1;
+  bb1:  g_1 := m_1;
+        m_0 := {{ g_1, 0i }};
+        g_2 := m_0;
+        ret := g_2;
+        goto rlab;
+  rlab: return
+};
+
+proc "RawVec::<T>::NEW"(pty_T0) {
+  bb0:  g_0 := "RawVec::<T>::new"(pty_T0);
+        m_0 := g_0;
+        goto bb1;
+  bb1:  g_1 := m_0;
+        ret := g_1;
+        goto rlab;
+  rlab: return
+};
+
+proc "RawVec::<T>::current_memory"(pLft_0, pty_T0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_1 := "<T as std::mem::SizedTypeProperties>::IS_ZST"(pty_T0);
+        m_2 := g_1;
+        g_2 := m_2;
+        goto [g_2] bb3 bb1;
+  bb1:  g_4 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        g_6 := [load_value](l-nth(g_3, 0i), l+ (l-nth(g_3, 1i), {{ {{ "f", 1i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_5 := l-nth(g_6, 0i);
+        m_4 := g_5;
+        g_7 := m_4;
+        m_3 := (g_7 = 0i);
+        g_8 := m_3;
+        goto [g_8] bb2 bb4;
+  bb2:  goto bb3;
+  bb3:  m_0 := {{ 0i, {{  }} }};
+        goto bb10;
+  bb4:  m_5align := 1i;
+        g_9 := "std::mem::size_of"(pty_T0);
+        m_7 := g_9;
+        goto bb5;
+  bb5:  g_11 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_10 := l-nth(g_11, 0i);
+        g_13 := [load_value](l-nth(g_10, 0i), l+ (l-nth(g_10, 1i), {{ {{ "f", 1i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_12 := l-nth(g_13, 0i);
+        m_8 := g_12;
+        g_14 := m_7;
+        g_15 := m_8;
+        g_16 := "core::num::<impl usize>::unchecked_mul"(g_14, g_15);
+        m_6size := g_16;
+        goto bb6;
+  bb6:  m_10 := m_6size;
+        m_11 := m_5align;
+        g_17 := m_10;
+        g_18 := m_11;
+        g_19 := "std::alloc::Layout::from_size_align_unchecked"(g_17, g_18);
+        m_9layout := g_19;
+        goto bb7;
+  bb7:  g_21 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_20 := l-nth(g_21, 0i);
+        g_23 := [load_value](l-nth(g_20, 0i), l+ (l-nth(g_20, 1i), {{ {{ "f", 0i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), {{ "adt", "Unique", {{ pty_T0 }} }}, true);
+        g_22 := l-nth(g_23, 0i);
+        m_15 := g_22;
+        g_24 := m_15;
+        g_25 := "std::ptr::Unique::<T>::cast"(pty_T0, "u8", g_24);
+        m_14 := g_25;
+        goto bb8;
+  bb8:  g_26 := m_14;
+        g_27 := "<std::ptr::Unique<T> as std::convert::Into<std::ptr::NonNull<T>>>::into"({{ "adt", "Unique", {{ "u8" }} }}, {{ "adt", "NonNull", {{ "u8" }} }}, g_26);
+        m_13 := g_27;
+        goto bb9;
+  bb9:  m_16 := m_9layout;
+        g_28 := m_13;
+        g_29 := m_16;
+        m_12 := {{ g_28, g_29 }};
+        g_30 := m_12;
+        m_0 := {{ 1i, {{ g_30 }} }};
+        goto bb10;
+  bb10: g_31 := m_0;
+        ret := g_31;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        return
+};
+
+proc "RawVec::<T>::allocate"(pty_T0, capacity, init) {
+        m_1capacity := capacity;
+        m_2init := init;
+        g_0 := m_2init;
+        m_2init := [alloc]({{ "adt", "AllocInit", {{  }} }});
+        u := [store_value](l-nth(m_2init, 0i), l-nth(m_2init, 1i), {{ "adt", "AllocInit", {{  }} }}, g_0);
+        m_6layout := [alloc]({{ "adt", "Layout", {{  }} }});
+        m_7 := [alloc]({{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        m_13 := [alloc]({{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        m_18result := [alloc]({{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        m_37 := [alloc]({{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        m_38 := [alloc]({{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+  bb0:  g_1 := "<T as std::mem::SizedTypeProperties>::IS_ZST"(pty_T0);
+        m_3 := g_1;
+        g_2 := m_3;
+        goto [g_2] bb3 bb1;
+  bb1:  m_5 := m_1capacity;
+        g_3 := m_5;
+        m_4 := (g_3 = 0i);
+        g_4 := m_4;
+        goto [g_4] bb2 bb4;
+  bb2:  goto bb3;
+  bb3:  g_5 := "RawVec::<T>::new"(pty_T0);
+        m_0 := g_5;
+        goto bb30;
+  bb4:  m_8 := m_1capacity;
+        g_6 := m_8;
+        g_7 := "std::alloc::Layout::array"(pty_T0, g_6);
+        u := [store_value](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }}, g_7);
+        goto bb5;
+  bb5:  g_9 := [load_discr](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        g_8 := l-nth(g_9, 0i);
+        m_9 := g_8;
+        g_10 := m_9;
+        goto [(g_10 = 0i)] bb7 sw0;
+  sw0:  goto [(g_10 = 1i)] bb8 sw1;
+  sw1:  goto bb6;
+  bb6:  fail [Unreachable]();
+  bb7:  goto bb9;
+  bb8:  g_11 := "capacity_overflow"();
+        m_11 := g_11;
+  bb9:  g_13 := [load_value](l-nth(m_7, 0i), l+ (l-nth(m_7, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }}, 0i }} }}), {{ "adt", "Layout", {{  }} }}, true);
+        g_12 := l-nth(g_13, 0i);
+        m_10layout := g_12;
+        u := [store_value](l-nth(m_6layout, 0i), l-nth(m_6layout, 1i), {{ "adt", "Layout", {{  }} }}, m_10layout);
+        g_14 := [new_lft]();
+        pLft_11 := l-nth(g_14, 0i);
+        m_15 := m_6layout;
+        g_15 := m_15;
+        g_16 := "std::alloc::Layout::size"(pLft_11, g_15);
+        m_14 := g_16;
+        goto bb10;
+  bb10: g_17 := m_14;
+        g_18 := "alloc_guard"(g_17);
+        u := [store_value](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, g_18);
+        goto bb11;
+  bb11: g_20 := [load_discr](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        g_19 := l-nth(g_20, 0i);
+        m_16 := g_19;
+        g_21 := m_16;
+        goto [(g_21 = 0i)] bb13 sw3;
+  sw3:  goto [(g_21 = 1i)] bb14 sw4;
+  sw4:  goto bb12;
+  bb12: fail [Unreachable]();
+  bb13: goto bb15;
+  bb14: g_22 := "capacity_overflow"();
+        m_17 := g_22;
+  bb15: m_12 := {{  }};
+        g_24 := [load_discr](l-nth(m_2init, 0i), l-nth(m_2init, 1i), {{ "adt", "AllocInit", {{  }} }});
+        g_23 := l-nth(g_24, 0i);
+        m_19 := g_23;
+        g_25 := m_19;
+        goto [(g_25 = 0i)] bb17 sw6;
+  sw6:  goto [(g_25 = 1i)] bb18 sw7;
+  sw7:  goto bb16;
+  bb16: fail [Unreachable]();
+  bb17: goto bb19;
+  bb18: g_26 := [new_lft]();
+        pLft_14 := l-nth(g_26, 0i);
+        u := [store_value](l-nth(m_37, 0i), l-nth(m_37, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, {{ $l_dangling, {{  }} }});
+        g_28 := [load_value](l-nth(m_37, 0i), l-nth(m_37, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, true);
+        g_27 := l-nth(g_28, 0i);
+        g_29 := [new_lft]();
+        pLft_13 := l-nth(g_29, 0i);
+        m_23 := g_27;
+        g_31 := [load_value](l-nth(m_6layout, 0i), l-nth(m_6layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_30 := l-nth(g_31, 0i);
+        m_25 := g_30;
+        g_32 := m_23;
+        g_33 := m_25;
+        g_34 := "std::alloc::Allocator::allocate_zeroed"(pLft_13, {{ "adt", "GillianAllocator", {{  }} }}, g_32, g_33);
+        u := [store_value](l-nth(m_18result, 0i), l-nth(m_18result, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, g_34);
+        goto bb21;
+  bb19: g_35 := [new_lft]();
+        pLft_15 := l-nth(g_35, 0i);
+        u := [store_value](l-nth(m_38, 0i), l-nth(m_38, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, {{ $l_dangling, {{  }} }});
+        g_37 := [load_value](l-nth(m_38, 0i), l-nth(m_38, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }}, true);
+        g_36 := l-nth(g_37, 0i);
+        g_38 := [new_lft]();
+        pLft_12 := l-nth(g_38, 0i);
+        m_20 := g_36;
+        g_40 := [load_value](l-nth(m_6layout, 0i), l-nth(m_6layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_39 := l-nth(g_40, 0i);
+        m_22 := g_39;
+        g_41 := m_20;
+        g_42 := m_22;
+        g_43 := "std::alloc::Allocator::allocate"(pLft_12, {{ "adt", "GillianAllocator", {{  }} }}, g_41, g_42);
+        u := [store_value](l-nth(m_18result, 0i), l-nth(m_18result, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, g_43);
+        goto bb20;
+  bb20: goto bb22;
+  bb21: goto bb22;
+  bb22: g_45 := [load_discr](l-nth(m_18result, 0i), l-nth(m_18result, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        g_44 := l-nth(g_45, 0i);
+        m_27 := g_44;
+        g_46 := m_27;
+        goto [(g_46 = 0i)] bb24 sw9;
+  sw9:  goto [(g_46 = 1i)] bb25 sw10;
+  sw10: goto bb23;
+  bb23: fail [Unreachable]();
+  bb24: goto bb26;
+  bb25: g_48 := [load_value](l-nth(m_6layout, 0i), l-nth(m_6layout, 1i), {{ "adt", "Layout", {{  }} }}, true);
+        g_47 := l-nth(g_48, 0i);
+        m_30 := g_47;
+        g_49 := m_30;
+        g_50 := "handle_alloc_error"(g_49);
+        m_29 := g_50;
+  bb26: g_52 := [load_value](l-nth(m_18result, 0i), l+ (l-nth(m_18result, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }}, 0i }} }}), {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, true);
+        g_51 := l-nth(g_52, 0i);
+        m_28ptr := g_51;
+        m_26ptr := m_28ptr;
+        m_34 := m_26ptr;
+        g_53 := m_34;
+        g_54 := "std::ptr::NonNull::<T>::cast"({{ "slice", "u8" }}, pty_T0, g_53);
+        m_33 := g_54;
+        goto bb27;
+  bb27: g_55 := m_33;
+        g_56 := "std::ptr::NonNull::<T>::as_ptr"(pty_T0, g_55);
+        m_32 := g_56;
+        goto bb28;
+  bb28: g_57 := m_32;
+        g_58 := "std::ptr::Unique::<T>::new_unchecked"(pty_T0, g_57);
+        m_31ptr := g_58;
+        goto bb29;
+  bb29: m_35 := m_31ptr;
+        m_36 := m_1capacity;
+        g_59 := m_35;
+        g_60 := m_36;
+        m_0 := {{ g_59, g_60 }};
+        goto bb30;
+  bb30: g_61 := m_0;
+        ret := g_61;
+        goto rlab;
+  rlab: u := [free](l-nth(m_2init, 0i), l-nth(m_2init, 1i), {{ "adt", "AllocInit", {{  }} }});
+        u := [free](l-nth(m_6layout, 0i), l-nth(m_6layout, 1i), {{ "adt", "Layout", {{  }} }});
+        u := [free](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "adt", "Result", {{ {{ "adt", "Layout", {{  }} }}, {{ "adt", "LayoutError", {{  }} }} }} }});
+        u := [free](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "adt", "Result", {{ {{ "tuple", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        u := [free](l-nth(m_18result, 0i), l-nth(m_18result, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "AllocError", {{  }} }} }} }});
+        u := [free](l-nth(m_37, 0i), l-nth(m_37, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        u := [free](l-nth(m_38, 0i), l-nth(m_38, 1i), {{ "ref", false, {{ "adt", "GillianAllocator", {{  }} }} }});
+        return
+};
+
+proc "RawVec::<T>::ptr"(pLft_0, pty_T0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_4 := [load_value](l-nth(g_1, 0i), l+ (l-nth(g_1, 1i), {{ {{ "f", 0i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), {{ "adt", "Unique", {{ pty_T0 }} }}, true);
+        g_3 := l-nth(g_4, 0i);
+        m_2 := g_3;
+        g_5 := m_2;
+        g_6 := "std::ptr::Unique::<T>::as_ptr"(pty_T0, g_5);
+        m_0 := g_6;
+        goto bb1;
+  bb1:  g_7 := m_0;
+        ret := g_7;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        return
+};
+
+proc "RawVec::<T>::grow_amortized"(pLft_0, pty_T0, self, len, additional) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, g_0);
+        m_2len := len;
+        m_3additional := additional;
+        m_10 := [alloc]({{ "adt", "Option", {{ "usize" }} }});
+        m_21 := [alloc]({{ "tuple", {{ "usize", "bool" }} }});
+        m_28 := [alloc]({{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+  bb0:  g_1 := "<T as std::mem::SizedTypeProperties>::IS_ZST"(pty_T0);
+        m_5 := g_1;
+        g_2 := m_5;
+        goto [g_2] bb1 bb2;
+  bb1:  m_8 := {{ 0i, {{  }} }};
+        g_3 := m_8;
+        m_7 := {{ g_3 }};
+        g_4 := m_7;
+        m_0 := {{ 1i, {{ g_4 }} }};
+        goto bb22;
+  bb2:  m_4 := {{  }};
+        m_11 := m_2len;
+        m_12 := m_3additional;
+        g_5 := m_11;
+        g_6 := m_12;
+        g_7 := "core::num::<impl usize>::checked_add"(g_5, g_6);
+        u := [store_value](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Option", {{ "usize" }} }}, g_7);
+        goto bb3;
+  bb3:  g_9 := [load_discr](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Option", {{ "usize" }} }});
+        g_8 := l-nth(g_9, 0i);
+        m_13 := g_8;
+        g_10 := m_13;
+        goto [(g_10 = 0i)] bb6 sw0;
+  sw0:  goto [(g_10 = 1i)] bb5 sw1;
+  sw1:  goto bb4;
+  bb4:  fail [Unreachable]();
+  bb5:  goto bb7;
+  bb6:  m_17 := {{ 0i, {{  }} }};
+        g_11 := m_17;
+        m_16 := {{ g_11 }};
+        g_12 := m_16;
+        m_0 := {{ 1i, {{ g_12 }} }};
+        goto bb21;
+  bb7:  g_14 := [load_value](l-nth(m_10, 0i), l+ (l-nth(m_10, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ "usize" }} }}, 1i }} }}), "usize", true);
+        g_13 := l-nth(g_14, 0i);
+        m_14x := g_13;
+        m_9required_cap := m_14x;
+        g_16 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_15 := l-nth(g_16, 0i);
+        g_18 := [load_value](l-nth(l-nth(g_15, 0i), 0i), l+ (l-nth(l-nth(g_15, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_17 := l-nth(g_18, 0i);
+        m_20 := g_17;
+        g_19 := "i__binop_checked_mul"(m_20, 2i);
+        u := [store_value](l-nth(m_21, 0i), l-nth(m_21, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_19);
+        g_21 := [load_value](l-nth(m_21, 0i), l+ (l-nth(m_21, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
+        g_20 := l-nth(g_21, 0i);
+        u := "i__lang_assert"((not g_20), "overflow check failed");
+        goto bb8;
+  bb8:  g_23 := [load_value](l-nth(m_21, 0i), l+ (l-nth(m_21, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
+        g_22 := l-nth(g_23, 0i);
+        m_19 := g_22;
+        m_22 := m_9required_cap;
+        g_24 := m_19;
+        g_25 := m_22;
+        g_26 := "std::cmp::max"("usize", g_24, g_25);
+        m_18cap := g_26;
+        goto bb9;
+  bb9:  m_24 := m_18cap;
+        g_27 := "RawVec::<T>::MIN_NON_ZERO_CAP"(pty_T0);
+        g_28 := m_24;
+        g_29 := "std::cmp::max"("usize", g_27, g_28);
+        m_23cap := g_29;
+        goto bb10;
+  bb10: m_26 := m_23cap;
+        g_30 := m_26;
+        g_31 := "std::alloc::Layout::array"(pty_T0, g_30);
+        m_25new_layout := g_31;
+        goto bb11;
+  bb11: g_32 := m_25new_layout;
+        m_29 := g_32;
+        g_34 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_33 := l-nth(g_34, 0i);
+        g_35 := [new_lft]();
+        pLft_5 := l-nth(g_35, 0i);
+        m_31 := l-nth(g_33, 0i);
+        g_36 := m_31;
+        g_37 := "RawVec::<T>::current_memory"(pLft_0, pty_T0, g_36);
+        m_30 := g_37;
+        goto bb12;
+  bb12: g_38 := m_29;
+        g_39 := m_30;
+        g_40 := "finish_grow"(g_38, g_39);
+        u := [store_value](l-nth(m_28, 0i), l-nth(m_28, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, g_40);
+        goto bb13;
+  bb13: g_42 := [load_discr](l-nth(m_28, 0i), l-nth(m_28, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        g_41 := l-nth(g_42, 0i);
+        m_32 := g_41;
+        g_43 := m_32;
+        goto [(g_43 = 0i)] bb15 sw3;
+  sw3:  goto [(g_43 = 1i)] bb16 sw4;
+  sw4:  goto bb14;
+  bb14: fail [Unreachable]();
+  bb15: goto bb17;
+  bb16: g_45 := [load_value](l-nth(m_28, 0i), l+ (l-nth(m_28, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, 1i }} }}), {{ "adt", "TryReserveError", {{  }} }}, false);
+        g_44 := l-nth(g_45, 0i);
+        m_34err := g_44;
+        g_46 := m_34err;
+        m_36 := g_46;
+        g_47 := m_36;
+        m_0 := {{ 1i, {{ g_47 }} }};
+        goto bb21;
+  bb17: g_49 := [load_value](l-nth(m_28, 0i), l+ (l-nth(m_28, 1i), {{ {{ "vf", 0i, {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }}, 0i }} }}), {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, true);
+        g_48 := l-nth(g_49, 0i);
+        m_33ptr := g_48;
+        m_27ptr := m_33ptr;
+        m_40 := m_27ptr;
+        g_50 := m_40;
+        g_51 := "std::ptr::NonNull::<T>::cast"({{ "slice", "u8" }}, pty_T0, g_50);
+        m_39 := g_51;
+        goto bb18;
+  bb18: g_52 := m_39;
+        g_53 := "std::ptr::NonNull::<T>::as_ptr"(pty_T0, g_52);
+        m_38 := g_53;
+        goto bb19;
+  bb19: g_54 := m_38;
+        g_55 := "std::ptr::Unique::<T>::new_unchecked"(pty_T0, g_54);
+        m_37 := g_55;
+        goto bb20;
+  bb20: g_56 := m_37;
+        g_58 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_57 := l-nth(g_58, 0i);
+        u := [store_value](l-nth(l-nth(g_57, 0i), 0i), l+ (l-nth(l-nth(g_57, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), {{ "adt", "Unique", {{ pty_T0 }} }}, g_56);
+        m_41 := m_23cap;
+        g_59 := m_41;
+        g_61 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_60 := l-nth(g_61, 0i);
+        u := [store_value](l-nth(l-nth(g_60, 0i), 0i), l+ (l-nth(l-nth(g_60, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), "usize", g_59);
+        m_42 := {{  }};
+        g_62 := m_42;
+        m_0 := {{ 0i, {{ g_62 }} }};
+        goto bb22;
+  bb21: goto bb22;
+  bb22: g_63 := m_0;
+        ret := g_63;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "adt", "Option", {{ "usize" }} }});
+        u := [free](l-nth(m_21, 0i), l-nth(m_21, 1i), {{ "tuple", {{ "usize", "bool" }} }});
+        u := [free](l-nth(m_28, 0i), l-nth(m_28, 1i), {{ "adt", "Result", {{ {{ "adt", "NonNull", {{ {{ "slice", "u8" }} }} }}, {{ "adt", "TryReserveError", {{  }} }} }} }});
+        return
+};
+
+proc "RawVec::<T>::capacity"(pLft_0, pty_T0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_1 := "<T as std::mem::SizedTypeProperties>::IS_ZST"(pty_T0);
+        m_2 := g_1;
+        g_2 := m_2;
+        goto [g_2] bb1 bb2;
+  bb1:  g_3 := "core::num::<impl usize>::MAX"();
+        m_0 := g_3;
+        goto bb3;
+  bb2:  g_5 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_4 := l-nth(g_5, 0i);
+        g_7 := [load_value](l-nth(g_4, 0i), l+ (l-nth(g_4, 1i), {{ {{ "f", 1i, {{ "adt", "RawVec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_6 := l-nth(g_7, 0i);
+        m_0 := g_6;
+        goto bb3;
+  bb3:  g_8 := m_0;
+        ret := g_8;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        return
+};
+
+proc "RawVec::<T>::reserve_for_push"(pLft_0, pty_T0, self, len) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, g_0);
+        m_2len := len;
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_5 := l-nth(g_3, 0i);
+        m_5 := g_1;
+        m_6 := m_2len;
+        g_4 := m_5;
+        g_5 := m_6;
+        g_6 := "RawVec::<T>::grow_amortized"(pLft_0, pty_T0, g_4, g_5, 1i);
+        m_4 := g_6;
+        goto bb1;
+  bb1:  g_7 := m_4;
+        g_8 := "handle_reserve"(g_7);
+        m_3 := g_8;
+        goto bb2;
+  bb2:  m_0 := {{  }};
+        g_9 := m_0;
+        ret := g_9;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
+        return
+};
+
+proc "RawVec::<T>::with_capacity"(pty_T0, capacity) {
+        m_1capacity := capacity;
+  bb0:  m_2 := m_1capacity;
+        m_3 := {{ 0i, {{  }} }};
+        g_0 := m_2;
+        g_1 := m_3;
+        g_2 := "RawVec::<T>::allocate"(pty_T0, g_0, g_1);
+        m_0 := g_2;
+        goto bb1;
+  bb1:  g_3 := m_0;
+        ret := g_3;
+        goto rlab;
+  rlab: return
+};
+
+proc capacity_overflow() {
+        m_6 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        m_8 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+  bb0:  g_0 := [new_lft]();
+        pLft_23 := l-nth(g_0, 0i);
+        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, null);
+        g_2 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_20 := l-nth(g_3, 0i);
+        u := [store_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, g_1);
+        g_5 := [load_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
+        g_4 := l-nth(g_5, 0i);
+        g_6 := [new_lft]();
+        pLft_18 := l-nth(g_6, 0i);
+        m_5 := g_4;
+        g_7 := m_5;
+        g_8 := [new_lft]();
+        pLft_16 := l-nth(g_8, 0i);
+        m_4 := {{ g_7, 1i }};
+        g_9 := [new_lft]();
+        pLft_17 := l-nth(g_9, 0i);
+        g_10 := m_4;
+        g_11 := "std::fmt::Arguments::<'a>::new_const"(pLft_16, pLft_0, g_10);
+        m_3 := g_11;
+        goto bb1;
+  bb1:  g_12 := [new_lft]();
+        pLft_15 := l-nth(g_12, 0i);
+        g_13 := m_3;
+        g_14 := "std::rt::panic_fmt"(pLft_15, g_13);
+        m_2 := g_14;
+  rlab: u := [free](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        return
+};
+
+proc handle_alloc_error(_layout) {
+        m_1_layout := _layout;
+        m_6 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        m_8 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+  bb0:  g_0 := [new_lft]();
+        pLft_23 := l-nth(g_0, 0i);
+        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, null);
+        g_2 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_20 := l-nth(g_3, 0i);
+        u := [store_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, g_1);
+        g_5 := [load_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
+        g_4 := l-nth(g_5, 0i);
+        g_6 := [new_lft]();
+        pLft_18 := l-nth(g_6, 0i);
+        m_5 := g_4;
+        g_7 := m_5;
+        g_8 := [new_lft]();
+        pLft_16 := l-nth(g_8, 0i);
+        m_4 := {{ g_7, 1i }};
+        g_9 := [new_lft]();
+        pLft_17 := l-nth(g_9, 0i);
+        g_10 := m_4;
+        g_11 := "std::fmt::Arguments::<'a>::new_const"(pLft_16, pLft_0, g_10);
+        m_3 := g_11;
+        goto bb1;
+  bb1:  g_12 := [new_lft]();
+        pLft_15 := l-nth(g_12, 0i);
+        g_13 := m_3;
+        g_14 := "std::rt::panic_fmt"(pLft_15, g_13);
+        m_2 := g_14;
+  rlab: u := [free](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
+        return
+};
+
+proc alloc_guard(alloc_size) {
+        m_1alloc_size := alloc_size;
+  bb0:  g_0 := "core::num::<impl usize>::BITS"();
+        m_2 := (g_0 i< 64i);
+        g_1 := m_2;
+        goto [g_1] bb1 bb5;
+  bb1:  m_4 := m_1alloc_size;
+        g_2 := "core::num::<impl isize>::MAX"();
+        assert (((0i i<=# g_2) /\ (g_2 i<=# 18446744073709551616i)));
+        m_5 := g_2;
+        g_3 := m_4;
+        g_4 := m_5;
+        m_3 := (not (g_3 i<= g_4));
+        g_5 := m_3;
+        goto [g_5] bb2 bb4;
+  bb2:  m_7 := {{ 0i, {{  }} }};
+        g_6 := m_7;
+        g_7 := "std::convert::Into::into"({{ "adt", "TryReserveErrorKind", {{  }} }}, {{ "adt", "TryReserveError", {{  }} }}, g_6);
+        m_6 := g_7;
+        goto bb3;
+  bb3:  g_8 := m_6;
+        m_0 := {{ 1i, {{ g_8 }} }};
+        goto bb6;
+  bb4:  goto bb5;
+  bb5:  m_8 := {{  }};
+        g_9 := m_8;
+        m_0 := {{ 0i, {{ g_9 }} }};
+        goto bb6;
+  bb6:  g_10 := m_0;
+        ret := g_10;
+        goto rlab;
+  rlab: return
+};
+
+spec "Vec::<T>::new"(pty_T0)
+[[ (pty_T0 == #pty_T0) ]]
+[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+normal
+
+proc "Vec::<T>::new"(pty_T0) {
+  bb0:  g_0 := "RawVec::<T>::NEW"(pty_T0);
+        m_0 := {{ g_0, 0i }};
+        g_1 := m_0;
+        ret := g_1;
+        goto rlab;
+  rlab: return
+};
+
+spec "Vec::<T>::with_capacity"(pty_T0, capacity)
+[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity) * (#capacity i<# 9223372036854775808i) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
+[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+normal
+
+proc "Vec::<T>::with_capacity"(pty_T0, capacity) {
+        m_1capacity := capacity;
+  bb0:  m_3 := m_1capacity;
+        g_0 := m_3;
+        g_1 := "RawVec::<T>::with_capacity"(pty_T0, g_0);
+        m_2 := g_1;
+        goto bb1;
+  bb1:  g_2 := m_2;
+        m_0 := {{ g_2, 0i }};
+        g_3 := m_0;
+        ret := g_3;
+        goto rlab;
+  rlab: return
+};
+
+proc "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_5 := l-nth(g_3, 0i);
+        m_2 := {{ l-nth(l-nth(g_1, 0i), 0i), l+ (l-nth(l-nth(g_1, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}) }};
+        g_4 := m_2;
+        g_5 := "RawVec::<T>::ptr"(pLft_5, pty_T0, g_4);
+        m_0 := g_5;
+        goto bb1;
+  bb1:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        return
+};
+
+proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, g_0);
+        m_2value := value;
+        m_18 := [alloc]({{ "tuple", {{ "usize", "bool" }} }});
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_4 := [load_value](l-nth(l-nth(g_1, 0i), 0i), l+ (l-nth(l-nth(g_1, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_3 := l-nth(g_4, 0i);
+        m_5 := g_3;
+        g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_5 := l-nth(g_6, 0i);
+        g_7 := [new_lft]();
+        pLft_11 := l-nth(g_7, 0i);
+        m_7 := {{ l-nth(l-nth(g_5, 0i), 0i), l+ (l-nth(l-nth(g_5, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}) }};
+        g_8 := m_7;
+        g_9 := "RawVec::<T>::capacity"(pLft_11, pty_T0, g_8);
+        m_6 := g_9;
+        goto bb1;
+  bb1:  g_10 := m_5;
+        g_11 := m_6;
+        m_4 := (g_10 = g_11);
+        g_12 := m_4;
+        goto [g_12] bb2 bb4;
+  bb2:  g_14 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_13 := l-nth(g_14, 0i);
+        g_15 := [pcy_alloc]();
+        g_16 := [new_lft]();
+        pLft_12 := l-nth(g_16, 0i);
+        m_9 := {{ {{ l-nth(l-nth(g_13, 0i), 0i), l+ (l-nth(l-nth(g_13, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}) }}, l-nth(g_15, 0i) }};
+        g_18 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_17 := l-nth(g_18, 0i);
+        g_20 := [load_value](l-nth(l-nth(g_17, 0i), 0i), l+ (l-nth(l-nth(g_17, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_19 := l-nth(g_20, 0i);
+        m_10 := g_19;
+        g_21 := m_9;
+        g_22 := m_10;
+        g_23 := "RawVec::<T>::reserve_for_push"(pLft_12, pty_T0, g_21, g_22);
+        m_8 := g_23;
+        goto bb3;
+  bb3:  m_3 := {{  }};
+        goto bb5;
+  bb4:  m_3 := {{  }};
+        goto bb5;
+  bb5:  g_25 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_24 := l-nth(g_25, 0i);
+        g_26 := [new_lft]();
+        pLft_13 := l-nth(g_26, 0i);
+        m_13 := g_24;
+        g_27 := m_13;
+        g_28 := "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, g_27);
+        m_12 := g_28;
+        goto bb6;
+  bb6:  g_30 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_29 := l-nth(g_30, 0i);
+        g_32 := [load_value](l-nth(l-nth(g_29, 0i), 0i), l+ (l-nth(l-nth(g_29, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_31 := l-nth(g_32, 0i);
+        m_14 := g_31;
+        g_33 := m_12;
+        g_34 := m_14;
+        g_35 := "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, g_33, g_34);
+        m_11end := g_35;
+        goto bb7;
+  bb7:  m_16 := m_11end;
+        g_36 := m_2value;
+        m_17 := g_36;
+        g_37 := m_16;
+        g_38 := m_17;
+        g_39 := "std::ptr::write"(pty_T0, g_37, g_38);
+        m_15 := g_39;
+        goto bb8;
+  bb8:  g_41 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_40 := l-nth(g_41, 0i);
+        g_43 := [load_value](l-nth(l-nth(g_40, 0i), 0i), l+ (l-nth(l-nth(g_40, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_42 := l-nth(g_43, 0i);
+        g_44 := "i__binop_checked_add"(g_42, 1i, 18446744073709551615i);
+        u := [store_value](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_44);
+        g_46 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
+        g_45 := l-nth(g_46, 0i);
+        u := "i__lang_assert"((not g_45), "overflow check failed");
+        goto bb9;
+  bb9:  g_48 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
+        g_47 := l-nth(g_48, 0i);
+        g_50 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_49 := l-nth(g_50, 0i);
+        u := [store_value](l-nth(l-nth(g_49, 0i), 0i), l+ (l-nth(l-nth(g_49, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", g_47);
+        g_52 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_51 := l-nth(g_52, 0i);
+        g_53 := [new_lft]();
+        pLft_14 := l-nth(g_53, 0i);
+        m_20 := g_51;
+        g_54 := m_20;
+        g_55 := "<&mut Vec<T> as gilogic::prophecies::Prophecised>::prophecy_auto_update"(pLft_0, pty_T0, g_54);
+        m_19 := g_55;
+        goto bb10;
+  bb10: g_57 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_56 := l-nth(g_57, 0i);
+        g_58 := [new_lft]();
+        pLft_15 := l-nth(g_58, 0i);
+        m_22 := g_56;
+        g_59 := m_22;
+        g_60 := "<&mut Vec<T> as gilogic::prophecies::Prophecised>::prophecy_resolve"(pLft_0, pty_T0, g_59);
+        m_21 := g_60;
+        goto bb11;
+  bb11: m_0 := {{  }};
+        goto bb12;
+  bb12: g_61 := m_0;
+        ret := g_61;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }});
+        return
+};
+
+proc "<&mut Vec<T> as gilogic::prophecies::Prophecised>::prophecy_auto_update"(pLft_a, pty_T0, mut_ref) {
+    sep_assert (<value>(l-nth(l-nth(mut_ref, 0i), 0i), l-nth(l-nth(mut_ref, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #pointee) * "<Vec<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #pointee, #new_repr))[bind: #new_repr];
+    u := [pcy_assign](l-nth(mut_ref, 1i), #new_repr);
+    ret := {{  }};
+    return
+};
+

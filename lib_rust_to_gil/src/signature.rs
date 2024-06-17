@@ -234,7 +234,7 @@ pub fn build_signature<'tcx>(
             global_env.tcx().def_kind(id),
             DefKind::Fn | DefKind::AssocFn
         ),
-        "{:?}",
+        "Cannot build signature for {:?}",
         global_env.tcx().def_kind(id)
     );
     let tcx = global_env.tcx();

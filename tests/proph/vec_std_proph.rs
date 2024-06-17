@@ -8,7 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, specification, lemma, predicate},
+    macros::{assertion, lemma, predicate, specification},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,

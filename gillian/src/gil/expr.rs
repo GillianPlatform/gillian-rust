@@ -767,6 +767,15 @@ impl Expr {
             },
         }
     }
+
+    pub fn fplus(e1: Expr, e2: Expr) -> Self {
+        Expr::BinOp {
+            operator: BinOp::FPlus,
+            left_operand: Box::new(e1),
+            right_operand: Box::new(e2),
+        }
+    }
+
     pub fn minus(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i - j),
@@ -775,6 +784,14 @@ impl Expr {
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
             },
+        }
+    }
+
+    pub fn fminus(e1: Expr, e2: Expr) -> Self {
+        Expr::BinOp {
+            operator: BinOp::FMinus,
+            left_operand: Box::new(e1),
+            right_operand: Box::new(e2),
         }
     }
 

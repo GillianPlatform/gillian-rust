@@ -126,6 +126,7 @@ pub enum BinOp {
     Ne,
     Sub,
     Add,
+    Shl,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -766,7 +767,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let rhs = self.build_expression(*rhs);
                 let op = match op {
                     mir::BinOp::Sub => BinOp::Sub,
-                    _ => todo!(),
+                    mir::BinOp::Shl => BinOp::Shl,
+                    _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 
                 ExprKind::BinOp {
