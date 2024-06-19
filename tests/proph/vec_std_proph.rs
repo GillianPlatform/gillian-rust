@@ -368,14 +368,17 @@ impl<T: Ownable> Vec<T> {
         self.buf.ptr()
     }
 
-    // #[requires(|
-    //     current: <Self as Ownable>::RepresentationTy,
-    //     future: <Self as Ownable>::RepresentationTy,
-    //     v_repr: <T as Ownable>::RepresentationTy|
-    //     self.own((current, future)) *
-    //     (current.len() < 2 << 62) *
-    //     value.own(v_repr))]
-    // #[ensures($future == current.prepend(v_repr)$)]
+    #[specification(
+        forall current, future, v_repr.
+        requires {
+            self.own((current, future)) *
+            (current.len() < 2 << 62) *
+            value.own(v_repr)
+        }
+        ensures {
+            $future == current.prepend(v_repr)$
+        }
+    )]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
