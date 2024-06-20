@@ -141,7 +141,7 @@ module TreeBlock = struct
 
   and tree_content =
     | Structural of structural_content
-    | Layed_out_root of layed_out_content
+    | Laid_out_root of laid_out_content
 
   and structural_content =
     | Fields of t list
@@ -162,12 +162,12 @@ module TreeBlock = struct
         (** Same as above, except that the expression is of type Seq<Option<T>>, were each element
             of the sequence behaves as above.  *)
 
-  and layed_out_content = {
+  and laid_out_content = {
     structural : structural_content option;
     (* None means we need to look at the children *)
     range : Range.t;
     index_ty : Ty.t;
-    children : layed_out_content list option;
+    children : laid_out_content list option;
   }
 
   type outer = { offset : Expr.t; root : t }
@@ -179,10 +179,9 @@ module TreeBlock = struct
 
   let lossless_flatten t =
     match t.content with
-    | Layed_out_root { structural = Some structural; children = None; _ } ->
+    | Laid_out_root { structural = Some structural; children = None; _ } ->
         { content = Structural structural; ty = t.ty }
-    | Layed_out_root { children = Some children; structural; range; index_ty }
-      ->
+    | Laid_out_root { children = Some children; structural; range; index_ty } ->
         let rec aux ({ children; _ } as child) =
           match children with
           | None -> Seq.return child
@@ -193,13 +192,13 @@ module TreeBlock = struct
         in
         {
           content =
-            Layed_out_root
+            Laid_out_root
               { children = Some children; structural; range; index_ty };
           ty = t.ty;
         }
     | _ -> t
 
-  let offset_layed_out ~by lc =
+  let offset_laid_out ~by lc =
     if Expr.is_concrete_zero_i by then lc
     else map_lc_ranges ~f:(Range.offset ~by) lc
 
@@ -225,12 +224,12 @@ module TreeBlock = struct
 
   let rec lvars { content; ty } =
     let open Gillian.Utils.Containers in
-    let rec lvars_layed_out { structural; range; children; index_ty } =
+    let rec lvars_laid_out { structural; range; children; index_ty } =
       let lvars_children =
         Option.fold ~none:SS.empty
           ~some:(fun l ->
             List.fold_left
-              (fun acc l -> SS.union acc (lvars_layed_out l))
+              (fun acc l -> SS.union acc (lvars_laid_out l))
               SS.empty l)
           children
       in
@@ -246,7 +245,7 @@ module TreeBlock = struct
     in
     let lvars_content = function
       | Structural structure -> lvars_structural structure
-      | Layed_out_root root -> lvars_layed_out root
+      | Laid_out_root root -> lvars_laid_out root
     in
     SS.union (Ty.lvars ty) (lvars_content content)
 
@@ -266,13 +265,13 @@ module TreeBlock = struct
   let rec missing_qty t : Qty.t option =
     match t.content with
     | Structural Missing -> Some Totally
-    | Layed_out_root { structural = None; children; _ } ->
+    | Laid_out_root { structural = None; children; _ } ->
         let qtys =
           Option.get_or ~msg:"Lazy without children" children
           |> List.map (fun l ->
                  missing_qty
                    {
-                     content = Layed_out_root l;
+                     content = Laid_out_root l;
                      ty = Ty.Unresolved (Expr.lit Null);
                      (* Type is not relevant to quantity *)
                    })
@@ -291,7 +290,7 @@ module TreeBlock = struct
         then Some Totally
         else if List.exists Option.is_some qtys then Some Partially
         else None
-    | Layed_out_root { structural = Some structural; _ } ->
+    | Laid_out_root { structural = Some structural; _ } ->
         missing_qty { ty = t.ty; content = Structural structural }
     | Structural (Array fields | Fields fields | Enum { fields; _ }) -> (
         let qtys = List.map missing_qty fields in
@@ -325,7 +324,7 @@ module TreeBlock = struct
         List.exists partially_missing fields
     | Structural
         (Symbolic _ | Uninit | ManySymbolicMaybeUninit _ | SymbolicMaybeUninit _)
-    | Layed_out_root _ -> false
+    | Laid_out_root _ -> false
 
   let missing ty = { ty; content = Structural Missing }
 
@@ -334,7 +333,7 @@ module TreeBlock = struct
 
   and pp_content ft = function
     | Structural s -> pp_structural ft s
-    | Layed_out_root root -> pp_layed_out ft root
+    | Laid_out_root root -> pp_laid_out ft root
 
   and pp_structural ft =
     let open Fmt in
@@ -349,7 +348,7 @@ module TreeBlock = struct
     | Uninit -> string ft "UNINIT"
     | Missing -> string ft "MISSING"
 
-  and pp_layed_out ft { structural; range; children; index_ty } =
+  and pp_laid_out ft { structural; range; children; index_ty } =
     let open Fmt in
     pf ft "INDEXED BY %a <== %a = %a" Ty.pp index_ty Range.pp range
       (Dump.option pp_structural)
@@ -358,7 +357,7 @@ module TreeBlock = struct
     | None -> ()
     | Some children ->
         pf ft "WITH CHILDREN:@ @[<v>%a@]"
-          (list ~sep:(any "@\n") pp_layed_out)
+          (list ~sep:(any "@\n") pp_laid_out)
           children
 
   let pp_outer ft t =
@@ -455,7 +454,7 @@ module TreeBlock = struct
       | None, None -> Fmt.failwith "malformed tree: lazy with no children"
     in
     match block.content with
-    | Layed_out_root lc ->
+    | Laid_out_root lc ->
         of_lc ~lk ~expected_ty ~current_proj ~node_ty:block.ty lc
     | Structural structural when Ty.equal expected_ty block.ty ->
         of_structural ~lk ~ty:block.ty ~current_proj structural
@@ -475,10 +474,10 @@ module TreeBlock = struct
   (* Converts to a value only if there is no doubt that it can be done. *)
   let rec to_rust_value_exn t =
     match t.content with
-    | Layed_out_root { structural = Some structural; _ } ->
+    | Laid_out_root { structural = Some structural; _ } ->
         to_rust_value_exn { content = Structural structural; ty = t.ty }
-    | Layed_out_root { structural = None; _ } ->
-        Fmt.failwith "to_rust_value_exn: layed_out with None structural"
+    | Laid_out_root { structural = None; _ } ->
+        Fmt.failwith "to_rust_value_exn: laid_out with None structural"
     | Structural structural -> (
         match structural with
         | Fields elements | Array elements ->
@@ -535,7 +534,7 @@ module TreeBlock = struct
           (Expr.EList l, lk)
       | _ -> Fmt.failwith "obtained %a for many_maybe_uninits" pp t
     in
-    let rec of_layed_out
+    let rec of_laid_out
         ~lk
         ~node_ty
         { structural; range = _; children; index_ty = _ } =
@@ -546,13 +545,13 @@ module TreeBlock = struct
             Option.get_or ~msg:"malformed: lazy without chidlren" children
           in
           let++ children, lk =
-            all ~lk (fun ~lk l -> of_layed_out ~lk ~node_ty:ty l) [] children
+            all ~lk (fun ~lk l -> of_laid_out ~lk ~node_ty:ty l) [] children
           in
           (Expr.NOp (LstCat, children), lk)
     in
     match t.content with
     | Structural s -> of_structural ~lk ~node_ty:t.ty s
-    | Layed_out_root lc -> of_layed_out ~lk ~node_ty:t.ty lc
+    | Laid_out_root lc -> of_laid_out ~lk ~node_ty:t.ty lc
 
   let assertions ~loc ~base_offset block =
     let value_cp = Actions.cp_to_name Value in
@@ -572,7 +571,7 @@ module TreeBlock = struct
       | Some value -> Seq.return (Asrt.GA (value_cp, ins ty, [ value ]))
       | None -> (
           match content with
-          | Layed_out_root { structural; children; range; index_ty } -> (
+          | Laid_out_root { structural; children; range; index_ty } -> (
               match (structural, children) with
               | Some structural, None ->
                   let current_proj =
@@ -583,7 +582,7 @@ module TreeBlock = struct
               | _, Some children ->
                   List.to_seq children
                   |> Seq.concat_map (fun k ->
-                         aux ~current_proj { content = Layed_out_root k; ty })
+                         aux ~current_proj { content = Laid_out_root k; ty })
               | None, None ->
                   Fmt.failwith "malformed tree! Lazy without children")
           | Structural Uninit -> Seq.return (Asrt.GA (uninit_cp, ins ty, []))
@@ -899,7 +898,7 @@ module TreeBlock = struct
                     index_ty;
                   }
                 in
-                let node = { content = Layed_out_root lc; ty = node_ty } in
+                let node = { content = Laid_out_root lc; ty = node_ty } in
                 Delayed.return (node, lk)
             | `Right (left, right) ->
                 let left_child =
@@ -926,7 +925,7 @@ module TreeBlock = struct
                     index_ty;
                   }
                 in
-                let node = { content = Layed_out_root lc; ty = node_ty } in
+                let node = { content = Laid_out_root lc; ty = node_ty } in
                 Delayed.return (node, lk)
             | `Three (left, mid, right) ->
                 let left_child =
@@ -962,7 +961,7 @@ module TreeBlock = struct
                     index_ty;
                   }
                 in
-                let node = { content = Layed_out_root lc; ty = node_ty } in
+                let node = { content = Laid_out_root lc; ty = node_ty } in
                 Delayed.return (node, lk))
         | _range ->
             Fmt.failwith
@@ -994,7 +993,7 @@ module TreeBlock = struct
               index_ty;
             }
           in
-          let node = { content = Layed_out_root lc; ty = node_ty } in
+          let node = { content = Laid_out_root lc; ty = node_ty } in
           Delayed.return (node, lk)
         else
           if%sat Formula.Infix.((snd range) #== end_as_index) then
@@ -1023,7 +1022,7 @@ module TreeBlock = struct
                 index_ty;
               }
             in
-            let node = { content = Layed_out_root lc; ty = node_ty } in
+            let node = { content = Laid_out_root lc; ty = node_ty } in
             Delayed.return (node, lk)
           else
             let left_child =
@@ -1059,7 +1058,7 @@ module TreeBlock = struct
                 index_ty;
               }
             in
-            let node = { content = Layed_out_root lc; ty = node_ty } in
+            let node = { content = Laid_out_root lc; ty = node_ty } in
             Delayed.return (node, lk)
     | ManySymbolicMaybeUninit e ->
         let value_ty, length =
@@ -1103,7 +1102,7 @@ module TreeBlock = struct
               index_ty;
             }
           in
-          let node = { content = Layed_out_root lc; ty = node_ty } in
+          let node = { content = Laid_out_root lc; ty = node_ty } in
           Delayed.return (node, lk)
         else
           if%sat Formula.Infix.((snd range) #== end_as_index) then
@@ -1146,7 +1145,7 @@ module TreeBlock = struct
                 index_ty;
               }
             in
-            let node = { content = Layed_out_root lc; ty = node_ty } in
+            let node = { content = Laid_out_root lc; ty = node_ty } in
             Delayed.return (node, lk)
           else
             let* (left_end, mid_end), lk =
@@ -1196,31 +1195,31 @@ module TreeBlock = struct
                 index_ty;
               }
             in
-            let node = { content = Layed_out_root lc; ty = node_ty } in
+            let node = { content = Laid_out_root lc; ty = node_ty } in
             Delayed.return (node, lk)
     | _ ->
         Fmt.failwith
           "Not implemented yet: extracting range from structural %a of type %a"
           pp_structural structural Ty.pp node_ty
 
-  let as_layed_out_child ~lk ~range ~index_ty t =
+  let as_laid_out_child ~lk ~range ~index_ty t =
     match t.content with
-    | Layed_out_root root' ->
+    | Laid_out_root root' ->
         let+ root, lk = reinterpret_lc_ranges ~lk ~to_ty:index_ty root' in
-        let child = offset_layed_out ~by:(fst range) root in
+        let child = offset_laid_out ~by:(fst range) root in
         (child, lk)
     | Structural structural ->
         Delayed.return
           ( { structural = Some structural; range; children = None; index_ty },
             lk )
 
-  let rec extract_layed_out_and_apply
+  let rec extract_laid_out_and_apply
       ~lk
       ~(return_and_update : t -> lk:LK.t -> ('a * LK.t, Err.t) DR.t)
       ~range
       ~node_ty
       lc =
-    Logging.verbose (fun m -> m "Inside extract_layed_out_and_apply");
+    Logging.verbose (fun m -> m "Inside extract_laid_out_and_apply");
     Logging.verbose (fun m ->
         m "Range we're looking for: %a, range we're in: %a" Range.pp range
           Range.pp lc.range);
@@ -1229,18 +1228,18 @@ module TreeBlock = struct
       let offset = fst range in
       (* we return a relative lc *)
       let this_tree =
-        let lc_absolute = offset_layed_out ~by:Expr.Infix.(~-offset) lc in
-        { content = Layed_out_root lc_absolute; ty = node_ty }
+        let lc_absolute = offset_laid_out ~by:Expr.Infix.(~-offset) lc in
+        { content = Laid_out_root lc_absolute; ty = node_ty }
         |> lossless_flatten
       in
       let** (value, new_tree), lk = return_and_update ~lk this_tree in
       Logging.verbose (fun m ->
-          m "calling as_layed_out_child on %a with range: %a index_ty: %a" pp
+          m "calling as_laid_out_child on %a with range: %a index_ty: %a" pp
             new_tree Range.pp range Ty.pp lc.index_ty);
       let+ lc, lk =
-        as_layed_out_child ~lk ~range ~index_ty:lc.index_ty new_tree
+        as_laid_out_child ~lk ~range ~index_ty:lc.index_ty new_tree
       in
-      Logging.verbose (fun m -> m "Obtained %a" pp_layed_out lc);
+      Logging.verbose (fun m -> m "Obtained %a" pp_laid_out lc);
       Ok ((value, lc), lk))
     else
       match (lc.structural, lc.children) with
@@ -1262,8 +1261,7 @@ module TreeBlock = struct
               ~range:rel_range new_node
           in
           let+ lc, lk =
-            as_layed_out_child ~lk ~range:lc.range ~index_ty:lc.index_ty
-              new_tree
+            as_laid_out_child ~lk ~range:lc.range ~index_ty:lc.index_ty new_tree
           in
           Ok ((value, lc), lk)
       | _, Some children ->
@@ -1278,7 +1276,7 @@ module TreeBlock = struct
                   if%sat Formula.Infix.((snd range) #<= (snd child.range)) then
                     (* left is necessarily inside the range otherwise the start wouldn't be none. *)
                     let++ (value, child), lk =
-                      extract_layed_out_and_apply ~lk ~return_and_update ~range
+                      extract_laid_out_and_apply ~lk ~return_and_update ~range
                         ~node_ty:child.index_ty child
                     in
                     ((value, List.rev_append passed (child :: rest)), lk)
@@ -1308,7 +1306,7 @@ module TreeBlock = struct
                       Ty.array lc.index_ty Expr.Infix.(end_range - start_range)
                     in
                     let++ (value, child), lk =
-                      extract_layed_out_and_apply ~lk ~return_and_update ~range
+                      extract_laid_out_and_apply ~lk ~return_and_update ~range
                         ~node_ty:ty lc
                     in
                     ((value, List.rev_append passed (child :: rest)), lk)
@@ -1350,16 +1348,16 @@ module TreeBlock = struct
             extract_range_structural ~lk ~index_ty ~range ~node_ty:t.ty s
           in
           extract_and_apply ~lk ~return_and_update ~range ~index_ty new_node
-    | Layed_out_root lc ->
+    | Laid_out_root lc ->
         let* range', lk =
           Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
         in
         let++ (value, lc), lk =
-          extract_layed_out_and_apply ~lk ~return_and_update ~range:range'
+          extract_laid_out_and_apply ~lk ~return_and_update ~range:range'
             ~node_ty:t.ty lc
         in
         let new_tree =
-          { content = Layed_out_root lc; ty = t.ty } |> lossless_flatten
+          { content = Laid_out_root lc; ty = t.ty } |> lossless_flatten
         in
         ((value, new_tree), lk)
 
@@ -1405,7 +1403,7 @@ module TreeBlock = struct
             }
           in
           let new_tree =
-            { content = Layed_out_root lc; ty = Ty.array index_ty (snd range) }
+            { content = Laid_out_root lc; ty = Ty.array index_ty (snd range) }
           in
           Delayed.return (new_tree, lk)
       | _ ->
@@ -1844,7 +1842,7 @@ module TreeBlock = struct
           let++ fields = DR_list.map substitution fields in
           Enum { fields; discr }
       | Uninit | Missing -> DR.ok t
-    and substitute_layed_out ~ty { structural; children; range; index_ty } =
+    and substitute_laid_out ~ty { structural; children; range; index_ty } =
       let range = Range.substitute ~subst_expr range in
       let index_ty = Ty.substitution ~subst_expr index_ty in
       let** structural =
@@ -1861,7 +1859,7 @@ module TreeBlock = struct
               DR_list.map
                 (fun l ->
                   let ty = Ty.substitution ~subst_expr ty in
-                  substitute_layed_out ~ty l)
+                  substitute_laid_out ~ty l)
                 children
             in
             Some children
@@ -1874,9 +1872,9 @@ module TreeBlock = struct
       | Structural s ->
           let++ s = substitute_structural ~ty s in
           { ty; content = Structural s }
-      | Layed_out_root lc ->
-          let++ lc = substitute_layed_out ~ty lc in
-          let content = Layed_out_root lc in
+      | Laid_out_root lc ->
+          let++ lc = substitute_laid_out ~ty lc in
+          let content = Laid_out_root lc in
           { content; ty }
     in
     substitution t
