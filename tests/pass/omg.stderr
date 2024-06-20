@@ -1,33 +1,43 @@
-"wp_ref_mut_xy::<T>"(pLft_a, pty_T0, #p, #x, #y) 
- 
- "<&mut T as gilogic::Ownable>::own"(pLft_a, pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }})
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: fields `x` and `y` are never read
+  --> ../tests/pass/omg.rs:10:5
+   |
+9  | struct WP<T> {
+   |        -- fields in this struct
+10 |     x: *mut N<T>,
+   |     ^
+11 |     y: *mut N<T>,
+   |     ^
+   |
+   = note: `#[warn(dead_code)]` on by default
 
+warning: fields `v` and `o` are never read
+  --> ../tests/pass/omg.rs:15:5
+   |
+14 | struct N<T> {
+   |        - fields in this struct
+15 |     v: T,
+   |     ^
+16 |     o: *mut N<T>,
+   |     ^
 
-params: [PVar("pLft_a"), PVar("pty_T0"), EList([BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }])]
-"wp_ref_mut_xy::<T>"(pLft_a, pty_T0, #p, #x, #y) 
- 
- "<&mut T as gilogic::Ownable>::own"(pLft_a, pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }})
+warning: variable `REFERENCE` should have a snake case name
+  --> ../tests/pass/omg.rs:51:12
+   |
+51 |     fn own(self) {
+   |            ^^^^ help: convert the identifier to snake case: `reference`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
 
+warning: 3 warnings emitted
 
-params: [PVar("pLft_a"), PVar("pty_T0"), EList([BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }])]
-DefId(0:54 ~ omg[b96b]::{impl#0}::new)
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-DefId(0:58 ~ omg[b96b]::{impl#0}::assign_first)
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[2024-04-24T13:46:24Z WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-DefId(0:63 ~ omg[b96b]::{impl#0}::first_mut)
-DefId(0:69 ~ omg[b96b]::{impl#0}::second_mut)
-adding spec for WP::<T>::second_mut
-adding spec for freeze_xy::<T>
-adding spec for extract_x::<T>
-adding spec for extract_y::<T>
-adding spec for WP::<T>::new
-adding spec for WP::<T>::assign_first
-adding spec for WP::<T>::first_mut
-[2024-04-24T13:46:24Z DEBUG rust_to_gil] Correct!
+[TIMESTAMP DEBUG rust_to_gil] Correct!

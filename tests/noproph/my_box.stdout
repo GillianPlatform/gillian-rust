@@ -2,7 +2,7 @@
 {"MyBox":["Struct","ReprRust",[["ptr",["Ptr",{"mut":true,"ty":["Param",0]}]]]]}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "<MyBox<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   (#self == {{ #ptr }}) * <value>(l-nth(#ptr, 0i), l-nth(#ptr, 1i), pty_T0; #v)
