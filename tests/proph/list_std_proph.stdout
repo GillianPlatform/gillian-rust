@@ -2,7 +2,7 @@
 {"Box":["Struct","ReprRust",[["0",["Adt",["Unique",[["Param",0]]]]],["1",["Param",1]]]],"Global":["Struct","ReprRust",[]],"LinkedList":["Struct","ReprRust",[["head",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["tail",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["len",["Scalar","usize"]],["marker",["Adt",["PhantomData",[["Adt",["Box",[["Adt",["Node",[["Param",0]]]],["Adt",["Global",[]]]]]]]]]]]],"Node":["Struct","ReprRust",[["next",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["prev",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["element",["Param",0]]]],"NonNull":["Struct","ReprRust",[["pointer",["Ptr",{"mut":false,"ty":["Param",0]}]]]],"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]],"PhantomData":["Struct","ReprRust",[]],"Unique":["Struct","ReprRust",[["pointer",["Adt",["NonNull",[["Param",0]]]]],["_marker",["Adt",["PhantomData",[["Param",0]]]]]]]}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
 axiomatic spec "<&mut LinkedList<T> as gilogic::prophecies::Prophecised>::prophecy_resolve"(lft, pty_T0, mut_ref)
 [[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(lft, pty_T0, mut_ref, {{ #current, #future }}) ]]
@@ -58,13 +58,17 @@ pred "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +
   * (self == #self);
 
 
-pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, +model):
+pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
   * (self == #self), (#self == {{ 1i, {{ #ax }} }})
   * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #ax, #repr)
   * (#model == {{ 1i, {{ #repr }} }})
   * (model == #model)
   * (self == #self);
+
+
+pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
+  (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
 
 
 pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>"(+pLft_a, +pty_T0, +this):

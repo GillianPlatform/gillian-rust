@@ -17,11 +17,11 @@ pub fn imports(prophecy_mode: bool) -> Vec<Import> {
         import!("i__prophecies.gil"),
     ];
     if prophecy_mode {
-        ret.push(import!("i__ownable_pcy.gil"));
+        // ret.push(import!("i__ownable_pcy.gil"));
         ret.push(import!("i__std_shims_pcy.gil"));
         ret.push(import!("i__lang_pcy.gil"))
     } else {
-        ret.push(import!("i__ownable.gil"));
+        // ret.push(import!("i__ownable.gil"));
         ret.push(import!("i__std_shims_no_pcy.gil"));
         ret.push(import!("i__lang_no_pcy.gil"));
     }

@@ -2,7 +2,7 @@
 {"N":["Struct","ReprRust",[["v",["Param",0]],["o",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]],"WP":["Struct","ReprRust",[["x",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]],["y",["Ptr",{"mut":true,"ty":["Adt",["N",[["Param",0]]]]}]]]]}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "wp::<T>"(+pty_T0, +wp, x, y):
   (#wp == {{ #x, #y }})
@@ -86,6 +86,10 @@ pred "<&mut WP<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self);
 guard: <lft>(pLft_erased; true);
+
+pred "<() as gilogic::Ownable>::own"(+self):
+  (#self == {{  }}) * (self == #self);
+
 
 pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
   "wp::<T>"(pty_T0, #SELF, #x, #y)

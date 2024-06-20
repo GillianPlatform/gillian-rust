@@ -68,7 +68,7 @@ macro_rules! from_lit {
 
 from_lit!(
     Literal, &str, String, bool, f32, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128,
-    isize
+    isize, BigInt
 );
 
 macro_rules! from_array {

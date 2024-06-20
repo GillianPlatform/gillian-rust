@@ -1,4 +1,24 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP TRACE lib_rtg::codegen::body] Compiling swap_borrows, defkind: Fn
+[TIMESTAMP TRACE lib_rtg::codegen::body] fn swap_borrows(_1: &mut i32, _2: &mut i32) -> (&mut i32, &mut i32) {
+        debug x => _1;
+        debug y => _2;
+        let mut _0: (&mut i32, &mut i32);
+        let mut _3: &mut i32;
+        let mut _4: &mut i32;
+    
+        bb0: {
+            StorageLive(_3);
+            _3 = &mut (*_2);
+            StorageLive(_4);
+            _4 = &mut (*_1);
+            _0 = (move _3, move _4);
+            StorageDead(_4);
+            StorageDead(_3);
+            return;
+        }
+    }
+    
 warning: unused variable: `y`
   --> ../tests/multiple_lifetimes/simple.rs:13:33
    |
@@ -7,12 +27,80 @@ warning: unused variable: `y`
    |
    = note: `#[warn(unused_variables)]` on by default
 
+[TIMESTAMP TRACE lib_rtg::codegen::body] Compiling fst, defkind: Fn
+[TIMESTAMP TRACE lib_rtg::codegen::body] fn fst(_1: &mut i32, _2: &mut i32) -> &mut i32 {
+        debug x => _1;
+        debug y => _2;
+        let mut _0: &mut i32;
+        let mut _3: &mut i32;
+    
+        bb0: {
+            StorageLive(_3);
+            _3 = &mut (*_1);
+            _0 = &mut (*_3);
+            StorageDead(_3);
+            return;
+        }
+    }
+    
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
 warning: unused variable: `x`
   --> ../tests/multiple_lifetimes/simple.rs:19:16
    |
 19 | fn snd<'a, 'b>(x : &'a mut i32, y: &'b mut i32) -> &'b mut i32 {
    |                ^ help: if this is intentional, prefix it with an underscore: `_x`
 
+[TIMESTAMP TRACE lib_rtg::codegen::body] Compiling snd, defkind: Fn
+[TIMESTAMP TRACE lib_rtg::codegen::body] fn snd(_1: &mut i32, _2: &mut i32) -> &mut i32 {
+        debug x => _1;
+        debug y => _2;
+        let mut _0: &mut i32;
+        let mut _3: &mut i32;
+    
+        bb0: {
+            StorageLive(_3);
+            _3 = &mut (*_2);
+            _0 = &mut (*_3);
+            StorageDead(_3);
+            return;
+        }
+    }
+    
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::global_env::auto_items] About to monomorphize predicate : "<&mut i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::global_env::genv] Found predicate in metadata: Predicate { disjuncts: [([("v", T/#1)], Assert { kind: Star { left: Assert { kind: PointsTo { src: Expr { kind: Var { id: "self" }, ty: &'{erased} mut T/#1 }, tgt: Expr { kind: Var { id: "v" }, ty: T/#1 } } }, right: Assert { kind: Call { def_id: DefId(20:152 ~ gilogic[8453]::ownable::Ownable::own), substs: [T/#1], args: [Expr { kind: Var { id: "v" }, ty: T/#1 }] } } } })] }
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for "<i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::logic::traits] Resolving candidate for trait "gilogic::Ownable"
+[TIMESTAMP TRACE lib_rtg::global_env::auto_items] About to monomorphize predicate : "<i32 as gilogic::Ownable>::own"
+[TIMESTAMP TRACE lib_rtg::global_env::genv] Found predicate in metadata: Predicate { disjuncts: [([], Assert { kind: Star { left: Assert { kind: Formula { formula: Formula { bound_vars: [], body: EOp { left: Expr { kind: Integer { value: EncDeBigInt(-2147483648) }, ty: i32 }, op: Le, right: Expr { kind: Var { id: "self" }, ty: i32 } } } } }, right: Assert { kind: Formula { formula: Formula { bound_vars: [], body: EOp { left: Expr { kind: Var { id: "self" }, ty: i32 }, op: Le, right: Expr { kind: Integer { value: EncDeBigInt(2147483647) }, ty: i32 } } } } } } })] }
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:9 ~ simple[d6ea]::fst_spec_2e7d5825_ce03_4ad3_a2f9_d3783093b557)
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:12 ~ simple[d6ea]::fst_spec_2e7d5825_ce03_4ad3_a2f9_d3783093b557::{closure#0})
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:13 ~ simple[d6ea]::fst_spec_2e7d5825_ce03_4ad3_a2f9_d3783093b557::{closure#0}::{closure#0})
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:17 ~ simple[d6ea]::snd_spec_c383567f_a999_4c01_8c01_fc1cf6496906)
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:20 ~ simple[d6ea]::snd_spec_c383567f_a999_4c01_8c01_fc1cf6496906::{closure#0})
+[TIMESTAMP TRACE lib_rtg::utils::cleanup_logic] replacing function body for DefId(0:21 ~ simple[d6ea]::snd_spec_c383567f_a999_4c01_8c01_fc1cf6496906::{closure#0}::{closure#0})
 warning: function `swap_borrows` is never used
  --> ../tests/multiple_lifetimes/simple.rs:8:4
   |

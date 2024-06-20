@@ -1,3 +1,4 @@
+use num_bigint::BigInt;
 use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -7,12 +8,46 @@ use rustc_middle::{
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::logic::predicate::fn_args_and_tys;
 
 use super::builtins::LogicStubs;
+
+#[derive(Debug, Clone)]
+pub struct EncDeBigInt(pub BigInt);
+
+impl<I: Into<BigInt>> From<I> for EncDeBigInt {
+    fn from(i: I) -> Self {
+        EncDeBigInt(i.into())
+    }
+}
+
+const BIGINT_SENTINEL: u8 = 0;
+
+impl<S: Encoder> Encodable<S> for EncDeBigInt {
+    fn encode(&self, s: &mut S) {
+        let bytes = self.0.to_signed_bytes_le();
+        s.emit_usize(bytes.len());
+        s.emit_raw_bytes(bytes.as_slice());
+        // The last element of an array of bytes in little-endian form
+        // cannot be 0. So we add a 0 to check for syn, as done with STR_SENTIEL
+        // in the rustc implementation for strings.
+        s.emit_u8(BIGINT_SENTINEL);
+    }
+}
+
+impl<D: Decoder> Decodable<D> for EncDeBigInt {
+    fn decode(d: &mut D) -> Self {
+        let len = d.read_usize();
+        let bytes = d.read_raw_bytes(len + 1);
+        assert!(bytes[len] == BIGINT_SENTINEL);
+        let bigint = BigInt::from_signed_bytes_le(&bytes[..len]);
+        EncDeBigInt(bigint)
+    }
+}
 
 /// Pure logical terms, must have no spatial or resource component.
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -44,7 +79,9 @@ pub enum ExprKind<'tcx> {
         id: Symbol,
     },
     Integer {
-        value: u64,
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        value: EncDeBigInt,
     },
     // Unclear whether this is worth distinguishing in the AST or just delegating this to the backend
     SeqNil,
@@ -640,13 +677,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let i = sci
                     .try_to_int(sci.size())
                     .expect("Cannot fail because we chose the right size");
-                ExprKind::Integer { value: i as u64 }
+                ExprKind::Integer { value: i.into() }
             }
             (ConstValue::Scalar(Scalar::Int(sci)), TyKind::Uint(..)) => {
                 let i = sci
                     .try_to_uint(sci.size())
                     .expect("Cannot fail because we chose the right size");
-                ExprKind::Integer { value: i as u64 }
+                ExprKind::Integer { value: i.into() }
             }
             _ => self
                 .tcx
@@ -743,7 +780,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             }
             thir::ExprKind::Literal { lit, neg: false } => match lit.node {
                 LitKind::Int(i, _) => ExprKind::Integer {
-                    value: i.get() as u64,
+                    value: i.get().into(),
                 },
                 _ => self
                     .tcx

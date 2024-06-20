@@ -2,10 +2,15 @@
 {}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "<MyInt as gilogic::Ownable>::own"(+self):
   (0i i<=# l-nth(#self, 0i)) * (l-nth(#self, 0i) i<=# 10i) * (self == #self);
+
+
+pred "<u32 as gilogic::Ownable>::own"(+self):
+  (0i i<=# #self) * (#self i<=# 4294967295i) * types(#self: Int)
+  * (self == #self);
 
 
 pred "<std::option::Option<MyInt> as gilogic::Ownable>::own"(+self):

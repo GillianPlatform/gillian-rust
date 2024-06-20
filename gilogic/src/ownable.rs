@@ -1,8 +1,8 @@
-use crate::RustAssertion;
 #[allow(unused_imports)]
 use crate as gilogic;
 #[allow(unused_imports)]
 use crate::macros::*;
+use crate::RustAssertion;
 
 macro_rules! unreachable {
     ($x:expr) => {
@@ -30,28 +30,30 @@ pub trait Ownable {
     }
 }
 
-macro_rules! stubbed_ownable {
+macro_rules! int_ownable {
     ($t:ty) => {
         impl Ownable for $t {
 
+            #[cfg(gillian)]
+            #[gillian::decl::predicate]
+            #[gillian::decl::pred_ins = "0"]
             fn own(self) -> RustAssertion {
-                unreachable!("Implemented in GIL")
+                gilogic::__stubs::defs([assertion!(($t::MIN <= self) * (self <= $t::MAX))])
             }
+
+            #[cfg(not(gillian))]
+            fn own(self) -> RustAssertion {
+                unreachable!("")
+            }
+
         }
     };
 
     ($t:ty, $($ts:ty),+) => {
-        stubbed_ownable!($t);
-        stubbed_ownable!($($ts),+);
+        int_ownable!($t);
+        int_ownable!($($ts),+);
     };
 }
-
-// impl<T : Ownable> &mut  T {
-//     #[borrow]
-//     fn mut_ref_inner(self) -> RustAssertion {
-//         assertion!(|v| (self -> v) * v.own())
-//     }
-// }
 
 impl<T: Ownable> Ownable for &mut T {
     #[cfg(gillian)]
@@ -60,7 +62,6 @@ impl<T: Ownable> Ownable for &mut T {
     #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
         gilogic::__stubs::defs([assertion!(|v| (self -> v) * v.own())])
-        // gilogic::__stubs::defs([|v| (this -> v) * v.own()])
     }
 
     #[cfg(not(gillian))]
@@ -70,7 +71,7 @@ impl<T: Ownable> Ownable for &mut T {
     }
 }
 
-stubbed_ownable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+int_ownable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     #[cfg(gillian)]
@@ -104,13 +105,29 @@ impl<T: Ownable> Ownable for Option<T> {
 }
 
 impl<T: Ownable> Ownable for Box<T> {
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
+        gilogic::__stubs::defs([assertion!(|v| (self -> v) * v.own())])
+    }
+
+    #[cfg(not(gillian))]
+    fn own(self) -> RustAssertion {
+        unreachable!("")
     }
 }
 
 impl Ownable for () {
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
+        gilogic::__stubs::defs([assertion!((self == ()))])
+    }
+
+    #[cfg(not(gillian))]
+    fn own(self) -> RustAssertion {
+        unreachable!("")
     }
 }
