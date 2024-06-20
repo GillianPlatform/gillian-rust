@@ -2,7 +2,7 @@
 {}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "<&mut i32 as gilogic::Ownable>::own"(+pLft_erased, +self):
   <value>(l-nth(#self, 0i), l-nth(#self, 1i), "i32"; #v)

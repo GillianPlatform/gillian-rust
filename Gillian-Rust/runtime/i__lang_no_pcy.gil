@@ -1,0 +1,10 @@
+#internal
+
+(* In type-checking mode, assert panics in case of failure.
+   A panic has type -> !, and so here means vanishing. *)
+proc i__lang_assert(b, msg) {
+        goto [b] ctn err;
+  ctn:  ret := undefined;
+        return;
+  err:  assume (False)
+};

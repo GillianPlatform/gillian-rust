@@ -1,10 +1,7 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{
-    macros::{ *},
-    Ownable,
-};
+use gilogic::{macros::*, Ownable};
 
 struct MyInt(u32);
 
@@ -16,6 +13,7 @@ impl Ownable for MyInt {
 }
 
 impl MyInt {
+    #[show_safety]
     fn new(x: u32) -> Option<Self> {
         if x > 10 {
             None

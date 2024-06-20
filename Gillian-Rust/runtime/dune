@@ -5,6 +5,8 @@
  (files
   i__binop.gil
   i__lang.gil
+  i__lang_pcy.gil
+  i__lang_no_pcy.gil
   i__std_shims.gil
   i__ownable.gil
   i__ownable_pcy.gil

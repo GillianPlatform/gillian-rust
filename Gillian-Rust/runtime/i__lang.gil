@@ -1,13 +1,5 @@
 #internal
 
-proc i__lang_assert(b, msg) {
-        goto [b] ctn err;
-  ctn:  ret := undefined;
-        return;
-  err:  u := [check_obs_sat]();
-        fail[ASSERT](msg)
-};
-
 proc i__bool_of_lang_int(i) {
        goto [i = 1i] tr ctn;
   tr:  ret := true;

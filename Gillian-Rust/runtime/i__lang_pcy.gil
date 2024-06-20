@@ -1,0 +1,10 @@
+#internal
+
+(* In prophecy mode, assert actually fails and signals a bug. *)
+proc i__lang_assert(b, msg) {
+        goto [b] ctn err;
+  ctn:  ret := undefined;
+        return;
+  err:  u := [check_obs_sat]();
+        fail[ASSERT](msg)
+};
