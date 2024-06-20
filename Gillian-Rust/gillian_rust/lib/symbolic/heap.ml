@@ -1808,27 +1808,6 @@ module TreeBlock = struct
     in
     (new_block, lk)
 
-  let rec equality_constraints t1 t2 =
-    (* Using to_rust_value_exn is over-approximate, but this is only used in the context of prophecies,
-       which may never be uninit.
-       At some point, I should probably rework prophecies to just be values and not trees anyway 🤷‍♂️ *)
-    let ( #== ) = Formula.Infix.( #== ) in
-    match (t1.content, t2.content) with
-    | Structural Missing, _ | _, Structural Missing -> []
-    | Structural (Symbolic e1), Structural (Symbolic e2) -> [ e1 #== e2 ]
-    | Structural (Fields f1), Structural (Fields f2) ->
-        List_utils.concat_map_2 equality_constraints f1 f2
-    | Structural (Array f1), Structural (Array f2) ->
-        List_utils.concat_map_2 equality_constraints f1 f2
-    | Structural (Enum _), Structural (Enum _) ->
-        let to_value = to_rust_value_exn in
-        (* Sub parts of enum cannot be missing *)
-        [ (to_value t1) #== (to_value t2) ]
-    | Structural (Symbolic e), content | content, Structural (Symbolic e) ->
-        let content = to_rust_value_exn { ty = t1.ty; content } in
-        [ content #== e ]
-    | _ -> Fmt.failwith "cannot learn equality of %a and %a" pp t1 pp t2
-
   let substitution ~tyenv ~subst_expr t =
     let get_structural { content; _ } =
       match content with
@@ -1914,13 +1893,6 @@ module TreeBlock = struct
           (Projections.base_ty ~leaf_ty:root.ty new_proj)
       in
       replace_proj ~tyenv new_root new_proj root
-
-  let outer_equality_constraint (o1 : outer) (o2 : outer) =
-    if not (Expr.equal o1.offset o2.offset) then
-      failwith "Cannot learn equality of two blocks of different offsets";
-    if not (Ty.equal o1.root.ty o2.root.ty) then
-      failwith "Cannot learn equality of two blocks of different types";
-    equality_constraints o1.root o2.root
 
   let merge_outer (o1 : outer) (o2 : outer) =
     let+ () =
