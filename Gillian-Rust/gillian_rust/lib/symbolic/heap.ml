@@ -1203,8 +1203,7 @@ module TreeBlock = struct
           "Not implemented yet: extracting range from structural %a of type %a"
           pp_structural structural Ty.pp node_ty
 
-  let as_layed_out_child ~lk ~range ~index_ty t :
-      (layed_out_content * LK.knowledge LK.Map.t) Delayed.t =
+  let as_layed_out_child ~lk ~range ~index_ty t =
     match t.content with
     | Layed_out_root root' ->
         let+ root, lk = reinterpret_lc_ranges ~lk ~to_ty:index_ty root' in
@@ -1541,6 +1540,10 @@ module TreeBlock = struct
     in
     ((ret, { outer with root }), lk)
 
+  (** extend_if_needed extends [outer] so that it captures the entirety of [proj],
+     by adding NotOwned nodes where needed. *)
+  (* let extend_if_needed outer proj : outer = failwith "bite" *)
+
   let find_proj
       ~tyenv
       ~(return_and_update : t -> lk:LK.t -> ('a * LK.t, Err.t) DR.t)
@@ -1557,7 +1560,10 @@ module TreeBlock = struct
           outer.offset
       in
       if%ent base_equals then Delayed.return ()
-      else failwith "Trees need to be extended?"
+      else
+        Fmt.failwith
+          "Trees need to be extended? proj.base: %a, outer.offset: %a"
+          (Fmt.Dump.option Expr.pp) proj.base Expr.pp outer.offset
     in
     let t = outer.root in
     Logging.verbose (fun m ->
@@ -1638,6 +1644,16 @@ module TreeBlock = struct
     match new_block with
     | Ok (x, lk) -> Delayed.return (x, lk)
     | Error _ -> Delayed.vanish ()
+
+  let replace_proj ~tyenv t proj new_block =
+    let return_and_update block ~lk =
+      if%ent Ty.sem_equal block.ty new_block.ty then DR.ok (((), new_block), lk)
+      else failwith "Could not replace projection, types do not match"
+    in
+    let++ (_, new_block), _ =
+      find_proj ~tyenv ~ty:new_block.ty ~lk:LK.none ~return_and_update t proj
+    in
+    new_block
 
   let cons_uninit ~loc:_ ~tyenv t proj ty =
     let return_and_update t ~lk =
@@ -1888,8 +1904,16 @@ module TreeBlock = struct
 
   let outer_substitution ~tyenv ~subst_expr t =
     let** root = substitution ~tyenv ~subst_expr t.root in
-    let+ offset = Delayed.reduce (subst_expr t.offset) in
-    Ok { offset; root }
+    let* offset = Delayed.reduce (subst_expr t.offset) in
+    let new_proj = Projections.of_expr offset in
+    let offset = Option.value ~default:(Expr.EList []) new_proj.base in
+    if List.is_empty new_proj.from_base then DR.ok { offset; root }
+    else
+      let new_root =
+        outer_missing ~offset ~tyenv
+          (Projections.base_ty ~leaf_ty:root.ty new_proj)
+      in
+      replace_proj ~tyenv new_root new_proj root
 
   let outer_equality_constraint (o1 : outer) (o2 : outer) =
     if not (Expr.equal o1.offset o2.offset) then
@@ -2001,6 +2025,7 @@ let cons_value ~tyenv ~lk (mem : t) loc proj ty =
 
 let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
   let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+  Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj);
   if%ent is_zst then Delayed.return (mem, lk)
   else
     let root =
