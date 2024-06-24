@@ -14,7 +14,7 @@ fn test2() -> u32 {
 
 
 
-#[creusillian::ensures(match x { Some(a) => res == a, None => res == 0u32})]
+#[creusillian::ensures(match x { Some(a) => ret == a, None => ret == 0u32})]
 fn test3(x : Option<u32>) -> u32 {
     match x {
         Some(x) => x,

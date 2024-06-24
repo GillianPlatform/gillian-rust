@@ -302,9 +302,21 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
             let pre = this.build_assert(args[0]);
 
-            let post = this.peel_lvar_bindings(args[1], |this, expr| this.build_assert(expr));
+            let thir::ExprKind::Array { fields } = &this.thir[this.peel_scope(args[1])].kind else {
+                unreachable!(
+                    "Expected postcondition to be an array, but got {:?}",
+                    this.thir[args[1]].kind
+                );
+            };
 
-            (pre, post)
+            let mut posts: Vec<_> = fields
+                .iter()
+                .map(|post_id| {
+                    this.peel_lvar_bindings(*post_id, |this, expr| this.build_assert(expr))
+                })
+                .collect();
+
+            (pre, posts.remove(0))
         });
 
         SpecTerm {

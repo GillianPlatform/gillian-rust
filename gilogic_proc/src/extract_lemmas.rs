@@ -61,7 +61,7 @@ impl Parse for ExtractLemma {
             ));
         }
 
-        let ensures_asrt = spec.postcond;
+        let ensures_asrt = &spec.postconds[0].postcond;
         if !check_just_call(&ensures_asrt) {
             return Err(syn::Error::new(
                 span,

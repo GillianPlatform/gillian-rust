@@ -106,6 +106,7 @@ impl Formula {
                     gilogic::__stubs::implication(#hyp, #cons)
                 });
             }
+            Term::Path(p) => tokens.extend(quote! {#p}),
             _ => {
                 return Err(Error::new(
                     inner.span(),
@@ -154,7 +155,7 @@ impl AsrtFragment {
     }
 }
 
-impl Specification {
+impl SpecEnsures {
     pub fn encode(&self) -> syn::Result<TokenStream> {
         let def = {
             let mut fragments = self.postcond.iter();
@@ -173,6 +174,12 @@ impl Specification {
             })
         });
 
+        Ok(postcond_tokens)
+    }
+}
+
+impl Specification {
+    pub fn encode(&self) -> syn::Result<TokenStream> {
         // Temporary for easier compatibility with existing code;
 
         let precond_tokens = {
@@ -185,11 +192,17 @@ impl Specification {
             })?
         };
 
+        let postcond_tokens = self
+            .postconds
+            .iter()
+            .map(|a| a.encode())
+            .collect::<syn::Result<Vec<_>>>()?;
+
         let lvars = self.lvars.iter();
 
         Ok(quote! {
             unsafe { gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
-                gilogic::__stubs::spec(#precond_tokens, #postcond_tokens)
+                gilogic::__stubs::spec(#precond_tokens, [#(#postcond_tokens),*])
             }) }
         })
     }

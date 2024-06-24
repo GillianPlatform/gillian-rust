@@ -25,6 +25,10 @@ pub struct Specification {
     pub dot: Option<Token![.]>,
     pub requires: kw::requires,
     pub precond: Punctuated<AsrtFragment, Token![*]>,
+    pub postconds: Vec<SpecEnsures>,
+}
+
+pub struct SpecEnsures {
     pub exists: Option<kw::exists>,
     pub rvars: Punctuated<LvarDecl, Token![,]>,
     pub dot2: Option<Token![.]>,
@@ -670,6 +674,24 @@ pub(crate) mod parsing {
             let _ = braced!(content in input);
             let precond = Punctuated::parse_separated_nonempty(&content)?;
 
+            let mut postconds = Vec::new();
+
+            while !input.is_empty() {
+                postconds.push(input.parse()?);
+            }
+
+            Ok(Specification {
+                forall,
+                lvars,
+                dot,
+                requires,
+                precond,
+                postconds,
+            })
+        }
+    }
+    impl Parse for SpecEnsures {
+        fn parse(input: ParseStream) -> Result<Self> {
             let lookahead = input.lookahead1();
             let (exists, rvars, dot2) = if lookahead.peek(kw::exists) {
                 let exists = input.parse::<kw::exists>()?;
@@ -684,13 +706,7 @@ pub(crate) mod parsing {
             let content;
             let _ = braced!(content in input);
             let postcond = Punctuated::parse_separated_nonempty(&content)?;
-
-            Ok(Specification {
-                forall,
-                lvars,
-                dot,
-                requires,
-                precond,
+            Ok(SpecEnsures {
                 exists,
                 rvars,
                 dot2,
