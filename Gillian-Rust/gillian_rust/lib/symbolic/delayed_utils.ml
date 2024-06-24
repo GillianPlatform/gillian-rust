@@ -10,6 +10,14 @@ module DR_list = struct
         let++ r = map f r in
         a :: r
 
+  let rec map_with_lk ~lk f l =
+    match l with
+    | [] -> DR.ok ([], lk)
+    | a :: r ->
+        let** a, lk = f ~lk a in
+        let++ r, lk = map_with_lk ~lk f r in
+        (a :: r, lk)
+
   let rec map2 f la lb =
     match (la, lb) with
     | [], [] -> DR.ok []

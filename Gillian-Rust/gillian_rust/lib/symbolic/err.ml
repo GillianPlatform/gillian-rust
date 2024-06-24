@@ -10,6 +10,8 @@ type t =
   | Invalid_pcy_var of Expr.t
   | Invalid_free_pointer of Expr.t * Expr.t
   | Invalid_value of Ty.t * Expr.t
+  | Invalid_enum
+  | Invalid_free
   | LogicError of string
     (* "outs" don't match. e.g. we expect missing and it's not missing. *)
   | Uninitialised_access of string * Projections.t
@@ -41,6 +43,8 @@ let recovery_tactic =
       | None -> Recovery_tactic.none)
   | Missing_proj (loc, proj, _) ->
       try_unfold [ Expr.loc_from_loc_name loc; Projections.to_expr proj ]
+  | Invalid_enum
+  | Invalid_free
   | LogicError _
   | Invalid_type _
   | Invalid_list_op
@@ -79,6 +83,8 @@ let pp ft =
   | Unhandled s -> pf ft "Unhandled: %s" s
   | Invalid_value (t, e) ->
       pf ft "Invalid value for type %a: %a" Ty.pp t Expr.pp e
+  | Invalid_enum -> pf ft "Invalid enum"
+  | Invalid_free -> pf ft "Invalid free"
   | Unsat_observation f -> pf ft "Unsat observation: %a" Formula.pp f
   | Uninitialised_access (loc, proj) ->
       pf ft "Uninitialized memory access at: (%s, %a)" loc Projections.pp proj
