@@ -4,7 +4,7 @@ set -euo pipefail
 # Runs Gillian-Rust on the generated outputs
 cd Gillian-Rust
 
-dune build @install
+opam exec -- dune build @install
 
 for file in ../tests/noproph/*.stdout; do
 	
