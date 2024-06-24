@@ -116,7 +116,7 @@ impl CoreContract {
                 #exi_toks ensures { (#p) }
             });
         }
-
+        eprintln!("{}", quote! { #(#post_tokens)*});
         quote! {
             #pre_tokens
             #(#post_tokens)*
@@ -167,7 +167,7 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
 
     let spec = core.to_signature();
     let AttrTrail(sig, rest) = rest;
-    eprintln!( "{spec}");
+    eprintln!("{spec}");
     Ok(quote!(
       #(#sig)*
       # [ gilogic :: macros :: specification ( #spec ) ]

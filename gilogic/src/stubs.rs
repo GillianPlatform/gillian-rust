@@ -201,6 +201,6 @@ pub fn instantiate_lvars<A: core::marker::Tuple, F: FnOnce<A>>(_: F) -> RustAsse
 #[gillian::no_translate]
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::spec"]
-pub fn spec(_pre: RustAssertion, _post: RustAssertion) -> RustAssertion {
+pub fn spec<const N: usize>(_pre: RustAssertion, _post: [RustAssertion; N]) -> RustAssertion {
     unreachable!()
 }
