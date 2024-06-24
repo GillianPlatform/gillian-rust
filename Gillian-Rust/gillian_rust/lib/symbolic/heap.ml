@@ -10,8 +10,6 @@ module Tyenv = Common.Tyenv
 module Actions = Common.Actions
 open Delayed_utils
 
-exception NotConcrete of string
-
 module TypePreds = struct
   let ( .%[] ) e idx = Expr.list_nth e idx
 
@@ -97,8 +95,6 @@ end
 
 let too_symbolic e =
   Delayed.map (Delayed.reduce e) (fun e -> Error (Too_symbolic e))
-
-let not_concrete msgf = Fmt.kstr (fun s -> raise (NotConcrete s)) msgf
 
 let rec lift_lit = function
   | Literal.LList l -> Expr.EList (List.map lift_lit l)
@@ -403,7 +399,11 @@ module TreeBlock = struct
               let vs = List.to_seq fields in
               let zipped = Seq.zip tys vs in
               Seq.mapi
-                (fun i (ty', v) -> (Projections.VField (discr, ty, i), ty', v))
+                (fun i (ty', v) ->
+                  ( Projections.VField
+                      { variant_idx = discr; enum_ty = ty; field_idx = i },
+                    ty',
+                    v ))
                 zipped
             in
             let++ fields, lk = all ~lk [] ptvs in
@@ -1370,14 +1370,22 @@ module TreeBlock = struct
               let** (v, sub_block), lk = aux ~lk e rest in
               let++ new_fields = Delayed.return (vec.%[i] <- sub_block) in
               ((v, Structural { ty; content = Fields new_fields }), lk)
-          | ( VField (i, ty, vidx) :: rest,
+          | ( VField { field_idx; enum_ty; variant_idx } :: rest,
               Structural { content = Enum { discr; fields }; ty = ty' } )
-            when Ty.equal ty ty' && discr == vidx ->
-              let e = Result.ok_or fields.%[i] ~msg:"Index out of bounds" in
+            when Ty.equal enum_ty ty' && discr == variant_idx ->
+              let e =
+                Result.ok_or fields.%[field_idx] ~msg:"Index out of bounds"
+              in
               let** (v, sub_block), lk = aux ~lk e rest in
-              let++ new_fields = Delayed.return (fields.%[i] <- sub_block) in
+              let++ new_fields =
+                Delayed.return (fields.%[field_idx] <- sub_block)
+              in
               let block =
-                Structural { ty; content = Enum { discr; fields = new_fields } }
+                Structural
+                  {
+                    ty = enum_ty;
+                    content = Enum { discr; fields = new_fields };
+                  }
               in
               ((v, block), lk)
           | Plus (_, i, ty') :: rest, _ ->

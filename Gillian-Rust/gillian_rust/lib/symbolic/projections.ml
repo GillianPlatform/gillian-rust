@@ -4,7 +4,7 @@ open Gillian.Gil_syntax
 type arith_kind = Wrap | Overflow [@@deriving show, yojson, eq]
 
 type op =
-  | VField of int * Ty.t * int
+  | VField of { field_idx : int; enum_ty : Ty.t; variant_idx : int }
   | Field of int * Ty.t
   | Index of Expr.t * Ty.t * int
   | Plus of arith_kind * Expr.t * Ty.t
@@ -12,7 +12,7 @@ type op =
 [@@deriving yojson, eq]
 
 let variant = function
-  | VField (i, _, _) -> Some i
+  | VField v -> Some v.variant_idx
   | _ -> None
 
 let pp_op fmt =
@@ -22,7 +22,8 @@ let pp_op fmt =
   in
   function
   | Field (i, ty) -> Fmt.pf fmt ".%d<%a>" i Ty.pp ty
-  | VField (i, ty, vidx) -> Fmt.pf fmt ".%d<%a.%d>" i Ty.pp ty vidx
+  | VField v ->
+      Fmt.pf fmt ".%d<%a.%d>" v.field_idx Ty.pp v.enum_ty v.variant_idx
   | Index (i, ty, sz) -> Fmt.pf fmt "[%a]<[%a; %d]>" Expr.pp i Ty.pp ty sz
   | Plus (k, i, ty) -> Fmt.pf fmt "+%s(%a)<%a>" (str_ak k) Expr.pp i Ty.pp ty
   | UPlus (k, i) -> Fmt.pf fmt "u+%s(%a)" (str_ak k) Expr.pp i
@@ -39,7 +40,7 @@ let root = { base = None; from_base = [] }
 let rec base_ty ~(leaf_ty : Ty.t) (path : path) =
   match path with
   | [] -> leaf_ty
-  | (Field (_, ty) | VField (_, ty, _) | Index (_, ty, _)) :: _ -> ty
+  | (Field (_, ty) | VField { enum_ty = ty; _ } | Index (_, ty, _)) :: _ -> ty
   | Plus (_akind, ofs, ty) :: r -> (
       let next_ty = base_ty ~leaf_ty r in
       if Ty.equal next_ty ty then
@@ -56,7 +57,12 @@ let rec base_ty ~(leaf_ty : Ty.t) (path : path) =
 let op_of_lit : Literal.t -> op = function
   | LList [ String "f"; Int i; ty ] -> Field (Z.to_int i, Ty.of_lit ty)
   | LList [ String "vf"; Int i; ty; Int idx ] ->
-      VField (Z.to_int i, Ty.of_lit ty, Z.to_int idx)
+      VField
+        {
+          field_idx = Z.to_int i;
+          enum_ty = Ty.of_lit ty;
+          variant_idx = Z.to_int idx;
+        }
   | LList [ String "i"; (Int _ as i); ty; Int sz ] ->
       Index (Expr.Lit i, Ty.of_lit ty, Z.to_int sz)
   | LList [ String "+"; Bool b; (Int _ as i); ty ] ->
@@ -68,7 +74,12 @@ let op_of_expr : Expr.t -> op = function
   | EList [ Lit (String "f"); Lit (Int i); ty ] ->
       Field (Z.to_int i, Ty.of_expr ty)
   | EList [ Lit (String "vf"); Lit (Int i); ty; Lit (Int idx) ] ->
-      VField (Z.to_int i, Ty.of_expr ty, Z.to_int idx)
+      VField
+        {
+          field_idx = Z.to_int i;
+          enum_ty = Ty.of_expr ty;
+          variant_idx = Z.to_int idx;
+        }
   | EList [ Lit (String "i"); i; ty; Lit (Int sz) ] ->
       Index (i, Ty.of_expr ty, Z.to_int sz)
   | EList [ Lit (String "+"); Lit (Bool b); i; ty ] ->
@@ -86,13 +97,13 @@ let expr_of_elem : op -> Expr.t =
   function
   | Field (i, ty) ->
       EList [ Lit (String "f"); Lit (Int (Z.of_int i)); Ty.to_expr ty ]
-  | VField (i, ty, idx) ->
+  | VField { field_idx; enum_ty; variant_idx } ->
       EList
         [
           Lit (String "vf");
-          Lit (Int (Z.of_int i));
-          Ty.to_expr ty;
-          Lit (Int (Z.of_int idx));
+          Lit (Int (Z.of_int field_idx));
+          Ty.to_expr enum_ty;
+          Lit (Int (Z.of_int variant_idx));
         ]
   | Index (i, ty, sz) ->
       EList [ Lit (String "i"); i; Ty.to_expr ty; Expr.int sz ]
@@ -104,7 +115,13 @@ let to_expr_list t : Expr.t list = List.map expr_of_elem t
 let substitution_in_op ~subst_expr (op : op) =
   match op with
   | Field (i, ty) -> Field (i, Ty.substitution ~subst_expr ty)
-  | VField (i, ty, idx) -> VField (i, Ty.substitution ~subst_expr ty, idx)
+  | VField { field_idx; enum_ty; variant_idx } ->
+      VField
+        {
+          field_idx;
+          enum_ty = Ty.substitution ~subst_expr enum_ty;
+          variant_idx;
+        }
   | Index (i, ty, sz) -> Index (i, Ty.substitution ~subst_expr ty, sz)
   | Plus (k, i, ty) -> Plus (k, i, Ty.substitution ~subst_expr ty)
   | UPlus (k, i) -> UPlus (k, i)
