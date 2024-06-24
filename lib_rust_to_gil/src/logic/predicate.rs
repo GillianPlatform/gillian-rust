@@ -738,6 +738,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
 
             ExprKind::Integer { value } => value.0.into(),
+            ExprKind::True => GExpr::Lit(Literal::Bool(true)),
+            ExprKind::False => GExpr::Lit(Literal::Bool(false)),
             ExprKind::SeqNil => GExpr::EList(vec![]),
             ExprKind::SeqOp { op, args } => {
                 let mut args: Vec<_> = args

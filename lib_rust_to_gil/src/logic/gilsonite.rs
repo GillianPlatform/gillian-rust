@@ -83,6 +83,8 @@ pub enum ExprKind<'tcx> {
         #[type_visitable(ignore)]
         value: EncDeBigInt,
     },
+    True,
+    False,
     // Unclear whether this is worth distinguishing in the AST or just delegating this to the backend
     SeqNil,
     SeqOp {
@@ -794,6 +796,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 LitKind::Int(i, _) => ExprKind::Integer {
                     value: i.get().into(),
                 },
+
+                LitKind::Bool(true) => ExprKind::True,
+                LitKind::Bool(false) => ExprKind::False,
                 _ => self
                     .tcx
                     .dcx()
@@ -817,6 +822,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let op = match op {
                     mir::BinOp::Sub => BinOp::Sub,
                     mir::BinOp::Shl => BinOp::Shl,
+                    mir::BinOp::Eq => BinOp::Eq,
                     _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 
