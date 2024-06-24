@@ -1,0 +1,75 @@
+#begin_init_data
+{"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable_pcy.gil", "i__std_shims_pcy.gil";
+
+pred "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(+self, +model):
+  (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
+  * (self == #self), (#self == {{ 1i, {{ #ax }} }})
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#ax, #repr)
+  * (#model == {{ 1i, {{ #repr }} }})
+  * (model == #model)
+  * (self == #self);
+
+
+spec test()
+[[ emp ]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * (#ret_repr == 4i)]]
+normal
+
+proc test() {
+  bb0:  m_0 := 4i;
+        g_0 := m_0;
+        ret := g_0;
+        goto rlab;
+  rlab: return
+};
+
+spec test2()
+[[ emp ]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * (((#ret_repr = 4i) == #x) /\ (#x == true))]]
+normal
+
+proc test2() {
+  bb0:  m_0 := 4i;
+        g_0 := m_0;
+        ret := g_0;
+        goto rlab;
+  rlab: return
+};
+
+spec test3(x, x_repr)
+[[ "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(#x, #x_repr) * (x_repr == #x_repr) * (x == #x) ]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * ((#x_repr == {{ 0i, {{  }} }}) /\ (#ret_repr == 0i));
+"<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * ((#x_repr == {{ 1i, {{ #a }} }}) /\ (#ret_repr == #a))]]
+normal
+
+proc test3(x) {
+        m_1x := x;
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "adt", "Option", {{ "u32" }} }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "adt", "Option", {{ "u32" }} }}, g_0);
+  bb0:  g_2 := [load_discr](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "adt", "Option", {{ "u32" }} }});
+        g_1 := l-nth(g_2, 0i);
+        m_2 := g_1;
+        g_3 := m_2;
+        goto [(g_3 = 0i)] bb3 sw0;
+  sw0:  goto [(g_3 = 1i)] bb2 sw1;
+  sw1:  goto bb1;
+  bb1:  fail [Unreachable]();
+  bb2:  goto bb4;
+  bb3:  m_0 := 0i;
+        goto bb5;
+  bb4:  g_5 := [load_value](l-nth(m_1x, 0i), l+ (l-nth(m_1x, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ "u32" }} }}, 1i }} }}), "u32", true);
+        g_4 := l-nth(g_5, 0i);
+        m_3x := g_4;
+        m_0 := m_3x;
+        goto bb5;
+  bb5:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "adt", "Option", {{ "u32" }} }});
+        return
+};
+

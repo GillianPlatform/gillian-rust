@@ -64,6 +64,8 @@ impl PreGil {
     pub fn conj(self, o: Self) -> Self {
         PreGil::BinOp(Box::new(self), BinOp::And(Default::default()), Box::new(o))
     }
+
+
 }
 
 #[derive(Clone, Debug)]
@@ -344,7 +346,7 @@ fn remove_bound_vars(p: &Pat, subst: &mut Subst) {
 }
 
 impl CoreTerm {
-    fn subst(&mut self, subst: &mut Subst) {
+    pub fn subst(&mut self, subst: &mut Subst) {
         match self {
             CoreTerm::Call(_, args) => {
                 args.iter_mut().for_each(|a| a.subst(subst));
@@ -671,8 +673,8 @@ impl Context {
 }
 
 #[derive(Default, Clone)]
-struct Subst {
-    bindings: HashMap<VarKind, VarKind>,
+pub struct Subst {
+    pub bindings: HashMap<VarKind, VarKind>,
 }
 
 impl Subst {

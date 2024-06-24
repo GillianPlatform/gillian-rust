@@ -1,5 +1,9 @@
+//@check-pass
 extern crate creusillian;
 extern crate gilogic;
+
+use gilogic::prophecies::Ownable;
+use gilogic::macros::specification;
 
 #[creusillian::ensures(ret == 4u32)]
 fn test() -> u32 {
