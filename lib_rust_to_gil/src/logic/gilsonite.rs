@@ -253,8 +253,7 @@ pub enum AssertKind<'tcx> {
 pub struct SpecTerm<'tcx> {
     pub uni: Vec<(Symbol, Ty<'tcx>)>,
     pub pre: Assert<'tcx>,
-    pub exi: Vec<(Symbol, Ty<'tcx>)>,
-    pub post: Assert<'tcx>,
+    pub posts: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assert<'tcx>)>,
 }
 
 pub struct GilsoniteBuilder<'tcx> {
@@ -311,21 +310,20 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 );
             };
 
-            let mut posts: Vec<_> = fields
+            let posts: Vec<_> = fields
                 .iter()
                 .map(|post_id| {
                     this.peel_lvar_bindings(*post_id, |this, expr| this.build_assert(expr))
                 })
                 .collect();
 
-            (pre, posts.remove(0))
+            (pre, posts)
         });
 
         SpecTerm {
             uni,
             pre,
-            exi: post.0,
-            post: post.1,
+            posts: post,
         }
     }
 

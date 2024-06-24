@@ -537,7 +537,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     ) -> (
         IndexMap<Symbol, Ty<'tcx>>,
         Assertion,
-        (Vec<(Symbol, Ty<'tcx>)>, Assertion),
+        Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
     ) {
         let (thir, _) = get_thir!(self, self.body_id);
         self.build_var_map(&thir);
@@ -545,14 +545,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let SpecTerm {
             uni,
             pre,
-            exi,
-            post,
+            posts,
         } = self.global_env.gilsonite_spec(self.body_id).clone();
 
         let pre = self.compile_assertion(pre);
-        let post = self.compile_assertion(post);
 
-        (uni.into_iter().collect(), pre, (exi, post))
+        let posts = posts.into_iter().map(|(exi, post)| {
+            (exi, self.compile_assertion(post))
+        }).collect();
+
+        (uni.into_iter().collect(), pre, posts)
         // (uni.into_iter().collect(), pre, (exi, post))
     }
 
