@@ -26,5 +26,5 @@ depends: [
   "dune-site"
 ]
 pin-depends: [
-  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#f5995995deb0334f8b292c07fb15f7bdebde6514"
+  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#9c804e0241f8c434d914a04455945a8ed713d321"
 ]

@@ -45,12 +45,11 @@ type tl_ast = unit (* We unfortunately don't have access to the tl ast *)
 
 let pp_err = Fmt.nop
 let other_imports = []
-let env_var_import_path = Some "GILLIAN_RUST_RUNTIME_PATH"
+let default_import_paths = Some Runtime.Sites.runtime
 
 let initialize exec_mode =
   R_config.exec_mode := exec_mode;
-  Gillian.Utils.Config.lemma_proof := false;
-  Gillian.Utils.Config.set_runtime_paths Runtime.Sites.runtime
+  Gillian.Utils.Config.lemma_proof := false
 
 let resolve_gilogic () = "target/debug/libgilogic.rlib"
 let resolve_creusillian () = "target/debug/libcreusillian.dylib"
