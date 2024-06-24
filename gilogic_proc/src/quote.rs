@@ -106,7 +106,9 @@ impl Formula {
                     gilogic::__stubs::implication(#hyp, #cons)
                 });
             }
-            Term::Path(p) => tokens.extend(quote! {#p}),
+            Term::Path(p) => tokens.extend(quote!(
+              gilogic::__stubs::equal(#p, true)
+            )),
             _ => {
                 return Err(Error::new(
                     inner.span(),
