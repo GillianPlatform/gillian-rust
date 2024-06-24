@@ -1,21 +1,31 @@
 extern crate proc_macro;
+use std::collections::HashMap;
+
 use anf::{term_to_core, CoreTerm};
 use itertools::{Either, Itertools};
 use pearlite_syn::Term;
 use proc_macro::TokenStream as TokenStream_;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{parse::Parse, Attribute};
+use syn::{
+    parse::Parse, punctuated::Punctuated, token::Comma, Attribute, FnArg, Ident, Pat, PatIdent,
+    PatType, Receiver, ReturnType, Signature, Visibility,
+};
 
-use crate::anf::{core_to_sl, elim_match_form, print_gilsonite, Disjuncts};
+use crate::anf::{core_to_sl, elim_match_form, print_gilsonite, Disjuncts, Subst, VarKind};
 
 mod anf;
 
-struct AttrTrail(Vec<Attribute>, TokenStream);
+struct AttrTrail(Vec<Attribute>, Visibility, Signature, TokenStream);
 
 impl Parse for AttrTrail {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        Ok(AttrTrail(Attribute::parse_outer(input)?, input.parse()?))
+        Ok(AttrTrail(
+            Attribute::parse_outer(input)?,
+            input.parse()?,
+            input.parse()?,
+            input.parse()?,
+        ))
     }
 }
 
@@ -44,37 +54,84 @@ impl AttrTrail {
             .map(|a| a.parse_args::<Term>())
             .collect::<syn::Result<Vec<_>>>()?;
 
-        Ok((RawContract(pre, post), self))
+        Ok((
+            RawContract(self.2.inputs.clone(), self.2.output.clone(), pre, post),
+            self,
+        ))
     }
 }
 
 // Here we should have one term as a pre and many as a disjunction of posts but that's not what is actually being encoded here.
-struct RawContract(Vec<Term>, Vec<Term>);
+struct RawContract(Punctuated<FnArg, Comma>, ReturnType, Vec<Term>, Vec<Term>);
 
 impl RawContract {
     fn elaborate(self) -> syn::Result<CoreContract> {
         let pres = self
-            .0
+            .2
             .into_iter()
             .map(term_to_core)
             .collect::<syn::Result<_>>()?;
         let posts = self
-            .1
+            .3
             .into_iter()
             .map(term_to_core)
             .collect::<syn::Result<_>>()?;
-        Ok(CoreContract(pres, posts))
+        Ok(CoreContract(self.0, self.1, pres, posts))
     }
 }
 
-struct CoreContract(Vec<CoreTerm>, Vec<CoreTerm>);
+struct CoreContract(
+    Punctuated<FnArg, Comma>,
+    ReturnType,
+    Vec<CoreTerm>,
+    Vec<CoreTerm>,
+);
 
 impl CoreContract {
     fn to_signature(mut self) -> TokenStream {
-        self.0.iter_mut().for_each(elim_match_form);
-        self.1.iter_mut().for_each(elim_match_form);
+        self.2.iter_mut().for_each(elim_match_form);
+        self.3.iter_mut().for_each(elim_match_form);
 
-        let requires: Vec<_> = self.0.into_iter().map(|t| core_to_sl(t)).collect();
+        let mut bindings = HashMap::new();
+        let has_inputs = self.0.len() > 0;
+        let owns: Vec<_> = self
+            .0
+            .into_iter()
+            .map(|arg| match arg {
+                FnArg::Receiver(_) => {
+                    let self_ = Ident::new("self", Span::call_site());
+                    let self_repr = Ident::new("self_repr", Span::call_site());
+
+                    bindings.insert(VarKind::Source(self_), VarKind::Source(self_repr));
+                    quote!(self.own(self_repr))
+                }
+                FnArg::Typed(PatType { pat, .. }) => match &*pat {
+                    Pat::Ident(PatIdent { ident, .. }) => {
+                        let repr = Ident::new(&format!("{ident}_repr"), Span::call_site());
+                        bindings.insert(
+                            VarKind::Source(ident.clone()),
+                            VarKind::Source(repr.clone()),
+                        );
+                        quote!(#ident.own(#repr))
+                    }
+                    _ => panic!("unsupported pattern"),
+                },
+            })
+            .collect();
+
+        bindings.insert(VarKind::Source(Ident::new("ret", Span::call_site())), VarKind::Source(Ident::new("ret_repr", Span::call_site())));
+        let mut subst = Subst { bindings };
+
+        self.2.iter_mut().for_each(|t| {
+            t.subst(&mut subst.clone());
+        });
+
+        self.3.iter_mut().for_each(|t| {
+            t.subst(&mut subst.clone());
+        });
+
+        subst.bindings.remove(&VarKind::Source(Ident::new("ret", Span::call_site())));
+        let requires: Vec<_> = self.2.into_iter().map(|t| core_to_sl(t)).collect();
 
         assert!(requires.iter().all(|a| a.clauses.len() == 1));
 
@@ -88,14 +145,20 @@ impl CoreContract {
             }
         });
 
-        let ensures: Vec<_> = self.1.into_iter().map(|t| core_to_sl(t)).collect();
+        let ensures: Vec<_> = self.3.into_iter().map(|t| core_to_sl(t)).collect();
 
         let mut pre_tokens = quote! { requires { emp } };
+
         if let Some((forall, req)) = pre.map(|mut p| p.clauses.remove(0)) {
             pre_tokens = quote! {
-            forall #(#forall)* .
-                requires { (#req) }
+            forall #(#forall),* .
+                requires { #(#owns *)* (#req) }
             };
+        } else {
+            if has_inputs {
+                let forall = subst.bindings.values();
+                pre_tokens = quote! { forall #(#forall),* . requires {  #(#owns*)* emp }}
+            }
         };
 
         let mut post_tokens = Vec::new();
@@ -108,15 +171,13 @@ impl CoreContract {
             })
             .unwrap_or_else(|| Disjuncts { clauses: vec![] });
         for (exi, p) in post.clauses {
-            let mut exi_toks = TokenStream::new();
-            if exi.len() > 0 {
-                exi_toks = quote! { exists #(#exi)* . };
-            }
+            let exi_toks = quote! { exists #(#exi,)* ret_repr . };
+            
             post_tokens.push(quote! {
-                #exi_toks ensures { (#p) }
+                #exi_toks ensures { ret.own(ret_repr) * (#p) }
             });
         }
-        eprintln!("{}", quote! { #(#post_tokens)*});
+
         quote! {
             #pre_tokens
             #(#post_tokens)*
@@ -137,15 +198,15 @@ fn requires_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenS
     let atrail: AttrTrail = syn::parse(input)?;
 
     let (mut contract, rest) = atrail.extract_contract()?;
-    contract.0.push(term);
+    contract.2.push(term);
     let core = contract.elaborate()?;
 
     core.to_signature();
 
-    let AttrTrail(sig, rest) = rest;
+    let AttrTrail(attrs, vis, sig, rest) = rest;
     Ok(quote!(
-      #(#sig)*
-      #rest
+      #(#attrs)*
+      #vis #sig #rest
     ))
 }
 
@@ -162,15 +223,15 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
     let atrail: AttrTrail = syn::parse(input)?;
 
     let (mut contract, rest) = atrail.extract_contract()?;
-    contract.1.push(term);
+    contract.3.push(term);
     let core = contract.elaborate()?;
 
     let spec = core.to_signature();
-    let AttrTrail(sig, rest) = rest;
-    eprintln!("{spec}");
+    let AttrTrail(attrs, vis, sig, rest) = rest;
+    eprintln!("{}", spec);
     Ok(quote!(
-      #(#sig)*
+      #(#attrs)*
       # [ gilogic :: macros :: specification ( #spec ) ]
-      #rest
+      #vis #sig #rest
     ))
 }
