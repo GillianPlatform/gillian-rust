@@ -7,7 +7,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse::Parse, Attribute};
 
-use crate::anf::{elim_match_form, print_gilsonite};
+use crate::anf::{core_to_sl, elim_match_form, print_gilsonite, Disjuncts};
 
 mod anf;
 
@@ -70,18 +70,56 @@ impl RawContract {
 struct CoreContract(Vec<CoreTerm>, Vec<CoreTerm>);
 
 impl CoreContract {
-    fn to_signature(mut self) {
+    fn to_signature(mut self) -> TokenStream {
         self.0.iter_mut().for_each(elim_match_form);
         self.1.iter_mut().for_each(elim_match_form);
 
-        eprintln!("requires:");
-        for r in self.0 {
-            eprintln!(". {}", print_gilsonite(r).unwrap());
+        let requires: Vec<_> = self.0.into_iter().map(|t| core_to_sl(t)).collect();
+
+        assert!(requires.iter().all(|a| a.clauses.len() == 1));
+
+        let pre = requires.into_iter().reduce(|mut r1, mut r2| {
+            let (mut exi1, r1) = r1.clauses.remove(0);
+            let (exi2, r2) = r2.clauses.remove(0);
+
+            exi1.extend(exi2);
+            Disjuncts {
+                clauses: vec![(exi1, r1.conj(r2))],
+            }
+        });
+
+        let ensures: Vec<_> = self.1.into_iter().map(|t| core_to_sl(t)).collect();
+
+        let mut pre_tokens = quote! { requires { emp } };
+        if let Some((forall, req)) = pre.map(|mut p| p.clauses.remove(0)) {
+            pre_tokens = quote! {
+            forall #(#forall)* .
+                requires { (#req) }
+            };
+        };
+
+        let mut post_tokens = Vec::new();
+
+        let post = ensures
+            .into_iter()
+            .reduce(|mut r1, r2| {
+                r1.clauses.extend(r2.clauses);
+                r1
+            })
+            .unwrap_or_else(|| Disjuncts { clauses: vec![] });
+        for (exi, p) in post.clauses {
+            let mut exi_toks = TokenStream::new();
+            if exi.len() > 0 {
+                exi_toks = quote! { exists #(#exi)* . };
+            }
+            post_tokens.push(quote! {
+                #exi_toks ensures { (#p) }
+            });
         }
 
-        eprintln!("ensures:");
-        for r in self.1 {
-            eprintln!(". {}", print_gilsonite(r).unwrap());
+        quote! {
+            #pre_tokens
+            #(#post_tokens)*
         }
     }
 }
@@ -127,10 +165,12 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
     contract.1.push(term);
     let core = contract.elaborate()?;
 
-    core.to_signature();
+    let spec = core.to_signature();
     let AttrTrail(sig, rest) = rest;
+    eprintln!( "{spec}");
     Ok(quote!(
       #(#sig)*
+      # [ gilogic :: macros :: specification ( #spec ) ]
       #rest
     ))
 }
