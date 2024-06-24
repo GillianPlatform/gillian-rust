@@ -56,6 +56,7 @@ let reinterpret_offset ~lk ~from_ty ~to_ty ofs =
     let+ size_to, lk = size_of ~lk to_ty in
     (Expr.Infix.(ofs * size_from / size_to), lk)
 
+(** Return the length of an array of [of_ty] that covers exactly the size of [ty] *)
 let length_as_array_of ~lk ~of_ty ty =
   match ty with
   | Ty.Array { length; ty } when Ty.equal ty of_ty -> Delayed.return (length, lk)
@@ -71,6 +72,12 @@ let compare_sizes ~lk comp ty_a ty_b =
 
 let size_equal ~lk ty_a ty_b =
   if Ty.equal ty_a ty_b then Delayed.return (Formula.True, lk)
+  else if Ty.is_array_of ~array_ty:ty_a ~inner_ty:ty_b then
+    let _, length = Ty.array_components ty_a in
+    Delayed.return (Formula.Infix.(length #== Expr.one_i), lk)
+  else if Ty.is_array_of ~array_ty:ty_b ~inner_ty:ty_a then
+    let _, length = Ty.array_components ty_b in
+    Delayed.return (Formula.Infix.(length #== Expr.one_i), lk)
   else compare_sizes ~lk Formula.Infix.( #== ) ty_a ty_b
 
 let produce_ty_size ~lk ty new_size =

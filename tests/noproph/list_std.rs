@@ -122,11 +122,7 @@ impl<T: Ownable> LinkedList<T> {
 
     #[show_safety]
     pub fn pop_front(&mut self) -> Option<T> {
-        // Original implementation uses map
-        match self.pop_front_node() {
-            None => None,
-            Some(node) => Some(node.into_element()),
-        }
+        self.pop_front_node().map(Node::into_element)
     }
 
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {

@@ -635,6 +635,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 out_var
             }
             ExprKind::BinOp { left, op, right } => {
+                let left_ty = left.ty;
                 let left = self.compile_expression_inner(*left);
                 let right = self.compile_expression_inner(*right);
                 match op {
@@ -642,8 +643,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     BinOp::Lt => todo!(),
                     BinOp::Le => todo!(),
                     BinOp::Ne => todo!(),
-                    BinOp::Sub => GExpr::minus(left, right),
-                    BinOp::Add => GExpr::plus(left, right),
+                    BinOp::Sub => {
+                        if left_ty.is_integral() {
+                            GExpr::minus(left, right)
+                        } else {
+                            GExpr::fminus(left, right)
+                        }
+                    }
+                    BinOp::Add => {
+                        if left_ty.is_integral() {
+                            GExpr::plus(left, right)
+                        } else {
+                            GExpr::fplus(left, right)
+                        }
+                    }
+                    BinOp::Shl => {
+                        if left_ty.is_integral() {
+                            GExpr::i_shl(left, right)
+                        } else {
+                            todo!("shl for floats")
+                        }
+                    }
                 }
             }
             ExprKind::Constructor {
@@ -717,7 +737,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 }
             }
 
-            ExprKind::Integer { value } => value.into(),
+            ExprKind::Integer { value } => value.0.into(),
             ExprKind::SeqNil => GExpr::EList(vec![]),
             ExprKind::SeqOp { op, args } => {
                 let mut args: Vec<_> = args

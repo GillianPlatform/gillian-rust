@@ -54,6 +54,19 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
      er: fail[TYPERR]("Invalid discr")
 };
 
+(* pub fn map<U, F>(self, f: F) -> Option<U> where F: FnOnce(T) -> U  *)
+proc "std::option::Option::<T>::map"(T, U, F, opt, fname) {
+          discr := l-nth(opt, 0i);
+          goto [discr = 0i] nn so;
+     nn:  ret := {{ 0i, {{ }} }};
+          return; 
+          (* The last argument is the closure name *)
+     so:  val := l-nth(l-nth(opt, 1i), 0i);
+          res := fname(U, val);
+          ret := {{ 1i, {{ res }} }};
+          return
+};
+
 proc "std::option::Option::<T>::ok_or"(T_ok, T_err, opt, err) {
          goto [l-nth(opt, 0i) = 1i] ok er;
      ok: ret := {{ 0i, l-nth(opt, 1i) }}; (* Ok res; *)
@@ -158,7 +171,7 @@ proc "core::num::<impl usize>::BITS"() {
 
 proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
      size := l-nth(layout, 0i);
-     assert(!(size == 0i)); (* We should never use allocate on zero-sized allocations *)
+     u := "i__lang_assert"(not (size = 0i), "Allocate should not be called with a zero-sized allocation");
      ptr := [alloc]({{ "array", "u8", size }});
      (* The following corresponds to Ok(NonNull::slice_from_raw_parts(ptr, size)) *)
      ret := {{ 0i, {{ 

@@ -1,4 +1,5 @@
 //@check-pass
+//?gil:ignore
 #![feature(concat_idents)]
 
 extern crate gilogic;

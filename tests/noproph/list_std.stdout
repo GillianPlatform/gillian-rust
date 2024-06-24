@@ -2,7 +2,7 @@
 {"Box":["Struct","ReprRust",[["0",["Adt",["Unique",[["Param",0]]]]],["1",["Param",1]]]],"Global":["Struct","ReprRust",[]],"LinkedList":["Struct","ReprRust",[["head",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["tail",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["len",["Scalar","usize"]],["marker",["Adt",["PhantomData",[["Adt",["Box",[["Adt",["Node",[["Param",0]]]],["Adt",["Global",[]]]]]]]]]]]],"Node":["Struct","ReprRust",[["next",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["prev",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["element",["Param",0]]]],"NonNull":["Struct","ReprRust",[["pointer",["Ptr",{"mut":false,"ty":["Param",0]}]]]],"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]],"PhantomData":["Struct","ReprRust",[]],"Unique":["Struct","ReprRust",[["pointer",["Adt",["NonNull",[["Param",0]]]]],["_marker",["Adt",["PhantomData",[["Param",0]]]]]]]}
 #end_init_data
 
-import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__ownable.gil", "i__std_shims_no_pcy.gil";
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "option_box_node::<T>"(+pty_T0, +x):
   (#x == {{ 0i, {{  }} }}) * (x == #x), (#x == {{ 1i, {{ #p }} }})
@@ -103,6 +103,10 @@ pred "<std::option::Option<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   (#self == {{ 0i, {{  }} }}) * (self == #self), (#self == {{ 1i, {{ #ax }} }})
   * "<T as gilogic::Ownable>::own"(pty_T0, #ax)
   * (self == #self);
+
+
+pred "<() as gilogic::Ownable>::own"(+self):
+  (#self == {{  }}) * (self == #self);
 
 
 pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
@@ -297,7 +301,7 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
         u := [store_value](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_42);
         g_44 := [load_value](l-nth(m_15, 0i), l+ (l-nth(m_15, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
         g_43 := l-nth(g_44, 0i);
-        u := "i__lang_assert"((not g_43), "Ugly assert message for now");
+        u := "i__lang_assert"((not g_43), "overflow check failed");
         goto bb13;
   bb13: g_46 := [load_value](l-nth(m_15, 0i), l+ (l-nth(m_15, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
         g_45 := l-nth(g_46, 0i);
@@ -332,7 +336,6 @@ proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, g_0);
-        m_2 := [alloc]({{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }});
   bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
         g_1 := l-nth(g_2, 0i);
         g_3 := [new_lft]();
@@ -340,39 +343,16 @@ proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
         m_3 := g_1;
         g_4 := m_3;
         g_5 := "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, g_4);
-        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }}, g_5);
+        m_2 := g_5;
         goto bb1;
-  bb1:  g_7 := [load_discr](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }});
-        g_6 := l-nth(g_7, 0i);
-        m_4 := g_6;
-        g_8 := m_4;
-        goto [(g_8 = 0i)] bb3 sw0;
-  sw0:  goto [(g_8 = 1i)] bb4 sw1;
-  sw1:  goto bb2;
-  bb2:  fail [Unreachable]();
-  bb3:  goto bb5;
-  bb4:  g_10 := [load_value](l-nth(m_2, 0i), l+ (l-nth(m_2, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }}, 1i }} }}), {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }}, false);
-        g_9 := l-nth(g_10, 0i);
-        m_5node := g_9;
-        g_11 := m_5node;
-        m_7 := g_11;
-        g_12 := m_7;
-        g_13 := "Node::<T>::into_element"(pty_T0, g_12);
-        m_6 := g_13;
-        goto bb6;
-  bb5:  m_0 := {{ 0i, {{  }} }};
-        goto bb9;
-  bb6:  g_14 := m_6;
-        m_0 := {{ 1i, {{ g_14 }} }};
-        goto bb7;
-  bb7:  goto bb8;
-  bb8:  goto bb9;
-  bb9:  goto bb10;
-  bb10: g_15 := m_0;
-        ret := g_15;
+  bb1:  g_6 := m_2;
+        g_7 := "std::option::Option::<T>::map"({{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }}, pty_T0, {{ "fndef", "into_element", {{ pty_T0 }} }}, g_6, "Node::<T>::into_element");
+        m_0 := g_7;
+        goto bb2;
+  bb2:  g_8 := m_0;
+        ret := g_8;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
-        u := [free](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "adt", "Option", {{ {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }} }} }});
         return
 };
 
@@ -470,7 +450,7 @@ proc "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, self, node) {
         u := [store_value](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_47);
         g_49 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
         g_48 := l-nth(g_49, 0i);
-        u := "i__lang_assert"((not g_48), "Ugly assert message for now");
+        u := "i__lang_assert"((not g_48), "overflow check failed");
         goto bb9;
   bb9:  g_51 := [load_value](l-nth(m_18, 0i), l+ (l-nth(m_18, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
         g_50 := l-nth(g_51, 0i);

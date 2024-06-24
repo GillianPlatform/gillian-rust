@@ -36,11 +36,21 @@ type t = { base : Expr.t option; from_base : path } [@@deriving yojson]
 let root = { base = None; from_base = [] }
 
 (** Returns the type at the base, if possible to find *)
-let base_ty ~(leaf_ty : Ty.t) (proj : t) =
-  match proj.from_base with
+let rec base_ty ~(leaf_ty : Ty.t) (path : path) =
+  match path with
   | [] -> leaf_ty
-  | (Field (_, ty) | VField (_, ty, _) | Index (_, ty, _) | Plus (_, _, ty))
-    :: _ -> ty
+  | (Field (_, ty) | VField (_, ty, _) | Index (_, ty, _)) :: _ -> ty
+  | Plus (_akind, ofs, ty) :: r -> (
+      let next_ty = base_ty ~leaf_ty r in
+      if Ty.equal next_ty ty then
+        Array { ty; length = Expr.(Infix.(ofs + one_i)) }
+      else
+        match next_ty with
+        | Array { ty = ty'; length } when Ty.equal ty ty' ->
+            Array { ty; length = Expr.Infix.(length + ofs) }
+        | _ ->
+            Fmt.failwith "cannot figure out base_ty:@\nleaf_ty: %a@\npath: %a"
+              Ty.pp leaf_ty pp_path path)
   | UPlus _ :: _ -> failwith "reduced to uplus too early"
 
 let op_of_lit : Literal.t -> op = function

@@ -133,35 +133,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
         let mut item_queue = QueueOnce::default();
-        item_queue.mark_as_done_iter([
-            "<() as gilogic::Ownable>::own".to_owned(),
-            "<u8 as gilogic::Ownable>::own".to_owned(),
-            "<u16 as gilogic::Ownable>::own".to_owned(),
-            "<u32 as gilogic::Ownable>::own".to_owned(),
-            "<u64 as gilogic::Ownable>::own".to_owned(),
-            "<u128 as gilogic::Ownable>::own".to_owned(),
-            "<usize as gilogic::Ownable>::own".to_owned(),
-            "<i8 as gilogic::Ownable>::own".to_owned(),
-            "<i16 as gilogic::Ownable>::own".to_owned(),
-            "<i32 as gilogic::Ownable>::own".to_owned(),
-            "<i64 as gilogic::Ownable>::own".to_owned(),
-            "<i128 as gilogic::Ownable>::own".to_owned(),
-            "<isize as gilogic::Ownable>::own".to_owned(),
-            "<() as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<u8 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<u16 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<u32 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<u64 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<u128 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<usize as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<i8 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<i16 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<i32 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<i64 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<i128 as gilogic::prophecies::Ownable>::own".to_owned(),
-            "<isize as gilogic::prophecies::Ownable>::own".to_owned(),
-        ]);
-
         let (spec_map, prog_map) = Self::build_gillian_spec_map(tcx);
 
         let metadata = Metadata::load(tcx, &config.overrides);
@@ -364,6 +335,8 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     pub fn predicate(&self, def_id: DefId) -> &gilsonite::Predicate<'tcx> {
         if !def_id.is_local() {
+            let ret = self.metadata.predicate(def_id).unwrap();
+            log::trace!("Found predicate in metadata: {:?}", ret);
             return self.metadata.predicate(def_id).unwrap();
         }
 

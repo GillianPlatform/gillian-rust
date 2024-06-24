@@ -52,8 +52,16 @@ macro_rules! own_int {
         impl Ownable for $t {
             type RepresentationTy = $t;
 
+            #[cfg(gillian)]
+            #[gillian::decl::predicate]
+            #[gillian::decl::pred_ins = "0"]
+            fn own(self, model: $t) -> RustAssertion {
+                gilogic::__stubs::defs([assertion!(($t::MIN <= self) * (self <= $t::MAX) * (self == model))])
+            }
+
+            #[cfg(not(gillian))]
             fn own(self, _model: $t) -> RustAssertion {
-                unreachable!("Implemented in GIL")
+                unreachable!("")
             }
         }
     };
@@ -100,33 +108,19 @@ impl<T: Ownable> Ownable for &mut T {
     }
 
     #[cfg(not(gillian))]
-    fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
+    fn own(self, _model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
         unreachable!("")
     }
 }
 
-own_int!(
-    (),
-    u8,
-    u16,
-    u32,
-    u64,
-    u128,
-    usize,
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    isize
-);
+own_int!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     type RepresentationTy = (T::RepresentationTy, U::RepresentationTy);
 
     #[cfg(gillian)]
     #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0,1"]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self, model: (T::RepresentationTy, U::RepresentationTy)) -> RustAssertion {
         gilogic::__stubs::defs([assertion!(|l, r| (model == (l, r))
             * self.0.own(l)
@@ -144,7 +138,7 @@ impl<T: Ownable> Ownable for Option<T> {
 
     #[cfg(gillian)]
     #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0,1"]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self, model: Option<T::RepresentationTy>) -> RustAssertion {
         gilogic::__stubs::defs([
             assertion!((self == None) * (model == None)),
@@ -156,6 +150,22 @@ impl<T: Ownable> Ownable for Option<T> {
 
     #[cfg(not(gillian))]
     fn own(self, _model: Option<T::RepresentationTy>) -> RustAssertion {
+        unreachable!("Implemented in GIL");
+    }
+}
+
+impl Ownable for () {
+    type RepresentationTy = ();
+
+    #[cfg(gillian)]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
+    fn own(self, model: ()) -> RustAssertion {
+        gilogic::__stubs::defs([assertion!((self == ()) * (self == model))])
+    }
+
+    #[cfg(not(gillian))]
+    fn own(self, _model: ()) -> RustAssertion {
         unreachable!("Implemented in GIL");
     }
 }

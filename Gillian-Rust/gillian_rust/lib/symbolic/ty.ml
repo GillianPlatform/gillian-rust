@@ -231,4 +231,9 @@ let variant_fields ~tyenv ~idx ty =
 let array_inner ty =
   match ty with
   | Array { ty; _ } -> ty
-  | _ -> Fmt.failwith "%a is not an array" pp ty
+  | _ -> Fmt.failwith "array_inner: %a is not an array" pp ty
+
+let array_components ty =
+  match ty with
+  | Array { ty; length } -> (ty, length)
+  | _ -> Fmt.failwith "array_components: %a is not an array" pp ty

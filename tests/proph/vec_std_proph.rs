@@ -1,4 +1,5 @@
 //@check-pass
+//?gil:ignore
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
@@ -8,7 +9,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, specification, lemma, predicate},
+    macros::{assertion, lemma, predicate, specification},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,
@@ -16,6 +17,14 @@ use gilogic::{
 use std::alloc::{Allocator, Layout, LayoutError};
 use std::mem::{self, SizedTypeProperties};
 use std::ptr::{NonNull, Unique};
+
+macro_rules! branch {
+    ($cond:expr) => {
+        if $cond {
+        } else {
+        }
+    };
+}
 
 pub struct TryReserveError {
     kind: TryReserveErrorKind,
@@ -279,7 +288,8 @@ fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
 
-fn handle_alloc_error(_layout: Layout) -> ! {
+#[allow(unused_variables)]
+fn handle_alloc_error(layout: Layout) -> ! {
     panic!("allocation failed!")
 }
 
@@ -315,21 +325,19 @@ impl<T: Ownable> Ownable for Vec<T> {
                 * all_own(values, model)
                 * (values.len() == model.len())
         );
-        assertion!(
-            |ptr, cap, buf: RawVec<T>, len, values, rest| (std::mem::size_of::<T>() > 0)
-                * (self
-                    == Vec {
-                        buf: RawVec { ptr, cap },
-                        len
-                    })
-                * cap.own(cap)
-                * len.own(len)
-                * (len <= cap)
-                * ptr.as_ptr().points_to_slice(len, values)
-                * (values.len() == model.len())
-                * all_own(values, model)
-                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
-        )
+        assertion!(|ptr, cap, len, values, rest| (std::mem::size_of::<T>() > 0)
+            * (self
+                == Vec {
+                    buf: RawVec { ptr, cap },
+                    len
+                })
+            * cap.own(cap)
+            * len.own(len)
+            * (len <= cap)
+            * ptr.as_ptr().points_to_slice(len, values)
+            * (values.len() == model.len())
+            * all_own(values, model)
+            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
     }
 }
 
@@ -339,6 +347,7 @@ impl<T: Ownable> Vec<T> {
         ensures { ret.own(Seq::empty())}
     )]
     pub const fn new() -> Self {
+        branch!(T::IS_ZST);
         Vec {
             buf: RawVec::NEW,
             len: 0,
@@ -360,14 +369,17 @@ impl<T: Ownable> Vec<T> {
         self.buf.ptr()
     }
 
-    // #[requires(|
-    //     current: <Self as Ownable>::RepresentationTy,
-    //     future: <Self as Ownable>::RepresentationTy,
-    //     v_repr: <T as Ownable>::RepresentationTy|
-    //     self.own((current, future)) *
-    //     (current.len() < 2 << 62) *
-    //     value.own(v_repr))]
-    // #[ensures($future == current.prepend(v_repr)$)]
+    #[specification(
+        forall current, future, v_repr.
+        requires {
+            self.own((current, future)) *
+            (current.len() < 2 << 62) *
+            value.own(v_repr)
+        }
+        ensures {
+            $future == current.prepend(v_repr)$
+        }
+    )]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.

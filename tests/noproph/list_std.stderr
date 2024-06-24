@@ -4,9 +4,6 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: variable `REFERENCE` should have a snake case name

@@ -210,9 +210,11 @@ impl Assertion {
             })?
         };
         tokens.extend(quote!({
-            gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
-                #def
-            })
+            unsafe {
+                gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
+                    #def
+                })
+            }
         }));
         Ok(tokens)
     }

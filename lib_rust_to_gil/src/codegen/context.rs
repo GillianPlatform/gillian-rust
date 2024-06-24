@@ -3,6 +3,7 @@ use indexmap::IndexMap;
 use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::PoloniusOutput;
 use rustc_borrowck::consumers::RegionInferenceContext;
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::ty::PolyFnSig;
@@ -88,7 +89,7 @@ impl RegionInfo<'_, '_> {
 fn region_info<'body, 'tcx>(
     regioncx: &'body RegionInferenceContext<'tcx>,
     borrows: &'body BorrowSet<'tcx>,
-    sig: PolyFnSig<'tcx>,
+    sig: Option<PolyFnSig<'tcx>>, // None for AssocConst
     local_decls: &'body LocalDecls<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> RegionInfo<'body, 'tcx> {
@@ -112,14 +113,16 @@ fn region_info<'body, 'tcx>(
 
     let mut tbl = IndexMap::new();
 
-    for (sig_in, arg_ty) in sig
-        .skip_binder()
-        .inputs()
-        .iter()
-        .zip(local_decls.iter().skip(1))
-    {
-        // let arg_ty = arg.node.ty(self.mir(), self.tcx());
-        poor_man_unification(&mut tbl, *sig_in, arg_ty.ty).unwrap();
+    if let Some(sig) = sig {
+        for (sig_in, arg_ty) in sig
+            .skip_binder()
+            .inputs()
+            .iter()
+            .zip(local_decls.iter().skip(1))
+        {
+            // let arg_ty = arg.node.ty(self.mir(), self.tcx());
+            poor_man_unification(&mut tbl, *sig_in, arg_ty.ty).unwrap();
+        }
     }
 
     // Build a name for each representative
@@ -197,7 +200,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) -> Self {
         let mir = body;
 
-        let sig = global_env.tcx().fn_sig(body.source.def_id()).skip_binder();
+        let sig = if let DefKind::AssocConst = global_env.tcx().def_kind(body.source.def_id()) {
+            None
+        } else {
+            Some(global_env.tcx().fn_sig(body.source.def_id()).skip_binder())
+        };
 
         let region_info = region_info(
             regioncx,

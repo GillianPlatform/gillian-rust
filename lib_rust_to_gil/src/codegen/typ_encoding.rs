@@ -261,6 +261,28 @@ pub trait TypeEncoder<'tcx>: crate::utils::tcx_utils::HasTyCtxt<'tcx> + HasGloba
                     .collect();
                 EncodedType([Expr::from("proj"), name.as_str().into(), args.into()].into())
             }
+            TyKind::FnDef(did, args) => {
+                let name = self.tcx().item_name(*did);
+                let args: Vec<_> = args
+                    .iter()
+                    .filter_map(|a| self.encode_generic_arg(a))
+                    .map(|a| a.0)
+                    .collect();
+                EncodedType([Expr::from("fndef"), name.as_str().into(), args.into()].into())
+            }
+            // TyKind::Closure(did, args) => {
+            //     let name = format!("{:?}", did);
+            //     let args: Vec<_> = args
+            //         .iter()
+            //         .filter_map(|a| self.encode_generic_arg(a))
+            //         .map(|a| a.0)
+            //         .collect();
+            //     EncodedType([Expr::from("closure"), name.as_str().into(), args.into()].into())
+            // }
+            // TyKind::FnPtr(_) => {
+            //     // We don't encode function pointers kinds in detail for now
+            //     EncodedType("fnptr".into())
+            // }
             _ => fatal!(self, "Cannot encode this type yet: {:#?}", ty.kind()),
         }
     }
