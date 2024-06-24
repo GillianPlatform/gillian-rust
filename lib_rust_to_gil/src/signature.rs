@@ -32,7 +32,7 @@ pub struct Signature<'tcx> {
 #[derive(Debug)]
 struct Contract<'tcx> {
     pre: Assertion,
-    post: (Vec<(Symbol, Ty<'tcx>)>, Assertion),
+    post: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
 }
 
 #[derive(Debug, Clone)]
@@ -132,16 +132,16 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Returns the user-provided postcondition of this item
+    /// Panics if the postcondition contains a disjunction
     pub fn user_post(&self, temp: &mut TempGenerator) -> Option<Assertion> {
-        let subst: HashMap<_, _> = self
-            .contract
-            .as_ref()?
-            .post
+        let contract = self.contract.as_ref()?;
+        assert_eq!(contract.post.len(), 1);
+        let subst: HashMap<_, _> = contract.post[0]
             .0
             .iter()
             .map(|lvar| (lvar.0.to_string(), Expr::LVar(temp.fresh_lvar())))
             .collect();
-        let mut post = self.contract.as_ref()?.post.1.clone();
+        let mut post = contract.post[0].1.clone();
 
         post.subst_lvar(&subst);
         Some(post)
@@ -179,9 +179,8 @@ impl<'tcx> Signature<'tcx> {
     }
 
     // TODO(xavier): Use `user_post` here to avoid hygiene issues!!!!!!
-    fn full_post(&self) -> Option<Assertion> {
+    fn full_post(&self) -> Vec<Assertion> {
         let mut wf = Vec::new();
-        let mut post = self.contract.as_ref()?.post.1.clone();
         for lft in self.lifetimes() {
             let lvar = Expr::LVar(format!("#{lft}"));
             wf.push(crate::logic::core_preds::alive_lft(lvar));
@@ -198,9 +197,16 @@ impl<'tcx> Signature<'tcx> {
             })
             .collect();
 
-        post.subst_pvar(&var_map);
+        let mut post = self
+            .contract
+            .as_ref()
+            .map(|c| c.post.clone())
+            .unwrap_or_default();
+        post.iter_mut().for_each(|p| p.1.subst_pvar(&var_map));
 
-        Some(wf.into_iter().rfold(post, Assertion::star))
+        post.into_iter()
+            .map(|(_, post)| wf.clone().into_iter().rfold(post, Assertion::star))
+            .collect()
     }
 
     /// Return a gil spec for a procedure corresponding to this signature
@@ -209,7 +215,7 @@ impl<'tcx> Signature<'tcx> {
 
         let sspec = SingleSpec {
             pre: self.full_pre(ctx, &mut temp)?,
-            posts: vec![self.full_post()?],
+            posts: self.full_post(),
             flag: Flag::Normal,
         };
         Some(Spec {
@@ -314,7 +320,8 @@ pub fn build_signature<'tcx>(
 
         if !(is_lemma(id, tcx) || is_predicate(id, tcx)) {
             pre.subst_pvar(&subst);
-            post.1.subst_pvar(&subst);
+            post.iter_mut()
+                .for_each(|(_, post)| post.subst_pvar(&subst));
         }
 
         (uni, Some(Contract { pre, post }))
