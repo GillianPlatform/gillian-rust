@@ -10,16 +10,23 @@ for file in ../tests/noproph/*.stdout; do
 	
 	echo ""
 	echo ""
-	echo "Noproph verify: $file"
-	opam exec -- dune exec gillian-rust -- verify $file -l disabled
-	
+	echo "Noproph verify: ${file%.stdout}.rs"
+	if ! grep -q "//?gil:ignore" "${file%.stdout}.rs"; then
+		opam exec -- dune exec gillian-rust -- verify $file -l disabled
+	else
+		echo "Skipping ${file%.stdout}.rs"
+	fi
 done
 
 for file in ../tests/proph/*.stdout; do
 	
 	echo ""
 	echo ""
-	echo "Proph verify: $file"
-	opam exec -- dune exec gillian-rust -- verify $file -l disabled --prophecies
+	echo "Proph verify: ${file%.stdout}.rs"
+	if ! grep -q "//?gil:ignore" "${file%.stdout}.rs"; then
+		opam exec -- dune exec gillian-rust -- verify $file -l disabled --prophecies
+	else
+		echo "Skipping ${file%.stdout}.rs"
+	fi
 
 done

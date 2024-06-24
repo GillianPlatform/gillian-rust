@@ -9,23 +9,23 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: struct `WP` is never constructed
-  --> ../tests/proph/wp_proph.rs:14:8
+  --> ../tests/proph/wp_proph.rs:15:8
    |
-14 | struct WP<T> {
+15 | struct WP<T> {
    |        ^^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: struct `N` is never constructed
-  --> ../tests/proph/wp_proph.rs:19:8
+  --> ../tests/proph/wp_proph.rs:20:8
    |
-19 | struct N<T> {
+20 | struct N<T> {
    |        ^
 
 warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:50:12
+  --> ../tests/proph/wp_proph.rs:51:12
    |
-50 |     fn own(self, model: Self::RepresentationTy) {
+51 |     fn own(self, model: Self::RepresentationTy) {
    |            ^^^^ help: convert the identifier to snake case: `reference`
    |
    = note: `#[warn(non_snake_case)]` on by default
