@@ -1,4 +1,4 @@
-use gillian::gil::{Assertion, Expr, Formula};
+use gillian::gil::{Assertion, Expr};
 
 use crate::codegen::typ_encoding::{self, EncodedType};
 

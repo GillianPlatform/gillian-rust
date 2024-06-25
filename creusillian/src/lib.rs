@@ -6,13 +6,13 @@ use itertools::{Either, Itertools};
 use pearlite_syn::Term;
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     parse::Parse, punctuated::Punctuated, token::Comma, Attribute, FnArg, Ident, Pat, PatIdent,
-    PatType, Receiver, ReturnType, Signature, Visibility,
+    PatType, ReturnType, Signature, Visibility,
 };
 
-use crate::anf::{core_to_sl, elim_match_form, print_gilsonite, Disjuncts, Subst, VarKind};
+use crate::anf::{core_to_sl, elim_match_form, Disjuncts, Subst, VarKind};
 
 mod anf;
 
@@ -31,14 +31,14 @@ impl Parse for AttrTrail {
 
 impl AttrTrail {
     fn extract_contract(mut self) -> syn::Result<(RawContract, Self)> {
-        let (contract, rest): (Vec<_>, _) = self
-            .0
-            .into_iter()
-            .partition(|attr| attr.path().is_ident("requires") || attr.path().is_ident("ensures"));
+        let (contract, rest): (Vec<_>, _) = self.0.into_iter().partition(|attr| {
+            attr.path().segments.last().unwrap().ident == "requires"
+                || attr.path().segments.last().unwrap().ident == "ensures"
+        });
 
         self.0 = rest;
         let (pre, post): (Vec<_>, Vec<_>) = contract.into_iter().partition_map(|attr| {
-            if attr.path().is_ident("requires") {
+            if attr.path().segments.last().unwrap().ident == ("requires") {
                 Either::Left(attr)
             } else {
                 Either::Right(attr)
@@ -152,18 +152,18 @@ impl CoreContract {
 
         let ensures: Vec<_> = self.3.into_iter().map(|t| core_to_sl(t)).collect();
 
-        let mut pre_tokens = quote! { requires { emp } };
+        let mut pre_tokens = TokenStream::new();
+        if has_inputs {
+            let forall = subst.bindings.values();
+            pre_tokens = quote! { forall #(#forall),* .}
+        }
 
-        if let Some((forall, req)) = pre.map(|mut p| p.clauses.remove(0)) {
-            pre_tokens = quote! {
-            forall #(#forall),* .
+        if let Some((_, req)) = pre.map(|mut p| p.clauses.remove(0)) {
+            pre_tokens.extend(quote! {
                 requires { #(#owns *)* $#req$ }
-            };
+            });
         } else {
-            if has_inputs {
-                let forall = subst.bindings.values();
-                pre_tokens = quote! { forall #(#forall),* . requires {  #(#owns*)* emp }}
-            }
+            pre_tokens.extend(quote! { requires {  #(#owns*)* emp } });
         };
 
         let mut post_tokens = Vec::new();
@@ -206,11 +206,11 @@ fn requires_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenS
     contract.2.push(term);
     let core = contract.elaborate()?;
 
-    core.to_signature();
-
+    let spec = core.to_signature();
     let AttrTrail(attrs, vis, sig, rest) = rest;
     Ok(quote!(
       #(#attrs)*
+      # [ gilogic :: macros :: specification ( #spec ) ]
       #vis #sig #rest
     ))
 }

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::gilsonite::{self, Assert, SpecTerm};
+use super::is_borrow;
 use super::utils::get_thir;
-use super::{builtins::LogicStubs, is_borrow};
 use crate::logic::gilsonite::SeqOp;
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     logic::{core_preds, param_collector},
     prelude::*,
     temp_gen::TempGenerator,
-    utils::polymorphism::{generic_types, has_generic_lifetimes},
+    utils::polymorphism::has_generic_lifetimes,
 };
 use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use indexmap::IndexMap;
@@ -125,43 +125,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Expr::LVar(name)
     }
 
-    fn get_ins(&self) -> Vec<usize> {
-        // Special case for items that are in gilogic.
-        // This code yeets as soon as we can do multi-crate.
-
-        if let Some(LogicStubs::OwnPred | LogicStubs::RefMutInner) =
-            LogicStubs::of_def_id(self.body_id, self.tcx())
-        {
-            return vec![0];
-        }
-
-        let Some(ins_attr) = crate::utils::attrs::get_attr(
-            self.tcx().get_attrs_unchecked(self.body_id),
-            &["gillian", "decl", "pred_ins"],
-        ) else {
-            fatal!(
-                self,
-                "Predicate {:?} doesn't have ins attribute",
-                self.pred_name()
-            )
-        };
-
-        let Some(str_arg) = ins_attr.value_str() else {
-            self.tcx()
-                .dcx()
-                .fatal("Predicate ins attribute must be a string")
-        };
-        let str_arg = str_arg.as_str().to_owned();
-
-        if str_arg.is_empty() {
-            return vec![];
-        }
-        str_arg
-            .split(',')
-            .map(|s| s.parse().expect("Ins should be a list of parameter number"))
-            .collect()
-    }
-
     fn pred_name(&self) -> String {
         self.global_env
             .just_pred_name_with_args(self.body_id, self.args)
@@ -178,28 +141,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn sig(&mut self) -> PredSig {
-        let has_generic_lifetimes = has_generic_lifetimes(self.body_id, self.tcx());
-        let generic_types = generic_types(self.body_id, self.tcx());
-        let mut ins = self.get_ins();
-
-        let generics_amount = generic_types.len() + (has_generic_lifetimes as usize);
-        if generics_amount > 0 {
-            // Ins known info is only about non-type params.
-            // If thefre are generic types args,
-            // we need to add the type params as ins, and offset known ins,
-            // since type params are added in front.
-            for i in &mut ins {
-                *i += generics_amount;
-            }
-            ins.extend(0..generics_amount);
-            ins.sort();
-        }
-
-        // let guard = self.guard();
-
         PredSig {
             name: self.pred_name(),
-            // guard,
         }
     }
 

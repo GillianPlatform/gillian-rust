@@ -2,7 +2,8 @@
 extern crate creusillian;
 extern crate gilogic;
 
-use gilogic::prophecies::Ownable;
+use gilogic::prophecies::{Prophecised, Ownable};
+use gilogic::mutref_auto_resolve;
 
 #[creusillian::ensures(ret == 4u32)]
 pub fn test() -> u32 {
@@ -23,4 +24,11 @@ pub fn test3(x : Option<u32>) -> u32 {
         Some(x) => x,
         None => 0,
     }
+}
+
+#[creusillian::requires(true)]
+#[creusillian::ensures(^x == 1)]
+pub fn write(x : &mut u32) {
+    *x = 1;
+    mutref_auto_resolve!(x);
 }

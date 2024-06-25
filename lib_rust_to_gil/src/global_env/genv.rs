@@ -49,15 +49,6 @@ where
         self.done.insert(k);
     }
 
-    fn mark_as_done_iter<I>(&mut self, ks: I)
-    where
-        I: IntoIterator<Item = K>,
-    {
-        for k in ks {
-            self.mark_as_done(k)
-        }
-    }
-
     fn pop(&mut self) -> Option<(K, V)> {
         loop {
             match self.queue.pop_front() {
@@ -92,8 +83,6 @@ pub struct GlobalEnv<'tcx> {
 
     // Mapping from item -> specification
     pub(crate) spec_map: HashMap<DefId, DefId>,
-    // Mapping from specification -> item
-    pub(crate) prog_map: HashMap<DefId, DefId>,
 
     /// Assertions & specifications from external dependencies
     metadata: Metadata<'tcx>,
@@ -132,8 +121,8 @@ impl<'tcx> TypeEncoder<'tcx> for GlobalEnv<'tcx> {}
 impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
-        let mut item_queue = QueueOnce::default();
-        let (spec_map, prog_map) = Self::build_gillian_spec_map(tcx);
+        let item_queue = QueueOnce::default();
+        let (spec_map, _) = Self::build_gillian_spec_map(tcx);
 
         let metadata = Metadata::load(tcx, &config.overrides);
 
@@ -143,7 +132,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             adt_queue: Default::default(),
             item_queue,
             spec_map,
-            prog_map,
             metadata,
             inner_preds: Default::default(),
             bodies: Default::default(),

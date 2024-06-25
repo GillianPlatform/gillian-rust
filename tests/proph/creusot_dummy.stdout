@@ -4,6 +4,11 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
+axiomatic spec "<&mut u32 as gilogic::prophecies::Prophecised>::prophecy_resolve"(lft, mut_ref)
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(lft, mut_ref, {{ #current, #future }}) ]]
+[[<observation>(((#current) = (#future)); )]]
+normal
+
 pred "<u32 as gilogic::prophecies::Ownable>::own"(+self, model):
   (0i i<=# #self) * (#self i<=# 4294967295i) * (#self == #model)
   * types(#self: Int)
@@ -19,6 +24,40 @@ pred "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(+self, mo
   * (#model == {{ 1i, {{ #repr }} }})
   * (model == #model)
   * (self == #self);
+
+
+pred "<&mut u32 as gilogic::prophecies::Ownable>::own"(+pLft_erased, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<u32>"(pLft_erased, #self)
+  * <value_observer>(l-nth(#self, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (model == #model)
+  * (self == #self);
+
+
+pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
+  (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<u32>"(+pLft_a, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), "u32"; #v)
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<u32>$$inner"(+this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), "u32"; #v)
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
 
 
 spec test()
@@ -78,5 +117,51 @@ proc test3(x) {
         goto rlab;
   rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "adt", "Option", {{ "u32" }} }});
         return
+};
+
+spec write(pLft_0, x, x_repr)
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr) * <observation>(true; ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (x_repr == #x_repr) * (x == #x) * (pLft_0 == #pLft_0) ]]
+[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#x_repr, 1i)) = (1i)); ) * <lft>(#pLft_0; true)]]
+normal
+
+proc write(pLft_0, x) {
+        m_1x := x;
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "ref", true, "u32" }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
+        g_1 := l-nth(g_2, 0i);
+        u := [store_value](l-nth(l-nth(g_1, 0i), 0i), l-nth(l-nth(g_1, 0i), 1i), "u32", 1i);
+        g_4 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
+        g_3 := l-nth(g_4, 0i);
+        g_5 := [new_lft]();
+        pLft_8 := l-nth(g_5, 0i);
+        m_3 := g_3;
+        g_6 := m_3;
+        g_7 := "<&mut u32 as gilogic::prophecies::Prophecised>::prophecy_auto_update"(pLft_0, g_6);
+        m_2 := g_7;
+        goto bb1;
+  bb1:  g_9 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
+        g_8 := l-nth(g_9, 0i);
+        g_10 := [new_lft]();
+        pLft_9 := l-nth(g_10, 0i);
+        m_5 := g_8;
+        g_11 := m_5;
+        g_12 := "<&mut u32 as gilogic::prophecies::Prophecised>::prophecy_resolve"(pLft_0, g_11);
+        m_4 := g_12;
+        goto bb2;
+  bb2:  m_0 := {{}};
+        g_13 := m_0;
+        ret := g_13;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }});
+        return
+};
+
+proc "<&mut u32 as gilogic::prophecies::Prophecised>::prophecy_auto_update"(pLft_a, mut_ref) {
+    sep_assert (<value>(l-nth(l-nth(mut_ref, 0i), 0i), l-nth(l-nth(mut_ref, 0i), 1i), "u32"; #pointee) * "<u32 as gilogic::prophecies::Ownable>::own"(#pointee, #new_repr))[bind: #new_repr];
+    u := [pcy_assign](l-nth(mut_ref, 1i), #new_repr);
+    ret := {{  }};
+    return
 };
 
