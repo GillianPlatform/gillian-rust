@@ -4,6 +4,10 @@
 
 (name gillian-rust)
 
+(authors "Sacha-Élie Ayoun" "Xavier Denis")
+
+(maintainers "Sacha-Élie Ayoun" "Xavier Denis")
+
 (generate_opam_files)
 
 (license BSD-3-Clause)
