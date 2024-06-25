@@ -141,6 +141,9 @@ ast_enum_of_structs! {
         // Universal quantification
         Forall(TermForall),
 
+        // Existential quantification
+        Exists(TermExists),
+
         /// An term contained within invisible delimiters.
         ///
         /// This variant is important for faithfully representing the precedence
@@ -495,6 +498,16 @@ ast_struct! {
 ast_struct! {
     pub struct TermForall {
         pub forall_token: kw::forall,
+        pub lt_token: Token![<],
+        pub args: Punctuated<QuantArg, Token![,]>,
+        pub gt_token: Token![>],
+        pub term: Box<Term>
+    }
+}
+
+ast_struct! {
+    pub struct TermExists {
+        pub exists_token: kw::exists,
         pub lt_token: Token![<],
         pub args: Punctuated<QuantArg, Token![,]>,
         pub gt_token: Token![>],
@@ -1334,6 +1347,8 @@ pub(crate) mod parsing {
             term_closure(input, allow_struct).map(Term::Closure)
         } else if input.peek(kw::forall) {
             input.parse().map(Term::Forall)
+        } else if input.peek(kw::exists) {
+            input.parse().map(Term::Exists)
         } else if (input.peek(Ident))
             || input.peek(Token![::])
             || input.peek(Token![<])
@@ -1630,6 +1645,36 @@ pub(crate) mod parsing {
         }
     }
 
+    impl Parse for TermExists {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let exists_token = input.parse()?;
+            let lt_token: Token![<] = input.parse()?;
+
+            let mut args = Punctuated::new();
+            while !input.peek(Token![>]) {
+                let quantarg = input.parse()?;
+                args.push_value(quantarg);
+                if input.peek(Token![>]) {
+                    break;
+                }
+
+                let punct = input.parse()?;
+                args.push_punct(punct);
+            }
+
+            let gt_token: Token![>] = input.parse()?;
+
+            let term = input.parse()?;
+
+            Ok(TermExists {
+                exists_token,
+                lt_token,
+                args,
+                gt_token,
+                term,
+            })
+        }
+    }
     impl Parse for QuantArg {
         fn parse(input: ParseStream) -> Result<Self> {
             let ident = input.parse()?;
@@ -2026,6 +2071,16 @@ pub(crate) mod printing {
     impl ToTokens for TermForall {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.forall_token.to_tokens(tokens);
+            self.lt_token.to_tokens(tokens);
+            self.args.to_tokens(tokens);
+            self.gt_token.to_tokens(tokens);
+            self.term.to_tokens(tokens);
+        }
+    }
+
+    impl ToTokens for TermExists {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.exists_token.to_tokens(tokens);
             self.lt_token.to_tokens(tokens);
             self.args.to_tokens(tokens);
             self.gt_token.to_tokens(tokens);

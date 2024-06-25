@@ -7,6 +7,7 @@ use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 impl Formula {
     fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
         let mut tokens = TokenStream::new();
+        eprintln!("{inner:?}");
         match inner {
             Term::Binary(TermBinary { left, op, right }) => match op {
                 BinOp::Eq(tok) => {
@@ -93,6 +94,24 @@ impl Formula {
                 }
                 tokens.extend(ts)
             }
+            Term::Exists(TermExists {
+                exists_token: _,
+                lt_token: _,
+                args,
+                gt_token: _,
+                term,
+            }) => {
+                let mut ts = Self::encode_inner(term)?;
+                for arg in args {
+                    ts = quote! {
+                        gilogic::__stubs::exists(
+                            #[gillian::no_translate]
+                            (|#arg| #ts)
+                        )
+                    }
+                }
+                tokens.extend(ts)
+            }
             Term::Impl(TermImpl {
                 hyp,
                 eqeq_token: _,
@@ -109,10 +128,11 @@ impl Formula {
             Term::Path(p) => tokens.extend(quote!(
               gilogic::__stubs::equal(#p, true)
             )),
-            _ => {
+            Term::Lit(l) => tokens.extend(quote! { #l }),
+            e => {
                 return Err(Error::new(
                     inner.span(),
-                    "Expression is not a supported formula",
+                    format!("Expression is not a supported formula {e:?}"),
                 ))
             }
         }

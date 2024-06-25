@@ -889,8 +889,7 @@ where
                 let vars = alloc.intersperse(
                     vars.iter().map(|(v, ty)| {
                         v.pretty(alloc)
-                            .append(" : ")
-                            .append(ty.map(|ty| ty.pretty(alloc)).unwrap_or(alloc.nil()))
+                            .append(ty.map(|ty| alloc.text(" : ").append(ty.pretty(alloc))).unwrap_or(alloc.nil()))
                     }),
                     ", ",
                 );

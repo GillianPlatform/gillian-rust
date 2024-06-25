@@ -145,7 +145,7 @@ impl<'tcx> Resolver<'tcx> {
             name: mut_ref_own_name,
             params: own_params,
         };
-        let resolved_observation = crate::logic::core_preds::observation(current.eq_f(future));
+        let resolved_observation = crate::logic::core_preds::observation(Expr::eq_expr(current, future));
         let posts = vec![resolved_observation];
         let spec = Spec {
             name: self.resolver_name,

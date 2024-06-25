@@ -65,6 +65,7 @@ pub(crate) enum LogicStubs {
     RefMutInner,
     InstantiateLVars,
     Spec,
+    ExprExists,
 }
 
 impl LogicStubs {
@@ -90,6 +91,7 @@ impl LogicStubs {
                 "gillian::formula::and" => Some(Self::FormulaAnd),
                 "gillian::formula::or" => Some(Self::FormulaOr),
                 "gillian::formula::forall" => Some(Self::FormulaForall),
+                "gillian::expr::exists" => Some(Self::ExprExists),
                 "gillian::formula::implication" => Some(Self::FormulaImplication),
                 "gillian::mut_ref::get_prophecy" => Some(Self::MutRefGetProphecy),
                 "gillian::mut_ref::set_prophecy" => Some(Self::MutRefSetProphecy),

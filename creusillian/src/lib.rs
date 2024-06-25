@@ -152,7 +152,7 @@ impl CoreContract {
         if let Some((forall, req)) = pre.map(|mut p| p.clauses.remove(0)) {
             pre_tokens = quote! {
             forall #(#forall),* .
-                requires { #(#owns *)* (#req) }
+                requires { #(#owns *)* $#req$ }
             };
         } else {
             if has_inputs {
@@ -174,7 +174,7 @@ impl CoreContract {
             let exi_toks = quote! { exists #(#exi,)* ret_repr . };
             
             post_tokens.push(quote! {
-                #exi_toks ensures { ret.own(ret_repr) * (#p) }
+                #exi_toks ensures { ret.own(ret_repr) * $#p$ }
             });
         }
 
@@ -228,7 +228,7 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
 
     let spec = core.to_signature();
     let AttrTrail(attrs, vis, sig, rest) = rest;
-    eprintln!("{}", spec);
+    eprintln!(" {:?} h", spec.to_string());
     Ok(quote!(
       #(#attrs)*
       # [ gilogic :: macros :: specification ( #spec ) ]

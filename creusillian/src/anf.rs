@@ -36,6 +36,7 @@ pub enum PreGil {
     Constructor(GilCons),
     Var(VarKind),
     Lit(Lit),
+    Exists(VarKind, Box<PreGil>),
 }
 
 impl ToTokens for PreGil {
@@ -56,6 +57,11 @@ impl ToTokens for PreGil {
             PreGil::Constructor(ck) => ck.to_tokens(tokens),
             PreGil::Var(v) => v.to_tokens(tokens),
             PreGil::Lit(l) => l.to_tokens(tokens),
+            PreGil::Exists(var, body) => {
+                tokens.extend(quote! {
+                    (exists < #var : _ > #body ) == true
+                })
+            }
         }
     }
 }
@@ -577,7 +583,6 @@ pub fn core_to_sl(t: CoreTerm) -> Disjuncts {
                 to_see.push(*l);
                 to_see.push(*r);
             }
-            CoreTerm::Exists(ids, t) => clauses.push((ids, core_conjunct_to_sl(*t))),
             _ => clauses.push((vec![], core_conjunct_to_sl(t))),
         }
     }
@@ -632,7 +637,11 @@ fn core_conjunct_to_sl(t: CoreTerm) -> PreGil {
         },
         CoreTerm::Var(v) => PreGil::Var(v),
         CoreTerm::Lit(l) => PreGil::Lit(l),
-        CoreTerm::Exists(_, _) => unreachable!(),
+        CoreTerm::Exists(v, b) => {
+            v.into_iter().fold(core_conjunct_to_sl(*b), |acc, v| {
+                PreGil::Exists(v, Box::new(acc))
+            })
+        },
     }
 }
 
