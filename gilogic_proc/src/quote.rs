@@ -241,7 +241,15 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
                 .collect::<syn::Result<_>>()?;
             tokens.extend(quote! { ( #(#fields),*) })
         }
-        // Term::Unary(_) => todo!(),
+        Term::Unary(TermUnary { op, expr }) => {
+            let expr = encode_expr(expr)?;
+
+            match op {
+                syn::UnOp::Deref(_) =>tokens.extend(quote! { (#expr).0 }),
+                syn::UnOp::Not(_) => tokens.extend(quote! { ! #expr }),
+                syn::UnOp::Neg(_) => tokens.extend(quote! { - #expr }),
+            }
+        },
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
         e => {
             return Err(Error::new(

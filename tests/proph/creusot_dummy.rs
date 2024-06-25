@@ -26,7 +26,7 @@ pub fn test3(x : Option<u32>) -> u32 {
     }
 }
 
-#[creusillian::requires(true)]
+#[creusillian::requires(*x == 0)]
 #[creusillian::ensures(^x == 1)]
 pub fn write(x : &mut u32) {
     *x = 1;

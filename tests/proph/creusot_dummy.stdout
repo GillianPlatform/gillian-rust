@@ -120,7 +120,7 @@ proc test3(x) {
 };
 
 spec write(pLft_0, x, x_repr)
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr) * <observation>(true; ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (x_repr == #x_repr) * (x == #x) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr) * <observation>(((l-nth(#x_repr, 0i)) = (0i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (x_repr == #x_repr) * (x == #x) * (pLft_0 == #pLft_0) ]]
 [["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#x_repr, 1i)) = (1i)); ) * <lft>(#pLft_0; true)]]
 normal
 
