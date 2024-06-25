@@ -639,9 +639,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let right = self.compile_expression_inner(*right);
                 match op {
                     BinOp::Eq => GExpr::eq_expr(left, right),
-                    BinOp::Lt => todo!(),
-                    BinOp::Le => todo!(),
-                    BinOp::Ne => todo!(),
+                    BinOp::Lt => {
+                        if left_ty.is_integral() {
+                            GExpr::i_lt(left, right)
+                        } else {
+                            GExpr::f_lt(left, right)
+                        }
+                    }
+                    BinOp::Le => {
+                        if left_ty.is_integral() {
+                            GExpr::i_le(left, right)
+                        } else {
+                            GExpr::f_le(left, right)
+                        }
+                    }
+                    BinOp::Ne => GExpr::e_not(GExpr::eq_expr(left, right)),
                     BinOp::Sub => {
                         if left_ty.is_integral() {
                             GExpr::minus(left, right)

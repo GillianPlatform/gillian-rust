@@ -151,14 +151,14 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             let r = encode_expr(right)?;
             match op {
                 BinOp::Eq(_) => tokens.extend(quote! { gilogic :: __stubs :: expr_eq (#l, #r) }),
+                BinOp::Ne(_) => tokens.extend(quote! { gilogic :: __stubs :: expr_ne (#l, #r) }),
                 _ => tokens.extend(quote! { #l #op #r }),
             }
         }
         // Term::Block(_) => todo!(),
         Term::Call(TermCall {
             func,
-            paren_token,
-            args,
+            args,..
         }) => {
             let args: Vec<_> = args
                 .iter()
@@ -166,7 +166,11 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
                 .collect::<syn::Result<_>>()?;
             tokens.extend(quote! { #func ( #(#args),* ) })
         }
-        // Term::Field(_) => todo!(),
+        Term::Field(TermField { base, dot_token, member }) => {
+            let base = encode_expr(base)?;
+
+            tokens.extend(quote! { #base . #member })
+        },
         Term::Exists(TermExists {
             exists_token: _,
             lt_token: _,
@@ -187,7 +191,12 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         }
         // Term::If(_) => todo!(),
         Term::Lit(l) => l.to_tokens(&mut tokens),
-        Term::MethodCall(_) => todo!(),
+        Term::MethodCall(TermMethodCall { receiver, dot_token, method, turbofish, args, .. }) => {
+            let r = encode_expr(&receiver)?;
+            let args : Vec<_> = args.iter().map(|a| encode_expr(a)).collect::<syn::Result<_>>()?;
+
+            tokens.extend(quote! { #r #dot_token #method #turbofish ( #(#args),*) })
+        },
         Term::Paren(TermParen { expr, .. }) => {
             let inner = encode_expr(expr)?;
             tokens.extend(quote! { ( #inner )})
@@ -214,13 +223,16 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
 
             tokens.extend(quote! { #path { #(#fields),* } })
         }
-        // Term::Tuple(_) => todo!(),
+        Term::Tuple(TermTuple {  elems, .. }) => {
+            let fields : Vec<_> = elems.iter().map(|a| encode_expr(a)).collect::<syn::Result<_>>()?;
+            tokens.extend(quote! { ( #(#fields),*) })
+        },
         // Term::Unary(_) => todo!(),
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
         e => {
             return Err(Error::new(
                 inner.span(),
-                format!("Expression is not a supported {e:?}"),
+                format!("Expression is not supported {e:?}"),
             ))
         }
     };

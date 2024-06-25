@@ -28,7 +28,7 @@ proc "MyInt::new"(x) {
         m_1x := x;
   bb0:  m_3 := m_1x;
         g_0 := m_3;
-        m_2 := (not (g_0 i<= 10i));
+        m_2 := not ((g_0) i<= (10i));
         g_1 := m_2;
         goto [g_1] bb1 bb2;
   bb1:  m_0 := {{ 0i, {{  }} }};

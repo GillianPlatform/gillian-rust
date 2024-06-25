@@ -111,6 +111,13 @@ pub fn expr_eq<T>(_: T, _: T) -> bool {
 
 #[gillian::no_translate]
 #[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::expr::ne"]
+pub fn expr_ne<T>(_: T, _: T) -> bool {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::formula::and"]
 pub fn and(_: RustFormula, _: RustFormula) -> RustFormula {
     unreachable!()

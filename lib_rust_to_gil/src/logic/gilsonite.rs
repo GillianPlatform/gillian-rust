@@ -862,6 +862,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     mir::BinOp::Sub => BinOp::Sub,
                     mir::BinOp::Shl => BinOp::Shl,
                     mir::BinOp::Eq => BinOp::Eq,
+                    mir::BinOp::Lt => BinOp::Lt,
+                    mir::BinOp::Le => BinOp::Le,
                     _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 
@@ -909,6 +911,17 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         ExprKind::BinOp {
                             left,
                             op: BinOp::Eq,
+                            right,
+                        }
+                    }
+                    Some(LogicStubs::ExprNe) => {
+                        assert!(args.len() == 2, "Equal call must have two arguments");
+                        let left = Box::new(self.build_expression(args[0]));
+                        let right = Box::new(self.build_expression(args[1]));
+
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Ne,
                             right,
                         }
                     }

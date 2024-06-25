@@ -16,7 +16,7 @@ abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 spec "MyBox::<T>::write"(pty_T0, self, v, sm, vm)
 [[ "<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #self, #sm) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #vm) * (vm == #vm) * (sm == #sm) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
-[["<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #rm) * <observation>((#rm = #vm); )]]
+[["<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #rm) * <observation>(((#rm) = (#vm)); )]]
 normal
 
 proc "MyBox::<T>::write"(pty_T0, self, v) {
@@ -29,10 +29,10 @@ proc "MyBox::<T>::write"(pty_T0, self, v) {
         m_4 := g_1;
         goto bb1;
   bb1:  g_2 := m_4;
-        g_4 := [load_value](l-nth(m_1self, 0i), l+ (l-nth(m_1self, 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
+        g_4 := [load_value](l-nth(m_1self, 0i), l+(l-nth(m_1self, 1i), {{ {{ "f", 0i, {{ "adt", "MyBox", {{ pty_T0 }} }} }} }}), {{ "ptr", true, pty_T0 }}, true);
         g_3 := l-nth(g_4, 0i);
         u := [store_value](l-nth(g_3, 0i), l-nth(g_3, 1i), pty_T0, g_2);
-        m_3 := {{  }};
+        m_3 := {{}};
         goto bb3;
   bb3:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}, false);
         g_5 := l-nth(g_6, 0i);

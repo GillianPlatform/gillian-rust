@@ -861,7 +861,8 @@ where
                     .append(alloc.space())
                     .append(operator.pretty(alloc))
                     .append(alloc.space())
-                    .append(right_operand.pretty(alloc).parens()),
+                    .append(right_operand.pretty(alloc).parens())
+                    .parens(),
             },
             Expr::LstSub {
                 list,

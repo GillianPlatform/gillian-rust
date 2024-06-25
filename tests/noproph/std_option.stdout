@@ -71,7 +71,7 @@ proc "Option::<T>::put"(pLft_0, pty_T0, self, x) {
         g_5 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, true);
         g_4 := l-nth(g_5, 0i);
         u := [store_value](l-nth(g_4, 0i), l-nth(g_4, 1i), {{ "adt", "Option", {{ pty_T0 }} }}, g_3);
-        m_0 := {{  }};
+        m_0 := {{}};
         goto bb4;
   bb4:  goto bb5;
   bb5:  g_6 := m_0;
