@@ -542,17 +542,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let (thir, _) = get_thir!(self, self.body_id);
         self.build_var_map(&thir);
 
-        let SpecTerm {
-            uni,
-            pre,
-            posts,
-        } = self.global_env.gilsonite_spec(self.body_id).clone();
+        let SpecTerm { uni, pre, posts } = self.global_env.gilsonite_spec(self.body_id).clone();
 
         let pre = self.compile_assertion(pre);
 
-        let posts = posts.into_iter().map(|(exi, post)| {
-            (exi, self.compile_assertion(post))
-        }).collect();
+        let posts = posts
+            .into_iter()
+            .map(|(exi, post)| (exi, self.compile_assertion(post)))
+            .collect();
 
         (uni.into_iter().collect(), pre, posts)
         // (uni.into_iter().collect(), pre, (exi, post))
@@ -666,6 +663,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             todo!("shl for floats")
                         }
                     }
+                    BinOp::And => GExpr::and(left, right),
+                    BinOp::Or => GExpr::or(left, right),
                 }
             }
             ExprKind::Constructor {
@@ -788,9 +787,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .push(core_preds::pcy_value(prophecy, value.clone()));
                 value
             }
-            ExprKind::Exists { var, body } => {
-                GExpr::EExists(vec![(var.0.to_string(), None)], Box::new(self.compile_expression_inner(*body)))
-            }
+            ExprKind::Exists { var, body } => GExpr::EExists(
+                vec![(var.0.to_string(), None)],
+                Box::new(self.compile_expression_inner(*body)),
+            ),
         }
     }
 }

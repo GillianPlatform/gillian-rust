@@ -119,7 +119,10 @@ impl CoreContract {
             })
             .collect();
 
-        bindings.insert(VarKind::Source(Ident::new("ret", Span::call_site())), VarKind::Source(Ident::new("ret_repr", Span::call_site())));
+        bindings.insert(
+            VarKind::Source(Ident::new("ret", Span::call_site())),
+            VarKind::Source(Ident::new("ret_repr", Span::call_site())),
+        );
         let mut subst = Subst { bindings };
 
         self.2.iter_mut().for_each(|t| {
@@ -130,7 +133,9 @@ impl CoreContract {
             t.subst(&mut subst.clone());
         });
 
-        subst.bindings.remove(&VarKind::Source(Ident::new("ret", Span::call_site())));
+        subst
+            .bindings
+            .remove(&VarKind::Source(Ident::new("ret", Span::call_site())));
         let requires: Vec<_> = self.2.into_iter().map(|t| core_to_sl(t)).collect();
 
         assert!(requires.iter().all(|a| a.clauses.len() == 1));
@@ -172,7 +177,7 @@ impl CoreContract {
             .unwrap_or_else(|| Disjuncts { clauses: vec![] });
         for (exi, p) in post.clauses {
             let exi_toks = quote! { exists #(#exi,)* ret_repr . };
-            
+
             post_tokens.push(quote! {
                 #exi_toks ensures { ret.own(ret_repr) * $#p$ }
             });
@@ -228,7 +233,7 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
 
     let spec = core.to_signature();
     let AttrTrail(attrs, vis, sig, rest) = rest;
-    eprintln!(" {:?} h", spec.to_string());
+
     Ok(quote!(
       #(#attrs)*
       # [ gilogic :: macros :: specification ( #spec ) ]

@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue},
-    thir::{self, AdtExpr, ClosureExpr, ExprId, Thir},
+    thir::{self, AdtExpr, ClosureExpr, ExprId, LogicalOp, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
@@ -102,10 +102,10 @@ pub enum ExprKind<'tcx> {
     GetValue {
         mut_ref: Box<Expr<'tcx>>,
     },
-    Exists { 
+    Exists {
         var: (Symbol, Ty<'tcx>),
         body: Box<Expr<'tcx>>,
-    }
+    },
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -170,6 +170,8 @@ pub enum BinOp {
     Sub,
     Add,
     Shl,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -805,10 +807,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 ExprKind::Tuple { fields }
             }
             thir::ExprKind::Borrow {
-                borrow_kind: BorrowKind::Mut { .. } | BorrowKind::Shared,
+                borrow_kind: b @ (BorrowKind::Mut { .. } | BorrowKind::Shared),
                 arg,
             } => {
-                let arg = &self.thir[self.peel_scope(*arg)];
+                let inner_id = self.peel_scope(*arg);
+                let arg = &self.thir[inner_id];
 
                 match arg.kind {
                     thir::ExprKind::Deref { arg: e } => self.build_expression_kind(e),
@@ -824,6 +827,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             field: name,
                         }
                     }
+                    // HACK
+                    _ if *b == BorrowKind::Shared => self.build_expression_kind(inner_id),
                     _ => todo!("unsupported {arg:?}"),
                 }
             }
@@ -852,7 +857,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             }
             thir::ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = self.build_expression(*lhs);
-
                 let rhs = self.build_expression(*rhs);
                 let op = match op {
                     mir::BinOp::Sub => BinOp::Sub,
@@ -867,12 +871,37 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     right: Box::new(rhs),
                 }
             }
+            thir::ExprKind::LogicalOp { op, lhs, rhs } => {
+                let lhs = self.build_expression(*lhs);
+                let rhs = self.build_expression(*rhs);
+                let op = match op {
+                    LogicalOp::And => BinOp::And,
+                    LogicalOp::Or => BinOp::Or,
+                };
+
+                ExprKind::BinOp {
+                    left: Box::new(lhs),
+                    op,
+                    right: Box::new(rhs),
+                }
+            }
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {
                 let stub = self.get_stub(*ty);
                 match stub {
                     Some(LogicStubs::FormulaEqual) => {
+                        assert!(args.len() == 2, "Equal call must have two arguments");
+                        let left = Box::new(self.build_expression(args[0]));
+                        let right = Box::new(self.build_expression(args[1]));
+
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Eq,
+                            right,
+                        }
+                    }
+                    Some(LogicStubs::ExprEq) => {
                         assert!(args.len() == 2, "Equal call must have two arguments");
                         let left = Box::new(self.build_expression(args[0]));
                         let right = Box::new(self.build_expression(args[1]));
@@ -932,9 +961,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         };
                         ExprKind::SeqOp { op, args }
                     }
-                    Some(LogicStubs::ExprExists) => {
-                        self.build_exists_body(args[0])
-                    }
+                    Some(LogicStubs::ExprExists) => self.build_exists_body(args[0]),
                     None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
