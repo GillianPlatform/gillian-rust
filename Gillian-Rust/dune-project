@@ -4,10 +4,20 @@
 
 (name gillian-rust)
 
+(generate_opam_files)
+
+(license BSD-3-Clause)
+
+(bug_reports https://github.com/GillianPlatform/rust-to-gil/issues)
+
+(homepage https://github.com/GillianPlatform/rust-to-gil/)
+
+(source
+ (github GillianPlatform/rust-to-gil))
+
 (package
  (name gillian-rust)
- (synopsis "Gillian-Rust")
- (description "Gillian-Rust")
+ (synopsis "Gillian instantiation for Rust")
  (depends gillian dune-sites)
  (sites
   (share runtime)))
