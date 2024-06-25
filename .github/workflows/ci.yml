@@ -20,6 +20,7 @@ jobs:
       - run: cargo build
       - run: cargo check
       - run: cargo clippy
+      - run: cargo test --test ui -- --check
 
   gil:
     runs-on: ubuntu-latest
