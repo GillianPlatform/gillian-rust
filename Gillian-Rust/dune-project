@@ -22,6 +22,6 @@
 (package
  (name gillian-rust)
  (synopsis "Gillian instantiation for Rust")
- (depends gillian dune-sites)
+ (depends gillian dune-site)
  (sites
   (share runtime)))
