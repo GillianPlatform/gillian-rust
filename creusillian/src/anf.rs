@@ -57,11 +57,9 @@ impl ToTokens for PreGil {
             PreGil::Constructor(ck) => ck.to_tokens(tokens),
             PreGil::Var(v) => v.to_tokens(tokens),
             PreGil::Lit(l) => l.to_tokens(tokens),
-            PreGil::Exists(var, body) => {
-                tokens.extend(quote! {
-                    (exists < #var : _ > #body ) == true
-                })
-            }
+            PreGil::Exists(var, body) => tokens.extend(quote! {
+                (exists < #var : _ > #body )
+            }),
         }
     }
 }
@@ -70,8 +68,6 @@ impl PreGil {
     pub fn conj(self, o: Self) -> Self {
         PreGil::BinOp(Box::new(self), BinOp::And(Default::default()), Box::new(o))
     }
-
-
 }
 
 #[derive(Clone, Debug)]
@@ -579,10 +575,10 @@ pub fn core_to_sl(t: CoreTerm) -> Disjuncts {
     let mut to_see = vec![t];
     while let Some(t) = to_see.pop() {
         match t {
-            CoreTerm::BinOp(l, BinOp::Or(_), r) => {
-                to_see.push(*l);
-                to_see.push(*r);
-            }
+            // CoreTerm::BinOp(l, BinOp::Or(_), r) => {
+            //     to_see.push(*l);
+            //     to_see.push(*r);
+            // }
             _ => clauses.push((vec![], core_conjunct_to_sl(t))),
         }
     }
@@ -637,11 +633,9 @@ fn core_conjunct_to_sl(t: CoreTerm) -> PreGil {
         },
         CoreTerm::Var(v) => PreGil::Var(v),
         CoreTerm::Lit(l) => PreGil::Lit(l),
-        CoreTerm::Exists(v, b) => {
-            v.into_iter().fold(core_conjunct_to_sl(*b), |acc, v| {
-                PreGil::Exists(v, Box::new(acc))
-            })
-        },
+        CoreTerm::Exists(v, b) => v.into_iter().fold(core_conjunct_to_sl(*b), |acc, v| {
+            PreGil::Exists(v, Box::new(acc))
+        }),
     }
 }
 

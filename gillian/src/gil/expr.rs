@@ -857,10 +857,11 @@ where
 
                 _ => left_operand
                     .pretty(alloc)
+                    .parens()
                     .append(alloc.space())
                     .append(operator.pretty(alloc))
                     .append(alloc.space())
-                    .append(right_operand.pretty(alloc)),
+                    .append(right_operand.pretty(alloc).parens()),
             },
             Expr::LstSub {
                 list,
@@ -888,8 +889,10 @@ where
             Expr::EExists(vars, body) => {
                 let vars = alloc.intersperse(
                     vars.iter().map(|(v, ty)| {
-                        v.pretty(alloc)
-                            .append(ty.map(|ty| alloc.text(" : ").append(ty.pretty(alloc))).unwrap_or(alloc.nil()))
+                        alloc.text(format!("#{v}")).append(
+                            ty.map(|ty| alloc.text(" : ").append(ty.pretty(alloc)))
+                                .unwrap_or(alloc.nil()),
+                        )
                     }),
                     ", ",
                 );

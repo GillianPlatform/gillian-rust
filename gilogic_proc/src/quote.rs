@@ -7,7 +7,6 @@ use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 impl Formula {
     fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
         let mut tokens = TokenStream::new();
-        eprintln!("{inner:?}");
         match inner {
             Term::Binary(TermBinary { left, op, right }) => match op {
                 BinOp::Eq(tok) => {
@@ -101,7 +100,7 @@ impl Formula {
                 gt_token: _,
                 term,
             }) => {
-                let mut ts = Self::encode_inner(term)?;
+                let mut ts = encode_expr(term)?;
                 for arg in args {
                     ts = quote! {
                         gilogic::__stubs::exists(
@@ -144,9 +143,93 @@ impl Formula {
     }
 }
 
+fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
+    let mut tokens = TokenStream::new();
+    match inner {
+        Term::Binary(TermBinary { left, op, right }) => {
+            let l = encode_expr(left)?;
+            let r = encode_expr(right)?;
+            match op {
+                BinOp::Eq(_) => tokens.extend(quote! { gilogic :: __stubs :: expr_eq (#l, #r) }),
+                _ => tokens.extend(quote! { #l #op #r }),
+            }
+        }
+        // Term::Block(_) => todo!(),
+        Term::Call(TermCall {
+            func,
+            paren_token,
+            args,
+        }) => {
+            let args: Vec<_> = args
+                .iter()
+                .map(|f| encode_expr(&f))
+                .collect::<syn::Result<_>>()?;
+            tokens.extend(quote! { #func ( #(#args),* ) })
+        }
+        // Term::Field(_) => todo!(),
+        Term::Exists(TermExists {
+            exists_token: _,
+            lt_token: _,
+            args,
+            gt_token: _,
+            term,
+        }) => {
+            let mut ts = encode_expr(term)?;
+            for arg in args {
+                ts = quote! {
+                    gilogic::__stubs::exists(
+                        #[gillian::no_translate]
+                        (|#arg| #ts)
+                    )
+                }
+            }
+            tokens.extend(ts)
+        }
+        // Term::If(_) => todo!(),
+        Term::Lit(l) => l.to_tokens(&mut tokens),
+        Term::MethodCall(_) => todo!(),
+        Term::Paren(TermParen { expr, .. }) => {
+            let inner = encode_expr(expr)?;
+            tokens.extend(quote! { ( #inner )})
+        }
+        Term::Path(p) => tokens.extend(quote!(
+            #p
+        )),
+        Term::Struct(TermStruct {
+            path,
+            brace_token,
+            fields,
+            dot2_token,
+            rest,
+        }) => {
+            let fields: Vec<_> = fields
+                .iter()
+                .map(|f| {
+                    let m = &f.member;
+                    let t = encode_expr(&f.expr)?;
+
+                    Ok(quote! { #m : #t })
+                })
+                .collect::<syn::Result<_>>()?;
+
+            tokens.extend(quote! { #path { #(#fields),* } })
+        }
+        // Term::Tuple(_) => todo!(),
+        // Term::Unary(_) => todo!(),
+        Term::Verbatim(v) => v.to_tokens(&mut tokens),
+        e => {
+            return Err(Error::new(
+                inner.span(),
+                format!("Expression is not a supported {e:?}"),
+            ))
+        }
+    };
+    Ok(tokens)
+}
+
 impl Observation {
     fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
-        Formula::encode_inner(inner)
+        encode_expr(inner)
     }
 
     pub fn encode(&self) -> syn::Result<TokenStream> {

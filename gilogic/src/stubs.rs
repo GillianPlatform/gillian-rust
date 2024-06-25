@@ -102,6 +102,12 @@ pub fn exists<T, F: Fn(T) -> bool>(_: F) -> bool {
     unreachable!()
 }
 
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::expr::eq"]
+pub fn expr_eq<T>(_: T, _: T) -> bool {
+    unreachable!()
+}
 
 #[gillian::no_translate]
 #[gillian::builtin]
