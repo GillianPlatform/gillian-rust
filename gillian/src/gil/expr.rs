@@ -1,6 +1,6 @@
 use super::print_utils::separated_display;
 use super::visitors::GilVisitorMut;
-use super::Literal;
+use super::{Literal, Type};
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
 use pretty::{docs, DocAllocator, Pretty};
@@ -33,6 +33,7 @@ pub enum Expr {
     },
     EList(Vec<Expr>),
     ESet(Vec<Expr>),
+    EExists(Vec<(String, Option<Type>)>, Box<Expr>),
 }
 
 impl std::ops::Not for Expr {
@@ -884,50 +885,33 @@ where
             Expr::NOp { operator, operands } => operator
                 .pretty(alloc)
                 .append(alloc.intersperse(operands, ", ").parens()),
+            Expr::EExists(vars, body) => {
+                let vars = alloc.intersperse(
+                    vars.iter().map(|(v, ty)| {
+                        v.pretty(alloc)
+                            .append(" : ")
+                            .append(ty.map(|ty| ty.pretty(alloc)).unwrap_or(alloc.nil()))
+                    }),
+                    ", ",
+                );
+
+                docs![
+                    alloc,
+                    "exists",
+                    alloc.space(),
+                    vars,
+                    ".",
+                    alloc.space(),
+                    &**body
+                ]
+            }
         }
     }
 }
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use super::BinOp as BinOpEnum;
-        use Expr::*;
-        match self {
-            Lit(lit) => write!(f, "{}", lit),
-            PVar(var) | LVar(var) | ALoc(var) => f.write_str(var),
-            UnOp { operator, operand } => write!(f, "({} {})", operator, *operand),
-            BinOp {
-                operator,
-                left_operand,
-                right_operand,
-            } => match operator {
-                BinOpEnum::LstNth | BinOpEnum::StrNth | BinOpEnum::LstRepeat => {
-                    write!(f, "{}({}, {})", operator, *left_operand, *right_operand)
-                }
-                _ => write!(f, "({} {} {})", left_operand, operator, right_operand),
-            },
-            NOp { operator, operands } => {
-                write!(f, "{} (", operator)?;
-                separated_display(operands, ", ", f)?;
-                write!(f, ")")
-            }
-            LstSub {
-                list,
-                start,
-                length: end,
-            } => {
-                write!(f, "l-sub({}, {}, {})", *list, *start, *end)
-            }
-            EList(vec) => {
-                f.write_str("{{ ")?;
-                separated_display(vec, ", ", f)?;
-                f.write_str(" }}")
-            }
-            ESet(vec) => {
-                f.write_str("-{ ")?;
-                separated_display(vec, ", ", f)?;
-                f.write_str(" }-")
-            }
-        }
+        let alloc = pretty::Arena::new();
+        self.pretty(&alloc).render_fmt(80, f)
     }
 }
