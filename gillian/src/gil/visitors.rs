@@ -261,6 +261,9 @@ macro_rules! make_gil_visitor {
                 self.visit_expr(expr);
               }
             }
+            Expr::EExists(_, body) => {
+              self.visit_expr(body);
+            }
           }
         }
 
