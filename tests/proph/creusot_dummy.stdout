@@ -15,7 +15,7 @@ pred "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(+self, +m
 
 spec test()
 [[ emp ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * (#ret_repr == 4i)]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>((#ret_repr = 4i); )]]
 normal
 
 proc test() {
@@ -28,7 +28,7 @@ proc test() {
 
 spec test2()
 [[ emp ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * (((#ret_repr = 4i) == #x) /\ (#x == true))]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>((((#ret_repr = 4i) = #x) and (#x = true)); )]]
 normal
 
 proc test2() {
@@ -41,8 +41,8 @@ proc test2() {
 
 spec test3(x, x_repr)
 [[ "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(#x, #x_repr) * (x_repr == #x_repr) * (x == #x) ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * ((#x_repr == {{ 0i, {{  }} }}) /\ (#ret_repr == 0i));
-"<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * ((#x_repr == {{ 1i, {{ #a }} }}) /\ (#ret_repr == #a))]]
+[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((#x_repr = {{ 0i, {{  }} }}) and (#ret_repr = 0i)); );
+"<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((#x_repr = {{ 1i, {{ #a }} }}) and (#ret_repr = #a)); )]]
 normal
 
 proc test3(x) {

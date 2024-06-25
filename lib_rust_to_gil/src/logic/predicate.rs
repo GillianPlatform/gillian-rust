@@ -375,9 +375,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
             AssertKind::Emp => Assertion::Emp,
-            AssertKind::Observation { formula } => {
-                let formula = self.compile_formula_inner(formula);
-                core_preds::observation(formula)
+            AssertKind::Observation { expr } => {
+                let expr = self.compile_expression_inner(expr);
+                core_preds::observation(expr)
             }
             AssertKind::ProphecyController { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
@@ -787,6 +787,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 self.local_toplevel_asrts
                     .push(core_preds::pcy_value(prophecy, value.clone()));
                 value
+            }
+            ExprKind::Exists { var, body } => {
+                GExpr::EExists(vec![(var.0.to_string(), None)], Box::new(self.compile_expression_inner(*body)))
             }
         }
     }

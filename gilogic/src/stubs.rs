@@ -84,7 +84,7 @@ pub fn pure(_: RustFormula) -> RustAssertion {
 #[gillian::no_translate]
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::observation"]
-pub fn observation(_: RustFormula) -> RustAssertion {
+pub fn observation(_: bool) -> RustAssertion {
     unreachable!()
 }
 
@@ -94,6 +94,14 @@ pub fn observation(_: RustFormula) -> RustAssertion {
 pub fn forall<T, F: Fn(T) -> RustFormula>(_: F) -> RustFormula {
     unreachable!()
 }
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::expr::exists"]
+pub fn exists<T, F: Fn(T) -> bool>(_: F) -> bool {
+    unreachable!()
+}
+
 
 #[gillian::no_translate]
 #[gillian::builtin]

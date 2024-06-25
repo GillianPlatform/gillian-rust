@@ -120,6 +120,17 @@ impl VarSubst for TermForall {
     }
 }
 
+impl VarSubst for TermExists {
+    fn subst(&mut self, subst: &HashMap<String, Ident>) {
+        let idents_to_not_subst = self.args.iter().map(|x| x.ident.to_string());
+        let mut new_subst = subst.clone();
+        for ident in idents_to_not_subst {
+            new_subst.remove(&ident);
+        }
+        self.term.subst(&new_subst);
+    }
+}
+
 impl VarSubst for TermImpl {
     fn subst(&mut self, subst: &HashMap<String, Ident>) {
         self.hyp.subst(subst);

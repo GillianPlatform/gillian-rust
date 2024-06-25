@@ -102,6 +102,10 @@ pub enum ExprKind<'tcx> {
     GetValue {
         mut_ref: Box<Expr<'tcx>>,
     },
+    Exists { 
+        var: (Symbol, Ty<'tcx>),
+        body: Box<Expr<'tcx>>,
+    }
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -215,7 +219,7 @@ pub enum AssertKind<'tcx> {
     },
     Emp,
     Observation {
-        formula: Formula<'tcx>,
+        expr: Expr<'tcx>,
     },
     ProphecyController {
         prophecy: Expr<'tcx>,
@@ -414,8 +418,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     }
                     // Other core predicates
                     Some(LogicStubs::AssertObservation) => {
-                        let formula = self.build_formula(args[0]);
-                        AssertKind::Observation { formula }
+                        let expr = self.build_expression(args[0]);
+                        AssertKind::Observation { expr }
                     }
                     Some(LogicStubs::AssertPointsToSlice) => {
                         let src = self.build_expression(args[0]);
@@ -564,6 +568,39 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 Formula {
                     bound_vars: vec![(name.name, ty)],
                     body,
+                }
+            }
+            kind => self
+                .tcx
+                .dcx()
+                .fatal(format!("Unexpected quantified form: {:?}", kind)),
+        }
+    }
+
+    fn build_exists_body(&self, id: ExprId) -> ExprKind<'tcx> {
+        match &self.thir[id].kind {
+            thir::ExprKind::Scope { value, .. } => self.build_exists_body(*value),
+            thir::ExprKind::Closure(box ClosureExpr {
+                closure_id,
+                args: UpvarArgs::Closure(args),
+                ..
+            }) => {
+                let name = self.tcx.fn_arg_names(*closure_id)[0];
+                let ty = args
+                    .as_closure()
+                    .sig()
+                    .input(0)
+                    .skip_binder()
+                    .tuple_fields()[0];
+                let (thir, expr) = self.tcx.thir_body(closure_id).unwrap();
+                let body = Self {
+                    thir: thir.borrow().clone(),
+                    tcx: self.tcx,
+                }
+                .build_expression(expr);
+                ExprKind::Exists {
+                    var: (name.name, ty),
+                    body: Box::new(body),
                 }
             }
             kind => self
@@ -894,6 +931,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             _ => unreachable!(),
                         };
                         ExprKind::SeqOp { op, args }
+                    }
+                    Some(LogicStubs::ExprExists) => {
+                        self.build_exists_body(args[0])
                     }
                     None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {

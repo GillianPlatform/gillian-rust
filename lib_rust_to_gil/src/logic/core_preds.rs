@@ -102,8 +102,8 @@ pub(crate) fn pcy_value(prophecy: Expr, value: Expr) -> Assertion {
     }
 }
 
-pub(crate) fn observation(formula: Formula) -> Assertion {
-    let lowered = formula.into_expr();
+pub(crate) fn observation(formula: Expr) -> Assertion {
+    let lowered = formula;
     Assertion::GA {
         name: pred_names::OBSERVATION.to_string(),
         ins: vec![lowered],
