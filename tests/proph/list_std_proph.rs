@@ -110,15 +110,6 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    // / Adds the given node to the front of the list.
-    // #[requires(|elem: T, current: Seq<T::RepresentationTy>, proph: Seq<T::RepresentationTy>, new_v: T::RepresentationTy|
-    //     self.own((current, proph)) *
-    //     (current.len() < usize::MAX) *
-    //     (node -> Node { next: None, prev: None, element: elem}) *
-    //     elem.own(new_v))]
-    // #[ensures(
-    //     $proph == current.prepend(new_v)$
-    // )]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
