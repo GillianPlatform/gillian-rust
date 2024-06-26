@@ -40,9 +40,9 @@ fn wp<T: Ownable>(
 
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_xy,
-    predicate_name = wp_ref_mut_xy2,
+    predicate_name = wp_ref_mut_xy,
     frozen_variables = [x, y],
-    inner_predicate_name = wp_ref_mut_inner_xy2
+    inner_predicate_name = wp_ref_mut_inner_xy
 )]
 impl<T: Ownable> Ownable for WP<T> {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
@@ -87,11 +87,17 @@ impl<T: Ownable> WP<T> {
             mutref_auto_resolve!(self);
         }
     }
+    
+    #[extract_lemma]
+    #[specification(
+        forall x, y.
+    )
+    ]
 
     #[specification(forall cself, pself.
         requires { self.own((cself, pself)) }
         exists c, p. 
-        ensures {  ret.own((c, p)) * $cself.1 == pself.1$ }
+        ensures {  ret.own((c, p)) * $cself.1 == pself.1 && cself.0 == c && pself.0 == p$ }
     )]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
