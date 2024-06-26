@@ -62,7 +62,7 @@ fn dll_seg<T: Ownable>(
 }
 
 #[extract_lemma]
-#[specification(forall head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize, p: NonNull<Node<T>>.
+#[specification(forall head, tail, len, p.
     requires { list_ref_mut_htl(list, head, tail, len) * (head == Some(p)) }
     ensures { Ownable::own(&mut (*p.as_ptr()).element) }
 )]

@@ -248,29 +248,6 @@ impl<T> Prophecy<T> {
     pub fn assign_proph(self, _v: Prophecy<T>) {
         unreachable!("Implemented in GIL")
     }
-
-    #[gillian::no_translate]
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::prophecy::rebased"]
-    pub fn rebased(self) -> Self {
-        unreachable!("Implemented in GIL")
-    }
-}
-
-impl<T, U> Prophecy<(T, U)> {
-    #[gillian::no_translate]
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::prophecy::field::2::0"]
-    pub fn field_0(self) -> Prophecy<T> {
-        unreachable!("Implemented in GIL")
-    }
-
-    #[gillian::no_translate]
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::prophecy::field::2::1"]
-    pub fn field_1(self) -> Prophecy<U> {
-        unreachable!("Implemented in GIL")
-    }
 }
 
 #[gillian::no_translate]
