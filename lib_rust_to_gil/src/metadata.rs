@@ -32,7 +32,7 @@ impl<'tcx> Metadata<'tcx> {
         self.assertions.get(&def_id)
     }
 
-    pub(crate) fn specificaiton(&self, def_id: DefId) -> Option<&SpecTerm<'tcx>> {
+    pub(crate) fn specification(&self, def_id: DefId) -> Option<&SpecTerm<'tcx>> {
         assert!(!def_id.is_local());
         self.contracts.get(&def_id)
     }

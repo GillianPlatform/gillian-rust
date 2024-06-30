@@ -5,7 +5,7 @@ macro_rules! ast_struct {
         [$($attrs_pub:tt)*]
         struct $name:ident $($rest:tt)*
     ) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone)]
         $($attrs_pub)* struct $name $($rest)*
     };
 
@@ -19,6 +19,7 @@ macro_rules! ast_enum {
         [$($attrs_pub:tt)*]
         enum $name:ident $($rest:tt)*
     ) => (
+        #[derive(Clone)]
         $($attrs_pub)* enum $name $($rest)*
     );
 

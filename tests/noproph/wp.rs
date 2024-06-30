@@ -26,19 +26,19 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-#[extract_lemma]
-#[specification(forall x, y.
-    requires { wp_ref_mut_xy(p, x, y) }
-    ensures { Ownable::own(&mut (*y).v) }
-)]
-fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
-
-#[extract_lemma]
-#[specification(forall x, y.
-    requires { wp_ref_mut_xy(p, x, y) }
-    ensures { Ownable::own(&mut (*x).v) }
+#[extract_lemma(
+    forall x, y.
+    from { wp_ref_mut_xy(p, x, y) }
+    extract { Ownable::own(&mut (*x).v) }
 )]
 fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
+
+#[extract_lemma(
+    forall x, y.
+    from { wp_ref_mut_xy(p, x, y) }
+    extract { Ownable::own(&mut (*y).v) }
+)]
+fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_xy,
@@ -76,7 +76,7 @@ impl<T: Ownable> WP<T> {
 
     // HACK(xavier): Proper lifetime handling has broken all the previous hacks
     // which automatically insert `pLft_a` in various places. Properly cleaning
-    // this up will take more time. In the mean time only lifetimes called 'a can 
+    // this up will take more time. In the mean time only lifetimes called 'a can
     // used.
     #[show_safety]
     fn assign_first<'a>(&'a mut self, x: T) {
@@ -90,7 +90,7 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.x).v;
-            extract_x(self);
+            // extract_x(self);
             ret
         }
     }
@@ -100,7 +100,7 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.y).v;
-            extract_y(self);
+            // extract_y(self);
             ret
         }
     }

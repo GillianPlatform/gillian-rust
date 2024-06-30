@@ -61,10 +61,11 @@ fn dll_seg<T: Ownable>(
     )
 }
 
-#[extract_lemma]
-#[specification(forall head, tail, len, p.
-    requires { list_ref_mut_htl(list, head, tail, len) * (head == Some(p)) }
-    ensures { Ownable::own(&mut (*p.as_ptr()).element) }
+#[extract_lemma(
+    forall head, tail, len, p.
+    assuming { head == Some(p) }
+    from { list_ref_mut_htl(list, head, tail, len) }
+    extract { Ownable::own(&mut (*p.as_ptr()).element) }
 )]
 fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
 

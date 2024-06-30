@@ -6,7 +6,6 @@ use crate::utils::attrs::*;
 
 pub(crate) mod builtins;
 pub(crate) mod core_preds;
-mod extract_lemma_utils;
 pub mod gilsonite;
 mod lemma;
 pub(crate) mod param_collector;
@@ -45,11 +44,14 @@ pub fn compile_logic<'tcx, 'genv>(
             global_env,
             did,
             temp_gen,
-            is_trusted_lemma(did, tcx),
+            is_lemma(did, tcx),
             is_extract_lemma(did, tcx),
         )
         .compile()
-    // Has to b safe, because we know there is exactly one definition
+        // Has to b safe, because we know there is exactly one definition
+    } else if is_extract_lemma(did, tcx) {
+        log::debug!("Extract lemma needs to be properly handled");
+        vec![]
     } else if is_fold(did, tcx) || is_unfold(did, tcx) || is_specification(did, tcx) {
         vec![]
     } else {

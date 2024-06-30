@@ -196,26 +196,10 @@ pub trait PointsToMaybeUninit<T>: Sized {
 impl<T> PointsToMaybeUninit<T> for *const T {}
 impl<T> PointsToMaybeUninit<T> for *mut T {}
 
-pub trait InstantiateLVar {
-    fn instantiate_lvar() -> Self;
-}
-
-impl<T> InstantiateLVar for T
-where
-    T: core::any::Any,
-{
-    #[gillian::no_translate]
-    #[gillian::builtin]
-    #[rustc_diagnostic_item = "gillian::logic::instantiate_lvar"]
-    fn instantiate_lvar() -> Self {
-        unreachable!()
-    }
-}
-
 #[gillian::no_translate]
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::instantiate_lvars"]
-pub fn instantiate_lvars<A: core::marker::Tuple, F: FnOnce<A>>(_: F) -> RustAssertion {
+pub fn instantiate_lvars<A: core::marker::Tuple, B, F: FnOnce<A, Output = B>>(_: F) -> B {
     unreachable!()
 }
 
@@ -223,5 +207,17 @@ pub fn instantiate_lvars<A: core::marker::Tuple, F: FnOnce<A>>(_: F) -> RustAsse
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::spec"]
 pub fn spec<const N: usize>(_pre: RustAssertion, _post: [RustAssertion; N]) -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::extract_lemma"]
+pub fn extract_lemma<P>(
+    _assuming: bool,
+    _from: RustAssertion,
+    _extract: RustAssertion,
+    _prophecise: P,
+) -> RustAssertion {
     unreachable!()
 }
