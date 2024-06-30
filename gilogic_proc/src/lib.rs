@@ -6,7 +6,6 @@
 
 extern crate proc_macro;
 use ::quote::ToTokens;
-use extract_lemmas::ExtractLemma;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
@@ -39,10 +38,8 @@ pub fn lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro_attribute]
-pub fn extract_lemma(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    parse_macro_input!(input as ExtractLemma)
-        .to_token_stream()
-        .into()
+pub fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    extract_lemmas::extract_lemma(args, input)
 }
 
 #[proc_macro_attribute]

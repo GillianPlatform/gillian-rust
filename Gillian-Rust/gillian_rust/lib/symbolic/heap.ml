@@ -1895,7 +1895,11 @@ let cons_value ~tyenv ~lk (mem : t) loc proj ty =
     let++ (value, outer), lk =
       TreeBlock.cons_proj ~loc ~tyenv ~lk block proj ty
     in
-    ((value, MemMap.add loc (T outer) mem), lk)
+    let new_heap =
+      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+      else MemMap.add loc (T outer) mem
+    in
+    ((value, new_heap), lk)
 
 let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
   let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
@@ -1918,7 +1922,11 @@ let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
 let cons_uninit ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
   let++ ((), outer), lk = TreeBlock.cons_uninit ~loc ~tyenv ~lk block proj ty in
-  (MemMap.add loc (T outer) mem, lk)
+  let new_heap =
+    if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+    else MemMap.add loc (T outer) mem
+  in
+  (new_heap, lk)
 
 let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
   let root =
@@ -1939,7 +1947,11 @@ let cons_maybe_uninit ~tyenv ~lk (mem : t) loc proj ty =
   let++ (value, outer), lk =
     TreeBlock.cons_maybe_uninit ~loc ~tyenv ~lk block proj ty
   in
-  (value, MemMap.add loc (T outer) mem, lk)
+  let new_heap =
+    if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+    else MemMap.add loc (T outer) mem
+  in
+  (value, new_heap, lk)
 
 let prod_maybe_uninit
     ~tyenv
@@ -1971,7 +1983,11 @@ let cons_many_maybe_uninits ~tyenv ~lk (mem : t) loc proj ty size =
     let++ (value, outer), lk =
       TreeBlock.cons_many_maybe_uninits ~loc ~tyenv ~lk block proj ty size
     in
-    (value, MemMap.add loc (T outer) mem, lk)
+    let new_heap =
+      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+      else MemMap.add loc (T outer) mem
+    in
+    (value, new_heap, lk)
 
 let prod_many_maybe_uninits
     ~tyenv

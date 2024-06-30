@@ -4,7 +4,7 @@ use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::is_gillian_spec;
+use crate::utils::attrs::{is_gillian_spec, is_trusted};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
@@ -337,13 +337,15 @@ impl<'tcx> GlobalEnv<'tcx> {
 
     pub fn gilsonite_spec(&self, def_id: DefId) -> &SpecTerm<'tcx> {
         if !def_id.is_local() {
-            return self.metadata.specificaiton(def_id).unwrap();
+            return self.metadata.specification(def_id).unwrap();
         }
 
         self.spec_terms.insert(def_id, |_| {
             let (thir, e) = get_thir!(self, def_id);
             let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
-            Box::new(g.build_spec(e))
+            let mut spec = g.build_spec(e);
+            spec.trusted = is_trusted(def_id, self.tcx());
+            Box::new(spec)
         })
     }
 

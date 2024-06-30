@@ -91,18 +91,14 @@ pub(crate) fn should_translate(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_none()
 }
 
-pub(crate) fn is_trusted_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
-    get_attr(
-        tcx.get_attrs_unchecked(def_id),
-        &["gillian", "lemma", "trusted"],
-    )
-    .is_some()
+pub(crate) fn is_trusted(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "trusted"]).is_some()
 }
 
 pub(crate) fn is_extract_lemma(def_id: DefId, tcx: TyCtxt) -> bool {
     get_attr(
         tcx.get_attrs_unchecked(def_id),
-        &["gillian", "extract_lemma"],
+        &["gillian", "decl", "extract_lemma"],
     )
     .is_some()
 }
@@ -131,6 +127,7 @@ pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
     [
         is_predicate,
         is_abstract_predicate,
+        is_extract_lemma,
         is_lemma,
         is_fold,
         is_unfold,

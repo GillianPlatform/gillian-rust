@@ -1,26 +1,31 @@
+error[E0432]: unresolved import `gilogic::prophecies::with_freeze_lemma_for_mutref`
+ --> ../tests/proph/list_std_proph.rs:7:40
+  |
+7 |     prophecies::{Ownable, Prophecised, with_freeze_lemma_for_mutref},
+  |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `with_freeze_lemma_for_mutref` in `prophecies`
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: associated function `shallow_model` is never used
-  --> ../tests/proph/list_std_proph.rs:29:8
+[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+warning: unused variable: `list`
+  --> ../tests/proph/list_std_proph.rs:64:33
    |
-26 | trait ShallowModel: Ownable {
-   |       ------------ associated function in this trait
-...
-29 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
-   |        ^^^^^^^^^^^^^
+64 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>);
+   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(unused_variables)]` on by default
 
-warning: 1 warning emitted
+error[E0425]: cannot find function `list_ref_mut_htl` in this scope
+  --> ../tests/proph/list_std_proph.rs:60:12
+   |
+60 |     from { list_ref_mut_htl(list, m, head, tail, len) }
+   |            ^^^^^^^^^^^^^^^^ not found in this scope
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+error: Predicate body failed to typecheck for DefId(0:52 ~ list_std_proph[4767]::extract_head_spec_a9d08727_dfeb_4957_89f8_1b9c66e20690) ErrorGuaranteed(())
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.

@@ -14,9 +14,9 @@ pred "<MyBox<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
-spec "MyBox::<T>::write"(pty_T0, self, v, sm, vm)
-[[ "<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #self, #sm) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #vm) * (vm == #vm) * (sm == #sm) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
-[["<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #rm) * <observation>(((#rm) = (#vm)); )]]
+spec "MyBox::<T>::write"(pty_T0, self, v)
+[[ "<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #self, #sm) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #vm) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
+[["<MyBox<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #rm) * <observation>((#rm = #vm); )]]
 normal
 
 proc "MyBox::<T>::write"(pty_T0, self, v) {
