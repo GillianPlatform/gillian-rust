@@ -85,6 +85,7 @@ impl ExtractLemma {
 
             let old_proph_val_var = format_ident!("__OLD_PROPH_VAL");
             let new_proph_val_var = format_ident!("__NEW_PROPH_VAL");
+            let new_proph_old_val_var = format_ident!("__NEW_PROPH_OLD_VAL");
             rvars.push(LvarDecl {
                 ident: old_proph_val_var.clone(),
                 ty_opt: None,
@@ -93,43 +94,61 @@ impl ExtractLemma {
                 ident: new_proph_val_var.clone(),
                 ty_opt: None,
             });
-
+            rvars.push(LvarDecl {
+                ident: new_proph_old_val_var.clone(),
+                ty_opt: None,
+            });
             let model_ident = model.ident;
             let old_proph_eq = {
-                let term = syn::parse2(quote!(
+                let term = parse_quote!(
                     #old_proph_val_var == #model_ident.0
-                ))
-                .unwrap();
+                );
                 AsrtFragment::Pure(Formula::from_term(term))
             };
 
             let new_model_ident = new_model.ident;
             let new_proph_eq = {
-                let term = syn::parse2(quote!(
+                let term = parse_quote!(
                     #new_proph_val_var == #new_model_ident.1
-                ))
-                .unwrap();
+                );
+                AsrtFragment::Pure(Formula::from_term(term))
+            };
+
+            let new_proph_old_eq = {
+                let term = parse_quote!(
+                    #new_proph_old_val_var == #new_model_ident.0
+                );
                 AsrtFragment::Pure(Formula::from_term(term))
             };
 
             let (_, prophecise) = self.prophecise.as_ref().unwrap();
             let mut prophecise = prophecise.clone();
+            let mut prophecise_past = prophecise.clone();
 
             postcond.push(old_proph_eq);
             postcond.push(new_proph_eq);
+            postcond.push(new_proph_old_eq);
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model_ident.to_string(), old_proph_val_var);
+                tbl.insert(model_ident.to_string(), old_proph_val_var.clone());
                 tbl.insert(new_model_ident.to_string(), new_proph_val_var);
                 tbl
             };
             prophecise.subst(&subst);
 
-            let inner = syn::parse2(quote!(
-                #model_ident.1 == (#prophecise)
-            ))
-            .unwrap();
+            let subst = {
+                let mut tbl = HashMap::new();
+                tbl.insert(model_ident.to_string(), old_proph_val_var);
+                tbl.insert(new_model_ident.to_string(), new_proph_old_val_var);
+                tbl
+            };
+            prophecise_past.subst(&subst);
+
+            let inner = parse_quote!(
+                (#model_ident.1 == (#prophecise)) &&
+                (#model_ident.0 == (#prophecise_past))
+            );
 
             let observation = AsrtFragment::Observation(Observation {
                 open_dollar: Default::default(),
