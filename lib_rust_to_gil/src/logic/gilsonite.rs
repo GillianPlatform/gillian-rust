@@ -260,6 +260,7 @@ pub struct SpecTerm<'tcx> {
     pub uni: Vec<(Symbol, Ty<'tcx>)>,
     pub pre: Assert<'tcx>,
     pub posts: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assert<'tcx>)>,
+    pub trusted: bool,
 }
 
 pub struct GilsoniteBuilder<'tcx> {
@@ -294,7 +295,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 
     pub fn build_spec(&self, expr: ExprId) -> SpecTerm<'tcx> {
-        let (uni, (pre, post)) = self.peel_lvar_bindings(expr, |this, expr| {
+        let (uni, (pre, posts)) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
             let thir::ExprKind::Call {
                 ty, fun: _, args, ..
@@ -329,7 +330,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         SpecTerm {
             uni,
             pre,
-            posts: post,
+            posts,
+            trusted: false,
         }
     }
 

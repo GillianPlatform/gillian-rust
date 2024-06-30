@@ -21,10 +21,14 @@ pub struct SingleSpec {
     pub pre: Assertion,
     pub posts: Vec<Assertion>,
     pub flag: Flag,
+    pub trusted: bool,
 }
 
 impl fmt::Display for SingleSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.trusted {
+            writeln!(f, "trusted")?;
+        }
         writeln!(f, "[[ {} ]]", self.pre)?;
         write!(f, "[[")?;
         super::print_utils::separated_display(&self.posts, ";\n", f)?;

@@ -33,6 +33,7 @@ pub struct Signature<'tcx> {
 struct Contract<'tcx> {
     pre: Assertion,
     post: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
+    trusted: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +119,7 @@ impl<'tcx> Signature<'tcx> {
     pub fn store_eq_all(&self) -> Vec<Assertion> {
         let mut wfs = Vec::new();
 
-        for arg in &self.args {
+        for arg in self.physical_args() {
             let name = arg.name();
             let lvar = Expr::LVar(format!("#{}", name));
             wfs.push(Expr::PVar(name.to_string()).eq_f(lvar).into_asrt());
@@ -148,10 +149,16 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Returns a precondition elaborated with well-formedness and mutable-store assertions
-    fn full_pre(&self, ctx: &mut GlobalEnv<'tcx>, temp: &mut TempGenerator) -> Option<Assertion> {
+    /// and a boolean that says if this contract is trusted
+    fn full_pre(
+        &self,
+        ctx: &mut GlobalEnv<'tcx>,
+        temp: &mut TempGenerator,
+    ) -> Option<(Assertion, bool)> {
         let mut wf = self.type_wf_pres(ctx, temp);
         let lv = self.store_eq_all();
-        let mut pre = self.contract.as_ref()?.pre.clone();
+        let contract = self.contract.as_ref()?;
+        let mut pre = contract.pre.clone();
         // HACK(xavier): substitute program vars for their lvars here. Doing it elsewhere
         // would require first refactoring all of `predicate.rs` which... lets wait for another day
 
@@ -175,7 +182,7 @@ impl<'tcx> Signature<'tcx> {
 
         let full_pre = lv.into_iter().chain(wf).rfold(pre, Assertion::star);
 
-        Some(full_pre)
+        Some((full_pre, contract.trusted))
     }
 
     // TODO(xavier): Use `user_post` here to avoid hygiene issues!!!!!!
@@ -213,17 +220,16 @@ impl<'tcx> Signature<'tcx> {
     pub fn to_gil_spec(self, ctx: &mut GlobalEnv<'tcx>, name: String) -> Option<Spec> {
         let mut temp = TempGenerator::new();
 
+        let (pre, trusted) = self.full_pre(ctx, &mut temp)?;
+
         let sspec = SingleSpec {
-            pre: self.full_pre(ctx, &mut temp)?,
+            pre,
             posts: self.full_post(),
             flag: Flag::Normal,
+            trusted,
         };
         Some(Spec {
-            params: self
-                .args
-                .into_iter()
-                .map(|a| a.name().to_string())
-                .collect(),
+            params: self.physical_args().map(|a| a.name().to_string()).collect(),
             name,
             sspecs: vec![sspec],
         })
@@ -315,7 +321,7 @@ pub fn build_signature<'tcx>(
     let (uni_vars, contract) = if let Some(spec_id) = global_env.spec_map.get(&id) {
         let mut temp_gen = temp_gen::TempGenerator::new();
 
-        let (uni, mut pre, mut post) =
+        let (uni, mut pre, mut post, trusted) =
             PredCtx::new_with_identity_args(global_env, &mut temp_gen, *spec_id).raw_spec();
 
         if !(is_lemma(id, tcx) || is_predicate(id, tcx)) {
@@ -324,7 +330,7 @@ pub fn build_signature<'tcx>(
                 .for_each(|(_, post)| post.subst_pvar(&subst));
         }
 
-        (uni, Some(Contract { pre, post }))
+        (uni, Some(Contract { pre, post, trusted }))
     } else {
         (Default::default(), None)
     };

@@ -1,35 +1,39 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: struct `WP` is never constructed
-  --> ../tests/proph/wp_proph.rs:15:8
+[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+warning: unused variable: `p`
+  --> ../tests/proph/wp_proph.rs:67:30
    |
-15 | struct WP<T> {
-   |        ^^
+67 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<(T::RepresentationTy, T::RepresentationTy)>;
+   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(unused_variables)]` on by default
 
-warning: struct `N` is never constructed
-  --> ../tests/proph/wp_proph.rs:20:8
-   |
-20 | struct N<T> {
-   |        ^
+error[E0308]: mismatched types
+   --> ../tests/proph/wp_proph.rs:59:1
+    |
+59  | / #[extract_lemma(
+60  | |     forall p, x: *mut N<T>, y: *mut N<T>.
+61  | |     model m.
+62  | |     extract model mx: (T::RepresentationTy, T::RepresentationTy).
+...   |
+65  | |     prophecise { (mx, m.1) }
+66  | | )]
+    | |  ^
+    | |  |
+    | |__expected `Prophecy<<... as Ownable>::RepresentationTy>`, found `Prophecy<(..., ...)>`
+    |    arguments to this function are incorrect
+    |
+    = note: expected struct `gilogic::prophecies::Prophecy<<T as gilogic::prophecies::Ownable>::RepresentationTy>`
+               found struct `gilogic::prophecies::Prophecy<(<T as gilogic::prophecies::Ownable>::RepresentationTy, <T as gilogic::prophecies::Ownable>::RepresentationTy)>`
+note: method defined here
+   --> /Users/sacha/Prog/work/rust-to-gil/gilogic/src/prophecies.rs:184:8
+    |
+184 |     fn with_prophecy(self, pcy: Self::ProphecyTy) -> Self;
+    |        ^^^^^^^^^^^^^
+    = note: this error originates in the attribute macro `extract_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:51:12
-   |
-51 |     fn own(self, model: Self::RepresentationTy) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
+error: Predicate body failed to typecheck for DefId(0:55 ~ wp_proph[6031]::extract_x_spec_a99d8a4a_e89b_4d01_a5e1_4346de0ebc99) ErrorGuaranteed(())
 
-warning: 3 warnings emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+For more information about this error, try `rustc --explain E0308`.

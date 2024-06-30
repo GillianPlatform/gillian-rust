@@ -155,6 +155,7 @@ impl<'tcx> Resolver<'tcx> {
                 pre,
                 posts,
                 flag: Flag::Normal,
+                trusted: true,
             }],
         };
         prog.add_only_spec(spec);

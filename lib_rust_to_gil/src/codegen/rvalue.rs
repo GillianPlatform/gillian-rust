@@ -44,9 +44,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 {
                     // The case of mutable references, what do we do with the prophecy?
                     if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
-                        // FIXME: HACK
-                        // This assumes that the lifetime of th created reference is the same as the old one,
-                        // since we carry the exact same prophecy around. It is not correct in general.
+                        // This will just create a new prophecy variable. This is not wrong at all,
+                        // as we can always allocate ghost state. But it's not always the right thing to do.
                         let local = Expr::PVar(self.name_from_local(place.local));
                         self.push_read_gil_place(
                             GilPlace::base(local, self.place_ty(place).ty),

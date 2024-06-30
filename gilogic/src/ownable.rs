@@ -34,11 +34,9 @@ macro_rules! int_ownable {
     ($t:ty) => {
         impl Ownable for $t {
 
-            #[cfg(gillian)]
-            #[gillian::decl::predicate]
-            #[gillian::decl::pred_ins = "0"]
-            fn own(self) -> RustAssertion {
-                gilogic::__stubs::defs([assertion!(($t::MIN <= self) * (self <= $t::MAX))])
+            #[predicate]
+            fn own(self) {
+                assertion!(($t::MIN <= self) * (self <= $t::MAX))
             }
 
             #[cfg(not(gillian))]
@@ -56,12 +54,10 @@ macro_rules! int_ownable {
 }
 
 impl<T: Ownable> Ownable for &mut T {
-    #[cfg(gillian)]
     #[gillian::borrow]
-    #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0"]
-    fn own(self) -> RustAssertion {
-        gilogic::__stubs::defs([assertion!(|v| (self -> v) * v.own())])
+    #[predicate]
+    fn own(self) {
+        assertion!(|v| (self -> v) * v.own())
     }
 
     #[cfg(not(gillian))]
@@ -74,11 +70,9 @@ impl<T: Ownable> Ownable for &mut T {
 int_ownable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl<T: Ownable, U: Ownable> Ownable for (T, U) {
-    #[cfg(gillian)]
-    #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0"]
-    fn own(self) -> RustAssertion {
-        gilogic::__stubs::defs([assertion!(self.0.own() * self.1.own())])
+    #[predicate]
+    fn own(self) {
+        assertion!(self.0.own() * self.1.own())
     }
 
     #[cfg(not(gillian))]
@@ -88,14 +82,10 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
 }
 
 impl<T: Ownable> Ownable for Option<T> {
-    #[cfg(gillian)]
-    #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0"]
-    fn own(self) -> RustAssertion {
-        gilogic::__stubs::defs([
-            assertion!((self == None)),
-            assertion!(|ax: T| (self == Some(ax)) * <T as Ownable>::own(ax)),
-        ])
+    #[predicate]
+    fn own(self) {
+        assertion!((self == None));
+        assertion!(|ax: T| (self == Some(ax)) * <T as Ownable>::own(ax))
     }
 
     #[cfg(not(gillian))]
@@ -105,11 +95,9 @@ impl<T: Ownable> Ownable for Option<T> {
 }
 
 impl<T: Ownable> Ownable for Box<T> {
-    #[cfg(gillian)]
-    #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0"]
-    fn own(self) -> RustAssertion {
-        gilogic::__stubs::defs([assertion!(|v| (self -> v) * v.own())])
+    #[predicate]
+    fn own(self) {
+        assertion!(|v| (self -> v) * v.own())
     }
 
     #[cfg(not(gillian))]
@@ -119,11 +107,9 @@ impl<T: Ownable> Ownable for Box<T> {
 }
 
 impl Ownable for () {
-    #[cfg(gillian)]
-    #[gillian::decl::predicate]
-    #[gillian::decl::pred_ins = "0"]
-    fn own(self) -> RustAssertion {
-        gilogic::__stubs::defs([assertion!((self == ()))])
+    #[predicate]
+    fn own(self) {
+        assertion!((self == ()))
     }
 
     #[cfg(not(gillian))]

@@ -10,12 +10,17 @@ use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::mem;
 
-mod kw {
+pub mod kw {
     syn::custom_keyword!(emp);
     syn::custom_keyword!(forall);
     syn::custom_keyword!(exists);
     syn::custom_keyword!(requires);
     syn::custom_keyword!(ensures);
+    syn::custom_keyword!(model);
+    syn::custom_keyword!(assuming);
+    syn::custom_keyword!(from);
+    syn::custom_keyword!(extract);
+    syn::custom_keyword!(prophecise);
 }
 
 #[allow(dead_code)]
@@ -44,7 +49,7 @@ pub struct Assertion {
     pub def: Punctuated<AsrtFragment, Token![*]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LvarDecl {
     pub ident: Ident,
     pub ty_opt: Option<(Token![:], Type)>,
@@ -95,6 +100,22 @@ ast_enum! {
   }
 }
 
+impl AsrtPredCall {
+    pub fn args(&self) -> &Punctuated<Term, syn::token::Comma> {
+        match self {
+            Self::SimpleCall(term_call) => &term_call.args,
+            Self::MethodCall(method_call) => &method_call.args,
+        }
+    }
+
+    pub fn args_mut(&mut self) -> &mut Punctuated<Term, syn::token::Comma> {
+        match self {
+            Self::SimpleCall(term_call) => &mut term_call.args,
+            Self::MethodCall(method_call) => &mut method_call.args,
+        }
+    }
+}
+
 ast_struct! {
   pub struct Formula {
     pub paren_token: Paren,
@@ -103,6 +124,15 @@ ast_struct! {
     // Pre-typing will check for valid operators.
     pub inner: Term,
   }
+}
+
+impl Formula {
+    pub fn from_term(term: Term) -> Self {
+        Self {
+            paren_token: Paren::default(),
+            inner: term,
+        }
+    }
 }
 
 ast_struct! {
@@ -225,12 +255,11 @@ ast_enum_of_structs! {
     }
 }
 
-// ast_struct! {
-//     pub struct TermLogVar {
-//         pub hash_token: Token![#],
-//         pub ident: Ident,
-//     }
-// }
+impl Term {
+    pub fn unit() -> Self {
+        Term::Tuple(TermTuple::unit())
+    }
+}
 
 ast_struct! {
     /// A braced block containing Pearlite statements.
@@ -475,6 +504,15 @@ ast_struct! {
     pub struct TermTuple  {
         pub paren_token: token::Paren,
         pub elems: Punctuated<Term, Token![,]>,
+    }
+}
+
+impl TermTuple {
+    pub fn unit() -> Self {
+        Self {
+            paren_token: token::Paren::default(),
+            elems: Punctuated::new(),
+        }
     }
 }
 
@@ -795,19 +833,23 @@ pub(crate) mod parsing {
             // Finally, we have to be in the case of a predicate call.
             // Now this one is tricky: we're parsing a call, it's starts with an expr,
             // but should absolutely avoid having a `*` at the top-level.
+            let pred_call = input.parse::<AsrtPredCall>()?;
+
+            Ok(Self::PredCall(pred_call))
+        }
+    }
+
+    impl Parse for AsrtPredCall {
+        fn parse(input: ParseStream) -> Result<Self> {
             let term = Term::parse_without_toplevel_star(input)?;
             match term {
-                Term::MethodCall(call) => {
-                    return Ok(Self::PredCall(AsrtPredCall::MethodCall(call)))
-                }
-                Term::Call(call) => return Ok(Self::PredCall(AsrtPredCall::SimpleCall(call))),
-                _ => (),
+                Term::MethodCall(call) => Ok(Self::MethodCall(call)),
+                Term::Call(call) => Ok(Self::SimpleCall(call)),
+                _ => Err(Error::new(
+                    input.cursor().span(),
+                    format!("Unexpected token in Assertion: {}.", input),
+                )),
             }
-
-            Err(Error::new(
-                input.cursor().span(),
-                format!("Unexpected token in Assertion: {}", input),
-            ))
         }
     }
 

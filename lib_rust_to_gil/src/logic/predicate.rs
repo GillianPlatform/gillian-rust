@@ -474,18 +474,24 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    /// Returns a tuple of universally quantified lvars, precondition, (existentially quantified lvars, postcondition)
+    /// Returns a tuple of universally quantified lvars, precondition, (existentially quantified lvars, postcondition, trusted)
     pub(crate) fn raw_spec(
         mut self,
     ) -> (
         IndexMap<Symbol, Ty<'tcx>>,
         Assertion,
         Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
+        bool,
     ) {
         let (thir, _) = get_thir!(self, self.body_id);
         self.build_var_map(&thir);
 
-        let SpecTerm { uni, pre, posts } = self.global_env.gilsonite_spec(self.body_id).clone();
+        let SpecTerm {
+            uni,
+            pre,
+            posts,
+            trusted,
+        } = self.global_env.gilsonite_spec(self.body_id).clone();
 
         let pre = self.compile_assertion(pre);
 
@@ -494,7 +500,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .map(|(exi, post)| (exi, self.compile_assertion(post)))
             .collect();
 
-        (uni.into_iter().collect(), pre, posts)
+        (uni.into_iter().collect(), pre, posts, trusted)
         // (uni.into_iter().collect(), pre, (exi, post))
     }
 

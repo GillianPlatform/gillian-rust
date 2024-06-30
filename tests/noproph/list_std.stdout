@@ -33,33 +33,6 @@ pred "dll_seg::<T>"(+pty_T0, +head, tail_next, +tail, head_prev, +len):
   * (head == #head);
 
 
-pred "extract_head::<T>$$extract_proof$$pre"(+pty_T0, +list, head, tail, len, p):
-  "list_ref_mut_htl::<T>$$inner"(pty_T0, #list, #head, #tail, #len)
-  * (list == #list)
-  * (head == #head)
-  * (tail == #tail)
-  * (len == #len)
-  * (p == #p)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#list == {{ #lvar_0, #lvar_1 }})
-  * types(#len: Int)
-  * types(#lvar_2: Obj, #lvar_3: List) * (#p == {{ {{ #lvar_2, #lvar_3 }} }})
-  * (#head == {{ 1i, {{ #p }} }});
-
-
-pred "extract_head::<T>$$extract_proof$$post"(+pty_T0, +list, +head, +tail, +len, +p):
-  (pty_T0 == #pty_T0)
-  * (list == #list)
-  * (head == #head)
-  * (tail == #tail)
-  * (len == #len)
-  * (p == #p)
-  * types(#lvar_4: Obj, #lvar_5: List) * (#list == {{ #lvar_4, #lvar_5 }})
-  * types(#len: Int)
-  * types(#lvar_6: Obj, #lvar_7: List) * (#p == {{ {{ #lvar_6, #lvar_7 }} }})
-  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ pty_T0 }} }}, #p, #lvar_0)
-  * "<&mut T as gilogic::Ownable>::own$$inner"(pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ pty_T0 }} }} }} }}) }});
-
-
 pred "list_ref_mut_htl::<T>"(+pLft_0, +pty_T0, +REFERENCE, head, tail, len):
   (#SELF == {{ #head, #tail, #len, {{  }} }})
   * "dll_seg::<T>"(pty_T0, #head, #p, #tail, #n, #len)
@@ -152,7 +125,7 @@ package ("extract_head::<T>$$extract_proof$$post"(#pty_T0, #list, #head, #tail, 
 
 
 lemma "extract_head::<T>"(pLft_0, pty_T0, list)[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_2: Obj, #lvar_3: List) * (#p == {{ {{ #lvar_2, #lvar_3 }} }}) * types(#len: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#list == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (len == #len) * (tail == #tail) * (head == #head) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+ (l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
 
 
 lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#REFERENCE == {{ #lvar_0, #lvar_1 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
@@ -193,6 +166,21 @@ proc "Node::<T>::into_element"(pty_T0, self) {
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }});
         return
+};
+
+spec extract_head(pLft_0, pty_T0, list)
+trusted
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#list == {{ #lvar_0, #lvar_1 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+ (l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
+normal
+
+proc extract_head(pLft_0, pty_T0, list) {
+        m_1list := list;
+  bb0:  g_0 := [new_lft]();
+        pLft_3 := l-nth(g_0, 0i);
+        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
+        m_2 := g_1;
+  rlab: return
 };
 
 spec "LinkedList::<T>::new"(pty_T0)
@@ -580,13 +568,14 @@ proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
         pLft_22 := l-nth(g_28, 0i);
         m_13 := g_26;
         g_29 := m_13;
-        apply "extract_head::<T>"(pLft_0,pty_T0,g_29);
+        g_30 := "extract_head"(pLft_0, pty_T0, g_29);
+        m_12 := g_30;
         goto bb8;
-  bb8:  g_30 := m_8ret;
-        m_0 := g_30;
+  bb8:  g_31 := m_8ret;
+        m_0 := g_31;
         goto bb9;
-  bb9:  g_31 := m_0;
-        ret := g_31;
+  bb9:  g_32 := m_0;
+        ret := g_32;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
