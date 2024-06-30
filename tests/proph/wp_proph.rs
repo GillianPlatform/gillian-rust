@@ -6,10 +6,11 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
+        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        specification, extract_lemma
     },
     mutref_auto_resolve,
-    prophecies::{Ownable, Prophecised},
+    prophecies::{Ownable, Prophecised, Prophecy},
 };
 
 struct WP<T> {
@@ -53,6 +54,19 @@ impl<T: Ownable> Ownable for WP<T> {
     }
 }
 
+// TODO: I need to not create matching plans for lemmas that do not have a proof!
+// Because the prophecy variable in the post condition is just generated out of nowhere.
+#[extract_lemma(
+    forall p, x: *mut N<T>, y: *mut N<T>.
+    model m.
+    extract model mx: (T::RepresentationTy, T::RepresentationTy).
+    from { wp_ref_mut_xy(p, m, x, y) }
+    extract { Ownable::own(&mut (*x).v, mx) }
+    prophecise { (mx, m.1) }
+)]
+fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+
+
 impl<T: Ownable> WP<T> {
     #[specification(
         forall lx, ly.
@@ -87,12 +101,6 @@ impl<T: Ownable> WP<T> {
             mutref_auto_resolve!(self);
         }
     }
-    
-    #[extract_lemma]
-    #[specification(
-        forall x, y.
-    )
-    ]
 
     #[specification(forall cself, pself.
         requires { self.own((cself, pself)) }
@@ -103,7 +111,8 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.x).v;
-            ret
+            let proph = extract_x(self);
+            ret.with_prophecy(proph)
         }
     }
 }

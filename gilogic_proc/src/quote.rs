@@ -1,6 +1,6 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{spanned::Spanned, BinOp, Error, Stmt};
+use syn::{spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -245,11 +245,11 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             let expr = encode_expr(expr)?;
 
             match op {
-                syn::UnOp::Deref(_) =>tokens.extend(quote! { (#expr).0 }),
+                syn::UnOp::Deref(_) => tokens.extend(quote! { (#expr).0 }),
                 syn::UnOp::Not(_) => tokens.extend(quote! { ! #expr }),
                 syn::UnOp::Neg(_) => tokens.extend(quote! { - #expr }),
             }
-        },
+        }
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
         e => {
             return Err(Error::new(
@@ -291,6 +291,52 @@ impl AsrtFragment {
             }
             Self::PredCall(call) => Ok(call.to_token_stream()),
         }
+    }
+}
+
+impl ExtractLemma {
+    pub(crate) fn encode(&self) -> syn::Result<TokenStream> {
+        let prophecise = match &self.prophecise {
+            Some((_, term)) => term,
+            None => &Term::unit(),
+        };
+        let assuming = match &self.assuming {
+            Some((_, assuming)) => assuming,
+            None => &Term::Lit(TermLit {
+                lit: Lit::Bool(LitBool {
+                    value: true,
+                    span: Span::call_site(),
+                }),
+            }),
+        };
+        let (_, from) = &self.from;
+        let (_, extract) = &self.extract;
+        let el = quote!(
+            gilogic::__stubs::extract_lemma(
+                #assuming,
+                #from,
+                #extract,
+                #prophecise
+            )
+        );
+        let el = if let Some((_, model, _, _, _, new_model, _)) = &self.models {
+            quote!( gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] | #model, #new_model | { #el }) )
+        } else {
+            el
+        };
+        let foralls = match &self.forall {
+            Some((_, foralls, _)) => foralls,
+            None => &syn::punctuated::Punctuated::new(),
+        };
+        Ok(quote!(
+            unsafe {
+                gilogic::__stubs::instantiate_lvars(
+                #[gillian::no_translate]
+                |#foralls| {
+                    #el
+                })
+            }
+        ))
     }
 }
 
@@ -456,7 +502,7 @@ impl ToTokens for Lemma {
                 #[cfg(gillian)]
                 #(#attributes)*
                 #[gillian::decl::lemma]
-                #[gillian::lemma::trusted]
+                #[gillian::trusted]
                 #sig {
                     unreachable!()
                 }
@@ -465,7 +511,7 @@ impl ToTokens for Lemma {
                 #[cfg(gillian)]
                 #(#attributes)*
                 #[gillian::decl::lemma]
-                #[gillian::lemma::trusted]
+                #[gillian::trusted]
                 #sig #body
             }),
         }
@@ -552,19 +598,5 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
             #own_impl
         })
-    }
-}
-
-impl ToTokens for ExtractLemma {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let lemma = &self.0;
-
-        quote! {
-            #[gillian::extract_lemma]
-            #[allow(unused_variables)]
-            #[allow(dead_code)]
-            #lemma
-        }
-        .to_tokens(tokens);
     }
 }
