@@ -108,7 +108,7 @@ lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Own
 
 spec extract_x(pLft_a, pty_T0, p)
 trusted
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+ (l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 normal
 
@@ -123,7 +123,7 @@ proc extract_x(pLft_a, pty_T0, p) {
 
 spec extract_y(pLft_a, pty_T0, p)
 trusted
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+ (l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 normal
 

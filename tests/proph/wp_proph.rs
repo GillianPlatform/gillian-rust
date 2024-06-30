@@ -6,8 +6,8 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification, extract_lemma
+        assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        specification,
     },
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
@@ -66,6 +66,8 @@ impl<T: Ownable> Ownable for WP<T> {
 )]
 fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
 
+//
+// fn extract_tuple<T>(p : &mut (T, T)) -> &mut T;
 
 impl<T: Ownable> WP<T> {
     #[specification(
@@ -104,8 +106,8 @@ impl<T: Ownable> WP<T> {
 
     #[specification(forall cself, pself.
         requires { self.own((cself, pself)) }
-        exists c, p. 
-        ensures {  ret.own((c, p)) * $cself.1 == pself.1 && cself.0 == c && pself.0 == p$ }
+        exists c, p.
+        ensures {  ret.own((c, p)) * $cself.1 == pself.1 && pself.0 == p && cself.0 == c$ }
     )]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {

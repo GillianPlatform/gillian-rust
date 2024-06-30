@@ -170,18 +170,16 @@ impl Ownable for () {
     }
 }
 
-pub trait Prophecised {
-    type ProphecyTy;
-
+pub trait Prophecised<P> {
     #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::get_prophecy"]
-    fn prophecy(self) -> Self::ProphecyTy;
+    fn prophecy(self) -> Prophecy<P>;
 
     #[gillian::no_translate]
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::set_prophecy"]
-    fn with_prophecy(self, pcy: Self::ProphecyTy) -> Self;
+    fn with_prophecy(self, pcy: Prophecy<P>) -> Self;
 
     #[gillian::no_translate]
     #[gillian::builtin]
@@ -194,12 +192,10 @@ pub trait Prophecised {
     fn prophecy_resolve(self);
 }
 
-impl<T> Prophecised for &mut T
+impl<T> Prophecised<T::RepresentationTy> for &mut T
 where
     T: Ownable,
 {
-    type ProphecyTy = Prophecy<T::RepresentationTy>;
-
     fn prophecy(self) -> Prophecy<T::RepresentationTy> {
         unreachable!("Implemented in GIL")
     }
