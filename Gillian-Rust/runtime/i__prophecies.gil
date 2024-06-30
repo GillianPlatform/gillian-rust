@@ -3,6 +3,13 @@ proc "gilogic::prophecies::Prophecised::prophecy"(ty, ref) {
   return
 };
 
+
+proc "gilogic::prophecies::Prophecised::with_prophecy"(lft, mutT, reprT, ref, pcy) {
+    ret := {{ l-nth(ref, 0i), pcy }};
+    return
+};
+
+
 proc "gilogic::prophecies::Prophecy::<T>::assign"(ty, pcy, value) {
   u := [pcy_assign](l-nth(pcy, 0i), l-nth(pcy, 1i), ty, value);
   ret := {{ }};
