@@ -2,9 +2,9 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, predicate, specification, extract_lemma},
+    macros::{assertion, predicate, specification, extract_lemma, prophecies::with_freeze_lemma_for_mutref},
     mutref_auto_resolve,
-    prophecies::{Ownable, Prophecised, with_freeze_lemma_for_mutref},
+    prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
 };
 use std::marker::PhantomData;
@@ -55,13 +55,13 @@ impl<T> Node<T> {
 #[extract_lemma(
     forall head, tail, len, p.
     model m.
-    extract model mh.
+    extract model mh: (T::RepresentationTy, T::RepresentationTy).
     assuming { head == Some(p) }
     from { list_ref_mut_htl(list, m, head, tail, len) }
     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
     prophecise { m.tail().prepend(mh) }
 )]
-fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>);
+fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
 
 
 #[predicate]
@@ -93,8 +93,10 @@ impl<T: Ownable> Ownable for LinkedList<T> {
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
-        assertion!(|head, tail, len| (self
-            == LinkedList {
+        assertion!(|head: Option<NonNull<Node<T>>>,
+                    tail: Option<NonNull<Node<T>>>,
+                    len: usize|
+            (self == LinkedList {
                 head,
                 tail,
                 len,
@@ -173,16 +175,28 @@ impl<T: Ownable> LinkedList<T> {
         ensures { 
             ret.own(ret_repr) *
             $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-             || (exists (current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$ }
+             || (exists <
+                    current_first: T::RepresentationTy,
+                    current_rest: Seq<T::RepresentationTy>,
+                    future_first: T::RepresentationTy,
+                    future_rest: Seq<T::RepresentationTy>
+                 >
+                    (current == current_rest.prepend(current_first)) &&
+                    (proph == future_rest.prepend(future_first)) &&
+                    (ret_repr == Some((current_first, future_first))) &&
+                    (future_rest == current_rest)
+                )
+            $
+        }
     )]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         freeze_htl(self);
         match self.head.as_mut() {
             None => None,
             Some(node) => unsafe {
-                let ret = Some(&mut node.as_mut().element);
-                extract_head(self);
-                ret
+                let ret = &mut node.as_mut().element;
+                let proph = extract_head(self);
+                Some(ret.with_prophecy(proph))
             },
         }
     }

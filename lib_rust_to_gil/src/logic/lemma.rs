@@ -19,6 +19,7 @@ struct LemmaSig {
 pub(crate) struct LemmaCtx<'tcx, 'genv> {
     global_env: &'genv mut GlobalEnv<'tcx>,
     did: DefId,
+    temp_gen: &'genv mut TempGenerator,
     trusted: bool,
     is_extract_lemma: bool,
 }
@@ -51,7 +52,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub fn new(
         global_env: &'genv mut GlobalEnv<'tcx>,
         did: DefId,
-        _: &'genv mut TempGenerator,
+        temp_gen: &'genv mut TempGenerator,
         trusted: bool,
         is_extract_lemma: bool,
     ) -> Self {
@@ -60,6 +61,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             did,
             trusted,
             is_extract_lemma,
+            temp_gen,
         }
     }
 
@@ -70,7 +72,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn sig(&mut self) -> LemmaSig {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-        let sig = build_signature(self.global_env, self.did(), args);
+        let sig = build_signature(self.global_env, self.did(), args, &mut self.temp_gen);
         let params = sig.physical_args().map(|a| a.name().to_string()).collect();
         LemmaSig {
             name: self.lemma_name(),
@@ -101,7 +103,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 existentials: Vec::new(),
             };
             let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-            let sig = build_signature(self.global_env, self.did, args);
+            let sig = build_signature(self.global_env, self.did, args, &mut self.temp_gen);
 
             let ss = sig
                 .to_gil_spec(self.global_env, name)
@@ -125,9 +127,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let pre_name = name.clone() + "$$pre";
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
 
-        let sig = signature::build_signature(self.global_env, id, args);
-
-        let mut fresh = TempGenerator::new();
+        let mut sig = signature::build_signature(self.global_env, id, args, &mut self.temp_gen);
 
         let mut res = Vec::new();
 
@@ -169,7 +169,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let def = sig
             .store_eq_var()
             .into_iter()
-            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
+            .chain(sig.type_wf_pres(self.global_env))
             .chain(guard)
             .fold(inner_call, Assertion::star);
 
@@ -189,9 +189,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         res.push(LogicItem::Pred(proof_pre));
 
         let (inner_predicate_name, inner_args, remainder) = {
-            let post = sig
-                .user_post(&mut fresh)
-                .expect("extract lemma needs precondition");
+            let post = sig.user_post().expect("extract lemma needs precondition");
             let mut splat = post.unstar();
 
             let Assertion::Pred { name, params } = splat.remove(0) else {
@@ -227,7 +225,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
         let def = store_eqs
             .into_iter()
-            .chain(sig.type_wf_pres(self.global_env, &mut fresh))
+            .chain(sig.type_wf_pres(self.global_env))
             .chain(remainder)
             .rfold(inner_call, |acc, a| Assertion::star(a, acc));
 
