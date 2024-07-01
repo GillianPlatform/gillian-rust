@@ -2,8 +2,46 @@ use rustc_middle::ty::ParamEnv;
 
 use crate::codegen::typ_encoding::type_param_name;
 use crate::logic::{core_preds, param_collector, PredCtx};
+use crate::signature::build_signature;
+use crate::temp_gen::TempGenerator;
 use crate::utils::attrs::is_borrow;
 use crate::{prelude::*, temp_gen};
+
+pub(super) struct MonoSpec<'tcx> {
+    name: String,
+    did: DefId,
+    param_env: ParamEnv<'tcx>,
+    args: GenericArgsRef<'tcx>,
+}
+
+impl<'tcx> From<MonoSpec<'tcx>> for AutoItem<'tcx> {
+    fn from(value: MonoSpec<'tcx>) -> Self {
+        Self::MonoSpec(value)
+    }
+}
+
+impl<'tcx> MonoSpec<'tcx> {
+    pub fn new(
+        name: String,
+        did: DefId,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> Self {
+        Self {
+            name,
+            did,
+            param_env,
+            args,
+        }
+    }
+
+    fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
+        let mut temp_gen = TempGenerator::new();
+        let sig = build_signature(global_env, self.did, self.args, &mut temp_gen);
+        let spec = sig.to_gil_spec(global_env, self.name).unwrap();
+        prog.add_only_spec(spec)
+    }
+}
 
 pub(super) struct PcyAutoUpdate<'tcx> {
     param_env: ParamEnv<'tcx>,
@@ -165,6 +203,7 @@ impl<'tcx> Resolver<'tcx> {
 pub(super) enum AutoItem<'tcx> {
     PcyAutoUpdate(PcyAutoUpdate<'tcx>),
     Resolver(Resolver<'tcx>),
+    MonoSpec(MonoSpec<'tcx>),
     ParamPred(ParamEnv<'tcx>, Instance<'tcx>),
     MonoPred(ParamEnv<'tcx>, Instance<'tcx>),
 }
@@ -180,6 +219,7 @@ impl<'tcx> AutoItem<'tcx> {
         match self {
             Self::PcyAutoUpdate(pcy_auto_update) => pcy_auto_update.add_to_prog(prog, global_env),
             Self::Resolver(resolver) => resolver.add_to_prog(prog, global_env),
+            Self::MonoSpec(mono_spec) => mono_spec.add_to_prog(prog, global_env),
             Self::ParamPred(param_env, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
                 let pred = PredCtx::new(

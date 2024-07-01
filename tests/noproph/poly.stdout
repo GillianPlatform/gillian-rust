@@ -1,0 +1,66 @@
+#begin_init_data
+{"Box":["Struct","ReprRust",[["0",["Adt",["Unique",[["Param",0]]]]],["1",["Param",1]]]],"Global":["Struct","ReprRust",[]],"NonNull":["Struct","ReprRust",[["pointer",["Ptr",{"mut":false,"ty":["Param",0]}]]]],"PhantomData":["Struct","ReprRust",[]],"Unique":["Struct","ReprRust",[["pointer",["Adt",["NonNull",[["Param",0]]]]],["_marker",["Adt",["PhantomData",[["Param",0]]]]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+
+pred "<std::boxed::Box<T> as gilogic::Ownable>::own"(+pty_T0, +self):
+  types(#lvar_0: Obj, #lvar_1: List)
+  * ({{ {{ {{ {{ #lvar_0, #lvar_1 }} }}, {{  }} }}, {{  }} }} == #self)
+  * <value>(#lvar_0, #lvar_1, pty_T0; #v)
+  * "<T as gilogic::Ownable>::own"(pty_T0, #v)
+  * (self == #self);
+
+
+abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
+
+
+pred "<i32 as gilogic::Ownable>::own"(+self):
+  (-2147483648i i<=# #self) * (#self i<=# 2147483647i) * types(#self: Int)
+  * (self == #self);
+
+
+pred "<std::boxed::Box<i32> as gilogic::Ownable>::own"(+self):
+  types(#lvar_0: Obj, #lvar_1: List)
+  * ({{ {{ {{ {{ #lvar_0, #lvar_1 }} }}, {{  }} }}, {{  }} }} == #self)
+  * <value>(#lvar_0, #lvar_1, "i32"; #v)
+  * "<i32 as gilogic::Ownable>::own"(#v)
+  * (self == #self);
+
+
+(* Spec a verifier *)
+spec test(pty_T0, x)
+[[ "<std::boxed::Box<T> as gilogic::Ownable>::own"(#pty_T0, #x) *
+    (x == #x) * (pty_T0 == #pty_T0) ]]
+[["<T as gilogic::Ownable>::own"(#pty_T0, ret)]]
+normal
+
+proc test(pty_T0, x) {
+        ..
+  bb0:  g_2 :=
+          [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i),
+            {{ "adt", "Box", {{ pty_T0, {{ "adt", "Global", {{  }} }} }} }}, true);
+        ..
+};
+
+(* Spec a verifier *)
+spec test2()
+[[ emp ]]
+[["<i32 as gilogic::Ownable>::own"(ret)]]
+normal
+
+proc test2() {
+        ...
+        (* Note l'appel specialisé vers test::<i32> au lieu de test *)
+        g_2 := "test::<i32>"(g_1);
+        ...
+};
+
+(* Spec spécialisée générée automatiquement et axiomatique *)
+axiomatic spec "test::<i32>"(x)
+[[ "<std::boxed::Box<i32> as gilogic::Ownable>::own"(#x) * (x == #x) ]]
+[["<i32 as gilogic::Ownable>::own"(ret)]]
+normal
+
+
+

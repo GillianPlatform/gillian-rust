@@ -4,6 +4,12 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
+axiomatic spec "extract_head::<T>"(pLft_a, pty_T0, list)
+trusted
+[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj) * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i)) * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_a; true)]]
+normal
+
 axiomatic spec "<&mut LinkedList<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_resolve"(lft, pty_T0, mut_ref)
 trusted
 [[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(lft, pty_T0, mut_ref, {{ #current, #future }}) ]]
@@ -544,7 +550,7 @@ proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
         pLft_24 := l-nth(g_29, 0i);
         m_12 := g_27;
         g_30 := m_12;
-        g_31 := "extract_head"(pLft_0, pty_T0, g_30);
+        g_31 := "extract_head::<T>"(pLft_0, pty_T0, g_30);
         m_11proph := g_31;
         goto bb8;
   bb8:  g_33 := [load_value](l-nth(m_8ret, 0i), l-nth(m_8ret, 1i), {{ "ref", true, pty_T0 }}, true);
