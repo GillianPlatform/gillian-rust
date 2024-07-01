@@ -30,14 +30,13 @@ pub(crate) struct PredSig {
 pub(crate) struct PredCtx<'tcx, 'genv> {
     param_env: ParamEnv<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
-    temp_gen: &'genv mut TempGenerator,
     /// Identifier of the item providing the body (aka specification).
     body_id: DefId,
     args: GenericArgsRef<'tcx>,
     var_map: HashMap<LocalVarId, GExpr>,
     local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
     lvars: IndexMap<Symbol, Ty<'tcx>>,
-    sig: Signature<'tcx>,
+    sig: Signature<'tcx, 'genv>,
 }
 
 impl<'tcx> HasGlobalEnv<'tcx> for PredCtx<'tcx, '_> {
@@ -72,8 +71,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         args: GenericArgsRef<'tcx>,
     ) -> Self {
         PredCtx {
-            sig: build_signature(global_env, body_id, args),
-            temp_gen,
+            sig: build_signature(global_env, body_id, args, temp_gen),
             global_env,
             body_id,
             args,
@@ -114,7 +112,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     fn new_temp(&mut self) -> String {
-        self.temp_gen.fresh_lvar()
+        self.sig.temp_gen.fresh_lvar()
     }
 
     fn temp_lvar(&mut self, ty: Ty<'tcx>) -> GExpr {
@@ -291,10 +289,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let ty_params = param_collector::collect_params_on_args(substs)
                     .with_consider_arguments(args.iter().map(|id| id.ty));
                 let mut params = Vec::new();
-                let has_regions = build_signature(self.global_env, def_id, substs)
-                    .lifetimes()
-                    .count()
-                    > 0;
+                let has_regions =
+                    build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
+                        .lifetimes()
+                        .count()
+                        > 0;
 
                 if has_regions {
                     if self.sig.lifetimes().next().is_none() {
@@ -399,7 +398,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let sig = self.sig();
         let name = sig.name.clone();
 
-        let real_sig = build_signature(self.global_env, self.body_id, self.args);
         let raw_definitions = self.global_env.predicate(self.body_id).clone().disjuncts;
 
         let raw_definitions: Vec<_> = raw_definitions
@@ -407,20 +405,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .map(|a| self.compile_assertion(a.1))
             .collect();
 
-        self.global_env_mut().mark_pred_as_compiled(name);
-        let params: Vec<_> = self
-            .sig
-            .args
-            .iter()
-            .map(|a| (a.name().to_string(), None))
-            .collect();
+        let mut real_sig = build_signature(
+            self.global_env,
+            self.body_id,
+            self.args,
+            &mut self.sig.temp_gen,
+        );
 
         let mut definitions = Vec::new();
 
         for d in raw_definitions {
             let mut definition = d;
             definition = real_sig
-                .type_wf_pres(self.global_env, self.temp_gen)
+                .type_wf_pres(self.global_env)
                 .into_iter()
                 .fold(definition, Assertion::star);
 
@@ -430,6 +427,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .rfold(definition, Assertion::star);
             definitions.push(definition);
         }
+
+        self.global_env_mut().mark_pred_as_compiled(name);
+        let params: Vec<_> = self
+            .sig
+            .args
+            .iter()
+            .map(|a| (a.name().to_string(), None))
+            .collect();
 
         let mut ins = raw_ins(self.tcx(), self.body_id);
         let num_generics = self.sig.type_params().chain(self.sig.lifetimes()).count();

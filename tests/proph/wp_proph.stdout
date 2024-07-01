@@ -29,24 +29,24 @@ pred "wp_ref_mut_inner_xy::<T>"(+pLft_0, +pty_T0, +REFERENCE, x, y):
   "wp::<T>"(pty_T0, #SELF, #x, #y, #model)
   * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF)
   * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * types(#lvar_7: Obj, #lvar_8: List) * (#x == {{ #lvar_7, #lvar_8 }})
-  * types(#lvar_9: Obj, #lvar_10: List) * (#y == {{ #lvar_9, #lvar_10 }})
+  * types(#lvar_7: Obj, #lvar_8: List, #lvar_9: Obj)
+  * (#REFERENCE == {{ {{ #lvar_7, #lvar_8 }}, #lvar_9 }})
+  * types(#lvar_10: Obj, #lvar_11: List) * (#x == {{ #lvar_10, #lvar_11 }})
+  * types(#lvar_12: Obj, #lvar_13: List) * (#y == {{ #lvar_12, #lvar_13 }})
   * (y == #y)
   * (x == #x)
   * (REFERENCE == #REFERENCE);
 guard: <lft>(pLft_0; true);
 
 pred "wp_ref_mut_xy::<T>"(+pLft_gil, +pty_T0, +REFERENCE, model, x, y):
-  (#model == {{ #current, #lvar_11 }})
+  (#model == {{ #current, #lvar_14 }})
   * <value_observer>(l-nth(#REFERENCE, 1i); #current)
   * "wp_ref_mut_inner_xy::<T>"(pLft_gil, pty_T0, #REFERENCE, #x, #y)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_11)
-  * types(#lvar_12: Obj, #lvar_13: List, #lvar_14: Obj)
-  * (#REFERENCE == {{ {{ #lvar_12, #lvar_13 }}, #lvar_14 }})
-  * types(#lvar_15: Obj, #lvar_16: List) * (#x == {{ #lvar_15, #lvar_16 }})
-  * types(#lvar_17: Obj, #lvar_18: List) * (#y == {{ #lvar_17, #lvar_18 }})
+  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_14)
+  * types(#lvar_15: Obj, #lvar_16: List, #lvar_17: Obj)
+  * (#REFERENCE == {{ {{ #lvar_15, #lvar_16 }}, #lvar_17 }})
+  * types(#lvar_18: Obj, #lvar_19: List) * (#x == {{ #lvar_18, #lvar_19 }})
+  * types(#lvar_20: Obj, #lvar_21: List) * (#y == {{ #lvar_20, #lvar_21 }})
   * (y == #y)
   * (x == #x)
   * (model == #model)
@@ -107,10 +107,10 @@ pred "wp_ref_mut_inner_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
   "wp::<T>"(pty_T0, #SELF, #x, #y, #model)
   * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF)
   * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * types(#lvar_7: Obj, #lvar_8: List) * (#x == {{ #lvar_7, #lvar_8 }})
-  * types(#lvar_9: Obj, #lvar_10: List) * (#y == {{ #lvar_9, #lvar_10 }})
+  * types(#lvar_7: Obj, #lvar_8: List, #lvar_9: Obj)
+  * (#REFERENCE == {{ {{ #lvar_7, #lvar_8 }}, #lvar_9 }})
+  * types(#lvar_10: Obj, #lvar_11: List) * (#x == {{ #lvar_10, #lvar_11 }})
+  * types(#lvar_12: Obj, #lvar_13: List) * (#y == {{ #lvar_12, #lvar_13 }})
   * (y == #y)
   * (x == #x)
   * (REFERENCE == #REFERENCE);
@@ -134,7 +134,7 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
   * (this == #this);
 
 
-lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj) * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y) * <lft>(#pLft_0; true)]]
 
 
