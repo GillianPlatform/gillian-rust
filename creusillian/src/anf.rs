@@ -153,7 +153,11 @@ pub(crate) fn print_gilsonite(t: CoreTerm) -> syn::Result<TokenStream> {
             Ok(quote! { #o #t })
         }
         CoreTerm::Final(_) => todo!("final"),
-        CoreTerm::Model(_) => todo!("model"),
+        CoreTerm::Model(t) =>  {
+            let t = print_gilsonite(*t)?;
+
+            Ok(quote! { #t @ })
+        }
         CoreTerm::Let(_, _, _) => Err(syn::Error::new(Span::call_site(), "unsupported")),
         CoreTerm::Match(_, _) => Err(syn::Error::new(Span::call_site(), "unsupported")),
         CoreTerm::Constructor(c) => match c {
@@ -514,7 +518,7 @@ fn core_conjunct_to_sl(t: CoreTerm) -> PreGil {
             let t = core_conjunct_to_sl(*term);
             PreGil::Final(Box::new(t))
         }
-        CoreTerm::Model(_) => todo!("model"),
+        CoreTerm::Model(t) => core_conjunct_to_sl(*t),
         CoreTerm::Let(_, _, _) => unreachable!("let bindings should have been eliminated"),
         CoreTerm::Match(_, _) => unreachable!("match expressions should have been eliminated"),
         CoreTerm::Constructor(c) => match c {

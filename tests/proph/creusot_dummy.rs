@@ -32,3 +32,12 @@ pub fn write(x : &mut u32) {
     *x = 1;
     mutref_auto_resolve!(x);
 }
+
+
+#[creusillian::requires(*x@ == 0)]
+#[creusillian::ensures(^x == 1)]
+pub fn write2(x : &mut u32) {
+    *x = 1;
+    mutref_auto_resolve!(x);
+}
+
