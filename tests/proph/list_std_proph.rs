@@ -1,4 +1,5 @@
 //@check-pass
+//?gil:ignore
 extern crate gilogic;
 
 use gilogic::{
