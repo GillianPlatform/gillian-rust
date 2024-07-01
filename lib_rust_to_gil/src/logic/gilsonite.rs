@@ -106,6 +106,20 @@ pub enum ExprKind<'tcx> {
         var: (Symbol, Ty<'tcx>),
         body: Box<Expr<'tcx>>,
     },
+    EForall {
+        var: (Symbol, Ty<'tcx>),
+        body: Box<Expr<'tcx>>,
+    },
+}
+
+impl<'tcx> ExprKind<'tcx> {
+    fn mk_exists(var: (Symbol, Ty<'tcx>), body: Box<Expr<'tcx>>) -> Self {
+        Self::Exists { var, body }
+    }
+
+    fn mk_forall(var: (Symbol, Ty<'tcx>), body: Box<Expr<'tcx>>) -> Self {
+        Self::EForall { var, body }
+    }
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -581,9 +595,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         }
     }
 
-    fn build_exists_body(&self, id: ExprId) -> ExprKind<'tcx> {
+    fn build_quantified_body<F: Fn((Symbol, Ty<'tcx>), Box<Expr<'tcx>>) -> ExprKind<'tcx>>(
+        &self,
+        id: ExprId,
+        mk_quant: F,
+    ) -> ExprKind<'tcx> {
         match &self.thir[id].kind {
-            thir::ExprKind::Scope { value, .. } => self.build_exists_body(*value),
+            thir::ExprKind::Scope { value, .. } => self.build_quantified_body(*value, mk_quant),
             thir::ExprKind::Closure(box ClosureExpr {
                 closure_id,
                 args: UpvarArgs::Closure(args),
@@ -602,10 +620,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     tcx: self.tcx,
                 }
                 .build_expression(expr);
-                ExprKind::Exists {
-                    var: (name.name, ty),
-                    body: Box::new(body),
-                }
+                mk_quant((name.name, ty), Box::new(body))
             }
             kind => self
                 .tcx
@@ -976,7 +991,12 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         };
                         ExprKind::SeqOp { op, args }
                     }
-                    Some(LogicStubs::ExprExists) => self.build_exists_body(args[0]),
+                    Some(LogicStubs::ExprExists) => {
+                        self.build_quantified_body(args[0], ExprKind::mk_exists)
+                    }
+                    Some(LogicStubs::ExprForall) => {
+                        self.build_quantified_body(args[0], ExprKind::mk_forall)
+                    }
                     None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()

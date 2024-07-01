@@ -97,6 +97,13 @@ pub fn forall<T, F: Fn(T) -> RustFormula>(_: F) -> RustFormula {
 
 #[gillian::no_translate]
 #[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::expr::forall"]
+pub fn eforall<T, F: Fn(T) -> bool>(_: F) -> bool {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::expr::exists"]
 pub fn exists<T, F: Fn(T) -> bool>(_: F) -> bool {
     unreachable!()
