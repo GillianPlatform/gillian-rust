@@ -166,6 +166,26 @@ impl<T: Ownable> LinkedList<T> {
             },
         }
     }
+    
+    #[specification(forall current, proph.
+        requires { self.own((current, proph)) }
+        exists ret_repr.
+        ensures { 
+            ret.own(ret_repr) *
+            $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+             || (exists (current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$ }
+    )]
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        freeze_htl(self);
+        match self.head.as_mut() {
+            None => None,
+            Some(node) => unsafe {
+                let ret = Some(&mut node.as_mut().element);
+                extract_head(self);
+                ret
+            },
+        }
+    }
 
     // Obtained by automatically translating the Creusot specification:
     //#[ensures(
@@ -182,7 +202,7 @@ impl<T: Ownable> LinkedList<T> {
         ensures { 
             ret.own(ret_repr) *
             $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-             || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$}
+             || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$ }
     )]
     pub fn pop_front(&mut self) -> Option<T> {
         // Original implementation uses map
