@@ -23,6 +23,7 @@ pub(crate) enum CoreTerm {
     Constructor(ConstructorKind),
     Var(VarKind),
     Lit(Lit),
+    Path(Path),
     Exists(Vec<VarKind>, Box<CoreTerm>),
 }
 
@@ -39,6 +40,7 @@ pub(crate) enum PreGil {
     Final(Box<PreGil>),
     Model(Box<PreGil>),
     Exists(VarKind, Box<PreGil>),
+    Path(Path),
 }
 
 impl ToTokens for PreGil {
@@ -64,6 +66,7 @@ impl ToTokens for PreGil {
             }),
             PreGil::Final(t) => tokens.extend(quote! { (#t).1 }),
             PreGil::Model(_) => todo!("model"),
+            PreGil::Path(p) => p.to_tokens(tokens),
         }
     }
 }
@@ -199,6 +202,7 @@ pub(crate) fn print_gilsonite(t: CoreTerm) -> syn::Result<TokenStream> {
             let t = print_gilsonite(*t)?;
             Ok(quote! { exists < #(#ids),* > #t})
         }
+        CoreTerm::Path(p) => todo!("path {p:?}"),
         CoreTerm::Lit(l) => Ok(quote! { #l }),
     }
 }
@@ -268,14 +272,15 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
             };
 
             let Some(id) = inner.path.get_ident() else {
-                Err(Error::new(inner.span(), "unsupported path"))?
+                return Ok(CoreTerm::Path(inner.path))
             };
 
             Ok(CoreTerm::Var(VarKind::Source(id.clone())))
         }
         Term::Paren(TermParen {  expr, .. }) => term_to_core(*expr),
         Term::Lit(lit) => Ok(CoreTerm::Lit(lit.lit)),
-        _ => Err(Error::new(t.span(), "Unsupported term")),
+        Term::Paren(TermParen { expr, .. }) => term_to_core(*expr),
+        t => Err(Error::new(t.span(), &format!("Unsupported term {t:?}"))),
     }
 }
 
@@ -386,6 +391,7 @@ impl CoreTerm {
                 }
                 t.subst(&mut subst)
             }
+            CoreTerm::Path(_) => {}
             CoreTerm::Lit(_) => {}
         }
     }
@@ -548,6 +554,7 @@ fn core_conjunct_to_sl(t: CoreTerm) -> PreGil {
         },
         CoreTerm::Var(v) => PreGil::Var(v),
         CoreTerm::Lit(l) => PreGil::Lit(l),
+        CoreTerm::Path(p) => PreGil::Path(p),
         CoreTerm::Exists(v, b) => v.into_iter().fold(core_conjunct_to_sl(*b), |acc, v| {
             PreGil::Exists(v, Box::new(acc))
         }),
@@ -630,5 +637,6 @@ pub(crate) fn elim_match_form(t: &mut CoreTerm) {
         CoreTerm::Exists(_, e) => elim_match_form(e),
         CoreTerm::Var(_) => (),
         CoreTerm::Lit(_) => (),
+        CoreTerm::Path(_) => (),
     }
 }
