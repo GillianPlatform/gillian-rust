@@ -1,4 +1,5 @@
 /// Fresh lvar name generator
+#[derive(Debug)]
 pub struct TempGenerator {
     cur_lvar: u32,
 }

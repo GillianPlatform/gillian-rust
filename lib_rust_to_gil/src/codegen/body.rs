@@ -1,4 +1,5 @@
 use crate::signature::build_signature;
+use crate::temp_gen::TempGenerator;
 use crate::utils;
 use crate::{config::ExecMode, prelude::*};
 use rustc_hir::def::DefKind;
@@ -68,7 +69,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 .collect()
         } else {
             let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-            let sig = build_signature(self.global_env, self.did(), args);
+            let mut temp_gen = TempGenerator::new();
+            // The temp_gen will not be used.
+            let sig = build_signature(self.global_env, self.did(), args, &mut temp_gen);
 
             sig.physical_args().map(|a| a.name().to_string()).collect()
         }

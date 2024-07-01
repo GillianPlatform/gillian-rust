@@ -94,7 +94,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
         #for_lemma
         #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
-        fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
+        fn #name #generics (#inputs) -> gilogic::RustAssertion {
            #spec
         }
 
@@ -122,12 +122,12 @@ pub(crate) fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStre
         })
         .collect();
     let req = if args_own.is_empty() {
-        quote! { ::gilogic::__stubs::emp() }
+        quote! { gilogic::__stubs::emp() }
     } else {
         args_own.to_token_stream()
     };
     let result = quote! {
-        #[::gilogic::macros::specification(
+        #[gilogic::macros::specification(
             requires { #req }
             ensures { ret.own() }
         )]

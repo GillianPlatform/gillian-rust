@@ -81,7 +81,7 @@ impl ExtractLemma {
 
             let ptr_arg_extracted = ptr_arg_extracted_mut.clone();
             *ptr_arg_extracted_mut =
-                syn::parse2(quote!(::gilogic::prophecies::Prophecised::with_prophecy(#ptr_arg_extracted, #fresh_prophecy))).unwrap();
+                syn::parse2(quote!(gilogic::prophecies::Prophecised::with_prophecy(#ptr_arg_extracted, #fresh_prophecy))).unwrap();
 
             let old_proph_val_var = format_ident!("__OLD_PROPH_VAL");
             let new_proph_val_var = format_ident!("__NEW_PROPH_VAL");
@@ -310,8 +310,9 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::extract_lemma]
-        fn #name #generics (#inputs) -> ::gilogic::RustAssertion {
-            #encoded_el
+        fn #name #generics (#inputs) -> gilogic::RustAssertion {
+            /* #encoded_el */
+            gilogic::__stubs::emp()
         }
 
         #[cfg(gillian)]
@@ -319,13 +320,14 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
         #[gillian::trusted]
-        fn #spec_name #generics (#inputs) -> ::gilogic::RustAssertion {
+        fn #spec_name #generics (#inputs) -> gilogic::RustAssertion {
             #spec
         }
 
         #(#item_attrs)*
         #[gillian::extract_lemma=#name_string]
         #[gillian::spec=#spec_name_string]
+        #[allow(unsused_variables)]
         #sig {
             unreachable!()
         }

@@ -90,7 +90,7 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.x).v;
-            // extract_x(self);
+            extract_x(self);
             ret
         }
     }
@@ -100,7 +100,7 @@ impl<T: Ownable> WP<T> {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.y).v;
-            // extract_y(self);
+            extract_y(self);
             ret
         }
     }

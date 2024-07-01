@@ -540,7 +540,7 @@ impl ToTokens for frozen_borrow::FreezeMutRefOwn {
 
         tokens.extend(quote! {
 
-            #[lemma]
+            #[gilogic::macros::lemma]
             #[allow(non_snake_case)]
             #[specification(
                 requires { REFERENCE.own() }
@@ -582,7 +582,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
         tokens.extend(quote! {
 
-            #[lemma]
+            #[gilogic::macros::lemma]
             #[specification(
                 forall MODEL: <&mut #own_impl_ty as gilogic::prophecies::Ownable>::RepresentationTy.
                 requires { REFERENCE.own(MODEL) }
