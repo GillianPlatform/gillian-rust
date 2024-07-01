@@ -33,6 +33,7 @@ pub enum Expr {
     EList(Vec<Expr>),
     ESet(Vec<Expr>),
     EExists(Vec<(String, Option<Type>)>, Box<Expr>),
+    EForall(Vec<(String, Option<Type>)>, Box<Expr>),
 }
 
 impl std::ops::Not for Expr {
@@ -900,6 +901,27 @@ where
                 docs![
                     alloc,
                     "exists",
+                    alloc.space(),
+                    vars,
+                    ".",
+                    alloc.space(),
+                    &**body
+                ]
+            }
+            Expr::EForall(vars, body) => {
+                let vars = alloc.intersperse(
+                    vars.iter().map(|(v, ty)| {
+                        alloc.text(format!("#{v}")).append(
+                            ty.map(|ty| alloc.text(" : ").append(ty.pretty(alloc)))
+                                .unwrap_or(alloc.nil()),
+                        )
+                    }),
+                    ", ",
+                );
+
+                docs![
+                    alloc,
+                    "forall",
                     alloc.space(),
                     vars,
                     ".",

@@ -190,6 +190,24 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             }
             tokens.extend(ts)
         }
+        Term::Forall(TermForall {
+            forall_token: _,
+            lt_token: _,
+            args,
+            gt_token: _,
+            term,
+        }) => {
+            let mut ts = encode_expr(term)?;
+            for arg in args {
+                ts = quote! {
+                    gilogic::__stubs::eforall(
+                        #[gillian::no_translate]
+                        (|#arg| #ts)
+                    )
+                }
+            }
+            tokens.extend(ts)
+        }
         // Term::If(_) => todo!(),
         Term::Lit(l) => l.to_tokens(&mut tokens),
         Term::MethodCall(TermMethodCall {
