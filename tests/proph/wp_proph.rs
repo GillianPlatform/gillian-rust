@@ -5,7 +5,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
         specification,
     },
     mutref_auto_resolve,

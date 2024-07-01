@@ -69,7 +69,8 @@ impl<'tcx> ProgCtx<'tcx> {
         if let DefKind::AssocConst = global_env.tcx().def_kind(did) {
             // We can't build signatures for associated consts.
         } else {
-            let sig = build_signature(global_env, did, args);
+            let mut temp_gen = TempGenerator::new();
+            let sig = build_signature(global_env, did, args, &mut temp_gen);
             proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
         };
         self.prog.add_proc(proc);

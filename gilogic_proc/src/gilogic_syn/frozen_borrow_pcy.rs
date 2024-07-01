@@ -98,7 +98,7 @@ impl<'a> AssertMutator for FreezeMutator<'a> {
         let model_name = &self.model.0;
         let points_to = syn::parse2::<AsrtFragment>(quote::quote! { (REFERENCE -> SELF) }).unwrap();
         let controller = syn::parse2::<AsrtFragment>(
-            quote::quote! { ::gilogic::prophecies::controller(REFERENCE.prophecy(), #model_name) },
+            quote::quote! { gilogic::prophecies::controller(REFERENCE.prophecy(), #model_name) },
         )
         .unwrap();
         asrt.def.push(points_to);
@@ -256,7 +256,7 @@ impl FreezeMutRefOwn {
             fn #name #generics (REFERENCE: In<&'gil mut #impl_ty>, model: (<&'gil mut #impl_ty as Ownable>::RepresentationTy), #(#frozen_vars: #frozen_vars_ty),*) {
                 assertion!(|current: <#impl_ty as Ownable>::RepresentationTy|
                     (model == (current, REFERENCE.prophecy().value())) *
-                    ::gilogic::prophecies::observer(REFERENCE.prophecy(), current) *
+                    gilogic::prophecies::observer(REFERENCE.prophecy(), current) *
                     #inner_pred_name(REFERENCE, #(#frozen_vars),*)
                 )
             }

@@ -15,7 +15,7 @@ use crate::{
         PredCtx,
     },
     prelude::{ty_utils, GlobalEnv, HasTyCtxt},
-    temp_gen::{self, TempGenerator},
+    temp_gen::TempGenerator,
     utils::attrs::{is_lemma, is_predicate},
 };
 use rustc_data_structures::captures::Captures;
@@ -23,10 +23,11 @@ use rustc_data_structures::captures::Captures;
 // TODO: Track in parameters
 // TODO: Trakc the kind of item this is
 #[derive(Debug)]
-pub struct Signature<'tcx> {
+pub struct Signature<'tcx, 'genv> {
     // pub name: Symbol,
     pub args: Vec<ParamKind<'tcx>>,
     contract: Option<Contract<'tcx>>,
+    pub temp_gen: &'genv mut TempGenerator,
 }
 
 #[derive(Debug)]
@@ -55,7 +56,7 @@ impl<'tcx> ParamKind<'tcx> {
     }
 }
 
-impl<'tcx> Signature<'tcx> {
+impl<'tcx, 'genv> Signature<'tcx, 'genv> {
     /// Returns all *universally* quantified program or logic variables
     pub fn all_vars(&self) -> impl Iterator<Item = (Symbol, Ty<'tcx>)> + '_ {
         self.args.iter().filter_map(move |arg| match arg {
@@ -90,15 +91,12 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Returns the set of type well-formedness assertions for the input parameters of a predicate
-    pub fn type_wf_pres(
-        &self,
-        ctx: &mut GlobalEnv<'tcx>,
-        temp: &mut TempGenerator,
-    ) -> Vec<Assertion> {
+    pub fn type_wf_pres(&mut self, ctx: &mut GlobalEnv<'tcx>) -> Vec<Assertion> {
         let mut wfs = Vec::new();
-        for (nm, ty) in self.all_vars() {
+        let all_vars: Vec<_> = self.all_vars().collect();
+        for (nm, ty) in all_vars {
             let lvar = Expr::LVar(format!("#{nm}"));
-            wfs.push(make_wf_asrt(ctx, temp, lvar, ty));
+            wfs.push(make_wf_asrt(ctx, &mut self.temp_gen, lvar, ty));
         }
 
         wfs
@@ -134,13 +132,13 @@ impl<'tcx> Signature<'tcx> {
 
     /// Returns the user-provided postcondition of this item
     /// Panics if the postcondition contains a disjunction
-    pub fn user_post(&self, temp: &mut TempGenerator) -> Option<Assertion> {
+    pub fn user_post(&mut self) -> Option<Assertion> {
         let contract = self.contract.as_ref()?;
         assert_eq!(contract.post.len(), 1);
         let subst: HashMap<_, _> = contract.post[0]
             .0
             .iter()
-            .map(|lvar| (lvar.0.to_string(), Expr::LVar(temp.fresh_lvar())))
+            .map(|lvar| (lvar.0.to_string(), Expr::LVar(self.temp_gen.fresh_lvar())))
             .collect();
         let mut post = contract.post[0].1.clone();
 
@@ -150,12 +148,8 @@ impl<'tcx> Signature<'tcx> {
 
     /// Returns a precondition elaborated with well-formedness and mutable-store assertions
     /// and a boolean that says if this contract is trusted
-    fn full_pre(
-        &self,
-        ctx: &mut GlobalEnv<'tcx>,
-        temp: &mut TempGenerator,
-    ) -> Option<(Assertion, bool)> {
-        let mut wf = self.type_wf_pres(ctx, temp);
+    fn full_pre(&mut self, ctx: &mut GlobalEnv<'tcx>) -> Option<(Assertion, bool)> {
+        let mut wf = self.type_wf_pres(ctx);
         let lv = self.store_eq_all();
         let contract = self.contract.as_ref()?;
         let mut pre = contract.pre.clone();
@@ -217,10 +211,8 @@ impl<'tcx> Signature<'tcx> {
     }
 
     /// Return a gil spec for a procedure corresponding to this signature
-    pub fn to_gil_spec(self, ctx: &mut GlobalEnv<'tcx>, name: String) -> Option<Spec> {
-        let mut temp = TempGenerator::new();
-
-        let (pre, trusted) = self.full_pre(ctx, &mut temp)?;
+    pub fn to_gil_spec(mut self, ctx: &mut GlobalEnv<'tcx>, name: String) -> Option<Spec> {
+        let (pre, trusted) = self.full_pre(ctx)?;
 
         let sspec = SingleSpec {
             pre,
@@ -236,11 +228,12 @@ impl<'tcx> Signature<'tcx> {
     }
 }
 
-pub fn build_signature<'tcx>(
+pub fn build_signature<'tcx, 'genv>(
     global_env: &mut GlobalEnv<'tcx>,
     id: DefId,
     subst: GenericArgsRef<'tcx>,
-) -> Signature<'tcx> {
+    mut temp_gen: &'genv mut TempGenerator,
+) -> Signature<'tcx, 'genv> {
     assert!(
         matches!(
             global_env.tcx().def_kind(id),
@@ -319,8 +312,6 @@ pub fn build_signature<'tcx>(
     }
 
     let (uni_vars, contract) = if let Some(spec_id) = global_env.spec_map.get(&id) {
-        let mut temp_gen = temp_gen::TempGenerator::new();
-
         let (uni, mut pre, mut post, trusted) =
             PredCtx::new_with_identity_args(global_env, &mut temp_gen, *spec_id).raw_spec();
 
@@ -341,7 +332,11 @@ pub fn build_signature<'tcx>(
             .map(|(nm, ty)| ParamKind::Logic(nm, ty)),
     );
 
-    Signature { args, contract }
+    Signature {
+        args,
+        contract,
+        temp_gen,
+    }
 }
 
 pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {
