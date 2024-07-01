@@ -1,4 +1,3 @@
-use super::print_utils::separated_display;
 use super::visitors::GilVisitorMut;
 use super::{Literal, Type};
 use num_bigint::BigInt;
