@@ -33,6 +33,7 @@ pub struct Specification {
     pub postconds: Vec<SpecEnsures>,
 }
 
+#[allow(dead_code)]
 pub struct SpecEnsures {
     pub exists: Option<kw::exists>,
     pub rvars: Punctuated<LvarDecl, Token![,]>,
