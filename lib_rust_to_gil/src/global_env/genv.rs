@@ -176,18 +176,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             .expect("Could not find gilogic::Ownable")
     }
 
-    pub fn get_prophecy_resolve_did(&self) -> DefId {
-        self.tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::resolve"))
-            .expect("Couldn't find gillian::mut_ref::resolve")
-    }
-
-    pub fn get_prophecy_auto_update_did(&self) -> DefId {
-        self.tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::prophecy_auto_update"))
-            .expect("Couldn't find gillian::mut_ref::prophecy_auto_update")
-    }
-
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
         let args: Vec<GenericArg> = args
             .iter()
@@ -249,34 +237,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         let general_own = self.get_own_def_did();
         let subst = self.tcx().mk_args(&[ty.into()]);
         self.resolve_predicate_param_env(param_env, general_own, subst)
-    }
-
-    pub fn register_resolver(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let def_id = self.get_prophecy_resolve_did();
-        let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue.push(
-            name.clone(),
-            Resolver::new(param_env, name.clone(), args).into(),
-        );
-        name
-    }
-
-    pub fn register_pcy_auto_update(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let def_id = self.get_prophecy_auto_update_did();
-        let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue.push(
-            name.clone(),
-            PcyAutoUpdate::new(param_env, name.clone(), args).into(),
-        );
-        name
     }
 
     pub fn register_mono_spec(
