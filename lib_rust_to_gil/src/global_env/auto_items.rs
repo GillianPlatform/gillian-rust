@@ -9,7 +9,6 @@ use crate::{prelude::*, temp_gen};
 pub(super) struct MonoSpec<'tcx> {
     name: String,
     did: DefId,
-    param_env: ParamEnv<'tcx>,
     args: GenericArgsRef<'tcx>,
 }
 
@@ -20,18 +19,8 @@ impl<'tcx> From<MonoSpec<'tcx>> for AutoItem<'tcx> {
 }
 
 impl<'tcx> MonoSpec<'tcx> {
-    pub fn new(
-        name: String,
-        did: DefId,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> Self {
-        Self {
-            name,
-            did,
-            param_env,
-            args,
-        }
+    pub fn new(name: String, did: DefId, args: GenericArgsRef<'tcx>) -> Self {
+        Self { name, did, args }
     }
 
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {

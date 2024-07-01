@@ -76,10 +76,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             }
             _ if self.global_env.spec_map.contains_key(&did) => {
-                let param_env = self.tcx().param_env(self.did());
-                let name = self
-                    .global_env_mut()
-                    .register_mono_spec(did, param_env, substs);
+                let name = self.global_env_mut().register_mono_spec(did, substs);
                 CallKind::MonoFn(name)
             }
             _ => CallKind::PolyFn(self.tcx().def_path_str(did)),
