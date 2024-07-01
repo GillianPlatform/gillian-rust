@@ -279,6 +279,20 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
+    pub fn register_mono_spec(
+        &mut self,
+        def_id: DefId,
+        param_env: ParamEnv<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
+        let name = self.tcx().def_path_str_with_args(def_id, args);
+        self.item_queue.push(
+            name.clone(),
+            MonoSpec::new(name.clone(), def_id, param_env, args).into(),
+        );
+        name
+    }
+
     pub fn add_items_to_prog(&mut self, prog: &mut Prog) {
         while let Some((_, item)) = self.item_queue.pop() {
             item.add_to_prog(prog, self)
