@@ -9,7 +9,6 @@ pub(crate) mod action_names {
     pub(crate) const DEINIT: &str = "deinit";
     pub(crate) const FREE: &str = "free";
     pub(crate) const LOAD_DISCR: &str = "load_discr";
-    pub(crate) const PCY_ASSIGN: &str = "pcy_assign";
 }
 
 pub enum MemoryAction<'tcx> {

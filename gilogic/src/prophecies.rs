@@ -168,7 +168,6 @@ where
     }
 }
 
-#[lemma]
 #[specification(
     forall v, a, r.
     requires {
@@ -182,15 +181,20 @@ where
         controller(p.prophecy(), r)
 }
 )]
-pub fn prophecy_auto_update<T: Ownable>(p: &mut T);
+pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
+    let _ = p;
+    unreachable!();
+}
 
-#[lemma]
 #[specification(
     forall m.
     requires { p.own(m) }
     ensures { $(m.0 == m.1)$ }
 )]
-pub fn prophecy_resolve<T: Ownable>(p: &mut T);
+pub fn prophecy_resolve<T: Ownable>(p: &mut T) {
+    let _ = p;
+    unreachable!();
+}
 
 #[derive(Clone, Copy)]
 pub struct Prophecy<T: ?Sized>(core::marker::PhantomData<T>);
