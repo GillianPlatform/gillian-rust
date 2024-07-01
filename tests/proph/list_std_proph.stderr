@@ -19,6 +19,7 @@ warning: unused variable: `list`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+<<<<<<< HEAD
 warning: associated function `shallow_model` is never used
   --> ../tests/proph/list_std_proph.rs:29:8
    |
@@ -29,15 +30,9 @@ warning: associated function `shallow_model` is never used
    |        ^^^^^^^^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
+=======
+error: non-local predicate "gilogic::prophecies::prophecy_auto_update_spec_070f7496_6ce1_4994_8b8e_b4d429061685::<T>"
+>>>>>>> 7d8f4f9 (trying to make foreign spec calls work but not managing)
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/list_std_proph.rs:96:12
-   |
-96 |     fn own(self, model: Self::RepresentationTy) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
+error: aborting due to 1 previous error; 1 warning emitted
 
-warning: 3 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!

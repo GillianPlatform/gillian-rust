@@ -122,9 +122,14 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
         let item_queue = QueueOnce::default();
-        let (spec_map, _) = Self::build_gillian_spec_map(tcx);
+        let (mut spec_map, _) = Self::build_gillian_spec_map(tcx);
 
         let metadata = Metadata::load(tcx, &config.overrides);
+
+        // The spec map is extended with the spec maps of the dependencies.
+        metadata.spec_map().iter().for_each(|(k, v)| {
+            spec_map.insert(*k, *v);
+        });
 
         Self {
             config,
@@ -162,18 +167,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             }
         }
         (specs, progs)
-    }
-
-    pub fn get_own_def_did(&self) -> DefId {
-        let symbol = if self.config.prophecies {
-            Symbol::intern("gillian::pcy::ownable::own")
-        } else {
-            Symbol::intern("gillian::ownable::own")
-        };
-
-        self.tcx()
-            .get_diagnostic_item(symbol)
-            .expect("Could not find gilogic::Ownable")
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -229,26 +222,11 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for2(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> (String, DefId, GenericArgsRef<'tcx>) {
-        let general_own = self.get_own_def_did();
-        let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_predicate_param_env(param_env, general_own, subst)
-    }
-
-    pub fn register_mono_spec(
-        &mut self,
-        def_id: DefId,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
+    pub fn register_mono_spec(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> String {
         let name = self.tcx().def_path_str_with_args(def_id, args);
         self.item_queue.push(
             name.clone(),
-            MonoSpec::new(name.clone(), def_id, param_env, args).into(),
+            MonoSpec::new(name.clone(), def_id, args).into(),
         );
         name
     }
@@ -417,6 +395,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
-        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
     }
 }
