@@ -4,6 +4,18 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
+axiomatic spec "extract_x::<T>"(pLft_a, pty_T0, p)
+trusted
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
+normal
+
+axiomatic spec "extract_y::<T>"(pLft_a, pty_T0, p)
+trusted
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
+normal
+
 pred "wp::<T>"(+pty_T0, +wp, x, y):
   (#wp == {{ #x, #y }})
   * <value>(l-nth(#x, 0i), l-nth(#x, 1i), {{ "adt", "N", {{ pty_T0 }} }}; {{ #v_x, #y }})
@@ -176,7 +188,7 @@ proc "WP::<T>::first_mut"(pLft_a, pty_T0, self) {
         pLft_15 := l-nth(g_12, 0i);
         m_8 := g_10;
         g_13 := m_8;
-        g_14 := "extract_x"(pLft_a, pty_T0, g_13);
+        g_14 := "extract_x::<T>"(pLft_a, pty_T0, g_13);
         m_7 := g_14;
         goto bb2;
   bb2:  g_16 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
@@ -238,7 +250,7 @@ proc "WP::<T>::second_mut"(pLft_a, pty_T0, self) {
         pLft_15 := l-nth(g_12, 0i);
         m_8 := g_10;
         g_13 := m_8;
-        g_14 := "extract_y"(pLft_a, pty_T0, g_13);
+        g_14 := "extract_y::<T>"(pLft_a, pty_T0, g_13);
         m_7 := g_14;
         goto bb2;
   bb2:  g_16 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
