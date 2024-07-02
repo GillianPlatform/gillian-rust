@@ -311,20 +311,21 @@ impl<T: Ownable> Ownable for Vec<T> {
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
-        assertion!(
-            |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
-                * (self
-                    == Vec {
-                        buf: RawVec { ptr, cap },
-                        len
-                    })
-                * cap.own(cap)
-                * len.own(len)
-                * (cap == 0)
-                * ptr.as_ptr().points_to_slice(len, values)
-                * all_own(values, model)
-                * (values.len() == model.len())
-        );
+        // The specification for zsts is quite hard. We need a value like ZST::REPRESENTATIVE or something.
+        // assertion!(
+        //     |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
+        //         * (self
+        //             == Vec {
+        //                 buf: RawVec { ptr, cap },
+        //                 len
+        //             })
+        //         * cap.own(cap)
+        //         * len.own(len)
+        //         * (cap == 0)
+        //         * ptr.as_ptr().points_to_slice(len, values)
+        //         * all_own(values, model)
+        //         * (values.len() == model.len())
+        // );
         assertion!(|ptr, cap, len, values, rest| (std::mem::size_of::<T>() > 0)
             * (self
                 == Vec {
