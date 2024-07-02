@@ -373,7 +373,7 @@ impl<T: Ownable> Vec<T> {
         forall current, future, v_repr.
         requires {
             self.own((current, future)) *
-            (current.len() < 2 << 62) *
+            $current.len() < 2 << 62$ *
             value.own(v_repr)
         }
         ensures {

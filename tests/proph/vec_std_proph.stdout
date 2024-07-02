@@ -1074,7 +1074,7 @@ proc "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * (l-len #current i<# 9223372036854775808i) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (9223372036854775808i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [[<observation>(((#future) = (l+(#current, {{ #v_repr }}))); ) * <lft>(#pLft_0; true)]]
 normal
 
@@ -1084,7 +1084,7 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, g_0);
         m_2value := value;
-        m_18 := [alloc]({{ "tuple", {{ "usize", "bool" }} }});
+        m_19 := [alloc]({{ "tuple", {{ "usize", "bool" }} }});
   bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_1 := l-nth(g_2, 0i);
         g_4 := [load_value](l-nth(l-nth(g_1, 0i), 0i), l+(l-nth(l-nth(g_1, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
@@ -1128,61 +1128,62 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         g_24 := l-nth(g_25, 0i);
         g_26 := [new_lft]();
         pLft_13 := l-nth(g_26, 0i);
-        m_13 := g_24;
-        g_27 := m_13;
+        m_14 := g_24;
+        g_27 := m_14;
         g_28 := "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, g_27);
-        m_12 := g_28;
+        m_13 := g_28;
         goto bb6;
   bb6:  g_30 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_29 := l-nth(g_30, 0i);
         g_32 := [load_value](l-nth(l-nth(g_29, 0i), 0i), l+(l-nth(l-nth(g_29, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
         g_31 := l-nth(g_32, 0i);
-        m_14 := g_31;
-        g_33 := m_12;
-        g_34 := m_14;
+        m_15 := g_31;
+        g_33 := m_13;
+        g_34 := m_15;
         g_35 := "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, g_33, g_34);
-        m_11end := g_35;
+        m_12end := g_35;
         goto bb7;
-  bb7:  m_16 := m_11end;
+  bb7:  m_17 := m_12end;
         g_36 := m_2value;
-        m_17 := g_36;
-        g_37 := m_16;
-        g_38 := m_17;
+        m_18 := g_36;
+        g_37 := m_17;
+        g_38 := m_18;
         g_39 := "std::ptr::write"(pty_T0, g_37, g_38);
-        m_15 := g_39;
+        m_16 := g_39;
         goto bb8;
   bb8:  g_41 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_40 := l-nth(g_41, 0i);
         g_43 := [load_value](l-nth(l-nth(g_40, 0i), 0i), l+(l-nth(l-nth(g_40, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
         g_42 := l-nth(g_43, 0i);
         g_44 := "i__binop_checked_add"(g_42, 1i, 18446744073709551615i);
-        u := [store_value](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_44);
-        g_46 := [load_value](l-nth(m_18, 0i), l+(l-nth(m_18, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
+        u := [store_value](l-nth(m_19, 0i), l-nth(m_19, 1i), {{ "tuple", {{ "usize", "bool" }} }}, g_44);
+        g_46 := [load_value](l-nth(m_19, 0i), l+(l-nth(m_19, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "bool", false);
         g_45 := l-nth(g_46, 0i);
         u := "i__lang_assert"(not g_45, "overflow check failed");
         goto bb9;
-  bb9:  g_48 := [load_value](l-nth(m_18, 0i), l+(l-nth(m_18, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
+  bb9:  g_48 := [load_value](l-nth(m_19, 0i), l+(l-nth(m_19, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "usize", "bool" }} }} }} }}), "usize", false);
         g_47 := l-nth(g_48, 0i);
         g_50 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_49 := l-nth(g_50, 0i);
         u := [store_value](l-nth(l-nth(g_49, 0i), 0i), l+(l-nth(l-nth(g_49, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", g_47);
+        m_11 := {{}};
         g_52 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_51 := l-nth(g_52, 0i);
         g_53 := [new_lft]();
         pLft_14 := l-nth(g_53, 0i);
-        m_20 := g_51;
-        g_54 := m_20;
+        m_21 := g_51;
+        g_54 := m_21;
         g_55 := "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_auto_update"(pLft_0, pty_T0, g_54);
-        m_19 := g_55;
+        m_20 := g_55;
         goto bb10;
   bb10: g_57 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_56 := l-nth(g_57, 0i);
         g_58 := [new_lft]();
         pLft_15 := l-nth(g_58, 0i);
-        m_22 := g_56;
-        g_59 := m_22;
+        m_23 := g_56;
+        g_59 := m_23;
         g_60 := "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_resolve"(pLft_0, pty_T0, g_59);
-        m_21 := g_60;
+        m_22 := g_60;
         goto bb11;
   bb11: m_0 := {{}};
         goto bb12;
@@ -1190,7 +1191,7 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         ret := g_61;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
-        u := [free](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }});
+        u := [free](l-nth(m_19, 0i), l-nth(m_19, 1i), {{ "tuple", {{ "usize", "bool" }} }});
         return
 };
 
