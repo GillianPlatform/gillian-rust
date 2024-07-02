@@ -232,7 +232,7 @@ pub fn build_signature<'tcx, 'genv>(
     global_env: &mut GlobalEnv<'tcx>,
     id: DefId,
     subst: GenericArgsRef<'tcx>,
-    temp_gen: &'genv mut TempGenerator,
+    mut temp_gen: &'genv mut TempGenerator,
 ) -> Signature<'tcx, 'genv> {
     assert!(
         matches!(
@@ -250,7 +250,6 @@ pub fn build_signature<'tcx, 'genv>(
 
     let mut args = Vec::new();
     let sig = tcx.fn_sig(id).instantiate(tcx, subst);
-    let substsref = subst;
 
     let mut regions = collect_regions(sig.inputs()).regions;
     regions.extend(collect_regions(sig.output()).regions);
@@ -314,7 +313,7 @@ pub fn build_signature<'tcx, 'genv>(
 
     let (uni_vars, contract) = if let Some(spec_id) = global_env.spec_map.get(&id) {
         let (uni, mut pre, mut post, trusted) =
-            PredCtx::new_with_args(global_env, temp_gen, *spec_id, substsref).raw_spec();
+            PredCtx::new_with_identity_args(global_env, &mut temp_gen, *spec_id).raw_spec();
 
         if !(is_lemma(id, tcx) || is_predicate(id, tcx)) {
             pre.subst_pvar(&subst);

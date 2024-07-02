@@ -52,6 +52,18 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let name = fname.strip_suffix("_____unfold").unwrap().to_string();
                 CallKind::Unfold(name)
             }
+            Some(FnStubs::MutRefProphecyAutoUpdate) => {
+                let param_env = self.tcx().param_env(self.did());
+                let name = self
+                    .global_env_mut()
+                    .register_pcy_auto_update(param_env, substs);
+                CallKind::MonoFn(name)
+            }
+            Some(FnStubs::MutRefResolve) => {
+                let param_env = self.tcx().param_env(self.did());
+                let name = self.global_env_mut().register_resolver(param_env, substs);
+                CallKind::MonoFn(name)
+            }
             _ if crate::utils::attrs::is_lemma(did, self.tcx()) => {
                 let lemma_name = self.global_env.just_pred_name_with_args(did, substs);
                 CallKind::Lemma(lemma_name)
@@ -74,10 +86,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                         fname
                     );
                 }
-            }
-            _ if self.global_env.spec_map.contains_key(&did) => {
-                let name = self.global_env_mut().register_mono_spec(did, substs);
-                CallKind::MonoFn(name)
             }
             _ => CallKind::PolyFn(self.tcx().def_path_str(did)),
         }

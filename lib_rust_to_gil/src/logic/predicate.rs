@@ -74,23 +74,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn new_with_args(
-        global_env: &'genv mut GlobalEnv<'tcx>,
-        temp_gen: &'genv mut TempGenerator,
-        body_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Self {
-        let param_env = global_env.tcx().param_env(body_id);
-        Self::new(global_env, temp_gen, param_env, body_id, args)
-    }
-
     pub(crate) fn new_with_identity_args(
         global_env: &'genv mut GlobalEnv<'tcx>,
         temp_gen: &'genv mut TempGenerator,
         body_id: DefId,
     ) -> Self {
         let args = GenericArgs::identity_for_item(global_env.tcx(), body_id);
-        Self::new_with_args(global_env, temp_gen, body_id, args)
+        let param_env = global_env.tcx().param_env(body_id);
+        Self::new(global_env, temp_gen, param_env, body_id, args)
     }
 
     fn prophecies_enabled(&self) -> bool {

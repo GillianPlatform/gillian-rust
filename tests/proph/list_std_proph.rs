@@ -170,27 +170,22 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
     
-    // #[requires(ix.in_bounds(self@))]
-    // #[ensures(ix.has_value(self@, *result))]
-    // #[ensures(ix.has_value((^self)@, ^result))]
-    // #[ensures(ix.resolve_elswhere(self@, (^self)@))]
-    // #[ensures((^self)@.len() == self@.len())]
-    // fn index_mut(&mut self, ix: I) -> &mut <Vec<T, A> as Index<I>>::Output;
-    
     #[specification(forall current, proph.
         requires { self.own((current, proph)) }
         exists ret_repr.
         ensures { 
             ret.own(ret_repr) *
-            $   ((ret_repr == None) && (current == Seq::empty()))
+            $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
              || (exists <
                     current_first: T::RepresentationTy,
-                    proph_first: T::RepresentationTy,
+                    current_rest: Seq<T::RepresentationTy>,
+                    future_first: T::RepresentationTy,
+                    future_rest: Seq<T::RepresentationTy>
                  >
-                    (ret_repr == Some((current_first, proph_first))) &&
-                    (current_first == current.at(0)) &&
-                    (proph_first == proph.at(0)) &&
-                    (forall < i: usize > (i <= 0 || current.len() <= i || current.at(i) == proph.at(i)))
+                    (current == current_rest.prepend(current_first)) &&
+                    (proph == future_rest.prepend(future_first)) &&
+                    (ret_repr == Some((current_first, future_first))) &&
+                    (future_rest == current_rest)
                 )
             $
         }
@@ -198,10 +193,7 @@ impl<T: Ownable> LinkedList<T> {
     pub fn front_mut(&mut self) -> Option<&mut T> {
         freeze_htl(self);
         match self.head.as_mut() {
-            None => {
-                // mutref_auto_resolve!(self);
-                None
-            },
+            None => None,
             Some(node) => unsafe {
                 let ret = &mut node.as_mut().element;
                 let proph = extract_head(self);

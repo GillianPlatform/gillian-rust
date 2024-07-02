@@ -511,7 +511,6 @@ impl ToTokens for Predicate {
 impl ToTokens for Lemma {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Lemma {
-            pub_token,
             attributes,
             sig,
             body,
@@ -522,7 +521,7 @@ impl ToTokens for Lemma {
                 #(#attributes)*
                 #[gillian::decl::lemma]
                 #[gillian::trusted]
-                #pub_token #sig {
+                #sig {
                     unreachable!()
                 }
             }),
@@ -531,7 +530,7 @@ impl ToTokens for Lemma {
                 #(#attributes)*
                 #[gillian::decl::lemma]
                 #[gillian::trusted]
-                #pub_token #sig #body
+                #sig #body
             }),
         }
     }

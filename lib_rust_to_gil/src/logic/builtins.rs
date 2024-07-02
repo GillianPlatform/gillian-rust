@@ -149,6 +149,8 @@ impl LogicStubs {
 
 #[derive(Debug)]
 pub enum FnStubs {
+    MutRefResolve,
+    MutRefProphecyAutoUpdate,
     UnfoldSomething,
     FoldSomething,
     Into,
@@ -166,6 +168,8 @@ impl FnStubs {
 
         crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
             match name.as_str() {
+                "gillian::mut_ref::prophecy_auto_update" => Some(Self::MutRefProphecyAutoUpdate),
+                "gillian::mut_ref::resolve" => Some(Self::MutRefResolve),
                 x if x.len() >= 17 && &x[..17] == "gillian::unfold::" => {
                     Some(Self::UnfoldSomething)
                 }

@@ -1,6 +1,6 @@
 use crate as gilogic;
 use crate::tys::RustAssertion;
-use gilogic::macros::{assertion, borrow, lemma, predicate, specification};
+use gilogic::macros::assertion;
 
 macro_rules! unreachable {
     ($x:expr) => {
@@ -53,9 +53,10 @@ macro_rules! own_int {
             type RepresentationTy = $t;
 
             #[cfg(gillian)]
-            #[predicate]
-            fn own(self, model: $t) {
-                assertion!(($t::MIN <= self) * (self <= $t::MAX) * (self == model))
+            #[gillian::decl::predicate]
+            #[gillian::decl::pred_ins = "0"]
+            fn own(self, model: $t) -> RustAssertion {
+                gilogic::__stubs::defs([assertion!(($t::MIN <= self) * (self <= $t::MAX) * (self == model))])
             }
 
             #[cfg(not(gillian))]
@@ -70,21 +71,40 @@ macro_rules! own_int {
         own_int!($($ts),+);
     };
 }
+use gilogic::macros::borrow;
+
+// impl<T : Ownable> &mut T {
+//     #[borrow]
+//     #[rustc_allow_incoherent_impl]
+//     fn mut_ref_inner(self) -> RustAssertion {
+//         assertion!(|v, repr| (self -> v) * v.own(repr) * controller(self.prophecy(), repr))
+//     }
+// }
+//
 
 #[borrow]
 fn mut_ref_inner_proph<'a, U: Ownable>(this: In<&'a mut U>) -> RustAssertion {
     assertion!(|v, repr| (this -> v) * v.own(repr) * controller(this.prophecy(), repr))
 }
 
+// #[borrow]
+// fn wp_ref_mut_inner_xy<'a, T: Ownable>(p: In<&'a mut WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+//     assertion!(|v_x: T, v_y: T, v_x_m: T::RepresentationTy, v_y_m: T::RepresentationTy|
+//         (p -> WP { x, y }) *
+//         wp(WP { x, y }, x, y, (v_x_m, v_y_m)) * controller(p.prophecy(), (v_x_m, v_y_m))
+//     )
+// }
+
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
     #[cfg(gillian)]
-    #[predicate]
-    fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) {
-        assertion!(|a, b| (model == (a, b))
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
+    fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
+        gilogic::__stubs::defs([assertion!(|a, b| (model == (a, b))
             * mut_ref_inner_proph(self)
             * observer(self.prophecy(), a)
-            * (self.prophecy().value() == b))
+            * (self.prophecy().value() == b))])
     }
 
     #[cfg(not(gillian))]
@@ -99,9 +119,12 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     type RepresentationTy = (T::RepresentationTy, U::RepresentationTy);
 
     #[cfg(gillian)]
-    #[predicate]
-    fn own(self, model: (T::RepresentationTy, U::RepresentationTy)) {
-        assertion!(|l, r| (model == (l, r)) * self.0.own(l) * self.1.own(r))
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
+    fn own(self, model: (T::RepresentationTy, U::RepresentationTy)) -> RustAssertion {
+        gilogic::__stubs::defs([assertion!(|l, r| (model == (l, r))
+            * self.0.own(l)
+            * self.1.own(r))])
     }
 
     #[cfg(not(gillian))]
@@ -114,12 +137,15 @@ impl<T: Ownable> Ownable for Option<T> {
     type RepresentationTy = Option<T::RepresentationTy>;
 
     #[cfg(gillian)]
-    #[predicate]
-    fn own(self, model: Option<T::RepresentationTy>) {
-        assertion!((self == None) * (model == None));
-        assertion!(|ax: T, repr: _| (self == Some(ax))
-            * <T as Ownable>::own(ax, repr)
-            * (model == Some(repr)))
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
+    fn own(self, model: Option<T::RepresentationTy>) -> RustAssertion {
+        gilogic::__stubs::defs([
+            assertion!((self == None) * (model == None)),
+            assertion!(|ax: T, repr: _| (self == Some(ax))
+                * <T as Ownable>::own(ax, repr)
+                * (model == Some(repr))),
+        ])
     }
 
     #[cfg(not(gillian))]
@@ -132,9 +158,10 @@ impl Ownable for () {
     type RepresentationTy = ();
 
     #[cfg(gillian)]
-    #[predicate]
+    #[gillian::decl::predicate]
+    #[gillian::decl::pred_ins = "0"]
     fn own(self, model: ()) -> RustAssertion {
-        assertion!((self == ()) * (self == model))
+        gilogic::__stubs::defs([assertion!((self == ()) * (self == model))])
     }
 
     #[cfg(not(gillian))]
@@ -153,6 +180,16 @@ pub trait Prophecised<P> {
     #[gillian::builtin]
     #[rustc_diagnostic_item = "gillian::mut_ref::set_prophecy"]
     fn with_prophecy(self, pcy: Prophecy<P>) -> Self;
+
+    #[gillian::no_translate]
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::prophecy_auto_update"]
+    fn prophecy_auto_update(self);
+
+    #[gillian::no_translate]
+    #[gillian::builtin]
+    #[rustc_diagnostic_item = "gillian::mut_ref::resolve"]
+    fn prophecy_resolve(self);
 }
 
 impl<T> Prophecised<T::RepresentationTy> for &mut T
@@ -166,34 +203,14 @@ where
     fn with_prophecy(self, _pcy: Prophecy<T::RepresentationTy>) -> Self {
         unreachable!("Implemented in GIL")
     }
-}
 
-#[specification(
-    forall v, a, r.
-    requires {
-        (p -> v) * v.own(r) *
-        observer(p.prophecy(), a) *
-        controller(p.prophecy(), a)
+    fn prophecy_auto_update(self) {
+        unreachable!("Implemented in GIL")
     }
-    ensures {
-        (p -> v) * v.own(r) *
-        observer(p.prophecy(), r) *
-        controller(p.prophecy(), r)
-}
-)]
-pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
-    let _ = p;
-    unreachable!();
-}
 
-#[specification(
-    forall m.
-    requires { p.own(m) }
-    ensures { $(m.0 == m.1)$ }
-)]
-pub fn prophecy_resolve<T: Ownable>(p: &mut T) {
-    let _ = p;
-    unreachable!();
+    fn prophecy_resolve(self) {
+        unreachable!("Implemented in GIL")
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -246,7 +263,7 @@ pub fn observer<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
 #[macro_export]
 macro_rules! mutref_auto_resolve {
     ($x: expr) => {
-        ::gilogic::prophecies::prophecy_auto_update($x);
-        ::gilogic::prophecies::prophecy_resolve($x);
+        $x.prophecy_auto_update();
+        $x.prophecy_resolve();
     };
 }
