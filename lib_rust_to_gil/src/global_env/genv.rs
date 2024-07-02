@@ -395,6 +395,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
-        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
     }
 }
