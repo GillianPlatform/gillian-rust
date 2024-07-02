@@ -9,6 +9,7 @@ open Delayed.Syntax
 module Tyenv = Common.Tyenv
 module Actions = Common.Actions
 open Delayed_utils
+open Aloc_utils
 
 module TypePreds = struct
   let ( .%[] ) e idx = Expr.list_nth e idx
@@ -1904,7 +1905,7 @@ let cons_value ~tyenv ~lk (mem : t) loc proj ty =
 let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
   let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
   Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj);
-  if%ent is_zst then Delayed.return (mem, lk)
+  if%sat is_zst then Delayed.return (mem, lk)
   else
     let root =
       match MemMap.find_opt loc mem with
@@ -1929,18 +1930,21 @@ let cons_uninit ~tyenv ~lk (mem : t) loc proj ty =
   (new_heap, lk)
 
 let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
-  let root =
-    match MemMap.find_opt loc mem with
-    | Some (T root) -> root
-    | Some Freed -> failwith "use after free"
-    | None ->
-        TreeBlock.outer_missing
-          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-          ~tyenv
-          (Projections.base_ty ~leaf_ty:ty proj.from_base)
-  in
-  let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
-  (MemMap.add loc (T new_block) mem, lk)
+  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+  if%sat is_zst then Delayed.return (mem, lk)
+  else
+    let root =
+      match MemMap.find_opt loc mem with
+      | Some (T root) -> root
+      | Some Freed -> failwith "use after free"
+      | None ->
+          TreeBlock.outer_missing
+            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+            ~tyenv
+            (Projections.base_ty ~leaf_ty:ty proj.from_base)
+    in
+    let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
+    (MemMap.add loc (T new_block) mem, lk)
 
 let cons_maybe_uninit ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
@@ -1961,20 +1965,23 @@ let prod_maybe_uninit
     (proj : Projections.t)
     ty
     maybe_value =
-  let root =
-    match MemMap.find_opt loc mem with
-    | Some (T root) -> root
-    | Some Freed -> failwith "use after free"
-    | None ->
-        TreeBlock.outer_missing
-          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-          ~tyenv
-          (Projections.base_ty ~leaf_ty:ty proj.from_base)
-  in
-  let+ new_block, lk =
-    TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
-  in
-  (MemMap.add loc (T new_block) mem, lk)
+  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+  if%sat is_zst then Delayed.return (mem, lk)
+  else
+    let root =
+      match MemMap.find_opt loc mem with
+      | Some (T root) -> root
+      | Some Freed -> failwith "use after free"
+      | None ->
+          TreeBlock.outer_missing
+            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+            ~tyenv
+            (Projections.base_ty ~leaf_ty:ty proj.from_base)
+    in
+    let+ new_block, lk =
+      TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
+    in
+    (MemMap.add loc (T new_block) mem, lk)
 
 let cons_many_maybe_uninits ~tyenv ~lk (mem : t) loc proj ty size =
   if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (Expr.EList [], mem, lk)
@@ -1998,7 +2005,9 @@ let prod_many_maybe_uninits
     ty
     size
     maybe_values =
-  if%sat Formula.Infix.(size #== Expr.zero_i) then Delayed.return (mem, lk)
+  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+  if%sat Formula.Infix.(size #== Expr.zero_i #|| is_zst) then
+    Delayed.return (mem, lk)
   else
     let root =
       match MemMap.find_opt loc mem with
@@ -2038,16 +2047,18 @@ let load_discr ~tyenv ~lk (mem : t) loc proj enum_typ =
   let** block = find_not_freed loc mem in
   TreeBlock.get_discr ~tyenv ~lk block proj enum_typ
 
+let block_assertions ~loc block =
+  match block with
+  | T block -> TreeBlock.outer_assertions ~loc block
+  | Freed ->
+      let cp = Actions.cp_to_name Freed in
+      Seq.return (Asrt.GA (cp, [ loc ], []))
+
 let assertions ~tyenv:_ (mem : t) =
-  let value (loc, block) =
-    let loc = Expr.loc_from_loc_name loc in
-    match block with
-    | T block -> TreeBlock.outer_assertions ~loc block
-    | Freed ->
-        let cp = Actions.cp_to_name Freed in
-        Seq.return (Asrt.GA (cp, [ loc ], []))
+  let one_block (loc, block) =
+    block_assertions ~loc:(Expr.loc_from_loc_name loc) block
   in
-  MemMap.to_seq mem |> Seq.flat_map value |> List.of_seq
+  MemMap.to_seq mem |> Seq.flat_map one_block |> List.of_seq
 
 let empty : t = MemMap.empty
 
@@ -2066,6 +2077,55 @@ let sure_is_nonempty =
       | Freed -> true
       | T outer -> not (TreeBlock.outer_is_empty outer))
 
+(****** Producers, we put entire stuff here so we can use in subst *****)
+
+let execute_prod_value ~tyenv ~lk heap args =
+  match args with
+  | [ loc; proj; ty; value ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = Projections.of_expr_reduce proj in
+      prod_value ~tyenv ~lk heap loc_name proj ty value
+  | _ -> Fmt.failwith "Invalid arguments for prod_value"
+
+let execute_prod_uninit ~tyenv ~lk heap args =
+  match args with
+  | [ loc; proj; ty ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = Projections.of_expr_reduce proj in
+      prod_uninit ~tyenv ~lk heap loc_name proj ty
+  | _ -> Fmt.failwith "Invalid arguments for prod_uninit"
+
+let execute_prod_maybe_uninit ~tyenv ~lk heap args =
+  match args with
+  | [ loc; proj; ty; value ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = Projections.of_expr_reduce proj in
+      prod_maybe_uninit ~tyenv ~lk heap loc_name proj ty value
+  | _ -> Fmt.failwith "Invalid arguments for prod_maybe_uninit"
+
+let execute_prod_many_maybe_uninits ~tyenv ~lk heap args =
+  match args with
+  | [ loc; proj; ty; size; maybe_values ] ->
+      let ty = Ty.of_expr ty in
+      let* loc_name = resolve_or_create_loc_name loc in
+      let* proj = Projections.of_expr_reduce proj in
+      prod_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size maybe_values
+  | _ -> Fmt.failwith "Invalid arguments for prod_many_maybe_uninits"
+
+(****** Things to do with susbtitution! *******)
+let produce_heap_cp ~core_pred =
+  match Actions.cp_of_name core_pred with
+  | Value -> execute_prod_value
+  | Uninit -> execute_prod_uninit
+  | Maybe_uninit -> execute_prod_maybe_uninit
+  | Many_maybe_uninits -> execute_prod_many_maybe_uninits
+  | Freed -> Fmt.failwith "Produce freed not implemented yet"
+  | Ty_size | Lft | Value_observer | Pcy_controller | Pcy_value | Observation ->
+      Fmt.failwith "Not a heap core predicate"
+
 let substitution ~tyenv ~lk heap subst =
   let open Gillian.Symbolic in
   if Subst.is_empty subst then DR.ok (heap, lk)
@@ -2079,7 +2139,7 @@ let substitution ~tyenv ~lk heap subst =
         []
     in
     let subst_expr = Subst.subst_in_expr subst ~partial:true in
-    let++ new_mapping, lk =
+    let** new_mapping, lk =
       MemMap.to_seq heap |> List.of_seq
       |> DR_list.map_with_lk ~lk (fun ~lk (loc, block) ->
              let++ block, lk =
@@ -2093,26 +2153,46 @@ let substitution ~tyenv ~lk heap subst =
              in
              ((loc, block), lk))
     in
-    let tree_substed = List.to_seq new_mapping |> MemMap.of_seq in
-    let final =
-      List.fold_left
-        (fun acc (old_loc, new_loc) ->
-          Logging.verbose (fun m ->
-              m "About to merge locs: %s -> %a" old_loc Expr.pp new_loc);
-          let new_loc =
-            match new_loc with
-            | Lit (Loc loc) | ALoc loc -> loc
-            | _ ->
-                Fmt.failwith
-                  "substitution failed, for location, target isn't a location"
-          in
-          match (MemMap.find_opt old_loc acc, MemMap.find_opt new_loc acc) with
-          | None, None | None, Some _ -> acc
-          | Some tree, None ->
-              MemMap.remove old_loc acc |> MemMap.add new_loc tree
-          | Some tree_left, Some tree_right ->
-              Fmt.failwith "Can't merge trees yet @\nLEFT: %a@\nRIGHT:%a"
-                pp_block tree_left pp_block tree_right)
-        tree_substed loc_subst
-    in
-    (final, lk)
+    let map_with_tree_subst = List.to_seq new_mapping |> MemMap.of_seq in
+    DR_list.fold_with_lk ~lk
+      (fun ~lk current_map (old_loc, new_loc) ->
+        Logging.verbose (fun m ->
+            m "About to merge locs: %s -> %a" old_loc Expr.pp new_loc);
+        let new_loc =
+          match new_loc with
+          | Lit (Loc loc) | ALoc loc -> loc
+          | _ ->
+              Fmt.failwith
+                "substitution failed, for location, target isn't a location"
+        in
+        match
+          ( MemMap.find_opt old_loc current_map,
+            MemMap.find_opt new_loc current_map )
+        with
+        | None, None | None, Some _ -> DR.ok (current_map, lk)
+        | Some tree, None ->
+            let new_map =
+              MemMap.remove old_loc current_map |> MemMap.add new_loc tree
+            in
+            DR.ok (new_map, lk)
+        | Some tree_left, Some _ ->
+            (* Merging trees is... difficult
+               So we transform one into assertions and then produce in the other *)
+            Logging.verbose (fun m -> m "Actualling merging two trees");
+            let map_without_left = MemMap.remove old_loc current_map in
+            let left_cps =
+              (* We create assertions but locating the content at the new loc *)
+              block_assertions ~loc:(Expr.loc_from_loc_name new_loc) tree_left
+              |> (Seq.map @@ function
+                  | Asrt.GA (cp, ins, outs) -> (cp, ins @ outs)
+                  | _ -> failwith "Assertions are not core predicates ??")
+              |> List.of_seq
+            in
+            let+ result =
+              Delayed_list.fold_with_lk ~lk
+                (fun ~lk map (cp, args) ->
+                  produce_heap_cp ~core_pred:cp ~tyenv ~lk map args)
+                map_without_left left_cps
+            in
+            Ok result)
+      map_with_tree_subst loc_subst
