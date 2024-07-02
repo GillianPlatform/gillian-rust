@@ -8,7 +8,6 @@ warning: unused import: `Prophecised`
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-error: non-local predicate "gilogic::prophecies::prophecy_auto_update_spec_070f7496_6ce1_4994_8b8e_b4d429061685::<T>"
+warning: 1 warning emitted
 
-error: aborting due to 1 previous error; 1 warning emitted
-
+[TIMESTAMP DEBUG rust_to_gil] Correct!

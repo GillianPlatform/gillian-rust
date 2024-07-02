@@ -293,11 +293,15 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
 
         self.spec_terms.insert(def_id, |_| {
-            let (thir, e) = get_thir!(self, def_id);
-            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
-            let mut spec = g.build_spec(e);
-            spec.trusted = is_trusted(def_id, self.tcx());
-            Box::new(spec)
+            if def_id.is_local() {
+                let (thir, e) = get_thir!(self, def_id);
+                let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+                let mut spec = g.build_spec(e);
+                spec.trusted = is_trusted(def_id, self.tcx());
+                Box::new(spec)
+            } else {
+                Box::new(self.metadata.specification(def_id).unwrap().clone())
+            }
         })
     }
 

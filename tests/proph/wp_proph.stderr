@@ -17,7 +17,28 @@ warning: unused variable: `p`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-error: non-local predicate "gilogic::prophecies::prophecy_auto_update_spec_070f7496_6ce1_4994_8b8e_b4d429061685::<T>"
+warning: struct `WP` is never constructed
+  --> ../tests/proph/wp_proph.rs:15:8
+   |
+15 | struct WP<T> {
+   |        ^^
+   |
+   = note: `#[warn(dead_code)]` on by default
 
-error: aborting due to 1 previous error; 1 warning emitted
+warning: struct `N` is never constructed
+  --> ../tests/proph/wp_proph.rs:20:8
+   |
+20 | struct N<T> {
+   |        ^
 
+warning: variable `REFERENCE` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:51:12
+   |
+51 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `reference`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: 4 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!
