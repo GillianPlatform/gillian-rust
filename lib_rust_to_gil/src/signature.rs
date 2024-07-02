@@ -312,9 +312,9 @@ pub fn build_signature<'tcx, 'genv>(
         subst.insert(nm.name.to_string(), Expr::PVar(prog_name.to_string()));
     }
 
-    let (uni_vars, contract) = if let Some(spec_id) = global_env.spec_map.get(&id) {
+    let (uni_vars, contract) = if let Some(spec_id) = global_env.specification_id(id) {
         let (uni, mut pre, mut post, trusted) =
-            PredCtx::new_with_args(global_env, temp_gen, *spec_id, substsref).raw_spec();
+            PredCtx::new_with_args(global_env, temp_gen, spec_id, substsref).raw_spec();
 
         if !(is_lemma(id, tcx) || is_predicate(id, tcx)) {
             pre.subst_pvar(&subst);

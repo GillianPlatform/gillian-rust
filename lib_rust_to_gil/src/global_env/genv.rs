@@ -82,14 +82,14 @@ pub struct GlobalEnv<'tcx> {
     pub(super) inner_preds: IndexMap<String, String>,
 
     // Mapping from item -> specification
-    pub(crate) spec_map: HashMap<DefId, DefId>,
+    spec_map: HashMap<DefId, DefId>,
 
     /// Assertions & specifications from external dependencies
     metadata: Metadata<'tcx>,
 
     assertions: OnceMap<DefId, Box<gilsonite::Predicate<'tcx>>>,
 
-    spec_terms: OnceMap<DefId, Box<gilsonite::SpecTerm<'tcx>>>,
+    spec_terms: OnceMap<DefId, Box<Option<gilsonite::SpecTerm<'tcx>>>>,
 
     bodies: OnceMap<LocalDefId, Box<BodyWithBorrowckFacts<'tcx>>>,
 }
@@ -287,18 +287,28 @@ impl<'tcx> GlobalEnv<'tcx> {
         })
     }
 
-    pub fn gilsonite_spec(&self, def_id: DefId) -> &SpecTerm<'tcx> {
+    // Gets the DefId holding the gilsonite specification for `def_id`
+    //
+    // TODO: Integrate this cacluation directly into gilsonite spec so it accepts
+    // id of the specified item rather than this intermediate fake id
+    pub(crate) fn specification_id(&mut self, def_id: DefId) -> Option<DefId> {
+        self.spec_map.get(&def_id).cloned()
+    }
+
+    pub fn gilsonite_spec(&self, def_id: DefId) -> Option<&'_ SpecTerm<'tcx>> {
         if !def_id.is_local() {
-            return self.metadata.specification(def_id).unwrap();
+            return self.metadata.specification(def_id);
         }
 
-        self.spec_terms.insert(def_id, |_| {
-            let (thir, e) = get_thir!(self, def_id);
-            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
-            let mut spec = g.build_spec(e);
-            spec.trusted = is_trusted(def_id, self.tcx());
-            Box::new(spec)
-        })
+        self.spec_terms
+            .insert(def_id, |_| {
+                let (thir, e) = get_thir!(self, def_id);
+                let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+                let mut spec = g.build_spec(e);
+                spec.trusted = is_trusted(def_id, self.tcx());
+                Box::new(Some(spec))
+            })
+            .as_ref()
     }
 
     fn serialize_repr(&self, repr: &ReprOptions) -> serde_json::Value {
@@ -395,6 +405,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
-        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
     }
 }
