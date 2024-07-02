@@ -377,7 +377,7 @@ impl<T: Ownable> Vec<T> {
             value.own(v_repr)
         }
         ensures {
-            $future == current.prepend(v_repr)$
+            $future == current.append(v_repr)$
         }
     )]
     pub fn push(&mut self, value: T) {
@@ -390,7 +390,7 @@ impl<T: Ownable> Vec<T> {
             let end = self.as_mut_ptr().add(self.len);
             std::ptr::write(end, value);
             self.len += 1;
-            mutref_auto_resolve!(self);
         }
+        mutref_auto_resolve!(self);
     }
 }
