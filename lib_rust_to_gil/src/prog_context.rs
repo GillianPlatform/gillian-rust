@@ -11,7 +11,7 @@ use crate::logic::{compile_logic, LogicItem};
 use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
-use crate::utils::attrs::{is_gillian_spec, is_predicate};
+use crate::utils::attrs::{is_predicate, is_specification};
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -114,7 +114,7 @@ impl<'tcx> ProgCtx<'tcx> {
                 if is_predicate(did, self.tcx()) {
                     global_env.predicate(did);
                 }
-                if is_gillian_spec(did, self.tcx()).is_some() {
+                if is_specification(did, self.tcx()) {
                     global_env.gilsonite_spec(did);
                 }
             }

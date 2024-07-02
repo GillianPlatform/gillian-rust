@@ -182,17 +182,11 @@ impl<T: Ownable> LinkedList<T> {
         exists ret_repr.
         ensures { 
             ret.own(ret_repr) *
-            $   ((ret_repr == None) && (current == Seq::empty()))
-            $   ((ret_repr == None) && (current == Seq::empty()))
+            $ ((ret_repr == None) && (current == Seq::empty()))
              || (exists <
                     current_first: T::RepresentationTy,
                     proph_first: T::RepresentationTy,
-                    proph_first: T::RepresentationTy,
                  >
-                    (ret_repr == Some((current_first, proph_first))) &&
-                    (current_first == current.at(0)) &&
-                    (proph_first == proph.at(0)) &&
-                    (forall < i: usize > (i <= 0 || current.len() <= i || current.at(i) == proph.at(i)))
                     (ret_repr == Some((current_first, proph_first))) &&
                     (current_first == current.at(0)) &&
                     (proph_first == proph.at(0)) &&
