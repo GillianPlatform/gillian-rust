@@ -4,7 +4,7 @@ use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::{is_gillian_spec, is_trusted};
+use crate::utils::attrs::{get_gillian_spec_name, is_trusted};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
@@ -149,7 +149,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
         let mut sym_to_prog = HashMap::new();
         for item in tcx.hir().body_owners() {
-            if let Some(nm) = is_gillian_spec(item.into(), tcx) {
+            if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
                 sym_to_prog.insert(nm, item.to_def_id());
                 continue;
             }
@@ -395,6 +395,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
-        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
     }
 }

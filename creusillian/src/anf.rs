@@ -153,7 +153,7 @@ pub(crate) fn print_gilsonite(t: CoreTerm) -> syn::Result<TokenStream> {
             Ok(quote! { #o #t })
         }
         CoreTerm::Final(_) => todo!("final"),
-        CoreTerm::Model(t) =>  {
+        CoreTerm::Model(t) => {
             let t = print_gilsonite(*t)?;
 
             Ok(quote! { #t @ })
