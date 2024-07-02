@@ -65,8 +65,14 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     };
     let name_string = name.to_string();
 
-    let for_lemma = if get_attr(&item.attrs, &["gillian", "decl", "lemma"]).is_some() {
+    let for_lemma = if get_attr(&item_attrs, &["gillian", "decl", "lemma"]).is_some() {
         Some(quote!(#[gillian::for_lemma]))
+    } else {
+        None
+    };
+
+    let trusted = if get_attr(&item_attrs, &["gillian", "trusted"]).is_some() {
+        Some(quote!(#[gillian::trusted]))
     } else {
         None
     };
@@ -92,6 +98,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
         #for_lemma
+        #trusted
         #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
         fn #name #generics (#inputs) -> gilogic::RustAssertion {

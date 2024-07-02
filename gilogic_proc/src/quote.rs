@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
@@ -597,6 +597,34 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
             .collect();
         let lemma_name = &self.args.lemma_name;
         let outer_name = &predicate.name;
+
+        if let Some(macro_name) = &self.args.resolve_macro_name {
+            let resolve_fn_name = format_ident!("__{}_just_resolve", macro_name);
+            let frozen = &self.args.frozen_variables;
+            let predicate_name = &predicate.name;
+
+            tokens.extend(quote! {
+
+                #[gilogic::macros::specification(
+                    forall m, #(#frozen),*.
+                    requires { #predicate_name(p, m, #(#frozen),*) }
+                    ensures { $(m.0 == m.1)$ }
+                )]
+                #[gillian::trusted]
+                pub fn #resolve_fn_name<T: Ownable>(p: &mut #own_impl_ty) {
+                    let _ = p;
+                    unreachable!();
+                }
+
+                macro_rules! #macro_name {
+                    ($x: expr) => {
+                        $x.prophecy_auto_update();
+                        #resolve_fn_name($x);
+                    };
+                }
+
+            })
+        }
 
         tokens.extend(quote! {
 
