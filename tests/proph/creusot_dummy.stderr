@@ -8,7 +8,65 @@ warning: unused import: `Prophecised`
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-error: non-local predicate "gilogic::prophecies::prophecy_auto_update_spec_070f7496_6ce1_4994_8b8e_b4d429061685::<T>"
+thread 'rustc' panicked at lib_rust_to_gil/src/global_env/genv.rs:292:56:
+called `Option::unwrap()` on a `None` value
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: core::option::unwrap_failed
+   4: core::option::Option<T>::unwrap
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/core/src/option.rs:932:21
+   5: lib_rtg::global_env::genv::GlobalEnv::gilsonite_spec
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/global_env/genv.rs:292:20
+   6: lib_rtg::logic::predicate::PredCtx::raw_spec
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/logic/predicate.rs:473:13
+   7: lib_rtg::signature::build_signature
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/signature.rs:317:13
+   8: lib_rtg::global_env::auto_items::MonoSpec::add_to_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/global_env/auto_items.rs:28:19
+   9: lib_rtg::global_env::auto_items::AutoItem::add_to_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/global_env/auto_items.rs:43:42
+  10: lib_rtg::global_env::genv::GlobalEnv::add_items_to_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/global_env/genv.rs:236:13
+  11: lib_rtg::global_env::genv::GlobalEnv::flush_remaining_defs_to_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/global_env/genv.rs:272:9
+  12: lib_rtg::prog_context::ProgCtx::final_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:95:9
+  13: lib_rtg::prog_context::ProgCtx::compile_prog
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:141:24
+  14: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion::{{closure}}
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:76:17
+  15: rustc_middle::ty::context::GlobalCtxt::enter::{{closure}}
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:37
+  16: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  17: std::thread::local::LocalKey<T>::try_with
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:286:12
+  18: std::thread::local::LocalKey<T>::with
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:262:9
+  19: rustc_middle::ty::context::tls::enter_context
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+  20: rustc_middle::ty::context::GlobalCtxt::enter
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:9
+  21: rustc_interface::queries::QueryResult<&rustc_middle::ty::context::GlobalCtxt>::enter
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_interface/src/queries.rs:70:9
+  22: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion
+             at /Users/sacha/Prog/work/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:73:9
+  23: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/GillianPlatform/rust-to-gil
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/Users/sacha/Prog/work/rust-to-gil/rust_to_gil/rustc-ice-2024-07-02T12_38_04-91416.txt` to your bug report
+
+note: compiler flags: -Z crate-attr=feature(register_tool) -Z crate-attr=register_tool(gillian) -Z crate-attr=feature(rustc_attrs) -Z crate-attr=allow(internal_features) -Z crate-attr=feature(stmt_expr_attributes) --crate-type lib
+
+query stack during panic:
+end of query stack
+warning: 1 warning emitted
 
