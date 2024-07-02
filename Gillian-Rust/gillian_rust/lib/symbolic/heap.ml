@@ -1208,7 +1208,7 @@ module TreeBlock = struct
             if%sat Range.is_inside range right.range then (
               Logging.verbose (fun m -> m "Inside of right");
               let++ (value, right), lk =
-                extract_laid_out_and_apply ~lk ~return_and_update ~range left
+                extract_laid_out_and_apply ~lk ~return_and_update ~range right
               in
               let new_lc = laid_out_of_children left right in
               ((value, new_lc), lk))
