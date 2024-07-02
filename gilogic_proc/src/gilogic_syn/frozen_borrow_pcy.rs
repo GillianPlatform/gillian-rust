@@ -18,6 +18,7 @@ pub struct FreezeMutRefOwnArgs {
     pub predicate_name: Ident,
     pub inner_predicate_name: Ident,
     pub frozen_variables: Vec<Ident>,
+    pub resolve_macro_name: Option<Ident>,
 }
 
 impl Parse for FreezeMutRefOwnArgs {
@@ -26,7 +27,11 @@ impl Parse for FreezeMutRefOwnArgs {
         let mut predicate_name = None;
         let mut frozen_variables = None;
         let mut inner_predicate_name = None;
-        for a_count in 0..4 {
+        let mut resolve_macro_name = None;
+        loop {
+            if input.is_empty() {
+                break;
+            }
             let key = input.parse::<Ident>()?;
             let _ = input.parse::<syn::Token![=]>()?;
             match key.to_string().as_str() {
@@ -45,6 +50,9 @@ impl Parse for FreezeMutRefOwnArgs {
                 "inner_predicate_name" => {
                     inner_predicate_name = Some(input.parse::<Ident>()?);
                 }
+                "resolve_macro_name" => {
+                    resolve_macro_name = Some(input.parse::<Ident>()?);
+                }
                 _ => {
                     return Err(syn::Error::new(
                         key.span(),
@@ -52,9 +60,11 @@ impl Parse for FreezeMutRefOwnArgs {
                     ));
                 }
             };
-            if a_count < 3 || input.peek(syn::Token![,]) {
+            if input.peek(syn::Token![,]) {
                 let _ = input.parse::<syn::Token![,]>()?;
+                continue;
             }
+            break;
         }
         let lemma_name = lemma_name
             .ok_or_else(|| syn::Error::new(input.span(), "Missing lemma_name argument"))?;
@@ -72,6 +82,7 @@ impl Parse for FreezeMutRefOwnArgs {
             predicate_name,
             frozen_variables,
             inner_predicate_name,
+            resolve_macro_name,
         })
     }
 }
