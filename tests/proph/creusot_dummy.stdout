@@ -4,12 +4,6 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_resolve"(lft, mut_ref)
-trusted
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(lft, mut_ref, {{ #current, #future }}) ]]
-[[<observation>(((#current) = (#future)); )]]
-normal
-
 pred "<u32 as gilogic::prophecies::Ownable>::own"(+self, model):
   (0i i<=# #self) * (#self i<=# 4294967295i) * (#self == #model)
   * types(#self: Int)
@@ -136,19 +130,19 @@ proc write(pLft_0, x) {
         g_4 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
         g_3 := l-nth(g_4, 0i);
         g_5 := [new_lft]();
-        pLft_8 := l-nth(g_5, 0i);
+        pLft_6 := l-nth(g_5, 0i);
         m_3 := g_3;
         g_6 := m_3;
-        g_7 := "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_auto_update"(pLft_0, g_6);
+        g_7 := "gilogic::prophecies::prophecy_auto_update"(pLft_0, "u32", g_6);
         m_2 := g_7;
         goto bb1;
   bb1:  g_9 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
         g_8 := l-nth(g_9, 0i);
         g_10 := [new_lft]();
-        pLft_9 := l-nth(g_10, 0i);
+        pLft_7 := l-nth(g_10, 0i);
         m_5 := g_8;
         g_11 := m_5;
-        g_12 := "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_resolve"(pLft_0, g_11);
+        g_12 := "gilogic::prophecies::prophecy_resolve"(pLft_0, "u32", g_11);
         m_4 := g_12;
         goto bb2;
   bb2:  m_0 := {{}};
@@ -175,19 +169,19 @@ proc write2(pLft_0, x) {
         g_4 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
         g_3 := l-nth(g_4, 0i);
         g_5 := [new_lft]();
-        pLft_8 := l-nth(g_5, 0i);
+        pLft_6 := l-nth(g_5, 0i);
         m_3 := g_3;
         g_6 := m_3;
-        g_7 := "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_auto_update"(pLft_0, g_6);
+        g_7 := "gilogic::prophecies::prophecy_auto_update"(pLft_0, "u32", g_6);
         m_2 := g_7;
         goto bb1;
   bb1:  g_9 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
         g_8 := l-nth(g_9, 0i);
         g_10 := [new_lft]();
-        pLft_9 := l-nth(g_10, 0i);
+        pLft_7 := l-nth(g_10, 0i);
         m_5 := g_8;
         g_11 := m_5;
-        g_12 := "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_resolve"(pLft_0, g_11);
+        g_12 := "gilogic::prophecies::prophecy_resolve"(pLft_0, "u32", g_11);
         m_4 := g_12;
         goto bb2;
   bb2:  m_0 := {{}};
@@ -196,12 +190,5 @@ proc write2(pLft_0, x) {
         goto rlab;
   rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }});
         return
-};
-
-proc "<&mut u32 as gilogic::prophecies::Prophecised<u32>>::prophecy_auto_update"(pLft_a, mut_ref) {
-    sep_assert (<value>(l-nth(l-nth(mut_ref, 0i), 0i), l-nth(l-nth(mut_ref, 0i), 1i), "u32"; #pointee) * "<u32 as gilogic::prophecies::Ownable>::own"(#pointee, #new_repr))[bind: #new_repr];
-    u := [pcy_assign](l-nth(mut_ref, 1i), #new_repr);
-    ret := {{  }};
-    return
 };
 

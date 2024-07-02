@@ -15,6 +15,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OutputType;
 
 pub struct Metadata<'tcx> {
+    /// Maps a defid to the defid of its specification if there is some.
+    spec_map: IndexMap<DefId, DefId>,
     assertions: IndexMap<DefId, Predicate<'tcx>>,
     contracts: IndexMap<DefId, SpecTerm<'tcx>>,
 }
@@ -22,6 +24,7 @@ pub struct Metadata<'tcx> {
 impl<'tcx> Metadata<'tcx> {
     pub(crate) fn new() -> Self {
         Self {
+            spec_map: Default::default(),
             assertions: Default::default(),
             contracts: Default::default(),
         }
@@ -48,12 +51,19 @@ impl<'tcx> Metadata<'tcx> {
                 for (def_id, summary) in metadata.assertions.into_iter() {
                     meta.assertions.insert(def_id, summary);
                 }
+                for (def_id, contract) in metadata.contracts.into_iter() {
+                    meta.contracts.insert(def_id, contract);
+                }
             } else if tcx.crate_name(cnum).as_str() == "gilogic" {
                 tcx.dcx().fatal("Could not load metadata for gilogic")
             }
         }
 
         meta
+    }
+
+    pub fn spec_map(&self) -> &IndexMap<DefId, DefId> {
+        &self.spec_map
     }
 }
 

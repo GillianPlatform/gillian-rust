@@ -1,8 +1,11 @@
-warning: unused import: `lemma`
+warning: unused imports: `Prophecised`, `lemma`
   --> ../tests/proph/vec_std_proph.rs:12:25
    |
 12 |     macros::{assertion, lemma, predicate, specification},
    |                         ^^^^^
+13 |     mutref_auto_resolve,
+14 |     prophecies::{Ownable, Prophecised},
+   |                           ^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 

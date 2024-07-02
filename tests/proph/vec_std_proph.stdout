@@ -4,12 +4,6 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_resolve"(lft, pty_T0, mut_ref)
-trusted
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(lft, pty_T0, mut_ref, {{ #current, #future }}) ]]
-[[<observation>(((#current) = (#future)); )]]
-normal
-
 pred "<AllocInit as gilogic::prophecies::Ownable>::own"(+self, model):
   (#self == #model) * (model == #model) * (self == #self);
 
@@ -1093,10 +1087,10 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_5 := l-nth(g_6, 0i);
         g_7 := [new_lft]();
-        pLft_11 := l-nth(g_7, 0i);
+        pLft_9 := l-nth(g_7, 0i);
         m_7 := {{ l-nth(l-nth(g_5, 0i), 0i), l+(l-nth(l-nth(g_5, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}) }};
         g_8 := m_7;
-        g_9 := "RawVec::<T>::capacity"(pLft_11, pty_T0, g_8);
+        g_9 := "RawVec::<T>::capacity"(pLft_9, pty_T0, g_8);
         m_6 := g_9;
         goto bb1;
   bb1:  g_10 := m_5;
@@ -1108,7 +1102,7 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         g_13 := l-nth(g_14, 0i);
         g_15 := [pcy_alloc]();
         g_16 := [new_lft]();
-        pLft_12 := l-nth(g_16, 0i);
+        pLft_10 := l-nth(g_16, 0i);
         m_9 := {{ {{ l-nth(l-nth(g_13, 0i), 0i), l+(l-nth(l-nth(g_13, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}) }}, l-nth(g_15, 0i) }};
         g_18 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_17 := l-nth(g_18, 0i);
@@ -1117,7 +1111,7 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         m_10 := g_19;
         g_21 := m_9;
         g_22 := m_10;
-        g_23 := "RawVec::<T>::reserve_for_push"(pLft_12, pty_T0, g_21, g_22);
+        g_23 := "RawVec::<T>::reserve_for_push"(pLft_10, pty_T0, g_21, g_22);
         m_8 := g_23;
         goto bb3;
   bb3:  m_3 := {{}};
@@ -1127,7 +1121,7 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
   bb5:  g_25 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_24 := l-nth(g_25, 0i);
         g_26 := [new_lft]();
-        pLft_13 := l-nth(g_26, 0i);
+        pLft_11 := l-nth(g_26, 0i);
         m_13 := g_24;
         g_27 := m_13;
         g_28 := "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, g_27);
@@ -1169,19 +1163,19 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         g_52 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_51 := l-nth(g_52, 0i);
         g_53 := [new_lft]();
-        pLft_14 := l-nth(g_53, 0i);
+        pLft_12 := l-nth(g_53, 0i);
         m_20 := g_51;
         g_54 := m_20;
-        g_55 := "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_auto_update"(pLft_0, pty_T0, g_54);
+        g_55 := "gilogic::prophecies::prophecy_auto_update"(pLft_0, {{ "adt", "Vec", {{ pty_T0 }} }}, g_54);
         m_19 := g_55;
         goto bb10;
   bb10: g_57 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
         g_56 := l-nth(g_57, 0i);
         g_58 := [new_lft]();
-        pLft_15 := l-nth(g_58, 0i);
+        pLft_13 := l-nth(g_58, 0i);
         m_22 := g_56;
         g_59 := m_22;
-        g_60 := "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_resolve"(pLft_0, pty_T0, g_59);
+        g_60 := "gilogic::prophecies::prophecy_resolve"(pLft_0, {{ "adt", "Vec", {{ pty_T0 }} }}, g_59);
         m_21 := g_60;
         goto bb11;
   bb11: m_0 := {{}};
@@ -1192,12 +1186,5 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_18, 0i), l-nth(m_18, 1i), {{ "tuple", {{ "usize", "bool" }} }});
         return
-};
-
-proc "<&mut Vec<T> as gilogic::prophecies::Prophecised<gilogic::Seq<<T as gilogic::prophecies::Ownable>::RepresentationTy>>>::prophecy_auto_update"(pLft_a, pty_T0, mut_ref) {
-    sep_assert (<value>(l-nth(l-nth(mut_ref, 0i), 0i), l-nth(l-nth(mut_ref, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #pointee) * "<Vec<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #pointee, #new_repr))[bind: #new_repr];
-    u := [pcy_assign](l-nth(mut_ref, 1i), #new_repr);
-    ret := {{  }};
-    return
 };
 
