@@ -349,7 +349,9 @@ module TreeBlock = struct
 
   let rec to_rust_value ~tyenv ?(current_proj = []) ~ty:expected_ty block ~lk :
       (Expr.t * LK.t, Err.Conversion_error.t) DR.t =
-    Logging.verbose (fun m -> m "TO_RUST_VALUE");
+    Logging.verbose (fun m ->
+        m "TO_RUST_VALUE:\nBlock: %a\nExpected ty: %a" pp block Ty.pp
+          expected_ty);
     let rec all ~lk acc ptvs =
       match ptvs () with
       | Seq.Nil -> DR.ok (List.rev acc, lk)
@@ -359,9 +361,11 @@ module TreeBlock = struct
           in
           all ~lk (x :: acc) rest
     in
-    let rec of_structural ~lk ~current_proj { ty; content } =
+    let rec of_structural ~lk ~expected_ty ~current_proj { ty; content } =
       if Ty.is_array_of ~array_ty:expected_ty ~inner_ty:ty then
-        let++ v, lk = of_structural ~current_proj ~lk { ty; content } in
+        let++ v, lk =
+          of_structural ~current_proj ~expected_ty:ty ~lk { ty; content }
+        in
         (Expr.EList [ v ], lk)
       else if not (Ty.equal expected_ty ty) then
         Fmt.failwith
@@ -422,7 +426,8 @@ module TreeBlock = struct
     in
     let rec of_lc ~lk ~expected_ty ~current_proj lc =
       match (lc.structural, lc.children) with
-      | Some structural, _ -> of_structural ~current_proj ~lk structural
+      | Some structural, _ ->
+          of_structural ~current_proj ~expected_ty ~lk structural
       | None, Some (left, right) -> (
           match expected_ty with
           | Ty.Array { ty = inner_ty; length = _ } ->
@@ -449,7 +454,8 @@ module TreeBlock = struct
     in
     match block with
     | Laid_out_root lc -> of_lc ~lk ~expected_ty ~current_proj lc
-    | Structural structural -> of_structural ~lk ~current_proj structural
+    | Structural structural ->
+        of_structural ~lk ~expected_ty ~current_proj structural
 
   exception Tree_not_a_value
 
@@ -529,7 +535,9 @@ module TreeBlock = struct
               [] l
           in
           (Expr.EList l, lk)
-      | _ -> Fmt.failwith "obtained %a for many_maybe_uninits" pp t
+      | _ ->
+          Fmt.failwith "obtained the following for many_maybe_uninit: %a"
+            pp_structural { ty = node_ty; content }
     in
     let rec of_laid_out ~lk { structural; range = _; children; index_ty = _ } =
       match structural with
@@ -683,8 +691,10 @@ module TreeBlock = struct
   let of_rust_many_maybe_uninit ~tyenv ~ty (e : Expr.t) : (t, Err.t) DR.t =
     let* e = Delayed.reduce e in
     match (e, ty) with
-    | Expr.EList l, Ty.Array { ty; _ } ->
-        let++ elements = DR_list.map (of_rust_maybe_uninit ~tyenv ~ty) l in
+    | Expr.EList l, Ty.Array { ty = inner_ty; _ } ->
+        let++ elements =
+          DR_list.map (of_rust_maybe_uninit ~tyenv ~ty:inner_ty) l
+        in
         Structural { content = Array elements; ty }
     | _ -> DR.ok (Structural { content = ManySymbolicMaybeUninit e; ty })
 
@@ -1128,7 +1138,10 @@ module TreeBlock = struct
 
   let laid_out_of_children left right =
     if not (Ty.equal left.index_ty right.index_ty) then
-      failwith "laid_out_of_children: need to reinterpreted sub-ranges.";
+      Fmt.failwith
+        "laid_out_of_children: need to reinterpreted sub-ranges.\n\
+         Left: %a\n\
+         Right: %a" pp_laid_out left pp_laid_out right;
     let range = (fst left.range, snd right.range) in
     let index_ty = left.index_ty in
     let children = Some (left, right) in
@@ -1189,15 +1202,16 @@ module TreeBlock = struct
           Ok ((value, lc), lk)
       | _, Some (left, right) ->
           Logging.verbose (fun m -> m "Range is not equal going to children");
-          let () =
-            if
-              not
-                (Ty.equal lc.index_ty left.index_ty
-                && Ty.equal lc.index_ty right.index_ty)
-            then
-              failwith
-                "extract_laid_out_and_apply: need to reinterpreted sub-ranges."
-          in
+          if
+            not
+              (Ty.equal lc.index_ty left.index_ty
+              && Ty.equal lc.index_ty right.index_ty)
+          then
+            Fmt.failwith
+              "extract_laid_out_and_apply: need to reinterpreted \
+               sub-ranges.This index ty: %a\n\
+               Right: %a\n\
+               Left: %a" Ty.pp lc.index_ty pp_laid_out left pp_laid_out right;
           if%sat Range.is_inside range left.range then (
             Logging.verbose (fun m -> m "Inside of left");
             let++ (value, left), lk =
@@ -1240,11 +1254,15 @@ module TreeBlock = struct
           ((value, Laid_out_root lc), lk)
 
   let extend_on_right_if_needed ~can_extend ~range ~index_ty t ~lk =
+    Logging.verbose (fun m ->
+        m "Extending on the right! Can extend: %b" can_extend);
     let* (_, current_high), lk =
       match t with
       | Structural { ty = Ty.Array { length; ty = ty' }; _ } ->
           Range.reinterpret ~lk ~from_ty:ty' ~to_ty:index_ty
             (Expr.zero_i, length)
+      | Structural { ty; _ } when Ty.equal ty index_ty ->
+          Delayed.return ((Expr.zero_i, Expr.one_i), lk)
       | Laid_out_root { index_ty = from_ty; range; _ } ->
           Range.reinterpret ~lk ~from_ty ~to_ty:index_ty range
       | _ ->
@@ -1282,7 +1300,7 @@ module TreeBlock = struct
                   };
               range = range_right;
               children = None;
-              index_ty = Range.as_array_ty ~index_ty range_right;
+              index_ty;
             }
           in
           let lc =
