@@ -619,7 +619,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
                 macro_rules! #macro_name {
                     ($x: expr) => {
-                        $x.prophecy_auto_update();
+                        gilogic::prophecies::prophecy_auto_update($x);
                         #resolve_fn_name($x);
                     };
                 }
