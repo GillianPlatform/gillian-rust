@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-
 use super::gilsonite::{self, Assert, SpecTerm};
 use super::is_borrow;
-use super::utils::get_thir;
 use crate::logic::gilsonite::SeqOp;
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
@@ -16,10 +13,7 @@ use gillian::gil::{Assertion, Expr as GExpr, Pred, Type};
 use indexmap::IndexMap;
 
 use rustc_middle::ty::ParamEnv;
-use rustc_middle::{
-    thir::{LocalVarId, PatKind, Thir},
-    ty::{AdtKind, EarlyBinder},
-};
+use rustc_middle::ty::{AdtKind, EarlyBinder};
 use rustc_type_ir::fold::TypeFoldable;
 
 /// Vestigial signature type
@@ -33,7 +27,6 @@ pub(crate) struct PredCtx<'tcx, 'genv> {
     /// Identifier of the item providing the body (aka specification).
     body_id: DefId,
     args: GenericArgsRef<'tcx>,
-    var_map: HashMap<LocalVarId, GExpr>,
     local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
     lvars: IndexMap<Symbol, Ty<'tcx>>,
     sig: Signature<'tcx, 'genv>,
@@ -76,7 +69,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             body_id,
             args,
             param_env,
-            var_map: HashMap::new(),
             local_toplevel_asrts: Vec::new(),
             lvars: Default::default(),
         }
@@ -455,30 +447,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn build_var_map(&mut self, thir: &Thir<'tcx>) {
-        let arguments = &thir.params;
-
-        for param in arguments {
-            let Some(pat) = &param.pat else { continue };
-            use rustc_ast::ast::BindingMode;
-            match &pat.kind {
-                PatKind::Binding {
-                    // mutability: Mutability::Not,
-                    name,
-                    mode: BindingMode::NONE,
-                    var,
-                    subpattern: None,
-                    ..
-                } => {
-                    self.var_map.insert(*var, GExpr::PVar(name.to_string()));
-                }
-                _ => {
-                    fatal!(self, "unsupported pattern in predicate declaration")
-                }
-            }
-        }
-    }
-
     /// Returns a tuple of universally quantified lvars, precondition, (existentially quantified lvars, postcondition, trusted)
     pub(crate) fn raw_spec(
         mut self,
@@ -488,9 +456,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
         bool,
     ) {
-        let (thir, _) = get_thir!(self, self.body_id);
-        self.build_var_map(&thir);
-
         let SpecTerm {
             uni,
             pre,
