@@ -1,6 +1,6 @@
-use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
+use crate::{logic::builtins::FnStubs, signature::build_signature};
 use indexmap::{IndexMap, IndexSet};
 use names::bb_label;
 use rustc_middle::ty::{
@@ -75,7 +75,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     );
                 }
             }
-            _ if self.global_env.spec_map.contains_key(&did) => {
+            _ if self.global_env.specification_id(did).is_some() => {
                 let name = self.global_env_mut().register_mono_spec(did, substs);
                 CallKind::MonoFn(name)
             }

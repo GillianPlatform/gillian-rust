@@ -470,7 +470,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             pre,
             posts,
             trusted,
-        } = self.global_env.gilsonite_spec(self.body_id).clone();
+        } = self
+            .global_env
+            .gilsonite_spec(self.body_id)
+            .unwrap()
+            .clone();
 
         let pre = self.compile_assertion(pre);
 

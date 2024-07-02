@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use polonius_engine::{Algorithm, Output};
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LOCAL_CRATE;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
@@ -128,8 +129,8 @@ impl<'tcx> ProgCtx<'tcx> {
     ) -> (ParsingUnit, BinaryMetadata<'tcx>) {
         let is_dep = config.is_dep;
         let mut this = Self::new(tcx, config);
+        this.only_metadata(global_env);
         if is_dep {
-            this.only_metadata(global_env);
             (
                 ParsingUnit {
                     prog: Prog::default(),
