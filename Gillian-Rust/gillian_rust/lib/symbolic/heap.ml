@@ -38,15 +38,15 @@ module TypePreds = struct
     match scalar_ty with
     | Ty.Scalar (Uint _ | Int _) -> e >- IntType
     | Scalar Bool -> e >- BooleanType
-    | Ref { ty = Slice _; mut = true } ->
+    | Ref { ty = Slice _ | Str; mut = true } ->
         if !Common.R_config.prophecy_mode then valid_fat_mut_ref_pcy e
         else valid_fat_ptr e
     | Ref { mut = true; ty = _ } ->
         if !Common.R_config.prophecy_mode then valid_thin_mut_ref_pcy e
         else valid_thin_ptr e
-    | Ref { mut = false; ty = Slice _ } -> valid_fat_ptr e
+    | Ref { mut = false; ty = Slice _ | Str } -> valid_fat_ptr e
     | Ref { mut = false; ty = _ } -> valid_thin_ptr e
-    | Ptr { ty = Slice _; _ } -> valid_fat_ptr e
+    | Ptr { ty = Slice _ | Str; _ } -> valid_fat_ptr e
     | Ptr _ -> valid_thin_ptr e
     | Scalar Char -> True
     | _ ->
@@ -790,7 +790,7 @@ module TreeBlock = struct
     | Scalar _ | Ref _ | Ptr _ ->
         failwith
           "I shouldn't ever need to concretize a scalar or something opaque"
-    | Slice _ -> Fmt.failwith "Cannot initialize unsized type"
+    | Slice _ | Str -> Fmt.failwith "Cannot initialize unsized type"
     | Unresolved e ->
         Fmt.failwith
           "Unresolved should have been resolved before getting to \
@@ -826,7 +826,7 @@ module TreeBlock = struct
         | Enum _ as def ->
             Fmt.failwith "Unhandled: structural missing for Enum %a"
               Common.Ty.Adt_def.pp def)
-    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ ->
+    | Scalar _ | Ref _ | Ptr _ | Unresolved _ | Slice _ | Str ->
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
 
@@ -1853,7 +1853,7 @@ let load ~tyenv ~lk (mem : t) loc proj ty copy =
 
 let store ~tyenv ~lk (mem : t) loc proj ty value =
   let* is_zst, lk = LK.is_zst ~lk ~tyenv ty in
-  if%ent is_zst then DR.ok (mem, lk)
+  if%sat is_zst then DR.ok (mem, lk)
   else
     let** block = find_not_freed loc mem in
     let++ new_block, lk =

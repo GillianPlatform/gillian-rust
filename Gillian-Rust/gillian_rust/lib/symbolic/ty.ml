@@ -37,6 +37,7 @@ type t =
   | Ptr of { mut : bool; ty : t }
   | Array of { length : Expr.t; ty : t }
   | Slice of t
+  | Str (* More or less slice of char I guess *)
   | Unresolved of Expr.t
       (** A parameter in an ADT def, should be substituted before used *)
 [@@deriving yojson, eq, ord]
@@ -48,7 +49,7 @@ let rec lvars =
   let open Gillian.Utils.Containers in
   function
   | Unresolved expr -> Expr.lvars expr
-  | Scalar _ -> SS.empty
+  | Scalar _ | Str -> SS.empty
   | Tuple l -> List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
   | Adt (_, l) ->
       List.fold_left (fun acc t -> SS.union acc (lvars t)) SS.empty l
@@ -76,6 +77,7 @@ let rec sem_equal a b =
       length_a #== length_b #&& (sem_equal ty_a ty_b)
   | Slice a, Slice b -> sem_equal a b
   | Unresolved left, Unresolved right -> left #== right
+  | Str, Str -> Formula.True
   | _ -> Formula.False
 
 let syntactic_equal = equal
@@ -93,6 +95,7 @@ let rec subst_params ~(subst : t list) t =
   | Adt (name, l) -> Adt (name, List.map (subst_params ~subst) l)
 
 let rec of_lit = function
+  | Literal.String "str" -> Str
   | Literal.String str_ty ->
       Scalar
         (match str_ty with
@@ -143,23 +146,22 @@ and list_of_list_expr = function
 
 let rec to_expr = function
   | Scalar s ->
-      Expr.Lit
-        (Literal.String
-           (match s with
-           | Int Isize -> "isize"
-           | Int I8 -> "i8"
-           | Int I16 -> "i16"
-           | Int I32 -> "i32"
-           | Int I64 -> "i64"
-           | Int I128 -> "i128"
-           | Uint Usize -> "usize"
-           | Uint U8 -> "u8"
-           | Uint U16 -> "u16"
-           | Uint U32 -> "u32"
-           | Uint U64 -> "u64"
-           | Uint U128 -> "u128"
-           | Bool -> "bool"
-           | Char -> "char"))
+      Expr.string
+        (match s with
+        | Int Isize -> "isize"
+        | Int I8 -> "i8"
+        | Int I16 -> "i16"
+        | Int I32 -> "i32"
+        | Int I64 -> "i64"
+        | Int I128 -> "i128"
+        | Uint Usize -> "usize"
+        | Uint U8 -> "u8"
+        | Uint U16 -> "u16"
+        | Uint U32 -> "u32"
+        | Uint U64 -> "u64"
+        | Uint U128 -> "u128"
+        | Bool -> "bool"
+        | Char -> "char")
   | Tuple fls -> EList [ Lit (String "tuple"); EList (List.map to_expr fls) ]
   | Adt (x, a) ->
       let args = List.map to_expr a in
@@ -168,6 +170,7 @@ let rec to_expr = function
   | Ptr { mut; ty } -> EList [ Lit (String "ptr"); Lit (Bool mut); to_expr ty ]
   | Array { length; ty } -> EList [ Lit (String "array"); to_expr ty; length ]
   | Slice ty -> EList [ Lit (String "slice"); to_expr ty ]
+  | Str -> Expr.string "str"
   | Unresolved e -> e
 
 let rec pp ft t =
@@ -182,12 +185,13 @@ let rec pp ft t =
   | Ptr { mut; ty } -> Fmt.pf ft "*%s %a" (if mut then "mut" else "const") pp ty
   | Array { length; ty } -> Fmt.pf ft "[%a ; %a]" pp ty Expr.pp length
   | Slice ty -> Fmt.pf ft "[%a]" pp ty
+  | Str -> Fmt.string ft "str"
   | Unresolved e -> Fmt.pf ft "%a" Expr.pp e
 
 let rec substitution ~subst_expr t =
   let rec_call = substitution ~subst_expr in
   match t with
-  | Scalar _ -> t
+  | Scalar _ | Str -> t
   | Tuple t -> Tuple (List.map rec_call t)
   | Adt (name, l) -> Adt (name, List.map rec_call l)
   | Ref { mut; ty } -> Ref { mut; ty = rec_call ty }

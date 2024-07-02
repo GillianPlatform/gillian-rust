@@ -142,8 +142,8 @@ let rec is_zst ~lk ~tyenv ty =
                 return_false lk
                 (* more than 1 variant means we have to store at least the discriminant *)
             ))
-    | Slice _ -> failwith "checking if unsized type is zst?"
-    | ty_param ->
+    | Slice _ | Str -> failwith "checking if unsized type is zst?"
+    | Ty.Unresolved _ as ty_param ->
         let+ e, lk = size_of ~lk ty_param in
         (e #== Expr.zero_i, lk)
   in
