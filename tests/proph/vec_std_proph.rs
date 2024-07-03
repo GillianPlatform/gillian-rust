@@ -285,12 +285,14 @@ impl<T> RawVec<T> {
 }
 
 fn capacity_overflow() -> ! {
-    panic!("capacity overflow");
+    // Capacity overflow!
+    panic!();
 }
 
 #[allow(unused_variables)]
 fn handle_alloc_error(layout: Layout) -> ! {
-    panic!("allocation failed!")
+    // Allocation failed!
+    panic!()
 }
 
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {

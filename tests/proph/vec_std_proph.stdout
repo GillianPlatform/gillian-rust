@@ -894,76 +894,28 @@ proc "RawVec::<T>::with_capacity"(pty_T0, capacity) {
 };
 
 proc capacity_overflow() {
-        m_6 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        m_8 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-  bb0:  g_0 := [new_lft]();
-        pLft_23 := l-nth(g_0, 0i);
-        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, null);
-        g_2 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
-        g_1 := l-nth(g_2, 0i);
-        g_3 := [new_lft]();
-        pLft_20 := l-nth(g_3, 0i);
-        u := [store_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, g_1);
-        g_5 := [load_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
-        g_4 := l-nth(g_5, 0i);
-        g_6 := [new_lft]();
-        pLft_18 := l-nth(g_6, 0i);
-        m_5 := g_4;
-        g_7 := m_5;
-        g_8 := [new_lft]();
-        pLft_16 := l-nth(g_8, 0i);
-        m_4 := {{ g_7, 1i }};
-        g_9 := [new_lft]();
-        pLft_17 := l-nth(g_9, 0i);
-        g_10 := m_4;
-        g_11 := "std::fmt::Arguments::<'a>::new_const"(pLft_16, pLft_0, g_10);
-        m_3 := g_11;
-        goto bb1;
-  bb1:  g_12 := [new_lft]();
-        pLft_15 := l-nth(g_12, 0i);
-        g_13 := m_3;
-        g_14 := "std::rt::panic_fmt"(pLft_15, g_13);
-        m_2 := g_14;
-  rlab: u := [free](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        return
+  bb0:  g_0 := "capacity_overflow::panic_cold_explicit"();
+        m_2 := g_0;
+  rlab: return
+};
+
+proc "capacity_overflow::panic_cold_explicit"() {
+  bb0:  g_0 := "core::panicking::panic_explicit"();
+        m_0 := g_0;
+  rlab: return
 };
 
 proc handle_alloc_error(layout) {
         m_1layout := layout;
-        m_6 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        m_8 := [alloc]({{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-  bb0:  g_0 := [new_lft]();
-        pLft_23 := l-nth(g_0, 0i);
-        u := [store_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, null);
-        g_2 := [load_value](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
-        g_1 := l-nth(g_2, 0i);
-        g_3 := [new_lft]();
-        pLft_20 := l-nth(g_3, 0i);
-        u := [store_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, g_1);
-        g_5 := [load_value](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }}, true);
-        g_4 := l-nth(g_5, 0i);
-        g_6 := [new_lft]();
-        pLft_18 := l-nth(g_6, 0i);
-        m_5 := g_4;
-        g_7 := m_5;
-        g_8 := [new_lft]();
-        pLft_16 := l-nth(g_8, 0i);
-        m_4 := {{ g_7, 1i }};
-        g_9 := [new_lft]();
-        pLft_17 := l-nth(g_9, 0i);
-        g_10 := m_4;
-        g_11 := "std::fmt::Arguments::<'a>::new_const"(pLft_16, pLft_0, g_10);
-        m_3 := g_11;
-        goto bb1;
-  bb1:  g_12 := [new_lft]();
-        pLft_15 := l-nth(g_12, 0i);
-        g_13 := m_3;
-        g_14 := "std::rt::panic_fmt"(pLft_15, g_13);
-        m_2 := g_14;
-  rlab: u := [free](l-nth(m_6, 0i), l-nth(m_6, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        u := [free](l-nth(m_8, 0i), l-nth(m_8, 1i), {{ "ref", false, {{ "array", {{ "ref", false, "str" }}, 1i }} }});
-        return
+  bb0:  g_0 := "handle_alloc_error::panic_cold_explicit"();
+        m_2 := g_0;
+  rlab: return
+};
+
+proc "handle_alloc_error::panic_cold_explicit"() {
+  bb0:  g_0 := "core::panicking::panic_explicit"();
+        m_0 := g_0;
+  rlab: return
 };
 
 proc alloc_guard(alloc_size) {
