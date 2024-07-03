@@ -77,6 +77,12 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
         None
     };
 
+    let timeless = if get_attr(&item_attrs, &["gillian", "timeless"]).is_some() {
+        Some(quote!(#[gillian::timeless]))
+    } else {
+        None
+    };
+
     let mut inputs = item.sig.inputs.clone();
     // TODO(xavier): Remove this.
     let ins = format!("{}", inputs.len());
@@ -97,8 +103,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     let result = quote! {
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#name_string]
-        #for_lemma
-        #trusted
+        #for_lemma #trusted #timeless
         #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
         fn #name #generics (#inputs) -> gilogic::RustAssertion {

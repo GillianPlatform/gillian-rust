@@ -612,6 +612,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
                     ensures { $(m.0 == m.1)$ }
                 )]
                 #[gillian::trusted]
+                #[gillian::timeless]
                 pub fn #resolve_fn_name<T: Ownable>(p: &mut #own_impl_ty) {
                     let _ = p;
                     unreachable!();
@@ -619,7 +620,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
                 macro_rules! #macro_name {
                     ($x: expr) => {
-                        $x.prophecy_auto_update();
+                        gilogic::prophecies::prophecy_auto_update($x);
                         #resolve_fn_name($x);
                     };
                 }

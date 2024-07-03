@@ -32,6 +32,7 @@ pub struct Signature<'tcx, 'genv> {
 
 #[derive(Debug)]
 struct Contract<'tcx> {
+    timeless: bool,
     pre: Assertion,
     post: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assertion)>,
     trusted: bool,
@@ -169,11 +170,12 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
 
         pre.subst_pvar(&var_map);
 
-        for lft in self.lifetimes() {
-            let lvar = Expr::LVar(format!("#{lft}"));
-            wf.push(crate::logic::core_preds::alive_lft(lvar));
+        if !contract.timeless {
+            for lft in self.lifetimes() {
+                let lvar = Expr::LVar(format!("#{lft}"));
+                wf.push(crate::logic::core_preds::alive_lft(lvar));
+            }
         }
-
         let full_pre = lv.into_iter().chain(wf).rfold(pre, Assertion::star);
 
         Some((full_pre, contract.trusted))
@@ -182,9 +184,15 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
     // TODO(xavier): Use `user_post` here to avoid hygiene issues!!!!!!
     fn full_post(&self) -> Vec<Assertion> {
         let mut wf = Vec::new();
-        for lft in self.lifetimes() {
-            let lvar = Expr::LVar(format!("#{lft}"));
-            wf.push(crate::logic::core_preds::alive_lft(lvar));
+        let timeless = match self.contract.as_ref() {
+            None => false,
+            Some(c) => c.timeless,
+        };
+        if !timeless {
+            for lft in self.lifetimes() {
+                let lvar = Expr::LVar(format!("#{lft}"));
+                wf.push(crate::logic::core_preds::alive_lft(lvar));
+            }
         }
 
         let var_map = self
@@ -322,7 +330,17 @@ pub fn build_signature<'tcx, 'genv>(
                 .for_each(|(_, post)| post.subst_pvar(&subst));
         }
 
-        (uni, Some(Contract { pre, post, trusted }))
+        let timeless = crate::utils::attrs::is_timeless(id, tcx);
+
+        (
+            uni,
+            Some(Contract {
+                pre,
+                post,
+                trusted,
+                timeless,
+            }),
+        )
     } else {
         (Default::default(), None)
     };
