@@ -4,27 +4,9 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_session;
 
-use std::process::Command;
-
-use lib_rtg::*;
+use lib_rtg::{config::GillianArgs, *};
 use rustc_driver::RunCompiler;
 use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
-
-fn sysroot_path() -> String {
-    let toolchain: toml::Value = toml::from_str(include_str!("../../rust-toolchain.toml")).unwrap();
-    let channel = toolchain["toolchain"]["channel"].as_str().unwrap();
-
-    let output = Command::new("rustup")
-        .arg("run")
-        .arg(channel)
-        .arg("rustc")
-        .arg("--print")
-        .arg("sysroot")
-        .output()
-        .unwrap();
-
-    String::from_utf8(output.stdout).unwrap().trim().to_owned()
-}
 
 struct DefaultCallbacks;
 impl rustc_driver::Callbacks for DefaultCallbacks {}
@@ -46,6 +28,16 @@ fn main() {
         args.remove(1);
     }
 
+    let gillian_args: GillianArgs = if is_wrapper {
+        serde_json::from_str(&std::env::var("GILLIAN_ARGS").unwrap())
+            .unwrap_or_else(|_| panic!("{}", std::env::var("GILLIAN_ARGS").unwrap()))
+    } else {
+        use lib_rtg::config::Parser;
+        let all_args = crate::config::Args::parse_from(&args);
+        args = all_args.rust_flags;
+        all_args.gillian
+    };
+
     let normal_rustc = args.iter().any(|arg| arg.starts_with("--print"));
     let primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
@@ -61,16 +53,13 @@ fn main() {
             .run()
             .unwrap();
     } else {
-        let opts = config::Config::of_env();
-
-        args.push(format!("--sysroot={}", sysroot_path()));
         args.push("-Cpanic=abort".to_owned());
         args.push("-Zmir-opt-level=0".to_owned());
         // args.push("--crate-type=lib".to_owned());
         args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
 
         utils::init();
-        let mut to_gil = callbacks::ToGil::new(opts);
+        let mut to_gil = callbacks::ToGil::new(gillian_args.into_config());
 
         match rustc_driver::RunCompiler::new(&args, &mut to_gil).run() {
             Ok(_) => log::debug!("Correct!"),

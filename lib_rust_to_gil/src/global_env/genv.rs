@@ -1,5 +1,5 @@
 use super::auto_items::*;
-use crate::config::Config;
+use crate::config::{Config, GillianArgs};
 use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
@@ -124,7 +124,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         let item_queue = QueueOnce::default();
         let (mut spec_map, _) = Self::build_gillian_spec_map(tcx);
 
-        let metadata = Metadata::load(tcx, &config.overrides);
+        let metadata = Metadata::load(tcx, &config.extern_paths);
 
         // The spec map is extended with the spec maps of the dependencies.
         metadata.spec_map().iter().for_each(|(k, v)| {
