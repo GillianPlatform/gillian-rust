@@ -1190,8 +1190,19 @@ module TreeBlock = struct
         in
         ((extracted, Some new_self), lk)
 
-  let add_to_the_left ~lk:_ _right _to_add = Fmt.failwith "bite"
-  let add_to_the_right ~lk:_ _left _to_add = Fmt.failwith "bite"
+  let rec add_to_the_left lc addition : laid_out =
+    match lc.children with
+    | None -> laid_out_of_children addition lc
+    | Some (left, right) ->
+        let new_left = add_to_the_left left addition in
+        laid_out_of_children new_left right
+
+  let rec add_to_the_right lc addition : laid_out =
+    match lc.children with
+    | None -> laid_out_of_children lc addition
+    | Some (left, right) ->
+        let new_right = add_to_the_right right addition in
+        laid_out_of_children left new_right
 
   (** Extract range from a given structural node.
     The range is given in the index type, is relative to the current structure.
@@ -1322,7 +1333,7 @@ module TreeBlock = struct
                 let* (extracted, left_opt), lk =
                   extract ~lk left ~index_ty ~range:low_range
                 in
-                let* right, lk = add_to_the_left ~lk right extracted in
+                let right = add_to_the_left right extracted in
                 let new_self =
                   laid_out_of_children (Option.get left_opt) right
                 in
@@ -1338,7 +1349,7 @@ module TreeBlock = struct
                 let* (extracted, right_opt), lk =
                   extract ~lk ~range:upper_range ~index_ty right
                 in
-                let* left, lk = add_to_the_right ~lk left extracted in
+                let left = add_to_the_right left extracted in
                 let new_self =
                   laid_out_of_children left (Option.get right_opt)
                 in
