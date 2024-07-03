@@ -1,13 +1,16 @@
-use std::{cell::RefCell, collections::HashMap, io::stdout};
+use std::{cell::RefCell, collections::HashMap, fs::File, io::stdout, path::PathBuf};
 
 use rustc_borrowck::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_interface::{interface::Compiler, Queries};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::OutputType;
 
-use super::config::Config;
-use crate::{global_env::GlobalEnv, metadata, utils::cleanup_logic::cleanup_logic};
+use super::config::GillianArgs;
+use crate::{
+    config::Config, global_env::GlobalEnv, metadata, prog_context::ProgCtx, utils::cleanup_logic::cleanup_logic
+};
 
 #[derive(Debug)]
 pub struct ToGil {
@@ -72,18 +75,17 @@ impl Callbacks for ToGil {
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
             let mut global_env = GlobalEnv::new(tcx, self.opts.clone());
-            let (prog, metadata) =
-                super::prog_context::ProgCtx::compile_prog(tcx, &mut global_env, self.opts.clone());
-            let tmp_file = tcx.output_filenames(()).temp_path_ext("gil", None);
+            let (prog, metadata) = ProgCtx::compile_prog(tcx, &mut global_env, self.opts.clone());
 
-            if self.opts.in_test {
+            if self.opts.stdout {
                 let mut out = stdout().lock();
                 use std::io::Write;
                 write!(out, "{prog}").unwrap();
             } else {
-                log::trace!("Writing to {:#?}", &tmp_file);
+                let output_path = output_file(&self.opts, tcx);
+                log::trace!("Writing to {:#?}", &output_path);
 
-                if let Err(err) = std::fs::write(&tmp_file, prog.to_string()) {
+                if let Err(err) = std::fs::write(&output_path, prog.to_string()) {
                     tcx.dcx()
                         .fatal(format!("Error writing in GIL file: {}", err))
                 }
@@ -96,6 +98,24 @@ impl Callbacks for ToGil {
 
         Compilation::Continue
     }
+}
+
+fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
+    if let Some(path) = &config.output_file {
+        return PathBuf::from(path)
+    }
+    let outputs = tcx.output_filenames(());
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+    let libname = format!("{}-{}.gil", crate_name.as_str(), tcx.crate_types()[0]);
+
+    let mut directory : PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
+    directory.pop();
+    directory.pop();
+    let out_path = directory.join(&libname);
+
+    out_path
+    // Box::new(std::io::BufWriter::new(File::create(out_path)?))
 }
 
 /// Trys to retrieve the promoted MIR for a body from a thread local cache.

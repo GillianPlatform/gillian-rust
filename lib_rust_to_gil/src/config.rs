@@ -1,64 +1,80 @@
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::error::Error;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum ExecMode {
-    Concrete,
-    Symbolic,
-    Verification,
-    Act,
-}
+// use clap::Parser;
+use serde::{Deserialize, Serialize};
 
-impl FromStr for ExecMode {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "verif" | "verification" | "v" => Ok(Self::Verification),
-            "concrete" | "c" | "conc" => Ok(Self::Concrete),
-            "act" | "bi" => Ok(Self::Act),
-            "wpst" | "symb" | "s" => Ok(Self::Symbolic),
-            _ => Err(format!("Invalid execution mode: {}!", s)),
-        }
-    }
-}
+pub use clap::Parser;
 
-impl fmt::Debug for ExecMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ExecMode::Concrete => write!(f, "concrete"),
-            ExecMode::Symbolic => write!(f, "symbolic"),
-            ExecMode::Verification => write!(f, "verification"),
-            ExecMode::Act => write!(f, "act"),
-        }
-    }
-}
+#[derive(Parser, Serialize, Deserialize, Clone, Debug)]
+pub struct GillianArgs {
+    #[clap(long)]
+    /// Location that Creusot metadata for this crate should be emitted to.
+    pub metadata_path: Option<String>,
+    /// Print to stdout.
+    #[clap(group = "output", long)]
+    pub stdout: bool,
 
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub mode: ExecMode,
+    #[clap(long)]
     pub prophecies: bool,
-    pub in_test: bool,
-    pub overrides: HashMap<String, String>,
-    pub is_dep: bool,
+
+    /// Print to a file.
+    #[clap(group = "output", long, env)]
+    pub output_file: Option<String>,
+    /// Specify locations of metadata for external crates. The format is the same as rustc's `--extern` flag.
+    #[clap(long = "gillian-extern", value_parser= parse_key_val::<String, String>, required=false)]
+    pub extern_paths: Vec<(String, String)>,
+
+    #[clap(long)]
+    pub dependency: bool,
 }
 
-impl Config {
-    pub fn of_env() -> Self {
-        let in_test = std::env::var("IN_UI_TEST").is_ok();
+#[derive(Clone, Debug)]
+pub struct Config {
+    pub stdout: bool,
 
-        let mode = std::env::var("GILLIAN_EXEC_MODE").unwrap_or("verif".into());
-        let mode = ExecMode::from_str(&mode).expect(
-            "Unspecified execution mode. Please add `GILLIAN_EXEC_MODE=[verif|concrete|symb]`",
-        );
-        let prophecies = std::env::var("GILLIAN_PROPHECIES").is_ok();
+    pub prophecies: bool,
 
-        let is_dep = std::env::var("GILLIAN_DEPENDENCY").is_ok();
+    pub output_file: Option<String>,
 
+    pub extern_paths: Vec<(String, String)>,
+
+    pub dependency: bool,
+
+    pub in_cargo: bool,
+}
+
+impl GillianArgs {
+    pub fn into_config(self) -> Config {
+        let in_cargo = std::env::var("CARGO_GILLIAN").is_ok();
         Config {
-            mode,
-            prophecies,
-            in_test,
-            overrides: HashMap::new(),
-            is_dep,
+            stdout: self.stdout,
+            prophecies: self.prophecies,
+            output_file: self.output_file,
+            extern_paths: self.extern_paths,
+            dependency: self.dependency,
+            in_cargo
         }
     }
+}
+
+/// Parse a single key-value pair
+fn parse_key_val<T, U>(s: &str) -> Result<(T, U), Box<dyn Error + Send + Sync + 'static>>
+where
+    T: std::str::FromStr,
+    T::Err: Error + Send + Sync + 'static,
+    U: std::str::FromStr,
+    U::Err: Error + Send + Sync + 'static,
+{
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{}`", s))?;
+    Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
+}
+
+#[derive(Parser)]
+pub struct Args {
+    #[clap(flatten)]
+    pub gillian: GillianArgs,
+    #[clap(last = true)]
+    pub rust_flags: Vec<String>,
 }

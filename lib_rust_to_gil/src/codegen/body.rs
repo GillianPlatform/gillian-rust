@@ -1,7 +1,7 @@
+use crate::prelude::*;
 use crate::signature::build_signature;
 use crate::temp_gen::TempGenerator;
 use crate::utils;
-use crate::{config::ExecMode, prelude::*};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::pretty::write_mir_fn;
 
@@ -91,9 +91,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         // We can then shrink it to size when needed.
         // log::debug!("{} : {:#?}", proc_name, mir_body);
         self.log_body();
-        if mir_body.is_polymorphic && self.global_env.config.mode != ExecMode::Verification {
-            fatal!(self, "Polymorphism is not handled outside of verification.")
-        }
         if mir_body.coroutine_kind().is_some() {
             fatal!(self, "Generators are not handled yet.")
         }
