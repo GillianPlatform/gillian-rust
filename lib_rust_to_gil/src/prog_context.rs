@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use polonius_engine::{Algorithm, Output};
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LOCAL_CRATE;
 
 use super::temp_gen::TempGenerator;
 use crate::config::Config;
@@ -11,7 +12,7 @@ use crate::logic::{compile_logic, LogicItem};
 use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
-use crate::utils::attrs::{is_gillian_spec, is_predicate};
+use crate::utils::attrs::{is_predicate, is_specification};
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -114,7 +115,7 @@ impl<'tcx> ProgCtx<'tcx> {
                 if is_predicate(did, self.tcx()) {
                     global_env.predicate(did);
                 }
-                if is_gillian_spec(did, self.tcx()).is_some() {
+                if is_specification(did, self.tcx()) {
                     global_env.gilsonite_spec(did);
                 }
             }
@@ -128,8 +129,8 @@ impl<'tcx> ProgCtx<'tcx> {
     ) -> (ParsingUnit, BinaryMetadata<'tcx>) {
         let is_dep = config.is_dep;
         let mut this = Self::new(tcx, config);
+        this.only_metadata(global_env);
         if is_dep {
-            this.only_metadata(global_env);
             (
                 ParsingUnit {
                     prog: Prog::default(),

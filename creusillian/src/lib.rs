@@ -198,21 +198,33 @@ pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     }
 }
 
+fn encode_specs(contract: RawContract, rest: AttrTrail) -> syn::Result<TokenStream> {
+
+    let requires : Vec<_>= contract.2.iter().map(|r| quote! { #r }).collect();
+    let ensures : Vec<_> = contract.3.iter().map(|e| quote! { #e }).collect();
+
+    let core = contract.elaborate()?;
+
+    let spec = core.to_signature();
+    let AttrTrail(attrs, vis, sig, rest) = rest;
+
+    Ok(quote!(
+      #(#attrs)*
+      #(# [ cfg_attr(creusot, creusot_contracts :: requires ( #requires ))])*
+      #(# [ cfg_attr(creusot, creusot_contracts :: ensures ( #ensures ))])*
+      # [cfg_attr(gillian, gilogic :: macros :: specification ( #spec )) ]
+      #vis #sig #rest
+    ))
+}
+
 fn requires_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenStream> {
     let term = syn::parse(args)?;
     let atrail: AttrTrail = syn::parse(input)?;
 
     let (mut contract, rest) = atrail.extract_contract()?;
     contract.2.push(term);
-    let core = contract.elaborate()?;
 
-    let spec = core.to_signature();
-    let AttrTrail(attrs, vis, sig, rest) = rest;
-    Ok(quote!(
-      #(#attrs)*
-      # [ gilogic :: macros :: specification ( #spec ) ]
-      #vis #sig #rest
-    ))
+    encode_specs(contract, rest)
 }
 
 #[proc_macro_attribute]
@@ -229,14 +241,5 @@ fn ensures_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenSt
 
     let (mut contract, rest) = atrail.extract_contract()?;
     contract.3.push(term);
-    let core = contract.elaborate()?;
-
-    let spec = core.to_signature();
-    let AttrTrail(attrs, vis, sig, rest) = rest;
-
-    Ok(quote!(
-      #(#attrs)*
-      # [ gilogic :: macros :: specification ( #spec ) ]
-      #vis #sig #rest
-    ))
+    encode_specs(contract, rest)
 }

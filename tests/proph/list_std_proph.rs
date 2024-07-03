@@ -170,6 +170,13 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
     
+    // #[requires(ix.in_bounds(self@))]
+    // #[ensures(ix.has_value(self@, *result))]
+    // #[ensures(ix.has_value((^self)@, ^result))]
+    // #[ensures(ix.resolve_elswhere(self@, (^self)@))]
+    // #[ensures((^self)@.len() == self@.len())]
+    // fn index_mut(&mut self, ix: I) -> &mut <Vec<T, A> as Index<I>>::Output;
+    
     #[specification(forall current, proph.
         requires { self.own((current, proph)) }
         exists ret_repr.
@@ -179,7 +186,12 @@ impl<T: Ownable> LinkedList<T> {
              || (exists <
                     current_first: T::RepresentationTy,
                     proph_first: T::RepresentationTy,
+                    proph_first: T::RepresentationTy,
                  >
+                    (ret_repr == Some((current_first, proph_first))) &&
+                    (current_first == current.at(0)) &&
+                    (proph_first == proph.at(0)) &&
+                    (forall < i: usize > (i <= 0 || current.len() <= i || current.at(i) == proph.at(i)))
                     (ret_repr == Some((current_first, proph_first))) &&
                     (current_first == current.at(0)) &&
                     (proph_first == proph.at(0)) &&

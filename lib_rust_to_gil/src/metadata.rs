@@ -15,6 +15,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OutputType;
 
 pub struct Metadata<'tcx> {
+    /// Maps a defid to the defid of its specification if there is some.
+    spec_map: IndexMap<DefId, DefId>,
     assertions: IndexMap<DefId, Predicate<'tcx>>,
     contracts: IndexMap<DefId, SpecTerm<'tcx>>,
 }
@@ -22,6 +24,7 @@ pub struct Metadata<'tcx> {
 impl<'tcx> Metadata<'tcx> {
     pub(crate) fn new() -> Self {
         Self {
+            spec_map: Default::default(),
             assertions: Default::default(),
             contracts: Default::default(),
         }
@@ -48,12 +51,22 @@ impl<'tcx> Metadata<'tcx> {
                 for (def_id, summary) in metadata.assertions.into_iter() {
                     meta.assertions.insert(def_id, summary);
                 }
+                for (def_id, contract) in metadata.contracts.into_iter() {
+                    meta.contracts.insert(def_id, contract);
+                }
+                for (def_id, spec_id) in metadata.spec_map.into_iter() {
+                    meta.spec_map.insert(def_id, spec_id);
+                }
             } else if tcx.crate_name(cnum).as_str() == "gilogic" {
                 tcx.dcx().fatal("Could not load metadata for gilogic")
             }
         }
 
         meta
+    }
+
+    pub fn spec_map(&self) -> &IndexMap<DefId, DefId> {
+        &self.spec_map
     }
 }
 
@@ -65,12 +78,14 @@ impl<'tcx> Metadata<'tcx> {
 pub(crate) struct BinaryMetadata<'tcx> {
     assertions: Vec<(DefId, Predicate<'tcx>)>,
     contracts: Vec<(DefId, SpecTerm<'tcx>)>,
+    spec_map: Vec<(DefId, DefId)>,
 }
 
 impl<'tcx> BinaryMetadata<'tcx> {
     pub(crate) fn from_parts(
         assertions: &OnceMap<DefId, Box<Predicate<'tcx>>>,
-        contracts: &OnceMap<DefId, Box<SpecTerm<'tcx>>>,
+        contracts: &OnceMap<DefId, Box<Option<SpecTerm<'tcx>>>>,
+        spec_map: &HashMap<DefId, DefId>,
     ) -> Self {
         let assertions = assertions
             .read_only_view()
@@ -83,12 +98,18 @@ impl<'tcx> BinaryMetadata<'tcx> {
             .read_only_view()
             .iter()
             .filter(|(def_id, _)| def_id.is_local())
-            .map(|(id, t)| (*id, (&**t).clone()))
+            .filter_map(|(id, t)| Some((*id, (&**t).as_ref()?.clone())))
             .collect();
 
+        let spec_map = spec_map
+            .iter()
+            .filter(|(def_id, _)| def_id.is_local())
+            .map(|(a, b)| (*a, *b))
+            .collect();
         BinaryMetadata {
             assertions,
             contracts,
+            spec_map,
         }
     }
 }

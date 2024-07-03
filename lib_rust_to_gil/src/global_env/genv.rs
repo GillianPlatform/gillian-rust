@@ -4,7 +4,7 @@ use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::{is_gillian_spec, is_trusted};
+use crate::utils::attrs::{get_gillian_spec_name, is_trusted};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
@@ -82,14 +82,14 @@ pub struct GlobalEnv<'tcx> {
     pub(super) inner_preds: IndexMap<String, String>,
 
     // Mapping from item -> specification
-    pub(crate) spec_map: HashMap<DefId, DefId>,
+    spec_map: HashMap<DefId, DefId>,
 
     /// Assertions & specifications from external dependencies
     metadata: Metadata<'tcx>,
 
     assertions: OnceMap<DefId, Box<gilsonite::Predicate<'tcx>>>,
 
-    spec_terms: OnceMap<DefId, Box<gilsonite::SpecTerm<'tcx>>>,
+    spec_terms: OnceMap<DefId, Box<Option<gilsonite::SpecTerm<'tcx>>>>,
 
     bodies: OnceMap<LocalDefId, Box<BodyWithBorrowckFacts<'tcx>>>,
 }
@@ -122,9 +122,14 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
         let item_queue = QueueOnce::default();
-        let (spec_map, _) = Self::build_gillian_spec_map(tcx);
+        let (mut spec_map, _) = Self::build_gillian_spec_map(tcx);
 
         let metadata = Metadata::load(tcx, &config.overrides);
+
+        // The spec map is extended with the spec maps of the dependencies.
+        metadata.spec_map().iter().for_each(|(k, v)| {
+            spec_map.insert(*k, *v);
+        });
 
         Self {
             config,
@@ -144,7 +149,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
         let mut sym_to_prog = HashMap::new();
         for item in tcx.hir().body_owners() {
-            if let Some(nm) = is_gillian_spec(item.into(), tcx) {
+            if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
                 sym_to_prog.insert(nm, item.to_def_id());
                 continue;
             }
@@ -162,30 +167,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             }
         }
         (specs, progs)
-    }
-
-    pub fn get_own_def_did(&self) -> DefId {
-        let symbol = if self.config.prophecies {
-            Symbol::intern("gillian::pcy::ownable::own")
-        } else {
-            Symbol::intern("gillian::ownable::own")
-        };
-
-        self.tcx()
-            .get_diagnostic_item(symbol)
-            .expect("Could not find gilogic::Ownable")
-    }
-
-    pub fn get_prophecy_resolve_did(&self) -> DefId {
-        self.tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::resolve"))
-            .expect("Couldn't find gillian::mut_ref::resolve")
-    }
-
-    pub fn get_prophecy_auto_update_did(&self) -> DefId {
-        self.tcx()
-            .get_diagnostic_item(Symbol::intern("gillian::mut_ref::prophecy_auto_update"))
-            .expect("Couldn't find gillian::mut_ref::prophecy_auto_update")
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -241,54 +222,11 @@ impl<'tcx> GlobalEnv<'tcx> {
         name
     }
 
-    pub fn get_own_pred_for2(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> (String, DefId, GenericArgsRef<'tcx>) {
-        let general_own = self.get_own_def_did();
-        let subst = self.tcx().mk_args(&[ty.into()]);
-        self.resolve_predicate_param_env(param_env, general_own, subst)
-    }
-
-    pub fn register_resolver(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let def_id = self.get_prophecy_resolve_did();
+    pub fn register_mono_spec(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> String {
         let name = self.tcx().def_path_str_with_args(def_id, args);
         self.item_queue.push(
             name.clone(),
-            Resolver::new(param_env, name.clone(), args).into(),
-        );
-        name
-    }
-
-    pub fn register_pcy_auto_update(
-        &mut self,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let def_id = self.get_prophecy_auto_update_did();
-        let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue.push(
-            name.clone(),
-            PcyAutoUpdate::new(param_env, name.clone(), args).into(),
-        );
-        name
-    }
-
-    pub fn register_mono_spec(
-        &mut self,
-        def_id: DefId,
-        param_env: ParamEnv<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let name = self.tcx().def_path_str_with_args(def_id, args);
-        self.item_queue.push(
-            name.clone(),
-            MonoSpec::new(name.clone(), def_id, param_env, args).into(),
+            MonoSpec::new(name.clone(), def_id, args).into(),
         );
         name
     }
@@ -349,18 +287,28 @@ impl<'tcx> GlobalEnv<'tcx> {
         })
     }
 
-    pub fn gilsonite_spec(&self, def_id: DefId) -> &SpecTerm<'tcx> {
+    // Gets the DefId holding the gilsonite specification for `def_id`
+    //
+    // TODO: Integrate this cacluation directly into gilsonite spec so it accepts
+    // id of the specified item rather than this intermediate fake id
+    pub(crate) fn specification_id(&mut self, def_id: DefId) -> Option<DefId> {
+        self.spec_map.get(&def_id).cloned()
+    }
+
+    pub fn gilsonite_spec(&self, def_id: DefId) -> Option<&'_ SpecTerm<'tcx>> {
         if !def_id.is_local() {
-            return self.metadata.specification(def_id).unwrap();
+            return self.metadata.specification(def_id);
         }
 
-        self.spec_terms.insert(def_id, |_| {
-            let (thir, e) = get_thir!(self, def_id);
-            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
-            let mut spec = g.build_spec(e);
-            spec.trusted = is_trusted(def_id, self.tcx());
-            Box::new(spec)
-        })
+        self.spec_terms
+            .insert(def_id, |_| {
+                let (thir, e) = get_thir!(self, def_id);
+                let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+                let mut spec = g.build_spec(e);
+                spec.trusted = is_trusted(def_id, self.tcx());
+                Box::new(Some(spec))
+            })
+            .as_ref()
     }
 
     fn serialize_repr(&self, repr: &ReprOptions) -> serde_json::Value {
@@ -457,6 +405,6 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
-        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms)
+        BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
     }
 }
