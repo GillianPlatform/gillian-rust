@@ -80,9 +80,14 @@ proc "std::ptr::Unique::<T>::dangling"(T) {
      return
 };
 
-proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
+(* proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
      rep := [is_zst](T);
      ret := l-nth(rep, 0i);
+     return
+}; *)
+
+proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
+     ret := false;
      return
 };
 

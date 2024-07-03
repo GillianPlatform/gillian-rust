@@ -12,8 +12,8 @@ type t =
   | Kill_lft
   (* Size things *)
   | Size_of
-  | Is_zst
-    (* We can optimise this without computing param sizes in most cases *)
+  (* | Is_zst *)
+  (* We can optimise this without computing param sizes in most cases *)
   | Ty_is_unsized
   (* Prophecies *)
   | Pcy_alloc
@@ -45,7 +45,7 @@ let of_name = function
   | "new_lft" -> New_lft
   | "kill_lft" -> Kill_lft
   | "size_of" -> Size_of
-  | "is_zst" -> Is_zst
+  (* | "is_zst" -> Is_zst *)
   | "ty_is_unsized" -> Ty_is_unsized
   | "load_discr" -> Load_discr
   | "pcy_alloc" -> Pcy_alloc
@@ -66,7 +66,7 @@ let to_name = function
   | New_lft -> "new_lft"
   | Kill_lft -> "kill_lft"
   | Size_of -> "size_of"
-  | Is_zst -> "is_zst"
+  (* | Is_zst -> "is_zst" *)
   | Ty_is_unsized -> "ty_is_unsized"
   | Load_discr -> "load_discr"
   | Pcy_alloc -> "pcy_alloc"

@@ -393,16 +393,16 @@ let execute_size_of mem args =
       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
   | _ -> Fmt.failwith "Invalid arguments for size_of"
 
-let execute_is_zst mem args =
-  match args with
-  | [ ty ] ->
-      let ty = Ty.of_expr ty in
-      let+ formula, new_lk =
-        Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
-      in
-      let expr = Formula.to_expr formula |> Option.get in
-      Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
-  | _ -> Fmt.failwith "Invalid arguments for is_zst"
+(* let execute_is_zst mem args =
+   match args with
+   | [ ty ] ->
+       let ty = Ty.of_expr ty in
+       let+ formula, new_lk =
+         Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
+       in
+       let expr = Formula.to_expr formula |> Option.get in
+       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
+   | _ -> Fmt.failwith "Invalid arguments for is_zst" *)
 
 let execute_cons_ty_size mem args =
   match args with
@@ -501,7 +501,7 @@ let execute_action ~action_name mem args =
     | New_lft -> execute_new_lft mem args
     | Kill_lft -> execute_kill_lft mem args
     | Size_of -> execute_size_of mem args
-    | Is_zst -> execute_is_zst mem args
+    (* | Is_zst -> execute_is_zst mem args *)
     | Pcy_alloc -> execute_pcy_alloc mem args
     | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args

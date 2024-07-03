@@ -53,7 +53,7 @@ module TypePreds = struct
         Fmt.failwith "Not a leaf type, can't express validity: %a of type %a"
           Expr.pp e Ty.pp scalar_ty
 
-  let valid_zst_value ~tyenv ty e = e #== (Ty.value_of_zst ~tyenv ty)
+  (* let valid_zst_value ~tyenv ty e = e #== (Ty.value_of_zst ~tyenv ty) *)
 end
 
 module Symb_opt = struct
@@ -75,20 +75,20 @@ module Symb_opt = struct
   let none_e = Expr.EList [ Expr.int 0; Expr.EList [] ]
 
   (* There is no uninitialized memory for a zst *)
-  let zst_value_maybe_uninit ~tyenv ty =
-    let zstv = Ty.value_of_zst ~tyenv ty in
-    some zstv
+  (* let zst_value_maybe_uninit ~tyenv ty =
+       let zstv = Ty.value_of_zst ~tyenv ty in
+       some zstv
 
-  let valid_zst_maybe_uninit ~tyenv ty e =
-    e #== (zst_value_maybe_uninit ~tyenv ty)
+     let valid_zst_maybe_uninit ~tyenv ty e =
+       e #== (zst_value_maybe_uninit ~tyenv ty)
 
-  let zst_array_maybe_uninit ~tyenv ty length =
-    let zstv = Ty.value_of_zst ~tyenv ty in
-    let some_zstv = some zstv in
-    Expr.list_repeat some_zstv length
+     let zst_array_maybe_uninit ~tyenv ty length =
+       let zstv = Ty.value_of_zst ~tyenv ty in
+       let some_zstv = some zstv in
+       Expr.list_repeat some_zstv length
 
-  let valid_zst_array_maybe_uninit ~tyenv ty length e =
-    e #== (zst_array_maybe_uninit ~tyenv ty length)
+     let valid_zst_array_maybe_uninit ~tyenv ty length e =
+       e #== (zst_array_maybe_uninit ~tyenv ty length) *)
 
   let to_expr t =
     match t with
@@ -1384,8 +1384,12 @@ module TreeBlock = struct
     match expected_ty with
     | Ty.Array { length; ty } ->
         (* This should be done way later actually, after properly resolving the other projs *)
-        find_slice ~can_extend:true ~tyenv ~lk ~return_and_update ~ty t path
-          length
+        if%sat Formula.Infix.(length #== Expr.zero_i) then
+          return_and_update ~lk
+            (Structural { ty = expected_ty; content = Array [] })
+        else
+          find_slice ~can_extend:true ~tyenv ~lk ~return_and_update ~ty t path
+            length
     | _ ->
         let rec aux t (path : Projections.path) ~lk =
           match (path, t) with
@@ -1888,14 +1892,14 @@ let load ~tyenv ~lk (mem : t) loc proj ty copy =
   ((v, new_mem), lk)
 
 let store ~tyenv ~lk (mem : t) loc proj ty value =
-  let* is_zst, lk = LK.is_zst ~lk ~tyenv ty in
-  if%sat is_zst then DR.ok (mem, lk)
-  else
-    let** block = find_not_freed loc mem in
-    let++ new_block, lk =
-      TreeBlock.store_proj ~loc ~tyenv ~lk block proj ty value
-    in
-    (MemMap.add loc (T new_block) mem, lk)
+  (* let* is_zst, lk = LK.is_zst ~lk ~tyenv ty in
+     if%sat is_zst then DR.ok (mem, lk)
+     else *)
+  let** block = find_not_freed loc mem in
+  let++ new_block, lk =
+    TreeBlock.store_proj ~loc ~tyenv ~lk block proj ty value
+  in
+  (MemMap.add loc (T new_block) mem, lk)
 
 let copy_nonoverlapping
     ~tyenv
@@ -1921,90 +1925,88 @@ let copy_nonoverlapping
       (MemMap.add to_loc (T new_to_block) mem, lk)
 
 let cons_value ~tyenv ~lk (mem : t) loc proj ty =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%ent is_zst then
-    let value = Ty.value_of_zst ~tyenv ty in
-    DR.ok ((value, mem), lk)
-  else
-    let** block = find_not_freed loc mem in
-    let++ (value, outer), lk =
-      TreeBlock.cons_proj ~loc ~tyenv ~lk block proj ty
-    in
-    let new_heap =
-      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
-      else MemMap.add loc (T outer) mem
-    in
-    ((value, new_heap), lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%ent is_zst then
+       let value = Ty.value_of_zst ~tyenv ty in
+       DR.ok ((value, mem), lk)
+     else *)
+  let** block = find_not_freed loc mem in
+  let++ (value, outer), lk =
+    TreeBlock.cons_proj ~loc ~tyenv ~lk block proj ty
+  in
+  let new_heap =
+    if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+    else MemMap.add loc (T outer) mem
+  in
+  ((value, new_heap), lk)
 
 let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%sat is_zst then
-    Delayed.return
-      ~learned:[ TypePreds.valid_zst_value ~tyenv ty value ]
-      (mem, lk)
-  else
-    let () =
-      Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj)
-    in
-    let root =
-      match MemMap.find_opt loc mem with
-      | Some (T root) -> root
-      | Some Freed -> failwith "use after free"
-      | None ->
-          TreeBlock.outer_missing
-            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-            ~tyenv
-            (Projections.base_ty ~leaf_ty:ty proj.from_base)
-    in
-    let+ new_block, lk = TreeBlock.prod_proj ~tyenv ~lk root proj ty value in
-    (MemMap.add loc (T new_block) mem, lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%sat is_zst then
+       Delayed.return
+         ~learned:[ TypePreds.valid_zst_value ~tyenv ty value ]
+         (mem, lk)
+     else *)
+  let () =
+    Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj)
+  in
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj.from_base)
+  in
+  let+ new_block, lk = TreeBlock.prod_proj ~tyenv ~lk root proj ty value in
+  (MemMap.add loc (T new_block) mem, lk)
 
 let cons_uninit ~tyenv ~lk (mem : t) loc proj ty =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%ent is_zst then DR.ok (mem, lk)
-  else
-    let** block = find_not_freed loc mem in
-    let++ ((), outer), lk =
-      TreeBlock.cons_uninit ~loc ~tyenv ~lk block proj ty
-    in
-    let new_heap =
-      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
-      else MemMap.add loc (T outer) mem
-    in
-    (new_heap, lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%sat is_zst then DR.ok (mem, lk)
+     else *)
+  let** block = find_not_freed loc mem in
+  let++ ((), outer), lk = TreeBlock.cons_uninit ~loc ~tyenv ~lk block proj ty in
+  let new_heap =
+    if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+    else MemMap.add loc (T outer) mem
+  in
+  (new_heap, lk)
 
 let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%sat is_zst then Delayed.return (mem, lk)
-  else
-    let root =
-      match MemMap.find_opt loc mem with
-      | Some (T root) -> root
-      | Some Freed -> failwith "use after free"
-      | None ->
-          TreeBlock.outer_missing
-            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-            ~tyenv
-            (Projections.base_ty ~leaf_ty:ty proj.from_base)
-    in
-    let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
-    (MemMap.add loc (T new_block) mem, lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%sat is_zst then Delayed.return (mem, lk)
+     else *)
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj.from_base)
+  in
+  let+ new_block, lk = TreeBlock.prod_uninit ~loc ~tyenv ~lk root proj ty in
+  (MemMap.add loc (T new_block) mem, lk)
 
 let cons_maybe_uninit ~tyenv ~lk (mem : t) loc proj ty =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%ent is_zst then
-    let value = Symb_opt.zst_value_maybe_uninit ~tyenv ty in
-    DR.ok (value, mem, lk)
-  else
-    let** block = find_not_freed loc mem in
-    let++ (value, outer), lk =
-      TreeBlock.cons_maybe_uninit ~loc ~tyenv ~lk block proj ty
-    in
-    let new_heap =
-      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
-      else MemMap.add loc (T outer) mem
-    in
-    (value, new_heap, lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%ent is_zst then
+       let value = Symb_opt.zst_value_maybe_uninit ~tyenv ty in
+       DR.ok (value, mem, lk)
+     else *)
+  let** block = find_not_freed loc mem in
+  let++ (value, outer), lk =
+    TreeBlock.cons_maybe_uninit ~loc ~tyenv ~lk block proj ty
+  in
+  let new_heap =
+    if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+    else MemMap.add loc (T outer) mem
+  in
+  (value, new_heap, lk)
 
 let prod_maybe_uninit
     ~tyenv
@@ -2014,44 +2016,44 @@ let prod_maybe_uninit
     (proj : Projections.t)
     ty
     maybe_value =
-  let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-  if%sat is_zst then
-    Delayed.return
-      ~learned:[ Symb_opt.valid_zst_maybe_uninit ~tyenv ty maybe_value ]
-      (mem, lk)
-  else
-    let root =
-      match MemMap.find_opt loc mem with
-      | Some (T root) -> root
-      | Some Freed -> failwith "use after free"
-      | None ->
-          TreeBlock.outer_missing
-            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-            ~tyenv
-            (Projections.base_ty ~leaf_ty:ty proj.from_base)
-    in
-    let+ new_block, lk =
-      TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
-    in
-    (MemMap.add loc (T new_block) mem, lk)
+  (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+     if%sat is_zst then
+       Delayed.return
+         ~learned:[ Symb_opt.valid_zst_maybe_uninit ~tyenv ty maybe_value ]
+         (mem, lk)
+     else *)
+  let root =
+    match MemMap.find_opt loc mem with
+    | Some (T root) -> root
+    | Some Freed -> failwith "use after free"
+    | None ->
+        TreeBlock.outer_missing
+          ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+          ~tyenv
+          (Projections.base_ty ~leaf_ty:ty proj.from_base)
+  in
+  let+ new_block, lk =
+    TreeBlock.prod_maybe_uninit ~loc ~tyenv ~lk root proj ty maybe_value
+  in
+  (MemMap.add loc (T new_block) mem, lk)
 
 let cons_many_maybe_uninits ~tyenv ~lk (mem : t) loc proj ty size =
   if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (Expr.EList [], mem, lk)
   else
-    let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-    if%ent is_zst then
-      let value = Symb_opt.zst_array_maybe_uninit ~tyenv ty size in
-      DR.ok (value, mem, lk)
-    else
-      let** block = find_not_freed loc mem in
-      let++ (value, outer), lk =
-        TreeBlock.cons_many_maybe_uninits ~loc ~tyenv ~lk block proj ty size
-      in
-      let new_heap =
-        if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
-        else MemMap.add loc (T outer) mem
-      in
-      (value, new_heap, lk)
+    (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+       if%ent is_zst then
+         let value = Symb_opt.zst_array_maybe_uninit ~tyenv ty size in
+         DR.ok (value, mem, lk)
+       else *)
+    let** block = find_not_freed loc mem in
+    let++ (value, outer), lk =
+      TreeBlock.cons_many_maybe_uninits ~loc ~tyenv ~lk block proj ty size
+    in
+    let new_heap =
+      if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
+      else MemMap.add loc (T outer) mem
+    in
+    (value, new_heap, lk)
 
 let prod_many_maybe_uninits
     ~tyenv
@@ -2062,30 +2064,33 @@ let prod_many_maybe_uninits
     ty
     size
     maybe_values =
-  if%sat Formula.Infix.(size #== Expr.zero_i) then Delayed.return (mem, lk)
+  if%sat Formula.Infix.(size #== Expr.zero_i) then
+    Delayed.return
+      ~learned:[ Formula.Infix.(maybe_values #== (Expr.EList [])) ]
+      (mem, lk)
   else
-    let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
-    if%sat is_zst then
-      Delayed.return
-        ~learned:
-          [ Symb_opt.valid_zst_array_maybe_uninit ~tyenv ty size maybe_values ]
-        (mem, lk)
-    else
-      let root =
-        match MemMap.find_opt loc mem with
-        | Some (T root) -> root
-        | Some Freed -> failwith "use after free"
-        | None ->
-            TreeBlock.outer_missing
-              ~offset:(Option.value ~default:(Expr.EList []) proj.base)
-              ~tyenv
-              (Projections.base_ty ~leaf_ty:(Ty.array ty size) proj.from_base)
-      in
-      let+ new_block, lk =
-        TreeBlock.prod_many_maybe_uninits ~loc ~tyenv ~lk root proj ty size
-          maybe_values
-      in
-      (MemMap.add loc (T new_block) mem, lk)
+    (* let* is_zst, lk = LK.is_zst ~tyenv ~lk ty in
+       if%sat is_zst then
+         Delayed.return
+           ~learned:
+             [ Symb_opt.valid_zst_array_maybe_uninit ~tyenv ty size maybe_values ]
+           (mem, lk)
+       else *)
+    let root =
+      match MemMap.find_opt loc mem with
+      | Some (T root) -> root
+      | Some Freed -> failwith "use after free"
+      | None ->
+          TreeBlock.outer_missing
+            ~offset:(Option.value ~default:(Expr.EList []) proj.base)
+            ~tyenv
+            (Projections.base_ty ~leaf_ty:(Ty.array ty size) proj.from_base)
+    in
+    let+ new_block, lk =
+      TreeBlock.prod_many_maybe_uninits ~loc ~tyenv ~lk root proj ty size
+        maybe_values
+    in
+    (MemMap.add loc (T new_block) mem, lk)
 
 let deinit ~tyenv ~lk (mem : t) loc proj ty =
   let** block = find_not_freed loc mem in
