@@ -664,9 +664,9 @@ dependencies = [
 
 [[package]]
 name = "pearlite-syn"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb3331ceb877a570abd3c5e51ff5561940b70c431179a02d5d342266d76e2451"
+checksum = "15e3083dfa80aedb67b392087bd8027a9bb5435eb4f3703d02ca6a11e1c81209"
 dependencies = [
  "proc-macro2",
  "quote",

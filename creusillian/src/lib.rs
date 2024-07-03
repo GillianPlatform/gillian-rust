@@ -62,7 +62,6 @@ impl AttrTrail {
 }
 
 // Here we should have one term as a pre and many as a disjunction of posts but that's not what is actually being encoded here.
-#[derive(Clone)]
 struct RawContract(Punctuated<FnArg, Comma>, ReturnType, Vec<Term>, Vec<Term>);
 
 impl RawContract {
@@ -200,13 +199,15 @@ pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 fn encode_specs(contract: RawContract, rest: AttrTrail) -> syn::Result<TokenStream> {
-    let creusot_contract = contract.clone();
+
+    let requires : Vec<_>= contract.2.iter().map(|r| quote! { #r }).collect();
+    let ensures : Vec<_> = contract.3.iter().map(|e| quote! { #e }).collect();
+
     let core = contract.elaborate()?;
 
     let spec = core.to_signature();
     let AttrTrail(attrs, vis, sig, rest) = rest;
-    let requires = creusot_contract.2;
-    let ensures = creusot_contract.3;
+
     Ok(quote!(
       #(#attrs)*
       #(# [ cfg_attr(creusot, creusot_contracts :: requires ( #requires ))])*

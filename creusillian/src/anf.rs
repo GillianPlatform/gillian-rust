@@ -273,6 +273,7 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
 
             Ok(CoreTerm::Var(VarKind::Source(id.clone())))
         }
+        Term::Paren(TermParen {  expr, .. }) => term_to_core(*expr),
         Term::Lit(lit) => Ok(CoreTerm::Lit(lit.lit)),
         _ => Err(Error::new(t.span(), "Unsupported term")),
     }

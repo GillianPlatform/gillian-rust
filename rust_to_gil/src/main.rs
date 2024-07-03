@@ -66,7 +66,7 @@ fn main() {
         args.push(format!("--sysroot={}", sysroot_path()));
         args.push("-Cpanic=abort".to_owned());
         args.push("-Zmir-opt-level=0".to_owned());
-        args.push("--crate-type=lib".to_owned());
+        // args.push("--crate-type=lib".to_owned());
         args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
 
         utils::init();
