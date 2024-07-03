@@ -241,3 +241,34 @@ let array_components ty =
   match ty with
   | Array { ty; length } -> (ty, length)
   | _ -> Fmt.failwith "array_components: %a is not an array" pp ty
+
+let rec value_of_zst ~tyenv ty =
+  match ty with
+  | Tuple l ->
+      let values = List.map (value_of_zst ~tyenv) l in
+      Expr.EList values
+  | Array { ty; length } ->
+      let value = value_of_zst ~tyenv ty in
+      Expr.list_repeat value length
+  | Unresolved _ -> Expr.string "ZST::VALUE"
+  | Adt (name, subst) -> (
+      match Common.Tyenv.adt_def ~tyenv name with
+      | Struct (_, fields) ->
+          let values =
+            List.map
+              (fun (_, cty) -> value_of_zst ~tyenv (subst_params ~subst cty))
+              fields
+          in
+          Expr.EList values
+      | Enum [ (_, fields) ] ->
+          let values =
+            List.map
+              (fun cty -> value_of_zst ~tyenv (subst_params ~subst cty))
+              fields
+          in
+          Expr.EList [ Expr.zero_i; Expr.EList values ]
+      | Enum _ ->
+          Fmt.failwith "value_of_zst: ZST Enum must have a unique variant" pp ty
+      )
+  | Slice _ | Str | Scalar _ | Ref _ | Ptr _ ->
+      Fmt.failwith "value_of_zst: %a is not a ZST" pp ty
