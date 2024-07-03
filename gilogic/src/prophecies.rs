@@ -168,8 +168,7 @@ where
     }
 }
 
-#[specification(
-    forall v, a, r.
+#[specification(forall v, a, r.
     requires {
         (p -> v) * v.own(r) *
         observer(p.prophecy(), a) *
@@ -186,8 +185,7 @@ pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
     unreachable!();
 }
 
-#[specification(
-    forall m.
+#[specification(forall m.
     requires { p.own(m) }
     ensures { $(m.0 == m.1)$ }
 )]

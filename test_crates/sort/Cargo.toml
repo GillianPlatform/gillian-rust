@@ -1,0 +1,11 @@
+[package]
+name = "sort"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+vec = { version = "*", path = "../vec" }
+creusillian = { version = "*", path = "../../creusillian" }
+gilogic = { version = "*", path = "../../gilogic" }
+creusot-contracts = { version = "0.1.1" }
