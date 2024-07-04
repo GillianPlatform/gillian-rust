@@ -4,7 +4,7 @@
     gillian,
     feature(register_tool, rustc_attrs, stmt_expr_attributes, proc_macro_hygiene)
 )]
-#![register_tool(gillian)]
+#![cfg_attr(gillian, register_tool(gillian))]
 
 use creusillian::*;
 use gilogic::{macros::*, prophecies::*, RustAssertion, Seq};
@@ -48,13 +48,13 @@ impl<T: Ownable> Vec<T> {
     #[creusillian::requires(ix@ < (*self)@.len())]
     // #[creusillian::ensures(*ret == (*self)@.at(ix@))]
     // #[creusillian::ensures(^ret == (^self)@.at(ix@))]
-    #[gillian::trusted]
+    #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         todo!()
     }
 
-    #[gillian::trusted]
+    #[cfg_attr(gillian, gillian::trusted)]
     // #[creusillian::ensures(ret@ == (self)@.len())]
     #[creusot_contracts::trusted]
     pub fn len(&self) -> usize {

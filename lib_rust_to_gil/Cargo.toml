@@ -20,7 +20,8 @@ indexmap = "2.2"
 once_map = "0.4"
 itertools = "0.12.1"
 creusot-metadata = { git = "https://github.com/xldenis/creusot", rev = "9cee2464" }
-
+clap = { version = "4.5.8", features = ["derive", "env"] }
+serde = { version = "1.0.203", features = ["derive"] }
 
 [package.metadata.rust-analyzer]
 rustc_private = true

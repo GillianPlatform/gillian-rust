@@ -1,6 +1,6 @@
+use crate::logic::builtins::FnStubs;
 use crate::logic::param_collector;
 use crate::prelude::*;
-use crate::{logic::builtins::FnStubs, signature::build_signature};
 use indexmap::{IndexMap, IndexSet};
 use names::bb_label;
 use rustc_middle::ty::{

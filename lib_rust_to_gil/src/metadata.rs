@@ -40,11 +40,12 @@ impl<'tcx> Metadata<'tcx> {
         self.contracts.get(&def_id)
     }
 
-    pub fn load(tcx: TyCtxt<'tcx>, overrides: &HashMap<String, String>) -> Self {
+    pub fn load(tcx: TyCtxt<'tcx>, overrides: &Vec<(String, String)>) -> Self {
         let mut meta = Metadata::new();
 
+        let overrides = overrides.iter().cloned().collect();
         for cnum in external_crates(tcx) {
-            let base_path = gillian_metadata_base_path(tcx, overrides, cnum);
+            let base_path = gillian_metadata_base_path(tcx, &overrides, cnum);
             let binary_path = gillian_metadata_binary_path(base_path.clone());
 
             if let Some(metadata) = load_binary_metadata(tcx, cnum, &binary_path) {

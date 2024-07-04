@@ -9,7 +9,7 @@ members = [
   "gilogic_proc",
   "gilogic",
   "creusillian",
-  "tests", 
+  "tests", "cargo-gillian", 
 ]
 
 exclude = [

@@ -11,6 +11,7 @@ edition = "2021"
 lib_rtg = { path = "../lib_rust_to_gil" }
 log = "0.4"
 toml = "0.5.9"
+serde_json = "1.0"
 
 [dev-dependencies]
 ui_test = { version = "*" }
