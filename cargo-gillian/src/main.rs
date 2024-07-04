@@ -1,4 +1,7 @@
-use std::{env, process::{exit, Command}};
+use std::{
+    env,
+    process::{exit, Command},
+};
 
 use clap::*;
 use serde::{Deserialize, Serialize};
@@ -24,7 +27,7 @@ pub struct GillianArgs {
     pub extern_paths: Vec<(String, String)>,
 
     #[clap(group = "dependency", long)]
-    pub dependency : bool,
+    pub dependency: bool,
 }
 
 /// Parse a single key-value pair
@@ -35,7 +38,9 @@ where
     U: std::str::FromStr,
     U::Err: Error + Send + Sync + 'static,
 {
-    let pos = s.find('=').ok_or_else(|| format!("invalid KEY=value: no `=` found in `{}`", s))?;
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{}`", s))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
 
@@ -55,7 +60,11 @@ fn main() {
         .with_file_name("rust_to_gil");
 
     let cargo_path = env::var("CARGO_PATH").unwrap_or_else(|_| "cargo".to_string());
-    let cargo_cmd = if std::env::var_os("GILLIAN_CONTINUE").is_some() { "build" } else { "check" };
+    let cargo_cmd = if std::env::var_os("GILLIAN_CONTINUE").is_some() {
+        "build"
+    } else {
+        "check"
+    };
     let toolchain = toolchain_channel()
         .expect("Expected `cargo-gillian` to be built with a valid toolchain file");
     let mut cmd = Command::new(cargo_path);
@@ -65,7 +74,10 @@ fn main() {
         .env("RUSTC_WRAPPER", gillian_rustc_path)
         .env("CARGO_GILLIAN", "1");
 
-    cmd.env("GILLIAN_ARGS", serde_json::to_string(&args.gillian).unwrap());
+    cmd.env(
+        "GILLIAN_ARGS",
+        serde_json::to_string(&args.gillian).unwrap(),
+    );
 
     let exit_status = cmd.status().expect("could not run cargo");
     if !exit_status.success() {

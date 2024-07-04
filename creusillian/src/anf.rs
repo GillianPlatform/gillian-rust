@@ -272,12 +272,12 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
             };
 
             let Some(id) = inner.path.get_ident() else {
-                return Ok(CoreTerm::Path(inner.path))
+                return Ok(CoreTerm::Path(inner.path));
             };
 
             Ok(CoreTerm::Var(VarKind::Source(id.clone())))
         }
-        Term::Paren(TermParen {  expr, .. }) => term_to_core(*expr),
+        Term::Paren(TermParen { expr, .. }) => term_to_core(*expr),
         Term::Lit(lit) => Ok(CoreTerm::Lit(lit.lit)),
         Term::Paren(TermParen { expr, .. }) => term_to_core(*expr),
         t => Err(Error::new(t.span(), &format!("Unsupported term {t:?}"))),

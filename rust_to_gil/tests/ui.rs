@@ -2,14 +2,10 @@ use std::path::PathBuf;
 use ui_test::*;
 
 fn main() -> Result<()> {
-    let config1 = build_config(PathBuf::from("../tests/noproph"));
-    let mut config2 = build_config(PathBuf::from("../tests/proph"));
-    config2
-        .program
-        .envs
-        .push(("GILLIAN_PROPHECIES".into(), Some("1".into())));
-    let config = build_config(PathBuf::from("../tests/multiple_lifetimes"));
-    let config3 = build_config(PathBuf::from("../tests/pass"));
+    let config1 = build_config(PathBuf::from("../tests/noproph"), false);
+    let config2 = build_config(PathBuf::from("../tests/proph"), true);
+    let config = build_config(PathBuf::from("../tests/multiple_lifetimes"), false);
+    let config3 = build_config(PathBuf::from("../tests/pass"), false);
     run_tests(config1)?;
     run_tests(config)?;
     run_tests(config2)?;
@@ -17,7 +13,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn build_config(path: PathBuf) -> Config {
+fn build_config(path: PathBuf, prophecies: bool) -> Config {
     let mut program = CommandBuilder::rustc();
 
     program.program = PathBuf::from(env!("CARGO_BIN_EXE_rust_to_gil"));
@@ -47,10 +43,19 @@ fn build_config(path: PathBuf) -> Config {
     program
         .args
         .push("-Zcrate-attr=feature(stmt_expr_attributes)".into());
-    program
-        .envs
-        .push(("GILLIAN_EXEC_MODE".into(), Some("verif".into())));
     program.envs.push(("IN_UI_TEST".into(), Some("1".into())));
+
+    if prophecies {
+        program.envs.push((
+            "GILLIAN_ARGS".into(),
+            Some(r#"{ "stdout": true, "prophecies": true, "dependency": false, "extern_paths": [], "output_file": null }"#.into()),
+        ));
+    } else {
+        program.envs.push((
+            "GILLIAN_ARGS".into(),
+            Some(r#"{ "stdout": true, "prophecies": false, "dependency": false, "extern_paths": [], "output_file": null }"#.into()),
+        ));
+    }
 
     let mut config = Config {
         program,
@@ -63,9 +68,11 @@ fn build_config(path: PathBuf) -> Config {
         "RUSTC_WRAPPER".into(),
         Some(env!("CARGO_BIN_EXE_rust_to_gil").into()),
     ));
-    dep_builder
-        .envs
-        .push(("GILLIAN_DEPENDENCY".into(), Some("1".into())));
+    dep_builder.envs.push((
+        "GILLIAN_ARGS".into(),
+        // Some("true".into())
+        Some(r#"{ "stdout": true, "prophecies": true, "dependency": true, "extern_paths": [], "output_file": null }"#.into()),
+    ));
     // dep_builder.program = PathBuf::from(env!("CARGO_BIN_EXE_rust_to_gil"));
 
     config.dependency_builder = dep_builder;

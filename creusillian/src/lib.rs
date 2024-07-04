@@ -199,9 +199,8 @@ pub fn requires(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 fn encode_specs(contract: RawContract, rest: AttrTrail) -> syn::Result<TokenStream> {
-
-    let requires : Vec<_>= contract.2.iter().map(|r| quote! { #r }).collect();
-    let ensures : Vec<_> = contract.3.iter().map(|e| quote! { #e }).collect();
+    let requires: Vec<_> = contract.2.iter().map(|r| quote! { #r }).collect();
+    let ensures: Vec<_> = contract.3.iter().map(|e| quote! { #e }).collect();
 
     let core = contract.elaborate()?;
 

@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use clap::{arg, ValueHint};
 // use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +53,7 @@ impl GillianArgs {
             output_file: self.output_file,
             extern_paths: self.extern_paths,
             dependency: self.dependency,
-            in_cargo
+            in_cargo,
         }
     }
 }
@@ -75,6 +76,6 @@ where
 pub struct Args {
     #[clap(flatten)]
     pub gillian: GillianArgs,
-    #[clap(last = true)]
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, value_hint = ValueHint::CommandWithArguments)]
     pub rust_flags: Vec<String>,
 }
