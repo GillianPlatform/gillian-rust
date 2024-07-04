@@ -166,6 +166,7 @@ impl FnStubs {
 
         crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
             match name.as_str() {
+                // "gillian::prophecies::check_obs_sat" => Some(Self::CheckObsSat),
                 x if x.len() >= 17 && &x[..17] == "gillian::unfold::" => {
                     Some(Self::UnfoldSomething)
                 }

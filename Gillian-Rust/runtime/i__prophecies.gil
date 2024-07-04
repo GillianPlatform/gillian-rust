@@ -21,3 +21,9 @@ proc "gilogic::prophecies::Prophecy::<T>::resolve"(ty, pcy) {
   ret := {{ }};
   return
 };
+
+proc "gilogic::prophecies::check_obs_sat"() {
+  u := [check_obs_sat]();
+  ret := {{ }};
+  return
+};

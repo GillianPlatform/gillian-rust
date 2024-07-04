@@ -269,6 +269,10 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             }
         }
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
+        Term::Cast(TermCast { expr, as_token, ty }) => {
+            let expr = encode_expr(expr)?;
+            tokens.extend(quote! { #expr #as_token #ty })
+        }
         e => {
             return Err(Error::new(
                 inner.span(),
@@ -620,6 +624,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
                 macro_rules! #macro_name {
                     ($x: expr) => {
+                        gilogic::prophecies::check_obs_sat();
                         gilogic::prophecies::prophecy_auto_update($x);
                         #resolve_fn_name($x);
                     };

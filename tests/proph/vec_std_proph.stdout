@@ -32,7 +32,6 @@ pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   (0i i<# #lvar_0) * (#self == {{ {{ #ptr, #cap }}, #len }})
   * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
   * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
-  * (#cap i<=# 9223372036854775807i)
   * (#len i<=# #cap)
   * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #values)
   * (#len == l-len #values)
@@ -981,7 +980,7 @@ proc "Vec::<T>::new"(pty_T0) {
 };
 
 spec "Vec::<T>::with_capacity"(pty_T0, capacity)
-[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity) * (#capacity i<# 9223372036854775808i) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
+[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity) * (#capacity i<=# 9223372036854775807i) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
 [["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
 normal
 
@@ -1022,7 +1021,7 @@ proc "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (4611686018427387904i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (9223372036854775807i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [[<observation>(((#future) = (l+(#current, {{ #v_repr }}))); ) * <lft>(#pLft_0; true)]]
 normal
 
@@ -1115,28 +1114,31 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         g_49 := l-nth(g_50, 0i);
         u := [store_value](l-nth(l-nth(g_49, 0i), 0i), l+(l-nth(l-nth(g_49, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", g_47);
         m_11 := {{}};
-        g_52 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
-        g_51 := l-nth(g_52, 0i);
-        g_53 := [new_lft]();
-        pLft_12 := l-nth(g_53, 0i);
-        m_21 := g_51;
-        g_54 := m_21;
-        g_55 := "gilogic::prophecies::prophecy_auto_update::<Vec<T>>"(pLft_0, pty_T0, g_54);
-        m_20 := g_55;
+        g_51 := "gilogic::prophecies::check_obs_sat"();
+        m_20 := g_51;
         goto bb10;
-  bb10: g_57 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
-        g_56 := l-nth(g_57, 0i);
-        g_58 := [new_lft]();
-        pLft_13 := l-nth(g_58, 0i);
-        m_23 := g_56;
-        g_59 := m_23;
-        g_60 := "gilogic::prophecies::prophecy_resolve::<Vec<T>>"(pLft_0, pty_T0, g_59);
-        m_22 := g_60;
+  bb10: g_53 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_52 := l-nth(g_53, 0i);
+        g_54 := [new_lft]();
+        pLft_12 := l-nth(g_54, 0i);
+        m_22 := g_52;
+        g_55 := m_22;
+        g_56 := "gilogic::prophecies::prophecy_auto_update::<Vec<T>>"(pLft_0, pty_T0, g_55);
+        m_21 := g_56;
         goto bb11;
-  bb11: m_0 := {{}};
+  bb11: g_58 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_57 := l-nth(g_58, 0i);
+        g_59 := [new_lft]();
+        pLft_13 := l-nth(g_59, 0i);
+        m_24 := g_57;
+        g_60 := m_24;
+        g_61 := "gilogic::prophecies::prophecy_resolve::<Vec<T>>"(pLft_0, pty_T0, g_60);
+        m_23 := g_61;
         goto bb12;
-  bb12: g_61 := m_0;
-        ret := g_61;
+  bb12: m_0 := {{}};
+        goto bb13;
+  bb13: g_62 := m_0;
+        ret := g_62;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_19, 0i), l-nth(m_19, 1i), {{ "tuple", {{ "usize", "bool" }} }});

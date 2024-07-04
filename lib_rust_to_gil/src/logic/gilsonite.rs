@@ -183,6 +183,7 @@ pub enum BinOp {
     Ne,
     Sub,
     Add,
+    Div,
     Shl,
     And,
     Or,
@@ -881,6 +882,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     mir::BinOp::Eq => BinOp::Eq,
                     mir::BinOp::Lt => BinOp::Lt,
                     mir::BinOp::Le => BinOp::Le,
+                    mir::BinOp::Div => BinOp::Div,
                     _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 
@@ -907,22 +909,16 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             thir::ExprKind::Cast { source } => {
                 let source = self.build_expression(*source);
                 if source.ty.is_integral() && expr.ty.is_integral() {
-                    // Int to int conversion
-                    // Let's,just consider the case of constant values
                     if let ExprKind::Integer {
                         value: EncDeBigInt(bigint),
                     } = &source.kind
                     {
                         let (low, high) = crate::utils::ty::int_bounds(expr.ty, self.tcx);
-                        if &low <= bigint && bigint <= &high {
-                            return source.kind;
-                        } else {
+                        if bigint < &low || &high < bigint {
                             self.tcx.dcx().fatal("Casting: Overflow!")
                         }
-                    }
-                    self.tcx
-                        .dcx()
-                        .fatal("To implement in logic: non-concrete integer to integer cast")
+                    };
+                    return source.kind;
                 };
                 self.tcx
                     .dcx()

@@ -198,6 +198,18 @@ module TreeBlock = struct
     children : (laid_out * laid_out) option;
   }
 
+  let rec reduce_ranges laid_out =
+    let* range = Range.reduce laid_out.range in
+    let+ children =
+      match laid_out.children with
+      | None -> Delayed.return None
+      | Some (left, right) ->
+          let* left = reduce_ranges left in
+          let+ right = reduce_ranges right in
+          Some (left, right)
+    in
+    { laid_out with range; children }
+
   type outer = { offset : Expr.t; root : t }
 
   let rec map_lc_ranges ~f lc =
@@ -394,63 +406,69 @@ module TreeBlock = struct
           of_structural ~current_proj ~expected_ty:ty ~lk { ty; content }
         in
         (Expr.EList [ v ], lk)
-      else if not (Ty.equal expected_ty ty) then
-        Fmt.failwith
-          "To implement: casting in to_rust_value. Should be fairly rare case; \
-           though happends in pointer transmutation: I have %a and am looking \
-           for something of type %a."
-          pp block Ty.pp expected_ty
       else
-        match content with
-        | Fields v ->
-            let ptvs =
-              let tys = List.to_seq (Ty.fields ~tyenv ty) in
-              let vs = List.to_seq v in
-              let zipped = Seq.zip tys vs in
-              Seq.mapi
-                (fun i (ty', v) -> (Projections.Field (i, ty), ty', v))
-                zipped
-            in
-            let++ fields, lk = all ~lk [] ptvs in
-            (Expr.EList fields, lk)
-        | Array v ->
-            let total_size = List.length v in
-            let inner_ty = Ty.array_inner ty in
-            let ptvs =
-              List.to_seq v
-              |> Seq.mapi (fun i v ->
-                     ( Projections.Index (Expr.int i, ty, total_size),
-                       inner_ty,
-                       v ))
-            in
-            let++ elements, lk = all ~lk [] ptvs in
-            (Expr.EList elements, lk)
-        | Enum { discr; fields } ->
-            let ptvs =
-              let tys = List.to_seq (Ty.variant_fields ~tyenv ~idx:discr ty) in
-              let vs = List.to_seq fields in
-              let zipped = Seq.zip tys vs in
-              Seq.mapi
-                (fun i (ty', v) ->
-                  ( Projections.VField
-                      { variant_idx = discr; enum_ty = ty; field_idx = i },
-                    ty',
-                    v ))
-                zipped
-            in
-            let++ fields, lk = all ~lk [] ptvs in
-            (Expr.EList [ Expr.int discr; EList fields ], lk)
-        | Symbolic e -> DR.ok (e, lk)
-        | SymbolicMaybeUninit e ->
-            if%ent Symb_opt.is_some e then DR.ok (e, lk)
-            else DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
-        | ManySymbolicMaybeUninit _e ->
-            failwith
-              "ManySymbolicMaybeUninit not implemented yet. It will be a forall"
-        | Uninit -> DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
-        | Missing ->
-            DR.error Err.Conversion_error.(Missing, List.rev current_proj)
+        if%ent Ty.sem_equal expected_ty ty then
+          match content with
+          | Fields v ->
+              let ptvs =
+                let tys = List.to_seq (Ty.fields ~tyenv ty) in
+                let vs = List.to_seq v in
+                let zipped = Seq.zip tys vs in
+                Seq.mapi
+                  (fun i (ty', v) -> (Projections.Field (i, ty), ty', v))
+                  zipped
+              in
+              let++ fields, lk = all ~lk [] ptvs in
+              (Expr.EList fields, lk)
+          | Array v ->
+              let total_size = List.length v in
+              let inner_ty = Ty.array_inner ty in
+              let ptvs =
+                List.to_seq v
+                |> Seq.mapi (fun i v ->
+                       ( Projections.Index (Expr.int i, ty, total_size),
+                         inner_ty,
+                         v ))
+              in
+              let++ elements, lk = all ~lk [] ptvs in
+              (Expr.EList elements, lk)
+          | Enum { discr; fields } ->
+              let ptvs =
+                let tys =
+                  List.to_seq (Ty.variant_fields ~tyenv ~idx:discr ty)
+                in
+                let vs = List.to_seq fields in
+                let zipped = Seq.zip tys vs in
+                Seq.mapi
+                  (fun i (ty', v) ->
+                    ( Projections.VField
+                        { variant_idx = discr; enum_ty = ty; field_idx = i },
+                      ty',
+                      v ))
+                  zipped
+              in
+              let++ fields, lk = all ~lk [] ptvs in
+              (Expr.EList [ Expr.int discr; EList fields ], lk)
+          | Symbolic e -> DR.ok (e, lk)
+          | SymbolicMaybeUninit e ->
+              if%ent Symb_opt.is_some e then DR.ok (e, lk)
+              else DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
+          | ManySymbolicMaybeUninit _e ->
+              failwith
+                "ManySymbolicMaybeUninit not implemented yet. It will be a \
+                 forall"
+          | Uninit ->
+              DR.error Err.Conversion_error.(Uninit, List.rev current_proj)
+          | Missing ->
+              DR.error Err.Conversion_error.(Missing, List.rev current_proj)
+        else
+          Fmt.failwith
+            "To implement: casting in to_rust_value. Should be fairly rare \
+             case; though happends in pointer transmutation: I have %a and am \
+             looking for something of type %a."
+            pp_structural { ty; content } Ty.pp expected_ty
     in
+
     let rec of_lc ~lk ~expected_ty ~current_proj lc =
       match (lc.structural, lc.children) with
       | Some structural, _ ->
@@ -943,6 +961,7 @@ module TreeBlock = struct
           children = Some (left, right);
         }
       in
+      let+ root = reduce_ranges root in
       Laid_out_root root
     in
     let split_symbolic_array
@@ -954,7 +973,7 @@ module TreeBlock = struct
         ~constr
         e =
       let value_ty, length = Ty.array_components structural_ty in
-      let+ split, lk =
+      let* split, lk =
         if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
           let+ left_size, lk =
             LK.reinterpret_offset ~lk ~from_ty:index_ty ~to_ty:value_ty
@@ -1030,7 +1049,7 @@ module TreeBlock = struct
             in
             (split, lk)
       in
-      let root = children_from_split split |> root_of_children in
+      let+ root = children_from_split split |> root_of_children in
       (root, lk)
     in
     let* end_as_index, lk =
@@ -1060,7 +1079,7 @@ module TreeBlock = struct
         | Expr.Lit (Int start), Expr.Lit (Int end_) ->
             (* We have a concrete range, we can extract a precise split *)
             let range_v = Z.(to_int start, to_int end_) in
-            let+ split, lk =
+            let* split, lk =
               match List_utils.extract_range ~range:range_v l with
               | `Left (left, right) ->
                   (* We use the index_ty provided to us,
@@ -1097,7 +1116,7 @@ module TreeBlock = struct
                       ),
                     lk )
             in
-            let root = children_from_split split |> root_of_children in
+            let+ root = children_from_split split |> root_of_children in
             (root, lk)
         | range -> (
             let* symbolic_array =
@@ -1116,7 +1135,7 @@ module TreeBlock = struct
                   Conversion_error.pp err))
     | Uninit | Missing ->
         (* FIXME: the structural is wrong, I need to fix the type so that it has the right size! *)
-        let+ split =
+        let* split =
           if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
             let left_range = (Expr.zero_i, snd range) in
             let right_range = (snd range, end_as_index) in
@@ -1140,7 +1159,7 @@ module TreeBlock = struct
                     (structural, range),
                     (structural, right_range) ))
         in
-        let root = children_from_split split |> root_of_children in
+        let+ root = children_from_split split |> root_of_children in
         (root, lk)
     | ManySymbolicMaybeUninit e ->
         split_symbolic_array ~lk ~index_ty ~range ~structural_ty:structural.ty
@@ -1273,8 +1292,9 @@ module TreeBlock = struct
       Logging.verbose (fun m -> m "Range is equal");
       let offset = fst range in
       (* we return a relative lc *)
-      let this_tree =
+      let* this_tree =
         let lc_absolute = offset_laid_out ~by:Expr.Infix.(~-offset) lc in
+        let+ lc_absolute = reduce_ranges lc_absolute in
         Laid_out_root lc_absolute
       in
       let** (value, new_tree), lk = return_and_update ~lk this_tree in
@@ -1415,11 +1435,12 @@ module TreeBlock = struct
           let* range_as_in_lc, lk =
             Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
           in
-          let++ (value, lc), lk =
+          let** (value, lc), lk =
             extract_laid_out_and_apply ~lk ~tyenv ~return_and_update
               ~index_ty:lc.index_ty ~range:range_as_in_lc lc
           in
-          ((value, Laid_out_root lc), lk)
+          let+ lc = reduce_ranges lc in
+          Ok ((value, Laid_out_root lc), lk)
 
   let extend_on_right_if_needed ~can_extend ~range ~index_ty t ~lk =
     Logging.verbose (fun m ->

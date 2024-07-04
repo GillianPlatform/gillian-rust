@@ -607,6 +607,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             todo!("shl for floats")
                         }
                     }
+                    BinOp::Div => {
+                        if left_ty.is_integral() {
+                            GExpr::i_div(left, right)
+                        } else {
+                            GExpr::f_div(left, right)
+                        }
+                    }
                     BinOp::And => GExpr::and(left, right),
                     BinOp::Or => GExpr::or(left, right),
                 }

@@ -473,6 +473,25 @@ impl Expr {
         }
     }
 
+    pub fn i_div(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::int(i / j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+                operator: BinOp::IDiv,
+            },
+        }
+    }
+
+    pub fn f_div(e1: Expr, e2: Expr) -> Self {
+        Expr::BinOp {
+            left_operand: Box::new(e1),
+            right_operand: Box::new(e2),
+            operator: BinOp::FDiv,
+        }
+    }
+
     pub fn f_mul(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::float(i * j),

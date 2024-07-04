@@ -1,10 +1,10 @@
 warning: unused imports: `Prophecised`, `lemma`
-  --> ../tests/proph/vec_std_proph.rs:12:25
+  --> ../tests/proph/vec_std_proph.rs:11:25
    |
-12 |     macros::{assertion, lemma, predicate, specification},
+11 |     macros::{assertion, lemma, predicate, specification},
    |                         ^^^^^
-13 |     mutref_auto_resolve,
-14 |     prophecies::{Ownable, Prophecised},
+12 |     mutref_auto_resolve,
+13 |     prophecies::{Ownable, Prophecised},
    |                           ^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
@@ -12,20 +12,20 @@ warning: unused imports: `Prophecised`, `lemma`
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
- --> ../tests/proph/vec_std_proph.rs:6:12
+ --> ../tests/proph/vec_std_proph.rs:5:12
   |
-6 | #![feature(unchecked_math)]
+5 | #![feature(unchecked_math)]
   |            ^^^^^^^^^^^^^^
   |
   = note: `#[warn(stable_features)]` on by default
 
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:62:5
+  --> ../tests/proph/vec_std_proph.rs:61:5
    |
-58 | enum AllocInit {
+57 | enum AllocInit {
    |      --------- variant in this enum
 ...
-62 |     Zeroed,
+61 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default

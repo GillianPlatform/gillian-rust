@@ -52,11 +52,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 let name = fname.strip_suffix("_____unfold").unwrap().to_string();
                 CallKind::Unfold(name)
             }
-            _ if crate::utils::attrs::is_lemma(did, self.tcx()) => {
+            None if crate::utils::attrs::is_lemma(did, self.tcx()) => {
                 let lemma_name = self.global_env.just_pred_name_with_args(did, substs);
                 CallKind::Lemma(lemma_name)
             }
-            _ if self.tcx().is_constructor(did) => {
+            None if self.tcx().is_constructor(did) => {
                 let ty_of_ctor = self
                     .tcx()
                     .fn_sig(did)
@@ -75,11 +75,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     );
                 }
             }
-            _ if self.global_env.specification_id(did).is_some() => {
+            None if self.global_env.specification_id(did).is_some() => {
                 let name = self.global_env_mut().register_mono_spec(did, substs);
                 CallKind::MonoFn(name)
             }
-            _ => CallKind::PolyFn(self.tcx().def_path_str(did)),
+            Some(FnStubs::Into) | None => CallKind::PolyFn(self.tcx().def_path_str(did)),
         }
     }
 

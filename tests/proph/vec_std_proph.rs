@@ -1,5 +1,4 @@
 //@check-pass
-//?gil:ignore
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
@@ -336,7 +335,6 @@ impl<T: Ownable> Ownable for Vec<T> {
                 })
             * cap.own(cap)
             * len.own(len)
-            * (cap <= isize::MAX as usize)
             * (len <= cap)
             * ptr.as_ptr().points_to_slice(len, values)
             * (len == values.len())
@@ -360,7 +358,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[specification(
-        requires { capacity.own(capacity) * (capacity < 2 << 62 )}
+        requires { capacity.own(capacity) * (capacity <= isize::MAX as usize)}
         ensures { ret.own(Seq::empty()) }
     )]
     pub fn with_capacity(capacity: usize) -> Self {
@@ -378,7 +376,7 @@ impl<T: Ownable> Vec<T> {
         forall current, future, v_repr.
         requires {
             self.own((current, future)) *
-            $current.len() < 2 << 62$ *
+            $current.len() < (isize::MAX as usize) $ *
             value.own(v_repr)
         }
         ensures {
@@ -399,3 +397,12 @@ impl<T: Ownable> Vec<T> {
         mutref_auto_resolve!(self);
     }
 }
+
+// impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
+//     type Output = I::Output;
+
+//     #[inline]
+//     fn index_mut(&mut self, index: I) -> &mut Self::Output {
+//         IndexMut::index_mut(&mut **self, index)
+//     }
+// }
