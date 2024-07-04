@@ -904,6 +904,30 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     right: Box::new(rhs),
                 }
             }
+            thir::ExprKind::Cast { source } => {
+                let source = self.build_expression(*source);
+                if source.ty.is_integral() && expr.ty.is_integral() {
+                    // Int to int conversion
+                    // Let's,just consider the case of constant values
+                    if let ExprKind::Integer {
+                        value: EncDeBigInt(bigint),
+                    } = &source.kind
+                    {
+                        let (low, high) = crate::utils::ty::int_bounds(expr.ty, self.tcx);
+                        if &low <= bigint && bigint <= &high {
+                            return source.kind;
+                        } else {
+                            self.tcx.dcx().fatal("Casting: Overflow!")
+                        }
+                    }
+                    self.tcx
+                        .dcx()
+                        .fatal("To implement in logic: non-concrete integer to integer cast")
+                };
+                self.tcx
+                    .dcx()
+                    .fatal("To implement in logic: cast that is not int-to-int")
+            }
             thir::ExprKind::Call {
                 ty, fun: _, args, ..
             } => {

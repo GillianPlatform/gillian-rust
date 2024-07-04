@@ -36,3 +36,14 @@ proc "std::ptr::NonNull::<T>::as_mut"(pLft_a, pLft_b, T, p) {
         ret := {{ ref, null }};
         return
 };
+
+
+proc "core::panicking::panic_explicit"() {
+     u := [check_obs_sat]();
+     fail[panic]("core::panicking::panic_explicit")
+};
+
+proc "std::rt::begin_panic"(lft, ty, str) {
+     u := [check_obs_sat]();
+     fail[panic](str)
+};

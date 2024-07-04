@@ -9,20 +9,7 @@ use rustc_middle::ty::{self, AdtKind, ConstKind};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn int_bounds(&self, ty: Ty<'tcx>) -> (BigInt, BigInt) {
-        match ty.kind() {
-            TyKind::Uint(uint) => (
-                BigInt::from(0),
-                BigInt::from(1) << (uint.bit_width().unwrap_or(64)),
-            ),
-            TyKind::Int(int) => {
-                // For now we assume 64 bit for usize.
-                let width = int.bit_width().unwrap_or(64);
-                let lb = BigInt::from(1) << (width - 1);
-                let hb = lb.clone() - 1;
-                (-lb, hb)
-            }
-            _ => fatal!(self, "Invalid type for int_bounds: {:#?}", ty),
-        }
+        crate::utils::ty::int_bounds(ty, self.tcx())
     }
 
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {

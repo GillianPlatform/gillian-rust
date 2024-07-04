@@ -32,8 +32,10 @@ pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   (0i i<# #lvar_0) * (#self == {{ {{ #ptr, #cap }}, #len }})
   * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
   * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
+  * (#cap i<=# 9223372036854775807i)
   * (#len i<=# #cap)
   * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #values)
+  * (#len == l-len #values)
   * (l-len #values == l-len #model)
   * "all_own::<T>"(pty_T0, #values, #model)
   * <many_maybe_uninits>(l-nth(#lvar_3, 0i), l-nth(#lvar_3, 1i), pty_T0, ((#cap) i- (#len)); #rest)
@@ -1020,7 +1022,7 @@ proc "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (9223372036854775808i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (4611686018427387904i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [[<observation>(((#future) = (l+(#current, {{ #v_repr }}))); ) * <lft>(#pLft_0; true)]]
 normal
 

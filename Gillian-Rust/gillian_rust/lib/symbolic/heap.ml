@@ -332,14 +332,14 @@ module TreeBlock = struct
 
   and pp_laid_out ft { structural; range; children; index_ty } =
     let open Fmt in
-    pf ft "INDEXED BY %a <== %a = %a" Ty.pp index_ty Range.pp range
-      (Dump.option pp_structural)
+    pf ft "@[<v>@[<h>INDEXED BY %a <== %a = %a@]" Ty.pp index_ty Range.pp range
+      (option ~none:(any "None") pp_structural)
       structural;
     match children with
-    | None -> ()
+    | None -> pf ft "@]"
     | Some (left, right) ->
-        pf ft "WITH CHILDREN:@ @[<v 2>%a@ %a]" pp_laid_out left pp_laid_out
-          right
+        pf ft "@ @[<v 4>WITH CHILDREN:@ @[<v 0>%a@]@ @[<v 0>%a@]@]" pp_laid_out
+          left pp_laid_out right
 
   let block_size_equal_ty_size ~block ~ty ~lk =
     let+ result =
@@ -1157,6 +1157,7 @@ module TreeBlock = struct
           pp_structural structural
 
   let laid_out_of_children left right =
+    Logging.verbose (fun m -> m "laid_out_of_children");
     if not (Ty.equal left.index_ty right.index_ty) then
       Fmt.failwith
         "laid_out_of_children: need to reinterpreted sub-ranges.\n\
@@ -1168,28 +1169,34 @@ module TreeBlock = struct
     { structural = None; range; children; index_ty }
 
   let rec extract ~lk ~range ~index_ty laid_out =
+    Logging.verbose (fun m ->
+        m "extract:\nrange: %a : %a\nlaid_out: %a" Range.pp range Ty.pp index_ty
+          pp_laid_out laid_out);
     let* range, lk =
       Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:laid_out.index_ty range
     in
     let index_ty = laid_out.index_ty in
-    if%sat Range.is_equal range laid_out.range then
-      Delayed.return ((laid_out, None), lk)
+    if%sat Range.is_equal range laid_out.range then (
+      Logging.verbose (fun m -> m "extract: Range is equal");
+      Delayed.return ((laid_out, None), lk))
     else
       let left, right = Option.get laid_out.children in
       let* range_as_left, lk =
         Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:left.index_ty range
       in
-      if%sat Range.is_inside range_as_left left.range then
+      if%sat Range.is_inside range_as_left left.range then (
+        Logging.verbose (fun m -> m "extract: Inside left");
         let+ (extracted, new_left), lk =
           extract ~lk ~range:range_as_left ~index_ty:left.index_ty left
         in
         let new_self =
           match new_left with
-          | Some left -> laid_out_of_children left extracted
-          | None -> extracted
+          | Some left -> laid_out_of_children left right
+          | None -> right
         in
-        ((extracted, Some new_self), lk)
-      else
+        ((extracted, Some new_self), lk))
+      else (
+        Logging.verbose (fun m -> m "extract: Inside right");
         let* range_as_right, lk =
           Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:right.index_ty range
         in
@@ -1198,12 +1205,13 @@ module TreeBlock = struct
         in
         let new_self =
           match new_right with
-          | Some right -> laid_out_of_children extracted right
-          | None -> extracted
+          | Some right -> laid_out_of_children left right
+          | None -> left
         in
-        ((extracted, Some new_self), lk)
+        ((extracted, Some new_self), lk))
 
   let rec add_to_the_left lc addition : laid_out =
+    Logging.verbose (fun m -> m "add_to_the_left");
     match lc.children with
     | None -> laid_out_of_children addition lc
     | Some (left, right) ->
@@ -1211,6 +1219,7 @@ module TreeBlock = struct
         laid_out_of_children new_left right
 
   let rec add_to_the_right lc addition : laid_out =
+    Logging.verbose (fun m -> m "add_to_the_right");
     match lc.children with
     | None -> laid_out_of_children lc addition
     | Some (left, right) ->
@@ -1257,12 +1266,11 @@ module TreeBlock = struct
     let index_ty = lc.index_ty in
     Logging.verbose (fun m -> m "Inside extract_laid_out_and_apply");
     Logging.verbose (fun m ->
-        m "Range we're looking for, using index type %a: %a, range we're in: %a"
-          Ty.pp index_ty Range.pp range Range.pp lc.range);
+        m "Range we're looking for, using index type %a: %a" Ty.pp index_ty
+          Range.pp range);
     Logging.verbose (fun m -> m "LC: %a" pp_laid_out lc);
     if%sat Range.is_equal range lc.range then (
       Logging.verbose (fun m -> m "Range is equal");
-      let () = Logging.tmi (fun m -> m "Range is equal") in
       let offset = fst range in
       (* we return a relative lc *)
       let this_tree =
@@ -1338,10 +1346,10 @@ module TreeBlock = struct
               if%sat
                 (* High range is already good *)
                 Formula.Infix.(high #== this_high)
-              then
+              then (
                 (* Rearrange left*)
                 let low_range = (low, mid) in
-                let** (_, left), lk =
+                let** ((), left), lk =
                   extract_laid_out_and_apply ~tyenv ~lk
                     ~return_and_update:dont_update ~range:low_range ~index_ty
                     left
@@ -1349,12 +1357,19 @@ module TreeBlock = struct
                 let* (extracted, left_opt), lk =
                   extract ~lk left ~index_ty ~range:low_range
                 in
+                Logging.verbose (fun m ->
+                    m "Extracted: %a, left_opt: %a" pp_laid_out extracted
+                      (Fmt.Dump.option pp_laid_out)
+                      left_opt);
+                Logging.verbose (fun m ->
+                    m "Adding to the left of %a" pp_laid_out right);
                 let right = add_to_the_left right extracted in
                 let new_self =
                   laid_out_of_children (Option.get left_opt) right
                 in
+
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
-                  ~index_ty new_self
+                  ~index_ty new_self)
               else
                 (* Rearrange right *)
                 let upper_range = (mid, high) in
@@ -1366,6 +1381,12 @@ module TreeBlock = struct
                 let* (extracted, right_opt), lk =
                   extract ~lk ~range:upper_range ~index_ty right
                 in
+                Logging.verbose (fun m ->
+                    m "Extracted: %a, right_opt: %a" pp_laid_out extracted
+                      (Fmt.Dump.option pp_laid_out)
+                      right_opt);
+                Logging.verbose (fun m ->
+                    m "Adding to the right of %a" pp_laid_out left);
                 let left = add_to_the_right left extracted in
                 let new_self =
                   laid_out_of_children left (Option.get right_opt)
@@ -1395,8 +1416,8 @@ module TreeBlock = struct
             Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
           in
           let++ (value, lc), lk =
-            extract_laid_out_and_apply ~lk ~tyenv ~return_and_update ~index_ty
-              ~range:range_as_in_lc lc
+            extract_laid_out_and_apply ~lk ~tyenv ~return_and_update
+              ~index_ty:lc.index_ty ~range:range_as_in_lc lc
           in
           ((value, Laid_out_root lc), lk)
 

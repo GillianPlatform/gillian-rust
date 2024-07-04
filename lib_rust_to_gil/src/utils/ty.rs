@@ -1,3 +1,4 @@
+use num_bigint::BigInt;
 use rustc_middle::ty::{ParamEnv, ParamTy};
 use rustc_type_ir::TyKind;
 
@@ -71,4 +72,23 @@ pub fn is_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
         }
     }
     false
+}
+
+pub fn int_bounds<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> (BigInt, BigInt) {
+    match ty.kind() {
+        TyKind::Uint(uint) => (
+            BigInt::from(0),
+            BigInt::from(1) << (uint.bit_width().unwrap_or(64)),
+        ),
+        TyKind::Int(int) => {
+            // For now we assume 64 bit for usize.
+            let width = int.bit_width().unwrap_or(64);
+            let lb = BigInt::from(1) << (width - 1);
+            let hb = lb.clone() - 1;
+            (-lb, hb)
+        }
+        _ => tcx
+            .dcx()
+            .fatal(format!("Invalid type for int_bounds: {:#?}", ty)),
+    }
 }

@@ -115,7 +115,8 @@ proc "std::alloc::Layout::align"(lft, layout) {
 
 proc "std::alloc::Layout::array"(T, n) {
      (* We don't handle alignment yet. Not because it's not possible, it works exactly like size.
-        But because it requires "std::ptr::Unique::<T>::cast"more research into Rust's current rules regarding alignment that I know less of. *)
+        But because it requires "std::ptr::Unique::<T>::cast", which more research into Rust's current rules
+        regarding alignment that I know less of. *)
      (* We also simplify things: we could encode requirements on size proportionally to total allocable memory etc...
         However, we do not do so for now, because there again it is beside the point of what we are trying to show
         with this prototype. *)

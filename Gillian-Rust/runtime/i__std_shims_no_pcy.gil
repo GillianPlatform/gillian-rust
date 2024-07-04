@@ -32,3 +32,12 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
          return;
      er: fail[TYPERR]("Invalid discr")
 };
+
+
+proc "core::panicking::panic_explicit"() {
+     fail[panic]("core::panicking::panic_explicit")
+};
+
+proc "std::rt::begin_panic"(lft, ty, str) {
+     fail[panic](str)
+};
