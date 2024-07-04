@@ -492,7 +492,8 @@ module TreeBlock = struct
     | Laid_out_root { structural = Some structural; _ } ->
         to_rust_value_exn (Structural structural)
     | Laid_out_root { structural = None; _ } ->
-        Fmt.failwith "to_rust_value_exn: laid_out with None structural"
+        raise Tree_not_a_value
+        (* Fmt.failwith "to_rust_value_exn: laid_out with None structural %a" pp t *)
     | Structural { ty; content } -> (
         match content with
         | Fields elements | Array elements ->
@@ -618,7 +619,9 @@ module TreeBlock = struct
           | Structural { content = SymbolicMaybeUninit s; ty } ->
               Seq.return (Asrt.GA (maybe_uninit_cp, ins ty, [ s ]))
           | Structural { content = ManySymbolicMaybeUninit s; ty } ->
-              Seq.return (Asrt.GA (many_maybe_uninit_cp, ins ty, [ s ]))
+              let inner_ty, length = Ty.array_components ty in
+              Seq.return
+                (Asrt.GA (many_maybe_uninit_cp, ins inner_ty @ [ length ], [ s ]))
           | Structural { content = Missing; _ } -> Seq.empty
           | Structural { content = Fields v; ty } ->
               let proj i = Projections.Field (i, ty) in
@@ -867,7 +870,7 @@ module TreeBlock = struct
         Fmt.failwith "structural missing called on a leaf or unsized: %a" Ty.pp
           ty
 
-  let extract_range_structural ~lk ~index_ty ~range structural =
+  let rec extract_range_structural ~lk ~tyenv ~index_ty ~range structural =
     Logging.verbose (fun m ->
         m
           "extract_range_structural:@\n\
@@ -942,6 +945,94 @@ module TreeBlock = struct
       in
       Laid_out_root root
     in
+    let split_symbolic_array
+        ~lk
+        ~index_ty
+        ~range
+        ~structural_ty
+        ~end_as_index
+        ~constr
+        e =
+      let value_ty, length = Ty.array_components structural_ty in
+      let+ split, lk =
+        if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
+          let+ left_size, lk =
+            LK.reinterpret_offset ~lk ~from_ty:index_ty ~to_ty:value_ty
+              (snd range)
+          in
+          let left_list =
+            Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_size
+          in
+          let left_ty = Ty.array value_ty left_size in
+          let left_range = (Expr.zero_i, snd range) in
+          let right_list =
+            Expr.list_sub ~lst:e ~start:left_size
+              ~size:Expr.Infix.(length - left_size)
+          in
+          let right_range = (snd range, end_as_index) in
+          let right_ty = Ty.array value_ty Expr.Infix.(length - left_size) in
+          let split =
+            `Two
+              ( ({ content = constr left_list; ty = left_ty }, left_range),
+                ({ content = constr right_list; ty = right_ty }, right_range) )
+          in
+          (split, lk)
+        else
+          if%sat Formula.Infix.((snd range) #== end_as_index) then
+            let+ left_size, lk =
+              LK.reinterpret_offset ~lk ~from_ty:index_ty ~to_ty:value_ty
+                (fst range)
+            in
+            let left_list =
+              Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_size
+            in
+            let left_ty = Ty.array value_ty left_size in
+            let left_range = (Expr.zero_i, fst range) in
+            let right_size = Expr.Infix.(length - left_size) in
+            let right_list =
+              Expr.list_sub ~lst:e ~start:left_size ~size:right_size
+            in
+            let right_ty = Ty.array value_ty right_size in
+            let right_range = (fst range, end_as_index) in
+            let split =
+              `Two
+                ( ({ content = constr left_list; ty = left_ty }, left_range),
+                  ({ content = constr right_list; ty = right_ty }, right_range)
+                )
+            in
+            (split, lk)
+          else
+            let+ (left_end, mid_end), lk =
+              Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:value_ty range
+            in
+            let left_list =
+              Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_end
+            in
+            let left_ty = Ty.array value_ty left_end in
+            let left_range = (Expr.zero_i, fst range) in
+            let mid_size = Expr.Infix.(mid_end - left_end) in
+            let mid_list =
+              Expr.list_sub ~lst:e ~start:left_end ~size:mid_size
+            in
+            let mid_ty = Ty.array value_ty mid_size in
+            let right_size = Expr.Infix.(length - mid_end) in
+            let right_list =
+              Expr.list_sub ~lst:e ~start:left_end ~size:right_size
+            in
+            let right_ty = Ty.array value_ty right_size in
+            let right_range = (snd range, end_as_index) in
+            let split =
+              `Three
+                ( ({ content = constr left_list; ty = left_ty }, left_range),
+                  ({ content = constr mid_list; ty = mid_ty }, range),
+                  ({ content = constr right_list; ty = right_ty }, right_range)
+                )
+            in
+            (split, lk)
+      in
+      let root = children_from_split split |> root_of_children in
+      (root, lk)
+    in
     let* end_as_index, lk =
       Layout_knowledge.length_as_array_of ~lk ~of_ty:index_ty structural.ty
     in
@@ -964,6 +1055,7 @@ module TreeBlock = struct
           in
           (Ty.array values_ty length, lk)
         in
+        let* range_v = Range.reduce range_v in
         match range_v with
         | Expr.Lit (Int start), Expr.Lit (Int end_) ->
             (* We have a concrete range, we can extract a precise split *)
@@ -1007,10 +1099,21 @@ module TreeBlock = struct
             in
             let root = children_from_split split |> root_of_children in
             (root, lk)
-        | _range ->
-            Fmt.failwith
-              "to implement: extracting a symbolic length from a concrete array"
-        )
+        | range -> (
+            let* symbolic_array =
+              to_rust_value ~tyenv ~ty:structural.ty ~lk (Structural structural)
+            in
+            match symbolic_array with
+            | Ok (e, lk) ->
+                extract_range_structural ~lk ~tyenv ~index_ty ~range
+                  { ty = structural.ty; content = Symbolic e }
+            | Error err ->
+                Fmt.failwith
+                  "extract_range_structural: Failed to convert array symbolic:\n\
+                   Range: %a\n\
+                   Array: %a\n\
+                   Error: %a" Range.pp range (Fmt.Dump.list pp) l
+                  Conversion_error.pp err))
     | Uninit | Missing ->
         (* FIXME: the structural is wrong, I need to fix the type so that it has the right size! *)
         let+ split =
@@ -1040,105 +1143,15 @@ module TreeBlock = struct
         let root = children_from_split split |> root_of_children in
         (root, lk)
     | ManySymbolicMaybeUninit e ->
-        let value_ty, length = Ty.array_components structural.ty in
-        let+ split, lk =
-          if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
-            let+ left_size, lk =
-              LK.reinterpret_offset ~lk ~from_ty:index_ty ~to_ty:value_ty
-                (snd range)
-            in
-            let left_list =
-              Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_size
-            in
-            let left_ty = Ty.array value_ty left_size in
-            let left_range = (Expr.zero_i, snd range) in
-            let right_list =
-              Expr.list_sub ~lst:e ~start:left_size
-                ~size:Expr.Infix.(length - left_size)
-            in
-            let right_range = (snd range, end_as_index) in
-            let right_ty = Ty.array value_ty Expr.Infix.(length - left_size) in
-            let split =
-              `Two
-                ( ( { content = ManySymbolicMaybeUninit left_list; ty = left_ty },
-                    left_range ),
-                  ( {
-                      content = ManySymbolicMaybeUninit right_list;
-                      ty = right_ty;
-                    },
-                    right_range ) )
-            in
-            (split, lk)
-          else
-            if%sat Formula.Infix.((snd range) #== end_as_index) then
-              let+ left_size, lk =
-                LK.reinterpret_offset ~lk ~from_ty:index_ty ~to_ty:value_ty
-                  (fst range)
-              in
-              let left_list =
-                Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_size
-              in
-              let left_ty = Ty.array value_ty left_size in
-              let left_range = (Expr.zero_i, fst range) in
-              let right_size = Expr.Infix.(length - left_size) in
-              let right_list =
-                Expr.list_sub ~lst:e ~start:left_size ~size:right_size
-              in
-              let right_ty = Ty.array value_ty right_size in
-              let right_range = (fst range, end_as_index) in
-              let split =
-                `Two
-                  ( ( {
-                        content = ManySymbolicMaybeUninit left_list;
-                        ty = left_ty;
-                      },
-                      left_range ),
-                    ( {
-                        content = ManySymbolicMaybeUninit right_list;
-                        ty = right_ty;
-                      },
-                      right_range ) )
-              in
-              (split, lk)
-            else
-              let+ (left_end, mid_end), lk =
-                Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:value_ty range
-              in
-              let left_list =
-                Expr.list_sub ~lst:e ~start:Expr.zero_i ~size:left_end
-              in
-              let left_ty = Ty.array value_ty left_end in
-              let left_range = (Expr.zero_i, fst range) in
-              let mid_size = Expr.Infix.(mid_end - left_end) in
-              let mid_list =
-                Expr.list_sub ~lst:e ~start:left_end ~size:mid_size
-              in
-              let mid_ty = Ty.array value_ty mid_size in
-              let right_size = Expr.Infix.(length - mid_end) in
-              let right_list =
-                Expr.list_sub ~lst:e ~start:left_end ~size:right_size
-              in
-              let right_ty = Ty.array value_ty right_size in
-              let right_range = (snd range, end_as_index) in
-              let split =
-                `Three
-                  ( ( {
-                        content = ManySymbolicMaybeUninit left_list;
-                        ty = left_ty;
-                      },
-                      left_range ),
-                    ( { content = ManySymbolicMaybeUninit mid_list; ty = mid_ty },
-                      range ),
-                    ( {
-                        content = ManySymbolicMaybeUninit right_list;
-                        ty = right_ty;
-                      },
-                      right_range ) )
-              in
-              (split, lk)
-        in
-        let root = children_from_split split |> root_of_children in
-        (root, lk)
+        split_symbolic_array ~lk ~index_ty ~range ~structural_ty:structural.ty
+          ~end_as_index
+          ~constr:(fun e -> ManySymbolicMaybeUninit e)
+          e
+    | Symbolic e when Ty.is_array structural.ty ->
+        split_symbolic_array ~lk ~index_ty ~range ~structural_ty:structural.ty
+          ~end_as_index
+          ~constr:(fun e -> Symbolic e)
+          e
     | _ ->
         Fmt.failwith "Not implemented yet: extracting range from structural %a"
           pp_structural structural
@@ -1229,12 +1242,14 @@ module TreeBlock = struct
   let rec extract_laid_out_and_apply :
         'a.
         lk:LK.t ->
+        tyenv:Tyenv.t ->
         return_and_update:(t -> lk:LK.t -> (('a * t) * LK.t, Err.t) DR.t) ->
         range:Range.t ->
         index_ty:Ty.t ->
         laid_out ->
         (('a * laid_out) * LK.t, Err.t) DR.t =
-   fun ~lk ~(return_and_update : t -> lk:LK.t -> (('a * t) * LK.t, Err.t) DR.t)
+   fun ~lk ~tyenv
+       ~(return_and_update : t -> lk:LK.t -> (('a * t) * LK.t, Err.t) DR.t)
        ~range ~index_ty lc ->
     let* range, lk =
       Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
@@ -1273,12 +1288,12 @@ module TreeBlock = struct
           in
           (* leaf, we try splitting further *)
           let* new_node, lk =
-            extract_range_structural ~lk ~index_ty:lc.index_ty ~range:rel_range
-              structural
+            extract_range_structural ~lk ~tyenv ~index_ty:lc.index_ty
+              ~range:rel_range structural
           in
           let** (value, new_tree), lk =
-            extract_and_apply ~lk ~return_and_update ~index_ty ~range:rel_range
-              new_node
+            extract_and_apply ~lk ~tyenv ~return_and_update ~index_ty
+              ~range:rel_range new_node
           in
           let+ lc, lk =
             as_laid_out_child ~lk ~range:lc.range ~index_ty new_tree
@@ -1299,8 +1314,8 @@ module TreeBlock = struct
           if%sat Range.is_inside range left.range then (
             Logging.verbose (fun m -> m "Inside of left");
             let++ (value, left), lk =
-              extract_laid_out_and_apply ~lk ~return_and_update ~index_ty ~range
-                left
+              extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~index_ty
+                ~range left
             in
             let new_lc = laid_out_of_children left right in
             ((value, new_lc), lk))
@@ -1308,7 +1323,7 @@ module TreeBlock = struct
             if%sat Range.is_inside range right.range then (
               Logging.verbose (fun m -> m "Inside of right");
               let++ (value, right), lk =
-                extract_laid_out_and_apply ~lk ~return_and_update ~range
+                extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty right
               in
               let new_lc = laid_out_of_children left right in
@@ -1327,8 +1342,9 @@ module TreeBlock = struct
                 (* Rearrange left*)
                 let low_range = (low, mid) in
                 let** (_, left), lk =
-                  extract_laid_out_and_apply ~lk ~return_and_update:dont_update
-                    ~range:low_range ~index_ty left
+                  extract_laid_out_and_apply ~tyenv ~lk
+                    ~return_and_update:dont_update ~range:low_range ~index_ty
+                    left
                 in
                 let* (extracted, left_opt), lk =
                   extract ~lk left ~index_ty ~range:low_range
@@ -1337,14 +1353,15 @@ module TreeBlock = struct
                 let new_self =
                   laid_out_of_children (Option.get left_opt) right
                 in
-                extract_laid_out_and_apply ~lk ~return_and_update ~range
+                extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty new_self
               else
                 (* Rearrange right *)
                 let upper_range = (mid, high) in
                 let** (_, right), lk =
-                  extract_laid_out_and_apply ~lk ~return_and_update:dont_update
-                    ~range:upper_range ~index_ty right
+                  extract_laid_out_and_apply ~tyenv ~lk
+                    ~return_and_update:dont_update ~range:upper_range ~index_ty
+                    right
                 in
                 let* (extracted, right_opt), lk =
                   extract ~lk ~range:upper_range ~index_ty right
@@ -1353,12 +1370,12 @@ module TreeBlock = struct
                 let new_self =
                   laid_out_of_children left (Option.get right_opt)
                 in
-                extract_laid_out_and_apply ~lk ~return_and_update ~range
+                extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty new_self
       | _ -> failwith "Malformed: lazy without children"
 
   (** This applies [return_and_update] on the range given index by [index_ty] within the block [t] *)
-  and extract_and_apply ~return_and_update ~range ~index_ty t ~lk =
+  and extract_and_apply ~return_and_update ~tyenv ~range ~index_ty t ~lk =
     Logging.verbose (fun m -> m "extract_and_apply: %a" pp t);
     let* eq, lk =
       block_size_equal_ty_size ~lk ~block:t
@@ -1368,14 +1385,17 @@ module TreeBlock = struct
     else
       match t with
       | Structural s ->
-          let* new_node, lk = extract_range_structural ~lk ~index_ty ~range s in
-          extract_and_apply ~lk ~return_and_update ~range ~index_ty new_node
+          let* new_node, lk =
+            extract_range_structural ~tyenv ~lk ~index_ty ~range s
+          in
+          extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty
+            new_node
       | Laid_out_root lc ->
           let* range_as_in_lc, lk =
             Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
           in
           let++ (value, lc), lk =
-            extract_laid_out_and_apply ~lk ~return_and_update ~index_ty
+            extract_laid_out_and_apply ~lk ~tyenv ~return_and_update ~index_ty
               ~range:range_as_in_lc lc
           in
           ((value, Laid_out_root lc), lk)
@@ -1466,7 +1486,7 @@ module TreeBlock = struct
                This is not implemented yet. *)
             extend_on_right_if_needed ~lk ~range ~can_extend ~index_ty:ty t
           in
-          extract_and_apply ~lk ~return_and_update ~range ~index_ty:ty t
+          extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty:ty t
         else
           Fmt.failwith "negative offset in array in frame_slice : %a" Expr.pp
             current_offset
@@ -1506,7 +1526,7 @@ module TreeBlock = struct
               let* eq, lk =
                 block_size_equal_ty_size ~lk ~block:t ~ty:expected_ty
               in
-              if%ent eq then return_and_update t ~lk
+              if%sat eq then return_and_update t ~lk
               else
                 (* This is the case where we're accessing the first offset of
                    a slice without casting the pointer *)
@@ -1631,7 +1651,7 @@ module TreeBlock = struct
       ty
       size
       ~lk =
-    if%ent Formula.Infix.(size #== Expr.zero_i) then DR.ok (to_block, lk)
+    if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (to_block, lk)
     else
       let () =
         Logging.verbose (fun m ->
@@ -2391,7 +2411,7 @@ let substitution ~tyenv ~lk heap subst =
         | Some tree_left, Some _ ->
             (* Merging trees is... difficult
                So we transform one into assertions and then produce in the other *)
-            Logging.verbose (fun m -> m "Actualling merging two trees");
+            Logging.verbose (fun m -> m "Actually merging two trees");
             let map_without_left = MemMap.remove old_loc current_map in
             let left_cps =
               (* We create assertions but locating the content at the new loc *)
@@ -2404,6 +2424,9 @@ let substitution ~tyenv ~lk heap subst =
             let+ result =
               Delayed_list.fold_with_lk ~lk
                 (fun ~lk map (cp, args) ->
+                  Logging.verbose (fun m ->
+                      m "Heap.substitution: about to produce %s with %a" cp
+                        (Fmt.Dump.list Expr.pp) args);
                   produce_heap_cp ~core_pred:cp ~tyenv ~lk map args)
                 map_without_left left_cps
             in

@@ -95,6 +95,14 @@ module Conversion_error = struct
   type reason = Uninit | Missing
   type t = reason * Projections.op list
 
+  let pp ft ((reason, proj) : t) =
+    let open Fmt in
+    match reason with
+    | Uninit ->
+        pf ft "Uninitialised access with projections: %a" Projections.pp_path
+          proj
+    | Missing -> pf ft "Missing projections: %a" Projections.pp_path proj
+
   let lift ~loc ~proj (reason, additional_proj) =
     let total_proj = Projections.add_ops proj additional_proj in
     let qty =

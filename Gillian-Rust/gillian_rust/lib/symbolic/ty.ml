@@ -208,6 +208,11 @@ let is_array_of ~array_ty ~inner_ty =
   | Array { ty; _ } -> equal ty inner_ty
   | _ -> false
 
+let is_array ty =
+  match ty with
+  | Array _ -> true
+  | _ -> false
+
 let slice_elements = function
   | Slice t -> t
   | _ -> failwith "not a slice type"

@@ -78,7 +78,7 @@ let cp_to_name = function
   | Value -> "value"
   | Uninit -> "uninit"
   | Maybe_uninit -> "maybe_uninit"
-  | Many_maybe_uninits -> "many_maybe_uninit"
+  | Many_maybe_uninits -> "many_maybe_uninits"
   | Freed -> "freed"
   | Ty_size -> "ty_size"
   | Lft -> "lft"
@@ -99,4 +99,4 @@ let cp_of_name = function
   | "pcy_controller" -> Pcy_controller
   | "pcy_value" -> Pcy_value
   | "observation" -> Observation
-  | _ -> failwith "incorrect compilation: unknown core predicate"
+  | cp -> Fmt.failwith "incorrect compilation: unknown core predicate: %s" cp
