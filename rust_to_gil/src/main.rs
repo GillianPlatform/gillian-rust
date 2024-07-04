@@ -27,18 +27,9 @@ fn main() {
     if is_wrapper {
         args.remove(1);
     }
-
-    let gillian_args: GillianArgs = if is_wrapper {
-        serde_json::from_str(&std::env::var("GILLIAN_ARGS").unwrap())
-            .unwrap_or_else(|_| panic!("{}", std::env::var("GILLIAN_ARGS").unwrap()))
-    } else {
-        use lib_rtg::config::Parser;
-        let all_args = crate::config::Args::parse_from(&args);
-        args = all_args.rust_flags;
-        all_args.gillian
-    };
-
-    let normal_rustc = args.iter().any(|arg| arg.starts_with("--print"));
+    let normal_rustc = args
+        .iter()
+        .any(|arg| arg.starts_with("--print") || arg.starts_with("-vV"));
     let primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
     let has_contracts = args
@@ -53,6 +44,19 @@ fn main() {
             .run()
             .unwrap();
     } else {
+        let in_ui_test = std::env::var("IN_UI_TEST").is_ok();
+        let gillian_args: GillianArgs = if is_wrapper || in_ui_test {
+            serde_json::from_str(&std::env::var("GILLIAN_ARGS").unwrap()).unwrap_or_else(|err| {
+                panic!("{err} args: {}", std::env::var("GILLIAN_ARGS").unwrap())
+            })
+        } else {
+            // panic!("NOT NORMALRUSTC {is_wrapper:?} {:?}", std::env::args());
+            use lib_rtg::config::Parser;
+            let all_args = crate::config::Args::parse_from(&args);
+            args = all_args.rust_flags;
+            all_args.gillian
+        };
+
         args.push("-Cpanic=abort".to_owned());
         args.push("-Zmir-opt-level=0".to_owned());
         // args.push("--crate-type=lib".to_owned());

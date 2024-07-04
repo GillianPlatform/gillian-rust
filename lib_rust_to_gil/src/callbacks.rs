@@ -9,7 +9,8 @@ use rustc_session::config::OutputType;
 
 use super::config::GillianArgs;
 use crate::{
-    config::Config, global_env::GlobalEnv, metadata, prog_context::ProgCtx, utils::cleanup_logic::cleanup_logic
+    config::Config, global_env::GlobalEnv, metadata, prog_context::ProgCtx,
+    utils::cleanup_logic::cleanup_logic,
 };
 
 #[derive(Debug)]
@@ -102,14 +103,14 @@ impl Callbacks for ToGil {
 
 fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
     if let Some(path) = &config.output_file {
-        return PathBuf::from(path)
+        return PathBuf::from(path);
     }
     let outputs = tcx.output_filenames(());
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
     let libname = format!("{}-{}.gil", crate_name.as_str(), tcx.crate_types()[0]);
 
-    let mut directory : PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
+    let mut directory: PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
     directory.pop();
     directory.pop();
     let out_path = directory.join(&libname);
