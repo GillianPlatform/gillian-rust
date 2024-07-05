@@ -69,8 +69,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Expr::PVar(target)
             }
             &Rvalue::Len(place) => {
-                let expr = self.push_place_read(place, true);
-                expr.lst_len()
+                let gil_place = self.push_get_gil_place(place);
+                let (_loc, _proj, meta) = gil_place.into_loc_proj_meta();
+                meta.unwrap_or_else(|| fatal!(self, "Getting len of non-slice!?"))
             }
             Rvalue::Aggregate(box kind, ops) => {
                 let ops: Vec<Expr> = ops.iter().map(|op| self.push_encode_operand(op)).collect();

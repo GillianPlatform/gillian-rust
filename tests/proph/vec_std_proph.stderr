@@ -1,8 +1,8 @@
 warning: unused import: `lemma`
-  --> ../tests/proph/vec_std_proph.rs:11:25
+  --> ../tests/proph/vec_std_proph.rs:12:20
    |
-11 |     macros::{assertion, lemma, predicate, specification, prophecies::with_freeze_lemma_for_mutref},
-   |                         ^^^^^
+12 |         assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
+   |                    ^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
@@ -25,12 +25,12 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:62:5
+  --> ../tests/proph/vec_std_proph.rs:64:5
    |
-58 | enum AllocInit {
+60 | enum AllocInit {
    |      --------- variant in this enum
 ...
-62 |     Zeroed,
+64 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default

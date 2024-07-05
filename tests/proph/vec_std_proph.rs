@@ -8,7 +8,9 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, lemma, predicate, specification, prophecies::with_freeze_lemma_for_mutref},
+    macros::{
+        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
+    },
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,
@@ -110,8 +112,6 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
 //         all_own(Seq::<Option<T>>::repeat(None, cap), Seq::<Option<T::RepresentationTy>>::repeat(None, cap))
 //     )]
 // fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
-
-
 
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
@@ -336,20 +336,22 @@ impl<T: Ownable> Ownable for Vec<T> {
         //         * all_own(values, model)
         //         * (values.len() == model.len())
         // );
-        assertion!(|ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
-            * (self
-                == Vec {
-                    buf: RawVec { ptr, cap },
-                    len
-                })
-            * cap.own(cap)
-            * len.own(len)
-            * (len <= cap)
-            * ptr.as_ptr().points_to_slice(len, values)
-            * (len == values.len())
-            * (values.len() == model.len())
-            * all_own(values, model)
-            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
+        assertion!(
+            |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
+                * (self
+                    == Vec {
+                        buf: RawVec { ptr, cap },
+                        len
+                    })
+                * cap.own(cap)
+                * len.own(len)
+                * (len <= cap)
+                * ptr.as_ptr().points_to_slice(len, values)
+                * (len == values.len())
+                * (values.len() == model.len())
+                * all_own(values, model)
+                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+        )
     }
 }
 
@@ -414,7 +416,7 @@ impl<T: Ownable> Vec<T> {
             * $ix < current.len()$
          }
         exists rcurrent, rfuture.
-        ensures { 
+        ensures {
               ret.own((rcurrent, rfuture))
          }
     )]
@@ -426,6 +428,28 @@ impl<T: Ownable> Vec<T> {
         // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
         // which in turn is called by IndexMut<usize> for Vec<T>
         &mut slice[ix]
+    }
+
+    // #[specification(
+    //     forall current, future.
+    //     requires {
+    //           self.own((current, future))
+    //         * ix.own(ix)
+    //         * $ix < current.len()$
+    //      }
+    //     exists rcurrent, rfuture.
+    //     ensures {
+    //           ret.own((rcurrent, rfuture))
+    //      }
+    // )]
+    pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
+        freeze_pcl(self);
+        // from impl<T> ops::DerefMut for Vec<T>
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+        // which in turn is called by IndexMut<usize> for Vec<T>
+        &mut *slice.as_mut_ptr().add(ix)
     }
 }
 
