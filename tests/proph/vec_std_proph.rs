@@ -9,10 +9,11 @@ use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     macros::{
-        assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
+        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        specification,
     },
     mutref_auto_resolve,
-    prophecies::{Ownable, Prophecised},
+    prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
 };
 use std::alloc::{Allocator, Layout, LayoutError};
@@ -309,12 +310,23 @@ pub struct Vec<T> {
     len: usize,
 }
 
+#[extract_lemma(
+    forall ptr: Unique<T>, cap, len.
+    model m.
+    extract model mh: (T::RepresentationTy, T::RepresentationTy).
+    assuming { ix < len }
+    from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
+    extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
+    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+)]
+fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_pcl,
     predicate_name = vec_ref_mut_pcl,
     frozen_variables = [ptr, cap, len],
     inner_predicate_name = vec_ref_mut_inner_pcl,
-    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+    // resolve_macro_name = auto_resolve_vec_ref_mut_pcl
 )]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
@@ -409,15 +421,21 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[specification(
-        forall current, future.
+        forall curr, proph.
         requires {
-              self.own((current, future))
+              self.own((curr, proph))
             * ix.own(ix)
-            * $ix < current.len()$
+            * $ix < curr.len()$
          }
-        exists rcurrent, rfuture.
+        exists curr_ix, proph_ix.
         ensures {
-              ret.own((rcurrent, rfuture))
+              ret.own((curr_ix, proph_ix))
+            // * $    (proph.at(ix) == proph_ix)
+            //     && (curr.at(ix) == curr_ix)
+            //     && (forall < i : usize > 
+            //          (i <= 0 || i == ix || curr.len() <= i || curr.at(i) == proph.at(i))
+            //        )
+            //   $
          }
     )]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
@@ -427,7 +445,11 @@ impl<T: Ownable> Vec<T> {
 
         // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
         // which in turn is called by IndexMut<usize> for Vec<T>
-        &mut slice[ix]
+        let ret = &mut slice[ix];
+
+        assert!(ix < self.len);
+        let proph = extract_ith(self, ix);
+        ret.with_prophecy(proph)
     }
 
     // #[specification(

@@ -742,6 +742,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 vec![(var.0.to_string(), None)],
                 Box::new(self.compile_expression_inner(*body)),
             ),
+            ExprKind::PtrToMutRef { ptr } => {
+                GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
+            }
         }
     }
 }

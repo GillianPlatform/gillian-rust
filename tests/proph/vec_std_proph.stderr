@@ -1,20 +1,19 @@
-warning: unused import: `lemma`
-  --> ../tests/proph/vec_std_proph.rs:12:20
-   |
-12 |         assertion, lemma, predicate, prophecies::with_freeze_lemma_for_mutref, specification,
-   |                    ^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused macro definition: `auto_resolve_vec_ref_mut_pcl`
-   --> ../tests/proph/vec_std_proph.rs:317:26
-    |
-317 |     resolve_macro_name = auto_resolve_vec_ref_mut_pcl
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `#[warn(unused_macros)]` on by default
-
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+warning: unused variable: `vec`
+   --> ../tests/proph/vec_std_proph.rs:322:32
+    |
+322 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+    |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `ix`
+   --> ../tests/proph/vec_std_proph.rs:322:53
+    |
+322 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+    |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
+
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
  --> ../tests/proph/vec_std_proph.rs:5:12
@@ -25,20 +24,20 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:64:5
+  --> ../tests/proph/vec_std_proph.rs:65:5
    |
-60 | enum AllocInit {
+61 | enum AllocInit {
    |      --------- variant in this enum
 ...
-64 |     Zeroed,
+65 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/proph/vec_std_proph.rs:323:12
+   --> ../tests/proph/vec_std_proph.rs:335:12
     |
-323 |     fn own(self, model: Self::RepresentationTy) {
+335 |     fn own(self, model: Self::RepresentationTy) {
     |            ^^^^ help: convert the identifier to snake case: `reference`
     |
     = note: `#[warn(non_snake_case)]` on by default

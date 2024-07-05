@@ -460,15 +460,17 @@ fn make_is_unique_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -> Asser
         (proj.clone(), Type::ListType),
     ]);
     if sized {
-        let ptr = Expr::EList(vec![loc, proj]);
-        types.star(e.eq_f([Expr::EList(vec![ptr]), vec![].into()]).into_asrt())
+        let ptr: Expr = [loc, proj].into();
+        let nonnull: Expr = [ptr].into();
+        let unique: Expr = [nonnull, vec![].into()].into();
+        types.star(e.eq_f(unique).into_asrt())
     } else {
         let len = temp_lvar(fresh);
         let len_type = Assertion::Types(vec![(len.clone(), Type::IntType)]);
         let ptr = Expr::EList(vec![[loc, proj].into(), len]);
-        types
-            .star(len_type)
-            .star(e.eq_f([Expr::EList(vec![ptr]), vec![].into()]).into_asrt())
+        let nonnull: Expr = [ptr].into();
+        let unique: Expr = [nonnull, vec![].into()].into();
+        types.star(len_type).star(e.eq_f(unique).into_asrt())
     }
 }
 

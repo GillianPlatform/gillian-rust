@@ -110,6 +110,9 @@ pub enum ExprKind<'tcx> {
         var: (Symbol, Ty<'tcx>),
         body: Box<Expr<'tcx>>,
     },
+    PtrToMutRef {
+        ptr: Box<Expr<'tcx>>,
+    },
 }
 
 impl<'tcx> ExprKind<'tcx> {
@@ -281,11 +284,16 @@ pub struct SpecTerm<'tcx> {
 pub struct GilsoniteBuilder<'tcx> {
     thir: Thir<'tcx>,
     tcx: TyCtxt<'tcx>,
+    pcy_mode: bool,
 }
 
 impl<'tcx> GilsoniteBuilder<'tcx> {
-    pub fn new(thir: Thir<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        Self { thir, tcx }
+    pub fn new(thir: Thir<'tcx>, tcx: TyCtxt<'tcx>, pcy_mode: bool) -> Self {
+        Self {
+            thir,
+            tcx,
+            pcy_mode,
+        }
     }
 
     pub(crate) fn build_assert(&self, expr: ExprId) -> Assert<'tcx> {
@@ -582,6 +590,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let body = Self {
                     thir: thir.borrow().clone(),
                     tcx: self.tcx,
+                    pcy_mode: self.pcy_mode,
                 }
                 .build_formula_body(expr);
                 Formula {
@@ -619,6 +628,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let body = Self {
                     thir: thir.borrow().clone(),
                     tcx: self.tcx,
+                    pcy_mode: self.pcy_mode,
                 }
                 .build_expression(expr);
                 mk_quant((name.name, ty), Box::new(body))
@@ -832,6 +842,23 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let arg = &self.thir[inner_id];
 
                 match arg.kind {
+                    thir::ExprKind::Deref { arg: e }
+                        if matches!(b, BorrowKind::Mut { .. }) && self.pcy_mode =>
+                    {
+                        let inner_ty = self.thir[e].ty;
+                        if crate::logic::ty_utils::is_mut_ref(inner_ty) {
+                            // Reborrowing a mut-ref, it is already of the right shape
+                            self.build_expression_kind(e)
+                        } else if inner_ty.is_any_ptr() {
+                            // Reborrowing e.g. a raw pointer, we need to add the prophecy
+                            let inner = self.build_expression(e);
+                            ExprKind::PtrToMutRef {
+                                ptr: Box::new(inner),
+                            }
+                        } else {
+                            self.tcx.dcx().fatal(format!("Reborrowing something of type {:?} that is not a pointer in logic?", inner_ty));
+                        }
+                    }
                     thir::ExprKind::Deref { arg: e } => self.build_expression_kind(e),
                     thir::ExprKind::Field { lhs, name, .. } => {
                         let thir::ExprKind::Deref { arg } = &self.thir[self.peel_scope(lhs)].kind
@@ -877,6 +904,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let lhs = self.build_expression(*lhs);
                 let rhs = self.build_expression(*rhs);
                 let op = match op {
+                    mir::BinOp::Add => BinOp::Add,
                     mir::BinOp::Sub => BinOp::Sub,
                     mir::BinOp::Shl => BinOp::Shl,
                     mir::BinOp::Eq => BinOp::Eq,
@@ -1096,7 +1124,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                 let (thir, expr) = self.tcx.thir_body(clos.closure_id).unwrap();
 
-                let inner = Self::new(thir.borrow().clone(), self.tcx);
+                let inner = Self::new(thir.borrow().clone(), self.tcx, self.pcy_mode);
                 let x = k(&inner, expr);
 
                 (lvars, x)

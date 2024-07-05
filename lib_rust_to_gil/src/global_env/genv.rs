@@ -282,7 +282,7 @@ impl<'tcx> GlobalEnv<'tcx> {
 
         self.assertions.insert(def_id, |_| {
             let (thir, e) = get_thir!(self, def_id);
-            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+            let g = GilsoniteBuilder::new(thir.clone(), self.tcx(), self.config.prophecies);
             Box::new(g.build_predicate(e))
         })
     }
@@ -303,7 +303,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.spec_terms
             .insert(def_id, |_| {
                 let (thir, e) = get_thir!(self, def_id);
-                let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
+                let g = GilsoniteBuilder::new(thir.clone(), self.tcx(), self.config.prophecies);
                 let mut spec = g.build_spec(e);
                 spec.trusted = is_trusted(def_id, self.tcx());
                 Box::new(Some(spec))
