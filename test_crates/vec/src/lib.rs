@@ -55,6 +55,12 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[cfg_attr(gillian, gillian::trusted)]
+    #[creusot_contracts::trusted]
+    pub fn push(&mut self, e: T) {
+        todo!()
+    }
+
+    #[cfg_attr(gillian, gillian::trusted)]
     // #[creusillian::ensures(ret@ == (self)@.len())]
     #[creusot_contracts::trusted]
     pub fn len(&self) -> usize {

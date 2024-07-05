@@ -3,7 +3,7 @@ use rustc_ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
-    mir::{self, interpret::Scalar, BorrowKind, ConstValue},
+    mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
     thir::{self, AdtExpr, ClosureExpr, ExprId, LogicalOp, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
@@ -61,6 +61,10 @@ pub enum ExprKind<'tcx> {
         left: Box<Expr<'tcx>>,
         op: BinOp,
         right: Box<Expr<'tcx>>,
+    },
+    UnOp {
+        op: UnOp,
+        arg: Box<Expr<'tcx>>,
     },
     Constructor {
         def_id: DefId,
@@ -186,6 +190,8 @@ pub enum BinOp {
     Shl,
     And,
     Or,
+    Ge,
+    Gt,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -881,6 +887,10 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     mir::BinOp::Eq => BinOp::Eq,
                     mir::BinOp::Lt => BinOp::Lt,
                     mir::BinOp::Le => BinOp::Le,
+                    mir::BinOp::Ge => BinOp::Ge,
+                    mir::BinOp::Gt => BinOp::Gt,
+                    mir::BinOp::Add => BinOp::Add,
+                    mir::BinOp::Sub => BinOp::Sub,
                     _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 
@@ -902,6 +912,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     left: Box::new(lhs),
                     op,
                     right: Box::new(rhs),
+                }
+            }
+            thir::ExprKind::Unary { op, arg } => {
+                let arg = self.build_expression(*arg);
+
+                ExprKind::UnOp {
+                    op: *op, arg: Box::new(arg),
                 }
             }
             thir::ExprKind::Call {

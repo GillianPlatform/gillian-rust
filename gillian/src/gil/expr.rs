@@ -539,6 +539,28 @@ impl Expr {
         }
     }
 
+    pub fn i_ge(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => Expr::bool(i >= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e2),
+                right_operand: Box::new(e1),
+                operator: BinOp::ILessThanEqual,
+            },
+        }
+    }
+
+    pub fn f_ge(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Num(i)), Expr::Lit(Literal::Num(j))) => Expr::bool(i >= j),
+            _ => Expr::BinOp {
+                left_operand: Box::new(e2),
+                right_operand: Box::new(e1),
+                operator: BinOp::FLessThanEqual,
+            },
+        }
+    }
+
     pub fn i_shl(e1: Expr, e2: Expr) -> Self {
         match (&e1, &e2) {
             (Expr::Lit(Literal::Int(i)), Expr::Lit(Literal::Int(j))) => {
