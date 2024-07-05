@@ -19,27 +19,37 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             | Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.push_encode_binop(binop, left, right)
             }
-            &Rvalue::Ref(_region, _, place) => {
+            &Rvalue::Ref(_region, bk, place) => {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
-                if self.prophecies_enabled()
-                    && matches!(
-                        self.rvalue_ty(rvalue).kind(),
-                        TyKind::Ref(_, _, Mutability::Mut)
-                    )
-                {
-                    // The case of mutable references, what do we do with the prophecy?
-                    if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
-                        // This will just create a new prophecy variable. This is not wrong at all,
-                        // as we can always allocate ghost state. But it's not always the right thing to do.
-                        let local = Expr::PVar(self.name_from_local(place.local));
-                        self.push_read_gil_place(
-                            GilPlace::base(local, self.place_ty(place).ty),
-                            self.rvalue_ty(rvalue),
+                if self.prophecies_enabled() && matches!(bk, BorrowKind::Mut { .. }) {
+                    let local_ty = self.place_ty(place.local.into()).ty;
+                    if place.projection.len() == 1
+                        && place.projection[0] == PlaceElem::Deref
+                        && ty_utils::is_mut_ref(local_ty)
+                    {
+                        // If we're just copying a reference, we want to make sure we don't
+                        // create a new prophecy but simply copy it.
+                        // We hardcode that case.
+                        // Note that, the choice of prophecy has absolutely no impact on soundness.
+                        // Any value would be valid, but the wrong value will prevent verification to pass.
+                        // So we are taking absolutely no soundness risk in hardcoding some choices here.
+                        let cur_gil_place =
+                            GilPlace::base(Expr::PVar(self.name_from_local(place.local)), local_ty);
+                        let copied = self.temp_var();
+                        let cur_typ = self.place_ty_until(place, 0);
+                        self.push_read_gil_place_in_memory(
+                            copied.clone(),
+                            cur_gil_place,
+                            cur_typ.ty,
                             true,
-                        )
+                        );
+                        // The difference with push_get_gil_place is that push_get_gil_place will only return
+                        // the place in memory, and therefore peels the prophecy, returning Expr::PVar(copied).lnth(0)
+                        Expr::PVar(copied)
                     } else {
+                        // Otherwise we do create new prophecy.
                         let gil_place = self.push_get_gil_place(place);
                         let prophecy = self.push_alloc_prophecy();
                         [gil_place.into_expr_ptr(), prophecy].into()

@@ -109,13 +109,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) {
         let (location, projection, meta) = gil_place.into_loc_proj_meta();
         let action = match meta {
-            Some(size) => MemoryAction::LoadSlice {
-                location,
-                projection,
-                size,
-                copy,
-                typ,
-            },
+            Some(_) => fatal!(self, "Should not be reading a fat pointer directly!"),
             None => MemoryAction::LoadValue {
                 location,
                 projection,
@@ -148,13 +142,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     ) {
         let (location, projection, meta) = gil_place.into_loc_proj_meta();
         let action = match meta {
-            Some(size) => MemoryAction::StoreSlice {
-                location,
-                projection,
-                size,
-                typ,
-                value,
-            },
+            Some(_) => fatal!(self, "Should not be writing to a fat pointer directly!"),
             None => MemoryAction::StoreValue {
                 location,
                 projection,

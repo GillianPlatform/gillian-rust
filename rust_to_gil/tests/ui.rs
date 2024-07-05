@@ -57,6 +57,8 @@ fn build_config(path: PathBuf, prophecies: bool) -> Config {
         ));
     }
 
+    // program.envs.push(("RUST_LOG".into(), Some("trace".into())));
+
     let mut config = Config {
         program,
         output_conflict_handling: OutputConflictHandling::Error,

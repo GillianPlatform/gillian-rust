@@ -4,8 +4,6 @@ pub(crate) mod action_names {
     pub(crate) const ALLOC: &str = "alloc";
     pub(crate) const LOAD_VALUE: &str = "load_value";
     pub(crate) const STORE_VALUE: &str = "store_value";
-    pub(crate) const LOAD_SLICE: &str = "load_slice";
-    pub(crate) const STORE_SLICE: &str = "store_slice";
     pub(crate) const DEINIT: &str = "deinit";
     pub(crate) const FREE: &str = "free";
     pub(crate) const LOAD_DISCR: &str = "load_discr";
@@ -22,20 +20,6 @@ pub enum MemoryAction<'tcx> {
     StoreValue {
         location: Expr,
         projection: Expr,
-        typ: Ty<'tcx>,
-        value: Expr,
-    },
-    LoadSlice {
-        location: Expr,
-        projection: Expr,
-        size: Expr,
-        typ: Ty<'tcx>,
-        copy: bool,
-    },
-    StoreSlice {
-        location: Expr,
-        projection: Expr,
-        size: Expr,
         typ: Ty<'tcx>,
         value: Expr,
     },
@@ -116,39 +100,6 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     variable: target,
                     action_name: action_names::STORE_VALUE.to_string(),
                     parameters: vec![location, projection, encoded_typ, value],
-                })
-            }
-            MemoryAction::LoadSlice {
-                location,
-                projection,
-                size,
-                typ,
-                copy,
-            } => {
-                let temp = self.temp_var();
-                let encoded_typ = self.encode_type(typ).into();
-                self.push_cmd(Cmd::Action {
-                    variable: temp.clone(),
-                    action_name: action_names::LOAD_SLICE.to_string(),
-                    parameters: vec![location, projection, size, encoded_typ, Expr::bool(copy)],
-                });
-                self.push_cmd(Cmd::Assignment {
-                    variable: target,
-                    assigned_expr: Expr::lnth(Expr::PVar(temp), 0),
-                })
-            }
-            MemoryAction::StoreSlice {
-                location,
-                projection,
-                size,
-                typ,
-                value,
-            } => {
-                let encoded_typ = self.encode_type(typ).into();
-                self.push_cmd(Cmd::Action {
-                    variable: target,
-                    action_name: action_names::STORE_SLICE.to_string(),
-                    parameters: vec![location, projection, size, encoded_typ, value],
                 })
             }
             MemoryAction::Deinit {

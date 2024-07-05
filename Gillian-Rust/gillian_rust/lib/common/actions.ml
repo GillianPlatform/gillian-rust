@@ -52,8 +52,6 @@ let of_name = function
   | "pcy_assign" -> Pcy_assign
   | "pcy_resolve" -> Pcy_resolve
   | "check_obs_sat" -> Check_obs_sat
-  | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
-  | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
