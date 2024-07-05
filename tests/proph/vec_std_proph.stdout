@@ -28,25 +28,83 @@ pred "all_own::<T>"(+pty_T0, +vs, reprs):
   * (vs == #vs);
 
 
-pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
-  (0i i<# #lvar_0) * (#self == {{ {{ #ptr, #cap }}, #len }})
+pred "vec_ref_mut_inner_pcl::<T>"(+pLft_0, +pty_T0, +REFERENCE, ptr, cap, len):
+  (0i i<# #lvar_3) * (#SELF == {{ {{ #ptr, #cap }}, #len }})
   * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
   * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
   * (#len i<=# #cap)
-  * <value>(l-nth(#lvar_1, 0i), l-nth(#lvar_1, 1i), {{ "array", pty_T0, #len }}; #values)
+  * <value>(l-nth(#lvar_4, 0i), l-nth(#lvar_4, 1i), {{ "array", pty_T0, #len }}; #values)
   * (#len == l-len #values)
   * (l-len #values == l-len #model)
   * "all_own::<T>"(pty_T0, #values, #model)
-  * <many_maybe_uninits>(l-nth(#lvar_3, 0i), l-nth(#lvar_3, 1i), pty_T0, ((#cap) i- (#len)); #rest)
-  * "std::mem::size_of"(pty_T0, #lvar_0)
-  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_1)
-  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_2)
-  * "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, #lvar_2, #len, #lvar_3)
+  * <many_maybe_uninits>(l-nth(#lvar_6, 0i), l-nth(#lvar_6, 1i), pty_T0, ((#cap) i- (#len)); #rest)
+  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #SELF)
+  * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
+  * "std::mem::size_of"(pty_T0, #lvar_3)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_4)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_5)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, #lvar_5, #len, #lvar_6)
+  * types(#lvar_7: Obj, #lvar_8: List, #lvar_9: Obj)
+  * (#REFERENCE == {{ {{ #lvar_7, #lvar_8 }}, #lvar_9 }})
+  * types(#lvar_10: Obj, #lvar_11: List)
+  * (#ptr == {{ {{ {{ #lvar_10, #lvar_11 }} }}, {{  }} }})
+  * types(#cap: Int)
+  * types(#len: Int)
+  * (len == #len)
+  * (cap == #cap)
+  * (ptr == #ptr)
+  * (REFERENCE == #REFERENCE);
+guard: <lft>(pLft_0; true);
+
+pred "vec_ref_mut_pcl::<T>"(+pLft_gil, +pty_T0, +REFERENCE, model, ptr, cap, len):
+  (#model == {{ #current, #lvar_12 }})
+  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
+  * "vec_ref_mut_inner_pcl::<T>"(pLft_gil, pty_T0, #REFERENCE, #ptr, #cap, #len)
+  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_12)
+  * types(#lvar_13: Obj, #lvar_14: List, #lvar_15: Obj)
+  * (#REFERENCE == {{ {{ #lvar_13, #lvar_14 }}, #lvar_15 }})
+  * types(#lvar_16: Obj, #lvar_17: List)
+  * (#ptr == {{ {{ {{ #lvar_16, #lvar_17 }} }}, {{  }} }})
+  * types(#cap: Int)
+  * types(#len: Int)
+  * (len == #len)
+  * (cap == #cap)
+  * (ptr == #ptr)
+  * (model == #model)
+  * (REFERENCE == #REFERENCE);
+
+
+pred "<Vec<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
+  (0i i<# #lvar_18) * (#self == {{ {{ #ptr, #cap }}, #len }})
+  * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
+  * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
+  * (#len i<=# #cap)
+  * <value>(l-nth(#lvar_19, 0i), l-nth(#lvar_19, 1i), {{ "array", pty_T0, #len }}; #values)
+  * (#len == l-len #values)
+  * (l-len #values == l-len #model)
+  * "all_own::<T>"(pty_T0, #values, #model)
+  * <many_maybe_uninits>(l-nth(#lvar_21, 0i), l-nth(#lvar_21, 1i), pty_T0, ((#cap) i- (#len)); #rest)
+  * "std::mem::size_of"(pty_T0, #lvar_18)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_19)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_20)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, #lvar_20, #len, #lvar_21)
   * (model == #model)
   * (self == #self);
 
 
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
+
+
+pred "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>"(pLft_erased, pty_T0, #self)
+  * <value_observer>(l-nth(#self, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (model == #model)
+  * (self == #self);
 
 
 pred "<usize as gilogic::prophecies::Ownable>::own"(+self, model):
@@ -57,9 +115,9 @@ pred "<usize as gilogic::prophecies::Ownable>::own"(+self, model):
   * (self == #self);
 
 
-pred "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
   (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>"(pLft_erased, pty_T0, #self)
+  * "gilogic::prophecies::mut_ref_inner_proph::<T>"(pLft_erased, pty_T0, #self)
   * <value_observer>(l-nth(#self, 1i); #a)
   * (#lvar_0 == #b)
   * <pcy_value>(l-nth(#self, 1i); #lvar_0)
@@ -78,6 +136,43 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>"(+pLft_a, +pty_T0, +thi
   * (this == #this);
 guard: <lft>(pLft_a; true);
 
+pred "gilogic::prophecies::mut_ref_inner_proph::<T>"(+pLft_a, +pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+guard: <lft>(pLft_a; true);
+
+pred "vec_ref_mut_inner_pcl::<T>$$inner"(+pty_T0, +REFERENCE, ptr, cap, len):
+  (0i i<# #lvar_3) * (#SELF == {{ {{ #ptr, #cap }}, #len }})
+  * "<usize as gilogic::prophecies::Ownable>::own"(#cap, #cap)
+  * "<usize as gilogic::prophecies::Ownable>::own"(#len, #len)
+  * (#len i<=# #cap)
+  * <value>(l-nth(#lvar_4, 0i), l-nth(#lvar_4, 1i), {{ "array", pty_T0, #len }}; #values)
+  * (#len == l-len #values)
+  * (l-len #values == l-len #model)
+  * "all_own::<T>"(pty_T0, #values, #model)
+  * <many_maybe_uninits>(l-nth(#lvar_6, 0i), l-nth(#lvar_6, 1i), pty_T0, ((#cap) i- (#len)); #rest)
+  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #SELF)
+  * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
+  * "std::mem::size_of"(pty_T0, #lvar_3)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_4)
+  * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_5)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(pty_T0, #lvar_5, #len, #lvar_6)
+  * types(#lvar_7: Obj, #lvar_8: List, #lvar_9: Obj)
+  * (#REFERENCE == {{ {{ #lvar_7, #lvar_8 }}, #lvar_9 }})
+  * types(#lvar_10: Obj, #lvar_11: List)
+  * (#ptr == {{ {{ {{ #lvar_10, #lvar_11 }} }}, {{  }} }})
+  * types(#cap: Int)
+  * types(#len: Int)
+  * (len == #len)
+  * (cap == #cap)
+  * (ptr == #ptr)
+  * (REFERENCE == #REFERENCE);
+
+
 pred "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>$$inner"(+pty_T0, +this):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
   * "<Vec<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
@@ -85,6 +180,19 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<Vec<T>>$$inner"(+pty_T0, +this)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (this == #this);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+
+
+lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #ptr, #cap, #len) * <lft>(#pLft_0; true)]]
 
 
 proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) {
@@ -957,6 +1065,21 @@ proc alloc_guard(alloc_size) {
   rlab: return
 };
 
+spec "__auto_resolve_vec_ref_mut_pcl_just_resolve"(pLft_0, pty_T0, p)
+trusted
+[[ "vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #p, #m, #ptr, #cap, #len) * types(#len: Int) * types(#cap: Int) * types(#lvar_3: Obj, #lvar_4: List) * (#ptr == {{ {{ {{ #lvar_3, #lvar_4 }} }}, {{  }} }}) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+normal
+
+proc "__auto_resolve_vec_ref_mut_pcl_just_resolve"(pLft_0, pty_T0, p) {
+        m_1p := p;
+  bb0:  g_0 := [new_lft]();
+        pLft_3 := l-nth(g_0, 0i);
+        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
+        m_3 := g_1;
+  rlab: return
+};
+
 spec "Vec::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
 [["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
@@ -1142,6 +1265,92 @@ proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_19, 0i), l-nth(m_19, 1i), {{ "tuple", {{ "usize", "bool" }} }});
+        return
+};
+
+spec "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix)
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix) * <observation>(((#ix) i< (l-len #current)); ) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, {{ #rcurrent, #rfuture }}) * <lft>(#pLft_0; true)]]
+normal
+
+proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, g_0);
+        m_2ix := ix;
+        m_3 := [alloc]({{ "ref", true, pty_T0 }});
+        m_6slice := [alloc]({{ "ref", true, {{ "slice", pty_T0 }} }});
+        m_7 := [alloc]({{ "ref", true, {{ "slice", pty_T0 }} }});
+        m_11 := [alloc]({{ "ref", true, pty_T0 }});
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_13 := l-nth(g_3, 0i);
+        m_5 := g_1;
+        g_4 := m_5;
+        apply "freeze_pcl::<T>"(pLft_0,pty_T0,g_4);
+        goto bb1;
+  bb1:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_5 := l-nth(g_6, 0i);
+        g_7 := [new_lft]();
+        pLft_16 := l-nth(g_7, 0i);
+        m_9 := g_5;
+        g_8 := m_9;
+        g_9 := "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, g_8);
+        m_8 := g_9;
+        goto bb2;
+  bb2:  g_11 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }}, true);
+        g_10 := l-nth(g_11, 0i);
+        g_13 := [load_value](l-nth(l-nth(g_10, 0i), 0i), l+(l-nth(l-nth(g_10, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "Vec", {{ pty_T0 }} }} }} }}), "usize", true);
+        g_12 := l-nth(g_13, 0i);
+        m_10 := g_12;
+        g_14 := [new_lft]();
+        pLft_15 := l-nth(g_14, 0i);
+        g_15 := m_8;
+        g_16 := m_10;
+        g_17 := "std::slice::from_raw_parts_mut"(pLft_15, pty_T0, g_15, g_16);
+        u := [store_value](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }}, g_17);
+        goto bb3;
+  bb3:  g_19 := [load_slice](l-nth(l-nth(m_7, 0i), 0i), l-nth(l-nth(m_7, 0i), 1i), l-nth(m_7, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }}, true);
+        g_18 := l-nth(g_19, 0i);
+        g_20 := [new_lft]();
+        pLft_14 := l-nth(g_20, 0i);
+        u := [store_value](l-nth(m_6slice, 0i), l-nth(m_6slice, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }}, g_18);
+        m_12 := m_2ix;
+        g_22 := [load_value](l-nth(m_6slice, 0i), l-nth(m_6slice, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }}, true);
+        g_21 := l-nth(g_22, 0i);
+        g_24 := [load_slice](l-nth(l-nth(l-nth(g_21, 0i), 0i), 0i), l-nth(l-nth(l-nth(g_21, 0i), 0i), 1i), l-nth(l-nth(g_21, 0i), 1i), {{ "slice", pty_T0 }}, true);
+        g_23 := l-nth(g_24, 0i);
+        m_13 := l-len g_23;
+        m_14 := ((m_12) i< (m_13));
+        g_25 := m_14;
+        u := "i__lang_assert"(g_25, "bounds check failed");
+        goto bb4;
+  bb4:  g_27 := [load_value](l-nth(m_6slice, 0i), l-nth(m_6slice, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }}, true);
+        g_26 := l-nth(g_27, 0i);
+        g_28 := [pcy_alloc]();
+        g_29 := [new_lft]();
+        pLft_17 := l-nth(g_29, 0i);
+        u := [store_value](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(l-nth(l-nth(g_26, 0i), 0i), 0i), l+(l-nth(l-nth(l-nth(g_26, 0i), 0i), 1i), {{ {{ "+", false, m_12, pty_T0 }} }}) }}, l-nth(g_28, 0i) }});
+        g_31 := [load_value](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_30 := l-nth(g_31, 0i);
+        g_32 := [new_lft]();
+        pLft_12 := l-nth(g_32, 0i);
+        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, g_30);
+        g_34 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_33 := l-nth(g_34, 0i);
+        g_35 := [new_lft]();
+        pLft_10 := l-nth(g_35, 0i);
+        m_0 := g_33;
+        g_36 := m_0;
+        ret := g_36;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }});
+        u := [free](l-nth(m_6slice, 0i), l-nth(m_6slice, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }});
+        u := [free](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }});
+        u := [free](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, pty_T0 }});
         return
 };
 

@@ -406,12 +406,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .map(|a| self.compile_assertion(a.1))
             .collect();
 
-        let mut real_sig = build_signature(
-            self.global_env,
-            self.body_id,
-            self.args,
-            &mut self.sig.temp_gen,
-        );
+        let mut real_sig =
+            build_signature(self.global_env, self.body_id, self.args, self.sig.temp_gen);
 
         let mut definitions = Vec::new();
 

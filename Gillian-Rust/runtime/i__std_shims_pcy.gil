@@ -9,6 +9,11 @@ proc "<&mut T std::convert::Into<U>>::into"(pLft_a, mutT, U, ref) {
      return
 };
 
+proc "std::slice::from_raw_parts_mut"(lft, T, ptr, len) {
+        ret := {{ {{ ptr, len }}, null }};
+        return
+};
+
 proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
          ptr := l-nth(p, 0i);
          discr := [load_discr](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "adt", "Option", {{ T }} }});

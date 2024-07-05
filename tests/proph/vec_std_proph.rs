@@ -8,7 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, lemma, predicate, specification},
+    macros::{assertion, lemma, predicate, specification, prophecies::with_freeze_lemma_for_mutref},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised},
     Seq,
@@ -16,6 +16,7 @@ use gilogic::{
 use std::alloc::{Allocator, Layout, LayoutError};
 use std::mem::{self, SizedTypeProperties};
 use std::ptr::{NonNull, Unique};
+use std::slice;
 
 macro_rules! branch {
     ($cond:expr) => {
@@ -110,7 +111,8 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
 //     )]
 // fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
 
-// Modified to remove alloctaor
+
+
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
@@ -307,6 +309,13 @@ pub struct Vec<T> {
     len: usize,
 }
 
+#[with_freeze_lemma_for_mutref(
+    lemma_name = freeze_pcl,
+    predicate_name = vec_ref_mut_pcl,
+    frozen_variables = [ptr, cap, len],
+    inner_predicate_name = vec_ref_mut_inner_pcl,
+    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+)]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
@@ -327,7 +336,7 @@ impl<T: Ownable> Ownable for Vec<T> {
         //         * all_own(values, model)
         //         * (values.len() == model.len())
         // );
-        assertion!(|ptr, cap, len, values, rest| (std::mem::size_of::<T>() > 0)
+        assertion!(|ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
             * (self
                 == Vec {
                     buf: RawVec { ptr, cap },
@@ -396,13 +405,59 @@ impl<T: Ownable> Vec<T> {
         }
         mutref_auto_resolve!(self);
     }
+
+    #[specification(
+        forall current, future.
+        requires {
+              self.own((current, future))
+            * ix.own(ix)
+            * $ix < current.len()$
+         }
+        exists rcurrent, rfuture.
+        ensures { 
+              ret.own((rcurrent, rfuture))
+         }
+    )]
+    pub fn index_mut(&mut self, ix: usize) -> &mut T {
+        freeze_pcl(self);
+        // from impl<T> ops::DerefMut for Vec<T>
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+        // which in turn is called by IndexMut<usize> for Vec<T>
+        &mut slice[ix]
+    }
 }
 
-// impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
-//     type Output = I::Output;
+// We can't compile this at the moment because of poor_mans_unification...
+// unsafe trait MySliceIndexMut<T>
+// where
+//     T: ?Sized,
+// {
+//     type Output: ?Sized;
+//     fn get_unchecked_mut(self, slice: &mut T) -> *mut Self::Output;
+//     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
+//     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
+// }
 
-//     #[inline]
-//     fn index_mut(&mut self, index: I) -> &mut Self::Output {
-//         IndexMut::index_mut(&mut **self, index)
+// unsafe impl<T> MySliceIndexMut<[T]> for usize {
+//     type Output = T;
+
+//     fn index_mut(self, slice: &mut [T]) -> &mut T {
+//         &mut (*slice)[self]
+//     }
+
+//     fn get_unchecked_mut(self, slice: &mut [T]) -> *mut T {
+//         // SAFETY: see comments for `get_unchecked` above.
+//         unsafe { slice.as_mut_ptr().add(self) }
+//     }
+
+//     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
+//         // SAFETY: `self` is checked to be in bounds.
+//         if self < slice.len() {
+//             unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
+//         } else {
+//             None
+//         }
 //     }
 // }

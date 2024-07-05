@@ -5,7 +5,7 @@ use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 use indexmap::IndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::Symbol;
 
 use crate::{
@@ -97,7 +97,7 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
         let all_vars: Vec<_> = self.all_vars().collect();
         for (nm, ty) in all_vars {
             let lvar = Expr::LVar(format!("#{nm}"));
-            wfs.push(make_wf_asrt(ctx, &mut self.temp_gen, lvar, ty));
+            wfs.push(make_wf_asrt(ctx, self.temp_gen, lvar, ty));
         }
 
         wfs
@@ -388,16 +388,20 @@ fn make_wf_asrt<'tcx>(
     ty: Ty<'tcx>,
 ) -> Assertion {
     // The type here is already substituted
-    if ty.is_any_ptr() {
-        if ty_utils::is_mut_ref(ty) && ctx.config.prophecies {
-            make_is_mut_ref_proph_ref_asrt(temps, e)
-        } else {
-            make_is_ptr_asrt(temps, e)
+    if let Some(inner_ty) = ty_utils::peel_mut_ref(ty) {
+        if ctx.config.prophecies {
+            let sized = !(inner_ty.is_slice() || inner_ty.is_str());
+            return make_is_mut_ref_proph_asrt(temps, e, sized);
         }
+    }
+    if let Some(inner_ty) = ty_utils::peel_any_ptr(ty) {
+        let sized = !(inner_ty.is_slice() || inner_ty.is_str());
+        make_is_ptr_asrt(temps, e, sized)
     } else if ty.is_integral() {
         Assertion::Types(vec![(e, Type::IntType)])
-    } else if is_nonnull(ctx.tcx(), ty) {
-        make_is_nonnull_asrt(temps, e)
+    } else if let Some(inner_ty) = ty_utils::peel_nonnull(ty, ctx.tcx()) {
+        let sized = !(inner_ty.is_slice() || inner_ty.is_str());
+        make_is_nonnull_asrt(temps, e, sized);
     } else if is_unique(ctx.tcx(), ty) {
         make_is_unique_asrt(temps, e)
     } else if crate::utils::ty::is_unsigned_integral(ty) {
@@ -419,43 +423,63 @@ fn is_unique<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 //     [ptr].into()
 // }
 
-fn make_is_ptr_asrt(fresh: &mut TempGenerator, e: Expr) -> Assertion {
+fn make_is_ptr_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -> Assertion {
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let types = Assertion::Types(vec![
         (loc.clone(), Type::ObjectType),
         (proj.clone(), Type::ListType),
     ]);
-    types.star(e.eq_f([loc, proj]).into_asrt())
+    if sized {
+        types.star(e.eq_f([loc, proj]).into_asrt())
+    } else {
+        let len = temp_lvar(fresh);
+        let len_type = Assertion::Types(vec![(len.clone(), Type::IntType)]);
+        types
+            .star(len_type)
+            .star(e.eq_f([[loc, proj].into(), len]).into_asrt())
+    }
 }
 
-fn make_is_nonnull_asrt(fresh: &mut TempGenerator, e: Expr) -> Assertion {
+fn make_is_nonnull_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -> Assertion {
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let types = Assertion::Types(vec![
         (loc.clone(), Type::ObjectType),
         (proj.clone(), Type::ListType),
     ]);
-    types.star(e.eq_f([Expr::EList(vec![loc, proj])]).into_asrt())
+    if sized {
+        let ptr = Expr::EList(vec![loc, proj]);
+        types.star(e.eq_f([ptr]).into_asrt())
+    } else {
+        let len = temp_lvar(fresh);
+        let len_type = Assertion::Types(vec![(len.clone(), Type::IntType)]);
+        let ptr = Expr::EList(vec![[loc, proj].into(), len]);
+        types.star(len_type).star(e.eq_f([ptr]).into_asrt())
+    }
 }
 
-fn make_is_unique_asrt(fresh: &mut TempGenerator, e: Expr) -> Assertion {
+fn make_is_unique_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -> Assertion {
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let types = Assertion::Types(vec![
         (loc.clone(), Type::ObjectType),
         (proj.clone(), Type::ListType),
     ]);
-    types.star(
-        e.eq_f([
-            Expr::EList(vec![Expr::EList(vec![loc, proj])]),
-            vec![].into(),
-        ])
-        .into_asrt(),
-    )
+    if sized {
+        let ptr = Expr::EList(vec![loc, proj]);
+        types.star(e.eq_f([Expr::EList(vec![ptr]), vec![].into()]).into_asrt())
+    } else {
+        let len = temp_lvar(fresh);
+        let len_type = Assertion::Types(vec![(len.clone(), Type::IntType)]);
+        let ptr = Expr::EList(vec![[loc, proj].into(), len]);
+        types
+            .star(len_type)
+            .star(e.eq_f([Expr::EList(vec![ptr]), vec![].into()]).into_asrt())
+    }
 }
 
-fn make_is_mut_ref_proph_ref_asrt(fresh: &mut TempGenerator, e: Expr) -> Assertion {
+fn make_is_mut_ref_proph_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -> Assertion {
     let loc = temp_lvar(fresh);
     let proj = temp_lvar(fresh);
     let pcy = temp_lvar(fresh);
@@ -464,7 +488,15 @@ fn make_is_mut_ref_proph_ref_asrt(fresh: &mut TempGenerator, e: Expr) -> Asserti
         (proj.clone(), Type::ListType),
         (pcy.clone(), Type::ObjectType),
     ]);
-    types.star(e.eq_f([[loc, proj].into(), pcy]).into_asrt())
+    if sized {
+        types.star(e.eq_f([[loc, proj].into(), pcy]).into_asrt())
+    } else {
+        let len = temp_lvar(fresh);
+        let len_type = Assertion::Types(vec![(len.clone(), Type::IntType)]);
+        types
+            .star(len_type)
+            .star(e.eq_f([[[loc, proj].into(), len].into(), pcy]).into_asrt())
+    }
 }
 
 fn temp_lvar(fresh: &mut TempGenerator) -> Expr {
