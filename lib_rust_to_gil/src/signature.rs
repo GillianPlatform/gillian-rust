@@ -401,22 +401,15 @@ fn make_wf_asrt<'tcx>(
         Assertion::Types(vec![(e, Type::IntType)])
     } else if let Some(inner_ty) = ty_utils::peel_nonnull(ty, ctx.tcx()) {
         let sized = !(inner_ty.is_slice() || inner_ty.is_str());
-        make_is_nonnull_asrt(temps, e, sized);
-    } else if is_unique(ctx.tcx(), ty) {
-        make_is_unique_asrt(temps, e)
+        make_is_nonnull_asrt(temps, e, sized)
+    } else if let Some(inner_ty) = ty_utils::peel_unique(ty, ctx.tcx()) {
+        let sized = !(inner_ty.is_slice() || inner_ty.is_str());
+        make_is_unique_asrt(temps, e, sized)
     } else if crate::utils::ty::is_unsigned_integral(ty) {
         Formula::i_le(0, e).into_asrt()
     } else {
         Assertion::Emp
     }
-}
-
-fn is_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    crate::utils::ty::is_nonnull(ty, tcx)
-}
-
-fn is_unique<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    crate::utils::ty::is_unique(ty, tcx)
 }
 
 // fn make_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ptr: Expr) -> Expr {

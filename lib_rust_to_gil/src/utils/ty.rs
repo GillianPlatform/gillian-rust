@@ -65,11 +65,24 @@ pub fn is_seq<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 
 pub fn is_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     if let Some(adt_def) = ty.ty_adt_def() {
+        // Sadly, no diagnostic item for Unique
         if let "core::ptr::Unique" | "std::ptr::Unique" = tcx.def_path_str(adt_def.did()).as_str() {
             return true;
         }
     }
     false
+}
+
+pub fn peel_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+    if let TyKind::Adt(adt_def, subst) = ty.kind() {
+        if let "core::ptr::Unique" | "std::ptr::Unique" = tcx.def_path_str(adt_def.did()).as_str() {
+            Some(subst.type_at(0))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 pub fn int_bounds<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> (BigInt, BigInt) {
