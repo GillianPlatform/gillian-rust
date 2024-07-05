@@ -8,11 +8,6 @@ use creusillian::*;
 use gilogic::{RustAssertion, Seq, macros::*, prophecies::*};
 use creusot_contracts::{Snapshot, snapshot, logic::IndexLogic};
 
-#[creusillian::requires((*x)@.len() == 0)]
-fn index_bad(x: &mut vec::Vec<i32>) {
-    x.index_mut(0);
-}
-
 fn main() { }
 
 #[cfg_attr(gillian, trusted)]
@@ -34,5 +29,52 @@ fn left_pad<T: Copy>(str: &mut Vec<T>, len: usize, pad: T) {
     while str.len() < len {
         str.insert(0, pad);
         c = snapshot! { 1 + *c };
+    }
+}
+
+
+#[cfg_attr(gillian, trusted)]
+#[ensures(forall<i : _, j : _> 0 <= i && i < j && j < v@.len() ==> (^v)@[i] <= (^v)@[j])]
+#[ensures((^v)@.permutation_of(v@))]
+pub fn gnome_sort(v: &mut Vec<i32>)
+{
+    let old_v = snapshot! { v };
+    let mut i = 0;
+    #[creusot_contracts::invariant(^*old_v == ^v)]
+    #[creusot_contracts::invariant(forall<k : _, j : _> 0 <= k && k < j && j < i@ ==> v@[k] <= v@[j])]
+    #[creusot_contracts::invariant(v@.permutation_of(old_v@))]
+    while i < v.len() {
+        if i == 0 || v[i - 1] <= v[i] {
+            i += 1;
+        } else {
+            v.swap(i - 1, i);
+            i -= 1;
+        }
+    }
+}
+
+
+#[cfg_attr(gillian, trusted)]
+#[ensures(forall<i : _, j : _> 0 <= i && i < j && j < v@.len() ==> (^v)@[i] <= (^v)@[j])]
+#[ensures((^v)@.permutation_of(v@))]
+pub fn selection_sort(v: &mut Vec<i32>)
+{
+    let old_v = snapshot! { v };
+    #[creusot_contracts::invariant(v@.permutation_of(old_v@))]
+    #[creusot_contracts::invariant(forall<i : _, j : _> 0 <= i && i < j && j < produced.len() ==> v@[i] <= v@[j])]
+    #[creusot_contracts::invariant( forall<k1 : _, k2: _> 0 <= k1 && k1 < produced.len() && produced.len() <= k2 && k2 < v@.len() ==> v@[k1] <= v@[k2])]
+    for i in 0..v.len() {
+        let mut min = i;
+
+        #[creusot_contracts::invariant(forall<k: _> i@ <= k && k < produced.len() + i@ + 1 ==> v@[min@] <= v@[k])]
+        #[creusot_contracts::invariant(i@ <= min@ && min@ < produced.len() + i@ + 1)]
+        for j in (i + 1)..v.len() {
+            if v[j] < v[min] {
+                min = j;
+            }
+        }
+        v.swap(i, min);
+        creusot_contracts::proof_assert! { let i = produced.len();
+            forall<k1 : _, k2: _> 0 <= k1 && k1 < i && i <= k2 && k2 < v@.len() ==> v@[k1] <= v@[k2] };
     }
 }
