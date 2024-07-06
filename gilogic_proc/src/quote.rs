@@ -165,12 +165,25 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         }
         Term::Field(TermField {
             base,
-            dot_token,
+            dot_token: _,
             member,
         }) => {
             let base = encode_expr(base)?;
 
             tokens.extend(quote! { #base . #member })
+        }
+        Term::Impl(TermImpl {
+            hyp,
+            eqeq_token: _,
+            gt_token: _,
+            cons,
+        }) => {
+            let span = inner.span();
+            let hyp = encode_expr(hyp)?;
+            let cons = encode_expr(cons)?;
+            tokens.extend(quote_spanned! {span=>
+                gilogic::__stubs::expr_implies(#hyp, #cons)
+            });
         }
         Term::Exists(TermExists {
             exists_token: _,

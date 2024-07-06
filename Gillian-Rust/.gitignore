@@ -8,3 +8,4 @@ file.log
 /*.gil
 *.log
 _opam
+gillian_smt_queries

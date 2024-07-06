@@ -406,6 +406,11 @@ module TreeBlock = struct
           of_structural ~current_proj ~expected_ty:ty ~lk { ty; content }
         in
         (Expr.EList [ v ], lk)
+      else if Ty.is_array_of ~array_ty:ty ~inner_ty:expected_ty then
+        let++ v, lk =
+          of_structural ~current_proj ~expected_ty:ty ~lk { ty; content }
+        in
+        (Expr.list_nth v 0, lk)
       else
         if%ent Ty.sem_equal expected_ty ty then
           match content with
@@ -581,6 +586,20 @@ module TreeBlock = struct
               [] l
           in
           (Expr.EList l, lk)
+      | Symbolic (EList l)
+        when Ty.is_array_of ~array_ty:node_ty ~inner_ty:expected_inner_ty ->
+          (* Getting a concrete list of things is like the above array case *)
+          let l = List.map Symb_opt.some l in
+          DR.ok (Expr.EList l, lk)
+      | Symbolic content ->
+          (* Everything is initialized, but we don't have Seq.map available in Gillian.
+             So we over-approximate, losing information about the content of the maybe_uninit. *)
+          let new_list = Expr.LVar (LVar.alloc ()) in
+          let length_eq =
+            let open Formula.Infix in
+            (Expr.list_length new_list) #== (Expr.list_length content)
+          in
+          DR.ok ~learned:[ length_eq ] (new_list, lk)
       | _ ->
           Fmt.failwith "obtained the following for many_maybe_uninit: %a"
             pp_structural { ty = node_ty; content }
@@ -1036,7 +1055,7 @@ module TreeBlock = struct
             let mid_ty = Ty.array value_ty mid_size in
             let right_size = Expr.Infix.(length - mid_end) in
             let right_list =
-              Expr.list_sub ~lst:e ~start:left_end ~size:right_size
+              Expr.list_sub ~lst:e ~start:mid_end ~size:right_size
             in
             let right_ty = Ty.array value_ty right_size in
             let right_range = (snd range, end_as_index) in

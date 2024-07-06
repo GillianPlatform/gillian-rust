@@ -174,7 +174,7 @@ impl Formula {
             Self::Impl { left, right } => {
                 let left = (*left).into_expr();
                 let right = (*right).into_expr();
-                left.implies(right)
+                Expr::implies(left, right)
             }
             Self::Eq { left, right } => Expr::eq_expr(*left, *right),
             Self::ILess { left, right } => Expr::i_lt(*left, *right),

@@ -69,6 +69,7 @@ pub(crate) enum LogicStubs {
     ExprForall,
     ExprEq,
     ExprNe,
+    ExprImpl,
 }
 
 impl LogicStubs {
@@ -98,6 +99,7 @@ impl LogicStubs {
                 "gillian::expr::forall" => Some(Self::ExprForall),
                 "gillian::expr::eq" => Some(Self::ExprEq),
                 "gillian::expr::ne" => Some(Self::ExprNe),
+                "gillian::expr::implies" => Some(Self::ExprImpl),
                 "gillian::formula::implication" => Some(Self::FormulaImplication),
                 "gillian::mut_ref::get_prophecy" => Some(Self::MutRefGetProphecy),
                 "gillian::mut_ref::set_prophecy" => Some(Self::MutRefSetProphecy),

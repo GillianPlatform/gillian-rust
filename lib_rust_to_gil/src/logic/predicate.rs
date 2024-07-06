@@ -612,6 +612,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     BinOp::And => GExpr::and(left, right),
                     BinOp::Or => GExpr::or(left, right),
+                    BinOp::Impl => GExpr::implies(left, right),
                 }
             }
             ExprKind::Constructor {
@@ -734,18 +735,34 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .push(core_preds::pcy_value(prophecy, value.clone()));
                 value
             }
-            ExprKind::Exists { var, body } => GExpr::EExists(
-                vec![(var.0.to_string(), None)],
-                Box::new(self.compile_expression_inner(*body)),
-            ),
-            ExprKind::EForall { var, body } => GExpr::EForall(
-                vec![(var.0.to_string(), None)],
-                Box::new(self.compile_expression_inner(*body)),
-            ),
+            ExprKind::Exists { var, body } => {
+                let ty = gil_type_of_rust_ty(var.1);
+                GExpr::EExists(
+                    vec![(var.0.to_string(), ty)],
+                    Box::new(self.compile_expression_inner(*body)),
+                )
+            }
+            ExprKind::EForall { var, body } => {
+                let ty = gil_type_of_rust_ty(var.1);
+                GExpr::EForall(
+                    vec![(var.0.to_string(), ty)],
+                    Box::new(self.compile_expression_inner(*body)),
+                )
+            }
             ExprKind::PtrToMutRef { ptr } => {
                 GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
             }
         }
+    }
+}
+
+pub fn gil_type_of_rust_ty(ty: Ty) -> Option<Type> {
+    match ty.kind() {
+        TyKind::Bool => Some(Type::BoolType),
+        TyKind::Int(_) | TyKind::Uint(_) => Some(Type::IntType),
+        TyKind::Float(_) => Some(Type::NumberType),
+        TyKind::Tuple(_) | TyKind::Array(..) => Some(Type::ListType),
+        _ => None,
     }
 }
 

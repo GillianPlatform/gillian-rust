@@ -1,6 +1,8 @@
 (* PROCS *)
 
-proc "core::slice::<impl [T]>::len"(T, p) { (* First param is ignored *)
+proc "core::slice::<impl [T]>::len"() { (* First param is ignored *)
+       as := args;
+       p := l-nth(as, (l-len as) i- 1i);
        goto [(typeOf l-nth(p, 0i)) = List] ctn err;
   ctn: ret := l-nth(p, 1i);
        return;
@@ -61,6 +63,11 @@ proc "std::boxed::Box::<T>::from_raw"(T, ptr) {
 };
 
 proc "core::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
+    ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
+    return
+};
+
+proc "std::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
     ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
     return
 };
@@ -270,6 +277,24 @@ proc "core::num::<impl usize>::MAX"() {
 
 proc "std::ptr::write"(T, dest, value) {
      u := [store_value](l-nth(dest, 0i), l-nth(dest, 1i), T, value);
+     ret := {{}};
+     return
+};
+
+proc "std::ptr::read"(T, from) {
+     r := [load_value](l-nth(from, 0i), l-nth(from, 1i), T, true);
+     ret := l-nth(r, 0i);
+     return
+};
+
+(* While the following is sound, it is not the most precise.
+   It might lead to failures when the actual requirements of
+   std::ptr::swap are weaker and would allow for the operation to proceed. *)
+proc "std::ptr::swap"(T, l, r) {
+     lv := [load_value](l-nth(l, 0i), l-nth(l, 1i), T, true);
+     rv := [load_value](l-nth(r, 0i), l-nth(r, 1i), T, true);
+     u := [store_value](l-nth(l, 0i), l-nth(l, 1i), T, l-nth(rv, 0i));
+     u := [store_value](l-nth(r, 0i), l-nth(r, 1i), T, l-nth(lv, 0i));
      ret := {{}};
      return
 };

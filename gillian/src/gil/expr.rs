@@ -266,6 +266,7 @@ pub enum BinOp {
     SLessThan,
     BAnd,
     BOr,
+    BImpl,
     BitwiseAnd,
     BitwiseOr,
     BitwiseXor,
@@ -311,6 +312,7 @@ impl fmt::Display for BinOp {
             SLessThan => write!(f, "s<"),
             BAnd => write!(f, "and"),
             BOr => write!(f, "or"),
+            BImpl => write!(f, "==>"),
             BitwiseAnd => write!(f, "&"),
             BitwiseOr => write!(f, "|"),
             BitwiseXor => write!(f, "^"),
@@ -361,6 +363,7 @@ where
             SLessThan => alloc.text("s<"),
             BAnd => alloc.text("and"),
             BOr => alloc.text("or"),
+            BImpl => alloc.text("==>"),
             BitwiseAnd => alloc.text("&"),
             BitwiseOr => alloc.text("|"),
             BitwiseXor => alloc.text("^"),
@@ -421,10 +424,6 @@ impl Expr {
         T: Into<BigInt>,
     {
         Expr::Lit(Literal::Int(i.into()))
-    }
-
-    pub fn implies(self, other: Self) -> Self {
-        self.e_not().e_or(other)
     }
 
     pub fn e_or(self, other: Self) -> Self {
@@ -831,6 +830,17 @@ impl Expr {
             (Expr::Lit(Literal::Bool(i)), Expr::Lit(Literal::Bool(j))) => Expr::bool(*i || *j),
             _ => Expr::BinOp {
                 operator: BinOp::BOr,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+        }
+    }
+
+    pub fn implies(e1: Expr, e2: Expr) -> Self {
+        match (&e1, &e2) {
+            (Expr::Lit(Literal::Bool(i)), Expr::Lit(Literal::Bool(j))) => Expr::bool(!i || *j),
+            _ => Expr::BinOp {
+                operator: BinOp::BImpl,
                 left_operand: Box::new(e1),
                 right_operand: Box::new(e2),
             },

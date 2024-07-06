@@ -154,7 +154,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             // These two operations do nothing in our semantics.
             // It will lead to some failures, but it's ok, it's sound and it supports a large
             // set of programs.
-            CastKind::PointerExposeProvenance | CastKind::PointerWithExposedProvenance => enc_op,
+            CastKind::PointerExposeProvenance
+            | CastKind::PointerWithExposedProvenance
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => enc_op,
             CastKind::IntToInt => {
                 let (low, high) = self.int_bounds(ty_to);
                 let low_comp = Formula::ILessEq {

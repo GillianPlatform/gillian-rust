@@ -14,6 +14,11 @@ proc "std::slice::from_raw_parts_mut"(lft, T, ptr, len) {
         return
 };
 
+proc "core::slice::<impl [T]>::as_mut_ptr"(lft, T, slice) {
+     ret := l-nth(l-nth(slice, 0i), 0i); (* Peel prophecy and metadata *)
+     return
+};
+
 proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
          ptr := l-nth(p, 0i);
          discr := [load_discr](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "adt", "Option", {{ T }} }});
@@ -46,6 +51,11 @@ proc "std::ptr::NonNull::<T>::as_mut"(pLft_a, pLft_b, T, p) {
 proc "core::panicking::panic_explicit"() {
      u := [check_obs_sat]();
      fail[panic]("core::panicking::panic_explicit")
+};
+
+proc "core::panicking::panic"(lft, msg) {
+     u := [check_obs_sat]();
+     fail[panic]("core::panicking::panic", msg)
 };
 
 proc "std::rt::begin_panic"(lft, ty, str) {

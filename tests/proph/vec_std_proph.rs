@@ -326,7 +326,7 @@ fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::Re
     predicate_name = vec_ref_mut_pcl,
     frozen_variables = [ptr, cap, len],
     inner_predicate_name = vec_ref_mut_inner_pcl,
-    // resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
 )]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
@@ -391,8 +391,22 @@ impl<T: Ownable> Vec<T> {
         }
     }
 
+    pub fn as_ptr(&self) -> *const T {
+        // We shadow the slice method of the same name to avoid going through
+        // `deref`, which creates an intermediate reference.
+        self.buf.ptr()
+    }
+
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.buf.ptr()
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.buf.capacity()
     }
 
     #[specification(
@@ -420,6 +434,59 @@ impl<T: Ownable> Vec<T> {
         mutref_auto_resolve!(self);
     }
 
+    // #[specification(
+    //     forall curr, proph.
+    //     requires {
+    //         self.own((curr, proph)) * a.own(a) * b.own(b) *
+    //         $ a < curr.len() && b < curr.len() $
+    //     }
+    //     ensures {
+    //         emp
+    //     }
+    // )]
+    pub fn swap(&mut self, a: usize, b: usize) {
+        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
+        // Can't take two mutable loans from one vector, so instead use raw pointers.
+        freeze_pcl(self);
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        let pa = std::ptr::addr_of_mut!(slice[a]);
+        let pb = std::ptr::addr_of_mut!(slice[b]);
+        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
+        // to elements in the slice and therefore are guaranteed to be valid and aligned.
+        // Note that accessing the elements behind `a` and `b` is checked and will
+        // panic when out of bounds.
+        unsafe {
+            std::ptr::swap(pa, pb);
+        }
+        auto_resolve_vec_ref_mut_pcl!(self);
+    }
+
+    // #[specification(forall curr, proph.
+    //     requires { self.own((curr, proph)) }
+    //     exists ret_repr.
+    //     ensures {
+    //         ret.own(ret_repr) *
+    //         $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+    //           || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
+    //         $
+    //      }
+    // )]
+    pub fn pop(&mut self) -> Option<T> {
+        let res = if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                // This is core::hint::assert_unchecked in the real implementation
+                assert!(self.len < self.capacity());
+                Some(std::ptr::read(self.as_ptr().add(self.len)))
+            }
+        };
+        mutref_auto_resolve!(self);
+        res
+    }
+
     #[specification(
         forall curr, proph.
         requires {
@@ -430,12 +497,9 @@ impl<T: Ownable> Vec<T> {
         exists curr_ix, proph_ix.
         ensures {
               ret.own((curr_ix, proph_ix))
-            // * $    (proph.at(ix) == proph_ix)
-            //     && (curr.at(ix) == curr_ix)
-            //     && (forall < i : usize > 
-            //          (i <= 0 || i == ix || curr.len() <= i || curr.at(i) == proph.at(i))
-            //        )
-            //   $
+            * $    (curr.at(ix) == curr_ix)
+                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+              $
          }
     )]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
@@ -447,31 +511,72 @@ impl<T: Ownable> Vec<T> {
         // which in turn is called by IndexMut<usize> for Vec<T>
         let ret = &mut slice[ix];
 
-        assert!(ix < self.len);
         let proph = extract_ith(self, ix);
         ret.with_prophecy(proph)
     }
 
-    // #[specification(
-    //     forall current, future.
-    //     requires {
-    //           self.own((current, future))
-    //         * ix.own(ix)
-    //         * $ix < current.len()$
-    //      }
-    //     exists rcurrent, rfuture.
-    //     ensures {
-    //           ret.own((rcurrent, rfuture))
-    //      }
-    // )]
+    #[specification(
+        forall curr, proph.
+        requires {
+              self.own((curr, proph))
+            * ix.own(ix)
+            * $ix < curr.len()$
+         }
+        exists curr_ix, proph_ix.
+        ensures {
+              ret.own((curr_ix, proph_ix))
+            * $    (curr.at(ix) == curr_ix)
+                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+              $
+         }
+    )]
     pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
         let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
 
+        //safety assert!
+        assert!(ix < self.len);
+
         // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
         // which in turn is called by IndexMut<usize> for Vec<T>
-        &mut *slice.as_mut_ptr().add(ix)
+        let ret = &mut *slice.as_mut_ptr().add(ix);
+        let proph = extract_ith(self, ix);
+        ret.with_prophecy(proph)
+    }
+
+    #[specification(
+        forall curr, proph.
+        requires {
+              self.own((curr, proph))
+            * ix.own(ix)
+         }
+        exists ret_repr.
+        ensures {
+              ret.own(ret_repr)
+            * $    ((ret_repr == None) && (curr.len() <= ix) && (curr == proph))
+                || (   (ix < curr.len())
+                    && (exists <
+                        curr_ix: T::RepresentationTy,
+                        proph_ix: T::RepresentationTy
+                        >
+                           (ret_repr == Some((curr_ix, proph_ix)))
+                        && (curr.at(ix) == curr_ix)
+                        && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+                        )
+                    )
+              $
+         }
+    )]
+    fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
+        // SAFETY: `self` is checked to be in bounds.
+        if ix < self.len {
+            // Ignore specification to avoid having to manually reborrow
+            unsafe { Some(self.get_unchecked_mut(ix)) }
+        } else {
+            mutref_auto_resolve!(self);
+            None
+        }
     }
 }
 

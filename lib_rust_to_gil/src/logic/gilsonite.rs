@@ -190,6 +190,7 @@ pub enum BinOp {
     Shl,
     And,
     Or,
+    Impl,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
@@ -987,6 +988,17 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         ExprKind::BinOp {
                             left,
                             op: BinOp::Ne,
+                            right,
+                        }
+                    }
+                    Some(LogicStubs::ExprImpl) => {
+                        assert!(args.len() == 2, "Equal call must have two arguments");
+                        let left = Box::new(self.build_expression(args[0]));
+                        let right = Box::new(self.build_expression(args[1]));
+
+                        ExprKind::BinOp {
+                            left,
+                            op: BinOp::Impl,
                             right,
                         }
                     }
