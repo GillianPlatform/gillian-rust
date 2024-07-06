@@ -4,8 +4,12 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
+axiomatic spec extract_head(pLft_0, pty_T0, list)
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
+normal
+
 axiomatic spec "extract_head::<T>"(pLft_0, pty_T0, list)
-trusted
 [[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
 normal
@@ -160,21 +164,6 @@ proc "Node::<T>::into_element"(pty_T0, self) {
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }});
         return
-};
-
-spec extract_head(pLft_0, pty_T0, list)
-trusted
-[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
-normal
-
-proc extract_head(pLft_0, pty_T0, list) {
-        m_1list := list;
-  bb0:  g_0 := [new_lft]();
-        pLft_3 := l-nth(g_0, 0i);
-        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
-        m_2 := g_1;
-  rlab: return
 };
 
 spec "LinkedList::<T>::new"(pty_T0)

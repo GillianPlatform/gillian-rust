@@ -4,6 +4,11 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
+axiomatic spec extract_x(pLft_a, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_3: Obj, #lvar_4: List, #lvar_5: Obj) * (#p == {{ {{ #lvar_3, #lvar_4 }}, #lvar_5 }}) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i)) * <observation>(((((l-nth(#m, 1i)) = ({{ #__NEW_PROPH_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }}))) and (((l-nth(#m, 0i)) = ({{ #__NEW_PROPH_OLD_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }})))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx) * <lft>(#pLft_a; true)]]
+normal
+
 axiomatic spec "gilogic::prophecies::prophecy_auto_update::<WP<T>>"(pLft_0, pty_T0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "WP", {{ #pty_T0 }} }}; #v) * "<WP<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #a) * <pcy_controller>(l-nth(#p, 1i); #a) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [[<value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "WP", {{ #pty_T0 }} }}; #v) * "<WP<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #r) * <pcy_controller>(l-nth(#p, 1i); #r)]]
@@ -15,7 +20,6 @@ axiomatic spec "gilogic::prophecies::prophecy_resolve::<WP<T>>"(pLft_0, pty_T0, 
 normal
 
 axiomatic spec "extract_x::<T>"(pLft_a, pty_T0, p)
-trusted
 [[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_3: Obj, #lvar_4: List, #lvar_5: Obj) * (#p == {{ {{ #lvar_3, #lvar_4 }}, #lvar_5 }}) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
 [[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i)) * <observation>(((((l-nth(#m, 1i)) = ({{ #__NEW_PROPH_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }}))) and (((l-nth(#m, 0i)) = ({{ #__NEW_PROPH_OLD_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }})))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx) * <lft>(#pLft_a; true)]]
 normal
@@ -147,21 +151,6 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
 lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj) * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y) * <lft>(#pLft_0; true)]]
 
-
-spec extract_x(pLft_a, pty_T0, p)
-trusted
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }}) * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }}) * types(#lvar_3: Obj, #lvar_4: List, #lvar_5: Obj) * (#p == {{ {{ #lvar_3, #lvar_4 }}, #lvar_5 }}) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i)) * <observation>(((((l-nth(#m, 1i)) = ({{ #__NEW_PROPH_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }}))) and (((l-nth(#m, 0i)) = ({{ #__NEW_PROPH_OLD_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }})))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx) * <lft>(#pLft_a; true)]]
-normal
-
-proc extract_x(pLft_a, pty_T0, p) {
-        m_1p := p;
-  bb0:  g_0 := [new_lft]();
-        pLft_3 := l-nth(g_0, 0i);
-        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
-        m_2 := g_1;
-  rlab: return
-};
 
 spec "WP::<T>::new"(pty_T0, x, y)
 [[ "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #x, #lx) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #y, #ly) * (y == #y) * (x == #x) * (pty_T0 == #pty_T0) ]]

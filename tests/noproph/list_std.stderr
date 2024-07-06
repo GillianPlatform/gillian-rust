@@ -3,6 +3,10 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `list`
   --> ../tests/noproph/list_std.rs:70:29
    |
@@ -11,10 +15,6 @@ warning: unused variable: `list`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: variable `REFERENCE` should have a snake case name
   --> ../tests/noproph/list_std.rs:75:12
    |
