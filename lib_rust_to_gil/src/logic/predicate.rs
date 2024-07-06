@@ -613,6 +613,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     BinOp::And => GExpr::and(left, right),
                     BinOp::Or => GExpr::or(left, right),
                     BinOp::Impl => GExpr::implies(left, right),
+                    BinOp::Ge => {
+                        if left_ty.is_integral() {
+                            GExpr::i_ge(left, right)
+                        } else {
+                            GExpr::f_ge(left, right)
+                        }
+                    }
+                    BinOp::Gt => {
+                        if left_ty.is_integral() {
+                            GExpr::i_gt(left, right)
+                        } else {
+                            GExpr::f_gt(left, right)
+                        }
+                    }
                 }
             }
             ExprKind::Constructor {
@@ -748,6 +762,15 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     vec![(var.0.to_string(), ty)],
                     Box::new(self.compile_expression_inner(*body)),
                 )
+            }
+
+            ExprKind::UnOp { op, arg } => {
+                let arg = self.compile_expression_inner(*arg);
+
+                match op {
+                    mir::UnOp::Not => arg.e_not(),
+                    mir::UnOp::Neg => GExpr::minus(GExpr::int(0), arg),
+                }
             }
             ExprKind::PtrToMutRef { ptr } => {
                 GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
