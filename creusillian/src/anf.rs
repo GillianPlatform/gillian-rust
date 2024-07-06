@@ -283,7 +283,11 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
                 return Ok(CoreTerm::Path(inner.path));
             };
 
-            Ok(CoreTerm::Var(VarKind::Source(id.clone())))
+            if id == "result" {
+                Ok(CoreTerm::Var(VarKind::Source(Ident::new("ret", Span::call_site()))))
+            } else {
+                Ok(CoreTerm::Var(VarKind::Source(id.clone())))
+            }
         }
         Term::Paren(TermParen { expr, .. }) => term_to_core(*expr),
         Term::Lit(lit) => Ok(CoreTerm::Lit(lit.lit)),

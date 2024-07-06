@@ -11,7 +11,7 @@ use crate::logic::{compile_logic, LogicItem};
 use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
-use crate::utils::attrs::{is_predicate, is_specification};
+use crate::utils::attrs::{is_predicate, is_specification, is_trusted, parent_trusted};
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -45,6 +45,17 @@ impl<'tcx> ProgCtx<'tcx> {
 
     fn compile_fn(&mut self, global_env: &mut GlobalEnv<'tcx>, did: DefId) {
         let args = GenericArgs::identity_for_item(self.tcx(), did);
+
+        if is_trusted(did, self.tcx()) {
+            let mut temp_gen = TempGenerator::new();
+            let sig = build_signature(global_env, did, args, &mut temp_gen);
+            let proc_name =
+                rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
+            return self
+                .prog
+                .add_only_spec(sig.to_gil_spec(global_env, proc_name).unwrap());
+        };
+
         let with_facts = global_env.body_with_facts(did.expect_local());
         let body = with_facts.body.clone();
         let borrow_set = with_facts.borrow_set.clone();
@@ -55,6 +66,7 @@ impl<'tcx> ProgCtx<'tcx> {
             let input_facts = with_facts.input_facts.clone().unwrap();
             Rc::new(Output::compute(&*input_facts, algorithm, true))
         };
+
         let ctx = GilCtxt::new(
             global_env,
             &body,
@@ -65,12 +77,12 @@ impl<'tcx> ProgCtx<'tcx> {
         );
 
         let mut proc = ctx.push_body();
-
         if let DefKind::AssocConst = global_env.tcx().def_kind(did) {
             // We can't build signatures for associated consts.
         } else {
             let mut temp_gen = TempGenerator::new();
             let sig = build_signature(global_env, did, args, &mut temp_gen);
+
             proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
         };
         self.prog.add_proc(proc);
@@ -83,7 +95,9 @@ impl<'tcx> ProgCtx<'tcx> {
                 continue;
             }
 
-            if crate::utils::attrs::should_translate(did, self.tcx()) {
+            if crate::utils::attrs::should_translate(did, self.tcx())
+                && !parent_trusted(did, self.tcx())
+            {
                 if crate::utils::attrs::is_logic(did, self.tcx()) {
                     self.compile_logic(global_env, did);
                 } else {
@@ -110,6 +124,7 @@ impl<'tcx> ProgCtx<'tcx> {
             // For every spec and predicate to be loaded.
             if crate::utils::attrs::should_translate(did, self.tcx())
                 && crate::utils::attrs::is_logic(did, self.tcx())
+                && !parent_trusted(did, self.tcx())
             {
                 if is_predicate(did, self.tcx()) {
                     global_env.predicate(did);

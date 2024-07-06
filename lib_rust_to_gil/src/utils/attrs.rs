@@ -1,5 +1,6 @@
 use rustc_ast::AttrKind;
 use rustc_ast::Attribute;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{def_id::DefId, Symbol};
 
@@ -135,4 +136,14 @@ pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
     ]
     .iter()
     .any(|f| f(def_id, tcx))
+}
+
+pub(crate) fn parent_trusted(mut def_id: DefId, tcx: TyCtxt) -> bool {
+    while tcx.def_kind(def_id) != DefKind::Mod {
+        if is_trusted(def_id, tcx) {
+            return true;
+        };
+        def_id = tcx.parent(def_id);
+    }
+    false
 }
