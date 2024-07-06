@@ -462,16 +462,16 @@ impl<T: Ownable> Vec<T> {
         auto_resolve_vec_ref_mut_pcl!(self);
     }
 
-    // #[specification(forall curr, proph.
-    //     requires { self.own((curr, proph)) }
-    //     exists ret_repr.
-    //     ensures {
-    //         ret.own(ret_repr) *
-    //         $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-    //           || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
-    //         $
-    //      }
-    // )]
+    #[specification(forall curr, proph.
+        requires { self.own((curr, proph)) }
+        exists ret_repr.
+        ensures {
+            ret.own(ret_repr) *
+            $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
+            $
+         }
+    )]
     pub fn pop(&mut self) -> Option<T> {
         let res = if self.len == 0 {
             None

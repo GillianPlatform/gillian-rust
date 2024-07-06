@@ -144,6 +144,15 @@ pred "<usize as gilogic::prophecies::Ownable>::own"(+self, model):
   * (self == #self);
 
 
+pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
+  (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
+  * (self == #self), (#self == {{ 1i, {{ #ax }} }})
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #ax, #repr)
+  * (#model == {{ 1i, {{ #repr }} }})
+  * (model == #model)
+  * (self == #self);
+
+
 pred "<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
   (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
   * (self == #self), (#self == {{ 1i, {{ #ax }} }})
@@ -1474,6 +1483,11 @@ proc "Vec::<T>::swap"(pLft_0, pty_T0, self, a, b) {
         u := [free](l-nth(m_7, 0i), l-nth(m_7, 1i), {{ "ref", true, {{ "slice", pty_T0 }} }});
         return
 };
+
+spec "Vec::<T>::pop"(pLft_0, pty_T0, self)
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((((#curr) = ({{  }}))) and (((#proph) = ({{  }}))))) and (((#ret_repr) = ({{ 0i, {{  }} }}))))) or (((((not ((#curr) = ({{  }}))) and (((#proph) = (l-sub(#curr, 0i, ((l-len #curr) i- (1i)))))))) and (((#ret_repr) = ({{ 1i, {{ l-nth(#curr, ((l-len #curr) i- (1i))) }} }})))))); ) * <lft>(#pLft_0; true)]]
+normal
 
 proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
         m_1self := self;
