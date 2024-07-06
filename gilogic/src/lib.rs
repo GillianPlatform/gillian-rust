@@ -31,6 +31,7 @@ pub use seq::Seq;
 mod ownable;
 pub use ownable::Ownable;
 pub mod alloc;
+pub mod iterated;
 pub mod prophecies;
 
 pub mod symex_ctrl {

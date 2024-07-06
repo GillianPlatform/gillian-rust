@@ -484,6 +484,7 @@ impl ToTokens for Predicate {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ins = gather_ins(&self.args);
         let Predicate {
+            vis,
             name,
             body,
             generics,
@@ -496,7 +497,7 @@ impl ToTokens for Predicate {
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
               #(#attributes)*
-              fn #name #generics (#args) -> gilogic::RustAssertion {
+              #vis fn #name #generics (#args) -> gilogic::RustAssertion {
                 unreachable!()
               }
             }),
@@ -515,7 +516,7 @@ impl ToTokens for Predicate {
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
                   #(#attributes)*
-                  fn #name #generics (#args) -> gilogic::RustAssertion
+                  #vis fn #name #generics (#args) -> gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {
                     tokens.extend(quote!(gilogic::__stubs::defs([#(#stmts),*])));

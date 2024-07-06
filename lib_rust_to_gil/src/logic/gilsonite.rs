@@ -546,6 +546,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 
     fn build_formula(&self, id: ExprId) -> Formula<'tcx> {
+        let id = self.peel_scope(id);
         let expr = &self.thir[id];
         if !self.is_formula_ty(expr.ty) {
             todo!()
@@ -648,6 +649,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 
     fn build_formula_body(&self, id: ExprId) -> FormulaKind<'tcx> {
+        let id = self.peel_scope(id);
         let expr = &self.thir[id];
         if !self.is_formula_ty(expr.ty) {
             todo!()

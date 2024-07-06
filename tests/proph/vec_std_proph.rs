@@ -8,6 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
+    iterated::{all_own, all_own_swap},
     macros::{
         assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
         specification,
@@ -82,18 +83,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
         },
         Ok(()) => { /* yay */ }
     }
-}
-
-#[predicate]
-pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
-    assertion!((vs == Seq::empty()) * (reprs == Seq::empty()));
-    assertion!(|x: T,
-                x_repr: T::RepresentationTy,
-                rest: Seq<T>,
-                rest_repr: Seq<T::RepresentationTy>| (vs == rest.append(x))
-        * x.own(x_repr)
-        * all_own(rest, rest_repr)
-        * (reprs == rest_repr.append(x_repr)))
 }
 
 // #[lemma]
@@ -445,9 +434,11 @@ impl<T: Ownable> Vec<T> {
     //     }
     // )]
     pub fn swap(&mut self, a: usize, b: usize) {
+        // Some ghost code to keep track of the model.
+        freeze_pcl(self);
+
         // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
         // Can't take two mutable loans from one vector, so instead use raw pointers.
-        freeze_pcl(self);
         let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
 
         let pa = std::ptr::addr_of_mut!(slice[a]);
@@ -459,6 +450,8 @@ impl<T: Ownable> Vec<T> {
         unsafe {
             std::ptr::swap(pa, pb);
         }
+        // We need assert_bind to be able to talk about `curr`
+        // all_own_swap(curr, a, b);
         auto_resolve_vec_ref_mut_pcl!(self);
     }
 

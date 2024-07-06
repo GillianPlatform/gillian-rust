@@ -5,7 +5,7 @@ use quote::ToTokens;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, Attribute, Block, Error, FnArg,
     GenericArgument, Generics, ImplItemMethod, Pat, PatType, PathArguments, Signature, Token, Type,
-    TypePath,
+    TypePath, Visibility,
 };
 
 #[derive(Debug, Clone)]
@@ -157,6 +157,7 @@ impl TryFrom<FnArg> for PredParam {
 
 #[derive(Clone)]
 pub struct Predicate {
+    pub(crate) vis: Visibility,
     pub(crate) attributes: Vec<Attribute>,
     pub(crate) name: Ident,
     pub(crate) generics: Generics,
@@ -204,6 +205,7 @@ impl Predicate {
         Self::validate_sig(&sig)?;
         let args = Self::convert_args(sig.inputs)?;
         Ok(Predicate {
+            vis: Visibility::Inherited,
             name: sig.ident,
             generics: sig.generics,
             args,
@@ -218,6 +220,7 @@ impl Predicate {
         let args = Self::convert_args(sig.inputs)?;
         let body = item_fn.block;
         Ok(Predicate {
+            vis: item_fn.vis,
             name: sig.ident,
             generics: sig.generics,
             args,
