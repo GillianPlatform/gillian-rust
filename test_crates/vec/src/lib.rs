@@ -91,10 +91,10 @@ impl<T> LinkedList<T> {
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    // #[creusillian::ensures(match result {
-    //     None => ^self == *self,
-    //     Some(a) => (^self)@.push(a) == (*self)@
-    // })]
+    #[creusillian::ensures(match result {
+        None => ^self == *self && self@.len() == 0,
+        Some(a) => creusot_contracts::Seq::singleton(a).concat((^self)@) == (*self)@
+    })]
     // #[creusillian::ensures((*self)@ == (^self).push(e))]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()
@@ -102,25 +102,42 @@ impl<T> LinkedList<T> {
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    // #[creusillian::ensures((^self)@ == (*self)@.push(e))]
+    #[creusillian::ensures(creusot_contracts::Seq::singleton(e).concat((*self)@) == (^self)@)]
     pub fn push_front(&mut self, e: T) {
         todo!()
     }
+
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
-    // #[creusillian::ensures(result@.len() == 0)]
+    #[creusillian::requires(true)]
+    #[creusillian::ensures((*self)@.push(e) == (^self)@)]
+    pub fn push_back(&mut self, e: T) {
+        todo!()
+    }
+
+    #[cfg_attr(gillian, gillian::trusted)]
+    #[creusot_contracts::trusted]
+    #[creusillian::ensures(result@.len() == 0)]
     #[creusillian::requires(true)]
     pub fn new() -> Self {
         todo!()
     }
-}
 
+    #[cfg_attr(gillian, gillian::trusted)]
+    #[creusot_contracts::trusted]
+    #[creusillian::ensures(result == ((*self)@.len() == 0))]
+    #[creusillian::ensures((*self)@ == (^self)@)]
+    pub fn is_empty(&mut self) -> bool {
+        todo!()
+    }
+}
 
 #[cfg(creusot)]
 mod creusot_defs2 {
     // In a module to deal with imports
     use creusot_contracts::*;
-    impl<T> ShallowModel for super::LinkedList<T> {
+    impl<T> ShallowModel
+     for super::LinkedList<T> {
         type ShallowModelTy = Seq<T>;
 
         #[trusted]
