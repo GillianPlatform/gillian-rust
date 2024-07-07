@@ -274,12 +274,6 @@ ast_enum_of_structs! {
     }
 }
 
-impl Term {
-    pub fn unit() -> Self {
-        Term::Tuple(TermTuple::unit())
-    }
-}
-
 ast_struct! {
     /// A braced block containing Pearlite statements.
     pub struct TBlock {

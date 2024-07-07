@@ -36,42 +36,6 @@ pub struct ExtractLemma {
     pub prophecise: Option<(kw::prophecise, Term)>,
 }
 
-fn peel_prophecy_adt(ty: Type) -> syn::Result<Type> {
-    let span = ty.span();
-    let err = || {
-        syn::Error::new(
-            span,
-            "extract_lemma must return Prophecy<K> for some K when used with prophecies",
-        )
-    };
-    match ty {
-        Type::Paren(typaren) => peel_prophecy_adt(*typaren.elem),
-        Type::Path(mut path) => {
-            if path.qself.is_some() {
-                return Err(err());
-            };
-            let seg = path.path.segments.pop().ok_or_else(err)?.into_value();
-            if seg.ident != "Prophecy" {
-                return Err(err());
-            }
-            let arg = match seg.arguments {
-                syn::PathArguments::AngleBracketed(mut args) => {
-                    if args.args.len() != 1 {
-                        return Err(err());
-                    };
-                    args.args.pop().ok_or_else(err)?.into_value()
-                }
-                _ => return Err(err()),
-            };
-            match arg {
-                syn::GenericArgument::Type(ty) => Ok(ty),
-                _ => Err(err()),
-            }
-        }
-        _ => Err(err()),
-    }
-}
-
 impl ExtractLemma {
     fn make_spec(&self, ret_ty: Type) -> syn::Result<Specification> {
         let (forall, mut lvars, dot) = match &self.forall {
@@ -109,7 +73,10 @@ impl ExtractLemma {
         if let Some((model_kw, model, _, _, _, new_model, dot)) = self.models.clone() {
             dot2 = Some(dot);
 
-            let prophecy_ty = peel_prophecy_adt(ret_ty)?;
+            let prophecy_ty = super::utils::peel_prophecy_adt(
+                ret_ty,
+                "extract_lemma must return Prophecy<K> for some K when used with prophecies",
+            )?;
             let new_model_ty: Type = parse_quote! { (#prophecy_ty, #prophecy_ty) };
 
             rvars.push(LvarDecl::from((new_model.clone(), new_model_ty)));
@@ -301,7 +268,28 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let item_attrs = std::mem::take(&mut item.attrs);
     let extract_lemma = parse_macro_input!(args as ExtractLemma);
 
-    let encoded_el = match extract_lemma.encode() {
+    let ret_ty: Type = match &item.sig.output {
+        ReturnType::Default => parse_quote! { () },
+        ReturnType::Type(_token, ty) => (**ty).clone(),
+    };
+
+    let ref_ty: Type = match item.sig.inputs.first() {
+        Some(arg) => match arg {
+            syn::FnArg::Typed(pat) => *pat.ty.clone(),
+            _ => {
+                return syn::Error::new(arg.span(), "Extract lemma cannot use self")
+                    .to_compile_error()
+                    .into()
+            }
+        },
+        None => {
+            return syn::Error::new(item.sig.span(), "extract lemma needs at least one argument")
+                .to_compile_error()
+                .into()
+        }
+    };
+
+    let encoded_el = match extract_lemma.encode(ref_ty, ret_ty.clone()) {
         Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -326,11 +314,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let mut inputs = item.sig.inputs.clone();
     let generics = &item.sig.generics;
 
-    let ret_ty: Type = match &item.sig.output {
-        ReturnType::Default => parse_quote! { () },
-        ReturnType::Type(_token, ty) => (**ty).clone(),
-    };
-
     inputs.push(parse_quote! { ret : #ret_ty });
 
     let spec = match extract_lemma
@@ -348,8 +331,8 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::extract_lemma]
         fn #name #generics (#inputs) -> gilogic::RustAssertion {
-            gilogic::__stubs::emp()
-            // #encoded_el
+            // gilogic::__stubs::emp()
+            #encoded_el
         }
 
         #[cfg(gillian)]

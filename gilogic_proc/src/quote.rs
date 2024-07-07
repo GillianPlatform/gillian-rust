@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt};
+use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt, Type};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -330,11 +330,43 @@ impl AsrtFragment {
 }
 
 impl ExtractLemma {
-    pub(crate) fn encode(&self) -> syn::Result<TokenStream> {
-        let prophecise = match &self.prophecise {
-            Some((_, term)) => term,
-            None => &Term::unit(),
+    pub(crate) fn encode(&self, ref_ty: Type, ret_ty: Type) -> syn::Result<TokenStream> {
+        // There's a lot of repetition here, but no time to refactor.
+
+        let param_ty = if self.prophecise.is_some() {
+            super::utils::repr_type(&super::utils::peel_mut_ref(
+                ref_ty.clone(),
+                "Extract lemmas must take a mutable reference as first argument",
+            )?)
+        } else {
+            parse_quote! { () }
         };
+
+        let prophecise = match &self.prophecise {
+            Some((_, term)) => {
+                let models = self.models.as_ref().unwrap();
+                let model = &models.1;
+                let new_model = &models.5;
+                let model_ty = super::utils::repr_type(&super::utils::peel_mut_ref(
+                    ref_ty.clone(),
+                    "Extract lemmas must take a mutable reference as first argument",
+                )?);
+                let new_model_ty = super::utils::peel_prophecy_adt(
+                    ret_ty.clone(),
+                    "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
+                )?;
+                quote! {
+                    gilogic::__stubs::instantiate_lvars(
+                        #[gillian::no_translate]
+                        |#model: #model_ty, #new_model: #new_model_ty| {
+                            #term
+                        }
+                    )
+                }
+            }
+            None => quote! { () },
+        };
+
         let assuming = match &self.assuming {
             Some((_, assuming)) => assuming,
             None => &Term::Lit(TermLit {
@@ -347,7 +379,7 @@ impl ExtractLemma {
         let (_, from) = &self.from;
         let (_, extract) = &self.extract;
         let el = quote!(
-            gilogic::__stubs::extract_lemma(
+            gilogic::__stubs::extract_lemma::<#param_ty>(
                 #assuming,
                 #from,
                 #extract,
@@ -355,7 +387,14 @@ impl ExtractLemma {
             )
         );
         let el = if let Some((_, model, _, _, _, new_model, _)) = &self.models {
-            quote!( gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] | #model, #new_model | { #el }) )
+            let model_ty = super::utils::repr_type(&ref_ty);
+            let prophecy_peeled = super::utils::peel_prophecy_adt(
+                ret_ty.clone(),
+                "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
+            )?;
+            let new_model_ty: Type = parse_quote! { (#prophecy_peeled, #prophecy_peeled) };
+
+            quote!( gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] | #model: #model_ty, #new_model: #new_model_ty | { #el }) )
         } else {
             el
         };

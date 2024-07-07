@@ -17,6 +17,7 @@ mod folding;
 mod gilogic_syn;
 mod quote;
 mod spec;
+mod utils;
 
 use gilogic_syn::*;
 
