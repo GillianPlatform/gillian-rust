@@ -91,10 +91,15 @@ impl<T> LinkedList<T> {
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    #[creusillian::ensures(match result {
-        None => ^self == *self && self@.len() == 0,
-        Some(a) => creusot_contracts::Seq::singleton(a).concat((^self)@) == (*self)@
-    })]
+    // #[creusillian::ensures(match result {
+    //     None => ^self == *self && self@.len() == 0,
+    //     Some(a) => creusot_contracts::Seq::singleton(a).concat((^self)@) == (*self)@
+    //     // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
+    // })]
+
+    #[creusillian::ensures(
+        forall<x : _> result == Some(x) ==> creusot_contracts::Seq::singleton(x).concat((^self)@) == (*self)@)]
+    #[creusillian::ensures(result == None ==> ^self == *self && self@.len() == 0)]
     // #[creusillian::ensures((*self)@ == (^self).push(e))]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()

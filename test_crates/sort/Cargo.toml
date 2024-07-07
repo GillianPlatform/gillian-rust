@@ -9,3 +9,6 @@ vec = { version = "*", path = "../vec" }
 creusillian = { version = "*", path = "../../creusillian" }
 gilogic = { version = "*", path = "../../gilogic" }
 creusot-contracts = { version = "0.1.1" }
+
+[profile.creusot]
+inherits = "dev"
