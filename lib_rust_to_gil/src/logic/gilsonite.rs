@@ -174,6 +174,7 @@ pub enum SeqOp {
     Prepend,
     Concat,
     Head,
+    Last,
     Tail,
     Len,
     At,
@@ -1048,6 +1049,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         | LogicStubs::SeqPrepend
                         | LogicStubs::SeqConcat
                         | LogicStubs::SeqHead
+                        | LogicStubs::SeqLast
                         | LogicStubs::SeqTail
                         | LogicStubs::SeqLen
                         | LogicStubs::SeqAt
@@ -1060,6 +1062,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             LogicStubs::SeqPrepend => SeqOp::Prepend,
                             LogicStubs::SeqConcat => SeqOp::Concat,
                             LogicStubs::SeqHead => SeqOp::Head,
+                            LogicStubs::SeqLast => SeqOp::Last,
                             LogicStubs::SeqTail => SeqOp::Tail,
                             LogicStubs::SeqLen => SeqOp::Len,
                             LogicStubs::SeqAt => SeqOp::At,

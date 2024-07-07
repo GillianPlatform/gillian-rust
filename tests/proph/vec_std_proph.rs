@@ -461,7 +461,7 @@ impl<T: Ownable> Vec<T> {
         ensures {
             ret.own(ret_repr) *
             $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
+              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.last())))
             $
          }
     )]

@@ -716,6 +716,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     }
                     SeqOp::Concat => args.remove(0).lst_concat(args.remove(0)),
                     SeqOp::Head => args.remove(0).lst_head(),
+                    SeqOp::Last => args.remove(0).lst_last(),
                     SeqOp::Tail => args.remove(0).lst_tail(),
                     SeqOp::Len => args.remove(0).lst_len(),
 

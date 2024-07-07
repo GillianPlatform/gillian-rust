@@ -315,7 +315,7 @@ impl<T: Ownable> LinkedList<T> {
         ensures { 
             ret.own(ret_repr) *
             $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-             || ((current != Seq::empty()) && (proph == current.sub(0, current.len() - 1)) && (ret_repr == Some(current.at(current.len() - 1))))$ }
+             || ((current != Seq::empty()) && (proph == current.sub(0, current.len() - 1)) && (ret_repr == Some(current.last())))$ }
     )]
     pub fn pop_back(&mut self) -> Option<T> {
         dll_seg_l_to_r(self.head, None, self.tail, None);

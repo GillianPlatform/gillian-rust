@@ -55,7 +55,6 @@ impl<T> Seq<T> {
         unreachable!()
     }
 
-
     #[gillian::builtin]
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::permutation_of"]
@@ -81,6 +80,20 @@ impl<T> Seq<T> {
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::head"]
     pub fn head(self) -> T {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::seq::first"]
+    pub fn first(self) -> T {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::seq::last"]
+    pub fn last(self) -> T {
         unreachable!()
     }
 
