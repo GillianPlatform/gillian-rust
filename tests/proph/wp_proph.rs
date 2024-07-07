@@ -58,7 +58,7 @@ impl<T: Ownable> Ownable for WP<T> {
 #[extract_lemma(
     forall p, x: *mut N<T>, y: *mut N<T>.
     model m.
-    extract model mx: (T::RepresentationTy, T::RepresentationTy).
+    extract model mx.
     from { wp_ref_mut_xy(p, m, x, y) }
     extract { Ownable::own(&mut (*x).v, mx) }
     prophecise { (mx, m.1) }

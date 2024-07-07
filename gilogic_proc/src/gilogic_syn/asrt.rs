@@ -56,6 +56,24 @@ pub struct LvarDecl {
     pub ty_opt: Option<(Token![:], Type)>,
 }
 
+impl From<(Ident, Type)> for LvarDecl {
+    fn from((ident, ty): (Ident, Type)) -> Self {
+        Self {
+            ident,
+            ty_opt: Some((Token![:](Span::call_site()), ty)),
+        }
+    }
+}
+
+impl From<Ident> for LvarDecl {
+    fn from(ident: Ident) -> Self {
+        Self {
+            ident,
+            ty_opt: None,
+        }
+    }
+}
+
 ast_enum_of_structs! {
   /// A Gilogic assertion
   pub enum AsrtFragment {

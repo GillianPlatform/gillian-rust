@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
-use proc_macro2::Span;
+use proc_macro2::{Ident, Span};
 use syn::{
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, ImplItemMethod,
-    ReturnType, Token,
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
+    ImplItemMethod, ReturnType, Token, Type,
 };
 
 use quote::{format_ident, quote};
@@ -21,11 +21,11 @@ pub struct ExtractLemma {
     // new model mp.
     pub models: Option<(
         kw::model,
-        LvarDecl,
+        Ident, // Identifier of `m`
         Token![.],
         kw::extract,
         kw::model,
-        LvarDecl,
+        Ident, // Identifier of `mp`
         Token![.],
     )>,
     // assuming { F }
@@ -36,14 +36,50 @@ pub struct ExtractLemma {
     pub prophecise: Option<(kw::prophecise, Term)>,
 }
 
+fn peel_prophecy_adt(ty: Type) -> syn::Result<Type> {
+    let span = ty.span();
+    let err = || {
+        syn::Error::new(
+            span,
+            "extract_lemma must return Prophecy<K> for some K when used with prophecies",
+        )
+    };
+    match ty {
+        Type::Paren(typaren) => peel_prophecy_adt(*typaren.elem),
+        Type::Path(mut path) => {
+            if path.qself.is_some() {
+                return Err(err());
+            };
+            let seg = path.path.segments.pop().ok_or_else(err)?.into_value();
+            if seg.ident != "Prophecy" {
+                return Err(err());
+            }
+            let arg = match seg.arguments {
+                syn::PathArguments::AngleBracketed(mut args) => {
+                    if args.args.len() != 1 {
+                        return Err(err());
+                    };
+                    args.args.pop().ok_or_else(err)?.into_value()
+                }
+                _ => return Err(err()),
+            };
+            match arg {
+                syn::GenericArgument::Type(ty) => Ok(ty),
+                _ => Err(err()),
+            }
+        }
+        _ => Err(err()),
+    }
+}
+
 impl ExtractLemma {
-    fn make_spec(&self) -> Specification {
+    fn make_spec(&self, ret_ty: Type) -> syn::Result<Specification> {
         let (forall, mut lvars, dot) = match &self.forall {
             Some((token, lvars, dot)) => (Some(*token), lvars.clone(), Some(*dot)),
             None => (None, Punctuated::new(), None),
         };
         if let Some((_, model, _, _, _, _, _)) = &self.models {
-            lvars.push(model.clone())
+            lvars.push(LvarDecl::from(model.clone()))
         };
         let (_, from_borrow) = &self.from;
         let from_borrow: AsrtPredCall = from_borrow.clone();
@@ -70,14 +106,18 @@ impl ExtractLemma {
         // If there is a model, we create new prophecy variable and put it and
         // the new model as existentials for the post.
         // We also add the .with_prophecy(_PROPH) to the pointer passed as first parameter of extracted.
-        if let Some((_, model, _, _, _, new_model, dot)) = self.models.clone() {
+        if let Some((model_kw, model, _, _, _, new_model, dot)) = self.models.clone() {
             dot2 = Some(dot);
-            rvars.push(new_model.clone());
+
+            let prophecy_ty = peel_prophecy_adt(ret_ty)?;
+            let new_model_ty: Type = parse_quote! { (#prophecy_ty, #prophecy_ty) };
+
+            rvars.push(LvarDecl::from((new_model.clone(), new_model_ty)));
             let fresh_prophecy = format_ident!("ret");
-            let ptr_arg_extracted_mut = extract
-                .args_mut()
-                .first_mut()
-                .expect("Extracting a borrow with no arguments?");
+            let extract_span = extract.span();
+            let ptr_arg_extracted_mut = extract.args_mut().first_mut().ok_or_else(|| {
+                syn::Error::new(extract_span, "Extracting a borrow with no arguments?")
+            })?;
 
             let ptr_arg_extracted = ptr_arg_extracted_mut.clone();
             *ptr_arg_extracted_mut =
@@ -86,42 +126,36 @@ impl ExtractLemma {
             let old_proph_val_var = format_ident!("__OLD_PROPH_VAL");
             let new_proph_val_var = format_ident!("__NEW_PROPH_VAL");
             let new_proph_old_val_var = format_ident!("__NEW_PROPH_OLD_VAL");
-            rvars.push(LvarDecl {
-                ident: old_proph_val_var.clone(),
-                ty_opt: None,
-            });
-            rvars.push(LvarDecl {
-                ident: new_proph_val_var.clone(),
-                ty_opt: None,
-            });
-            rvars.push(LvarDecl {
-                ident: new_proph_old_val_var.clone(),
-                ty_opt: None,
-            });
-            let model_ident = model.ident;
+            rvars.push(LvarDecl::from(old_proph_val_var.clone()));
+            rvars.push(LvarDecl::from(new_proph_val_var.clone()));
+            rvars.push(LvarDecl::from(new_proph_old_val_var.clone()));
             let old_proph_eq = {
                 let term = parse_quote!(
-                    #old_proph_val_var == #model_ident.0
+                    #old_proph_val_var == #model.0
                 );
                 AsrtFragment::Pure(Formula::from_term(term))
             };
 
-            let new_model_ident = new_model.ident;
             let new_proph_eq = {
                 let term = parse_quote!(
-                    #new_proph_val_var == #new_model_ident.1
+                    #new_proph_val_var == #new_model.1
                 );
                 AsrtFragment::Pure(Formula::from_term(term))
             };
 
             let new_proph_old_eq = {
                 let term = parse_quote!(
-                    #new_proph_old_val_var == #new_model_ident.0
+                    #new_proph_old_val_var == #new_model.0
                 );
                 AsrtFragment::Pure(Formula::from_term(term))
             };
 
-            let (_, prophecise) = self.prophecise.as_ref().unwrap();
+            let (_, prophecise) = self.prophecise.as_ref().ok_or_else(|| {
+                syn::Error::new(
+                    model_kw.span(),
+                    "Cannot specify model without specifying how it is prophecised",
+                )
+            })?;
             let mut prophecise = prophecise.clone();
             let mut prophecise_past = prophecise.clone();
 
@@ -131,23 +165,23 @@ impl ExtractLemma {
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model_ident.to_string(), old_proph_val_var.clone());
-                tbl.insert(new_model_ident.to_string(), new_proph_val_var);
+                tbl.insert(model.to_string(), old_proph_val_var.clone());
+                tbl.insert(new_model.to_string(), new_proph_val_var);
                 tbl
             };
             prophecise.subst(&subst);
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model_ident.to_string(), old_proph_val_var);
-                tbl.insert(new_model_ident.to_string(), new_proph_old_val_var);
+                tbl.insert(model.to_string(), old_proph_val_var);
+                tbl.insert(new_model.to_string(), new_proph_old_val_var);
                 tbl
             };
             prophecise_past.subst(&subst);
 
             let inner = parse_quote!(
-                (#model_ident.1 == (#prophecise)) &&
-                (#model_ident.0 == (#prophecise_past))
+                (#model.1 == (#prophecise)) &&
+                (#model.0 == (#prophecise_past))
             );
 
             let observation = AsrtFragment::Observation(Observation {
@@ -171,14 +205,14 @@ impl ExtractLemma {
             postcond,
         };
 
-        Specification {
+        Ok(Specification {
             forall,
             lvars,
             dot,
             requires: kw::requires(Span::call_site()),
             precond,
             postconds: vec![ensures],
-        }
+        })
     }
 }
 
@@ -267,7 +301,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let item_attrs = std::mem::take(&mut item.attrs);
     let extract_lemma = parse_macro_input!(args as ExtractLemma);
 
-    let _encoded_el = match extract_lemma.encode() {
+    let encoded_el = match extract_lemma.encode() {
         Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -292,14 +326,17 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let mut inputs = item.sig.inputs.clone();
     let generics = &item.sig.generics;
 
-    let ret_ty = match &item.sig.output {
-        ReturnType::Default => quote! { () },
-        ReturnType::Type(_token, ty) => quote! { #ty },
+    let ret_ty: Type = match &item.sig.output {
+        ReturnType::Default => parse_quote! { () },
+        ReturnType::Type(_token, ty) => (**ty).clone(),
     };
 
     inputs.push(parse_quote! { ret : #ret_ty });
 
-    let spec = match extract_lemma.make_spec().encode() {
+    let spec = match extract_lemma
+        .make_spec(ret_ty)
+        .and_then(|spec| Specification::encode(&spec))
+    {
         Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -311,8 +348,8 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[rustc_diagnostic_item=#name_string]
         #[gillian::decl::extract_lemma]
         fn #name #generics (#inputs) -> gilogic::RustAssertion {
-            /* #encoded_el */
             gilogic::__stubs::emp()
+            // #encoded_el
         }
 
         #[cfg(gillian)]
