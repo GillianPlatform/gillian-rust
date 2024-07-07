@@ -4,40 +4,93 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `list`
-  --> ../tests/proph/list_std_proph.rs:64:33
+  --> ../tests/proph/list_std_proph.rs:67:33
    |
-64 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+67 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
    |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
    |
    = note: `#[warn(unused_variables)]` on by default
 
+warning: unused variable: `head`
+   --> ../tests/proph/list_std_proph.rs:118:5
+    |
+118 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/proph/list_std_proph.rs:119:5
+    |
+119 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/proph/list_std_proph.rs:120:5
+    |
+120 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/proph/list_std_proph.rs:121:5
+    |
+121 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: unused variable: `head`
+   --> ../tests/proph/list_std_proph.rs:136:5
+    |
+136 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/proph/list_std_proph.rs:137:5
+    |
+137 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/proph/list_std_proph.rs:138:5
+    |
+138 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/proph/list_std_proph.rs:139:5
+    |
+139 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
 warning: associated function `shallow_model` is never used
-  --> ../tests/proph/list_std_proph.rs:29:8
+  --> ../tests/proph/list_std_proph.rs:32:8
    |
-26 | trait ShallowModel: Ownable {
+29 | trait ShallowModel: Ownable {
    |       ------------ associated function in this trait
 ...
-29 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
+32 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
    |        ^^^^^^^^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/list_std_proph.rs:96:12
-   |
-96 |     fn own(self, model: Self::RepresentationTy) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
+   --> ../tests/proph/list_std_proph.rs:154:12
+    |
+154 |     fn own(self, model: Self::RepresentationTy) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
 
-warning: 3 warnings emitted
+warning: 11 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!
