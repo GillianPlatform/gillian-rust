@@ -4,14 +4,22 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
+axiomatic spec extract_x(pLft_a, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
+normal
+
+axiomatic spec extract_y(pLft_a, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
+[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
+normal
+
 axiomatic spec "extract_x::<T>"(pLft_a, pty_T0, p)
-trusted
 [[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 normal
 
 axiomatic spec "extract_y::<T>"(pLft_a, pty_T0, p)
-trusted
 [[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
 [["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
 normal
@@ -93,36 +101,6 @@ pred "<&mut WP<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
 lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_0; true)]]
 
-
-spec extract_x(pLft_a, pty_T0, p)
-trusted
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
-normal
-
-proc extract_x(pLft_a, pty_T0, p) {
-        m_1p := p;
-  bb0:  g_0 := [new_lft]();
-        pLft_3 := l-nth(g_0, 0i);
-        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
-        m_2 := g_1;
-  rlab: return
-};
-
-spec extract_y(pLft_a, pty_T0, p)
-trusted
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #x, #y) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#y == {{ #lvar_4, #lvar_5 }}) * types(#lvar_2: Obj, #lvar_3: List) * (#x == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}) * <lft>(#pLft_a; true)]]
-normal
-
-proc extract_y(pLft_a, pty_T0, p) {
-        m_1p := p;
-  bb0:  g_0 := [new_lft]();
-        pLft_3 := l-nth(g_0, 0i);
-        g_1 := "core::panicking::panic"(pLft_0, "internal error: entered unreachable code");
-        m_2 := g_1;
-  rlab: return
-};
 
 spec "WP::<T>::assign_first"(pLft_a, pty_T0, self, x)
 [[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #x) * <lft>(#pLft_a; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (x == #x) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]

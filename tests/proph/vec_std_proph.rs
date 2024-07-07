@@ -1,5 +1,4 @@
 //@check-pass
-//?gil:ignore
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
@@ -9,14 +8,19 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    macros::{assertion, lemma, predicate, specification},
+    iterated::{all_own, all_own_swap},
+    macros::{
+        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        specification,
+    },
     mutref_auto_resolve,
-    prophecies::{Ownable, Prophecised},
+    prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
 };
 use std::alloc::{Allocator, Layout, LayoutError};
 use std::mem::{self, SizedTypeProperties};
 use std::ptr::{NonNull, Unique};
+use std::slice;
 
 macro_rules! branch {
     ($cond:expr) => {
@@ -81,18 +85,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
     }
 }
 
-#[predicate]
-pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
-    assertion!((vs == Seq::empty()) * (reprs == Seq::empty()));
-    assertion!(|x: T,
-                x_repr: T::RepresentationTy,
-                rest: Seq<T>,
-                rest_repr: Seq<T::RepresentationTy>| (vs == rest.append(x))
-        * x.own(x_repr)
-        * all_own(rest, rest_repr)
-        * (reprs == rest_repr.append(x_repr)))
-}
-
 // #[lemma]
 // #[requires(|content: Seq<Option<T>>, repr: Seq<Option<T::RepresentationTy>>|
 //             (before < after) * ptr.many_maybe_uninit(before, content) * all_own(content, repr) *
@@ -111,7 +103,6 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
 //     )]
 // fn uninit_to_raw_vec<T: Ownable>(ptr: *mut T, cap: usize);
 
-// Modified to remove alloctaor
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
@@ -285,12 +276,14 @@ impl<T> RawVec<T> {
 }
 
 fn capacity_overflow() -> ! {
-    panic!("capacity overflow");
+    // Capacity overflow!
+    panic!();
 }
 
 #[allow(unused_variables)]
 fn handle_alloc_error(layout: Layout) -> ! {
-    panic!("allocation failed!")
+    // Allocation failed!
+    panic!()
 }
 
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
@@ -306,13 +299,46 @@ pub struct Vec<T> {
     len: usize,
 }
 
+#[extract_lemma(
+    forall ptr: Unique<T>, cap, len.
+    model m.
+    extract model mh: (T::RepresentationTy, T::RepresentationTy).
+    assuming { ix < len }
+    from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
+    extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
+    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+)]
+fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+
+#[with_freeze_lemma_for_mutref(
+    lemma_name = freeze_pcl,
+    predicate_name = vec_ref_mut_pcl,
+    frozen_variables = [ptr, cap, len],
+    inner_predicate_name = vec_ref_mut_inner_pcl,
+    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+)]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
+        // The specification for zsts is quite hard. We need a value like ZST::REPRESENTATIVE or something.
+        // assertion!(
+        //     |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
+        //         * (self
+        //             == Vec {
+        //                 buf: RawVec { ptr, cap },
+        //                 len
+        //             })
+        //         * cap.own(cap)
+        //         * len.own(len)
+        //         * (cap == 0)
+        //         * ptr.as_ptr().points_to_slice(len, values)
+        //         * all_own(values, model)
+        //         * (values.len() == model.len())
+        // );
         assertion!(
-            |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
+            |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
                 * (self
                     == Vec {
                         buf: RawVec { ptr, cap },
@@ -320,24 +346,13 @@ impl<T: Ownable> Ownable for Vec<T> {
                     })
                 * cap.own(cap)
                 * len.own(len)
-                * (cap == 0)
+                * (len <= cap)
                 * ptr.as_ptr().points_to_slice(len, values)
-                * all_own(values, model)
+                * (len == values.len())
                 * (values.len() == model.len())
-        );
-        assertion!(|ptr, cap, len, values, rest| (std::mem::size_of::<T>() > 0)
-            * (self
-                == Vec {
-                    buf: RawVec { ptr, cap },
-                    len
-                })
-            * cap.own(cap)
-            * len.own(len)
-            * (len <= cap)
-            * ptr.as_ptr().points_to_slice(len, values)
-            * (values.len() == model.len())
-            * all_own(values, model)
-            * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest))
+                * all_own(values, model)
+                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+        )
     }
 }
 
@@ -355,7 +370,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[specification(
-        requires { capacity.own(capacity) * (capacity < 2 << 62 )}
+        requires { capacity.own(capacity) * (capacity <= isize::MAX as usize)}
         ensures { ret.own(Seq::empty()) }
     )]
     pub fn with_capacity(capacity: usize) -> Self {
@@ -365,19 +380,33 @@ impl<T: Ownable> Vec<T> {
         }
     }
 
+    pub fn as_ptr(&self) -> *const T {
+        // We shadow the slice method of the same name to avoid going through
+        // `deref`, which creates an intermediate reference.
+        self.buf.ptr()
+    }
+
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.buf.ptr()
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.buf.capacity()
     }
 
     #[specification(
         forall current, future, v_repr.
         requires {
             self.own((current, future)) *
-            (current.len() < 2 << 62) *
+            $current.len() < (isize::MAX as usize) $ *
             value.own(v_repr)
         }
         ensures {
-            $future == current.prepend(v_repr)$
+            $future == current.append(v_repr)$
         }
     )]
     pub fn push(&mut self, value: T) {
@@ -390,7 +419,189 @@ impl<T: Ownable> Vec<T> {
             let end = self.as_mut_ptr().add(self.len);
             std::ptr::write(end, value);
             self.len += 1;
+        }
+        mutref_auto_resolve!(self);
+    }
+
+    // #[specification(
+    //     forall curr, proph.
+    //     requires {
+    //         self.own((curr, proph)) * a.own(a) * b.own(b) *
+    //         $ a < curr.len() && b < curr.len() $
+    //     }
+    //     ensures {
+    //         emp
+    //     }
+    // )]
+    pub fn swap(&mut self, a: usize, b: usize) {
+        // Some ghost code to keep track of the model.
+        freeze_pcl(self);
+
+        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
+        // Can't take two mutable loans from one vector, so instead use raw pointers.
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        let pa = std::ptr::addr_of_mut!(slice[a]);
+        let pb = std::ptr::addr_of_mut!(slice[b]);
+        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
+        // to elements in the slice and therefore are guaranteed to be valid and aligned.
+        // Note that accessing the elements behind `a` and `b` is checked and will
+        // panic when out of bounds.
+        unsafe {
+            std::ptr::swap(pa, pb);
+        }
+        // We need assert_bind to be able to talk about `curr`
+        // all_own_swap(curr, a, b);
+        auto_resolve_vec_ref_mut_pcl!(self);
+    }
+
+    #[specification(forall curr, proph.
+        requires { self.own((curr, proph)) }
+        exists ret_repr.
+        ensures {
+            ret.own(ret_repr) *
+            $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
+            $
+         }
+    )]
+    pub fn pop(&mut self) -> Option<T> {
+        let res = if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                // This is core::hint::assert_unchecked in the real implementation
+                assert!(self.len < self.capacity());
+                Some(std::ptr::read(self.as_ptr().add(self.len)))
+            }
+        };
+        mutref_auto_resolve!(self);
+        res
+    }
+
+    #[specification(
+        forall curr, proph.
+        requires {
+              self.own((curr, proph))
+            * ix.own(ix)
+            * $ix < curr.len()$
+         }
+        exists curr_ix, proph_ix.
+        ensures {
+              ret.own((curr_ix, proph_ix))
+            * $    (curr.at(ix) == curr_ix)
+                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+              $
+         }
+    )]
+    pub fn index_mut(&mut self, ix: usize) -> &mut T {
+        freeze_pcl(self);
+        // from impl<T> ops::DerefMut for Vec<T>
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+        // which in turn is called by IndexMut<usize> for Vec<T>
+        let ret = &mut slice[ix];
+
+        let proph = extract_ith(self, ix);
+        ret.with_prophecy(proph)
+    }
+
+    #[specification(
+        forall curr, proph.
+        requires {
+              self.own((curr, proph))
+            * ix.own(ix)
+            * $ix < curr.len()$
+         }
+        exists curr_ix, proph_ix.
+        ensures {
+              ret.own((curr_ix, proph_ix))
+            * $    (curr.at(ix) == curr_ix)
+                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+              $
+         }
+    )]
+    pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
+        freeze_pcl(self);
+        // from impl<T> ops::DerefMut for Vec<T>
+        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+
+        //safety assert!
+        assert!(ix < self.len);
+
+        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+        // which in turn is called by IndexMut<usize> for Vec<T>
+        let ret = &mut *slice.as_mut_ptr().add(ix);
+        let proph = extract_ith(self, ix);
+        ret.with_prophecy(proph)
+    }
+
+    #[specification(
+        forall curr, proph.
+        requires {
+              self.own((curr, proph))
+            * ix.own(ix)
+         }
+        exists ret_repr.
+        ensures {
+              ret.own(ret_repr)
+            * $    ((ret_repr == None) && (curr.len() <= ix) && (curr == proph))
+                || (   (ix < curr.len())
+                    && (exists <
+                        curr_ix: T::RepresentationTy,
+                        proph_ix: T::RepresentationTy
+                        >
+                           (ret_repr == Some((curr_ix, proph_ix)))
+                        && (curr.at(ix) == curr_ix)
+                        && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
+                        )
+                    )
+              $
+         }
+    )]
+    fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
+        // SAFETY: `self` is checked to be in bounds.
+        if ix < self.len {
+            // Ignore specification to avoid having to manually reborrow
+            unsafe { Some(self.get_unchecked_mut(ix)) }
+        } else {
             mutref_auto_resolve!(self);
+            None
         }
     }
 }
+
+// We can't compile this at the moment because of poor_mans_unification...
+// unsafe trait MySliceIndexMut<T>
+// where
+//     T: ?Sized,
+// {
+//     type Output: ?Sized;
+//     fn get_unchecked_mut(self, slice: &mut T) -> *mut Self::Output;
+//     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
+//     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
+// }
+
+// unsafe impl<T> MySliceIndexMut<[T]> for usize {
+//     type Output = T;
+
+//     fn index_mut(self, slice: &mut [T]) -> &mut T {
+//         &mut (*slice)[self]
+//     }
+
+//     fn get_unchecked_mut(self, slice: &mut [T]) -> *mut T {
+//         // SAFETY: see comments for `get_unchecked` above.
+//         unsafe { slice.as_mut_ptr().add(self) }
+//     }
+
+//     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
+//         // SAFETY: `self` is checked to be in bounds.
+//         if self < slice.len() {
+//             unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
+//         } else {
+//             None
+//         }
+//     }
+// }

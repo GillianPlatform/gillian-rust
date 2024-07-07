@@ -31,7 +31,17 @@ pub use seq::Seq;
 mod ownable;
 pub use ownable::Ownable;
 pub mod alloc;
+pub mod iterated;
 pub mod prophecies;
+
+pub mod symex_ctrl {
+
+    #[gillian::builtin]
+    #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::symex_ctrl::symex_next"]
+    #[inline(always)]
+    pub fn symex_next() {}
+}
 
 #[path = "stubs.rs"]
 pub mod __stubs;

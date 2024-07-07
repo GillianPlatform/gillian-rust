@@ -14,6 +14,11 @@ proc "std::ptr::NonNull::<T>::as_mut"(pLft_a, pLft_b, T, p) {
         return
 };
 
+proc "core::slice::<impl [T]>::as_mut_ptr"(lft, T, slice) {
+     ret := l-nth(slice, 0i); (* Peel metadata *)
+     return
+};
+
 proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
          discr := [load_discr](l-nth(p, 0i), l-nth(p, 1i), {{ "adt", "Option", {{ T }} }});
          discr := l-nth(discr, 0i);
@@ -31,4 +36,17 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
           ret := {{ 1i, {{ ref }} }};
          return;
      er: fail[TYPERR]("Invalid discr")
+};
+
+
+proc "core::panicking::panic_explicit"() {
+     fail[panic]("core::panicking::panic_explicit")
+};
+
+proc "core::panicking::panic"(lft, msg) {
+     fail[panic]("core::panicking::panic", msg)
+};
+
+proc "std::rt::begin_panic"(lft, ty, str) {
+     fail[panic](str)
 };

@@ -12,8 +12,8 @@ type t =
   | Kill_lft
   (* Size things *)
   | Size_of
-  | Is_zst
-    (* We can optimise this without computing param sizes in most cases *)
+  (* | Is_zst *)
+  (* We can optimise this without computing param sizes in most cases *)
   | Ty_is_unsized
   (* Prophecies *)
   | Pcy_alloc
@@ -45,15 +45,13 @@ let of_name = function
   | "new_lft" -> New_lft
   | "kill_lft" -> Kill_lft
   | "size_of" -> Size_of
-  | "is_zst" -> Is_zst
+  (* | "is_zst" -> Is_zst *)
   | "ty_is_unsized" -> Ty_is_unsized
   | "load_discr" -> Load_discr
   | "pcy_alloc" -> Pcy_alloc
   | "pcy_assign" -> Pcy_assign
   | "pcy_resolve" -> Pcy_resolve
   | "check_obs_sat" -> Check_obs_sat
-  | "load_slice" -> failwith "should not use load_slice anymore, fix compiler"
-  | "store_slice" -> failwith "should not use store_slice anymore, fix compiler"
   | _ -> failwith "incorrect compilation: unknown action"
 
 let to_name = function
@@ -66,7 +64,7 @@ let to_name = function
   | New_lft -> "new_lft"
   | Kill_lft -> "kill_lft"
   | Size_of -> "size_of"
-  | Is_zst -> "is_zst"
+  (* | Is_zst -> "is_zst" *)
   | Ty_is_unsized -> "ty_is_unsized"
   | Load_discr -> "load_discr"
   | Pcy_alloc -> "pcy_alloc"
@@ -78,7 +76,7 @@ let cp_to_name = function
   | Value -> "value"
   | Uninit -> "uninit"
   | Maybe_uninit -> "maybe_uninit"
-  | Many_maybe_uninits -> "many_maybe_uninit"
+  | Many_maybe_uninits -> "many_maybe_uninits"
   | Freed -> "freed"
   | Ty_size -> "ty_size"
   | Lft -> "lft"
@@ -99,4 +97,4 @@ let cp_of_name = function
   | "pcy_controller" -> Pcy_controller
   | "pcy_value" -> Pcy_value
   | "observation" -> Observation
-  | _ -> failwith "incorrect compilation: unknown core predicate"
+  | cp -> Fmt.failwith "incorrect compilation: unknown core predicate: %s" cp

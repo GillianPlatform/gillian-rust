@@ -28,7 +28,7 @@ let assertions t =
 let rec size_of ~lk ty =
   match ty with
   | Ty.Scalar ty -> Delayed.return (Expr.int (Ty.size_of_scalar ty), lk)
-  | Ref { ty = Slice _; _ } | Ptr { ty = Slice _; _ } ->
+  | Ref { ty = Slice _ | Str; _ } | Ptr { ty = Slice _ | Str; _ } ->
       Delayed.return (Expr.int (Ty.size_of_scalar (Uint Usize) * 2), lk)
   | Ref _ | Ptr _ ->
       Delayed.return (Expr.int (Ty.size_of_scalar (Uint Usize)), lk)
@@ -39,7 +39,9 @@ let rec size_of ~lk ty =
           let size = Expr.LVar (LVar.alloc ()) in
           let learned =
             let open Formula.Infix in
-            let gt_0 = Expr.zero_i #<= size in
+            (* We're assuming no ZST for now!! *)
+            (* let gt_0 = Expr.zero_i #<= size in *)
+            let gt_0 = Expr.zero_i #< size in
             let is_int = (Expr.typeof size) #== (Expr.type_ IntType) in
             [ gt_0; is_int ]
           in
@@ -95,60 +97,60 @@ let produce_ty_size ~lk ty new_size =
 
 let consume_ty_size ~lk ty = size_of ~lk ty
 
-let rec is_zst ~lk ~tyenv ty =
-  let+ ret, lk =
-    let open Formula.Infix in
-    let return_true lk = Delayed.return (Formula.True, lk) in
-    let return_false lk = Delayed.return (Formula.False, lk) in
-    let rec all ~lk ?(acc = Formula.True) tys =
-      match tys () with
-      | Seq.Nil -> Delayed.return (acc, lk)
-      | Seq.Cons (ty, tys) -> (
-          match acc with
-          | Formula.False -> return_false lk
-          | _ ->
-              let* cond, lk = is_zst ~lk ~tyenv ty in
-              let acc = acc #&& cond in
-              all ~lk ~acc tys)
-    in
-    match ty with
-    | Ty.Scalar _ | Ref _ | Ptr _ -> return_false lk
-    | Tuple fields ->
-        let fields = List.to_seq fields in
-        all ~lk fields
-    | Array { length; ty } -> (
-        match length with
-        | Expr.Lit (Int z) when Z.equal z Z.zero -> return_true lk
-        | _ ->
-            let+ for_ty, lk = is_zst ~lk ~tyenv ty in
-            (for_ty #|| (length #== Expr.zero_i), lk))
-    | Adt (name, subst) -> (
-        let adt = Common.Tyenv.adt_def ~tyenv name in
-        match adt with
-        | Struct (_, fields) ->
-            let fields =
-              List.to_seq fields
-              |> Seq.map (fun (_, ty) -> Ty.subst_params ~subst ty)
-            in
-            all ~lk fields
-        | Enum variants -> (
-            match variants with
-            | [ (_, variant_fields) ] ->
-                let fields =
-                  List.to_seq variant_fields |> Seq.map (Ty.subst_params ~subst)
-                in
-                all ~lk fields
-            | _ ->
-                return_false lk
-                (* more than 1 variant means we have to store at least the discriminant *)
-            ))
-    | Slice _ -> failwith "checking if unsized type is zst?"
-    | ty_param ->
-        let+ e, lk = size_of ~lk ty_param in
-        (e #== Expr.zero_i, lk)
-  in
-  Logging.verbose (fun m -> m "IS ZST?? %a: %a" Ty.pp ty Formula.pp ret);
-  (ret, lk)
+(* let rec is_zst ~lk ~tyenv ty =
+   let+ ret, lk =
+     let open Formula.Infix in
+     let return_true lk = Delayed.return (Formula.True, lk) in
+     let return_false lk = Delayed.return (Formula.False, lk) in
+     let rec all ~lk ?(acc = Formula.True) tys =
+       match tys () with
+       | Seq.Nil -> Delayed.return (acc, lk)
+       | Seq.Cons (ty, tys) -> (
+           match acc with
+           | Formula.False -> return_false lk
+           | _ ->
+               let* cond, lk = is_zst ~lk ~tyenv ty in
+               let acc = acc #&& cond in
+               all ~lk ~acc tys)
+     in
+     match ty with
+     | Ty.Scalar _ | Ref _ | Ptr _ -> return_false lk
+     | Tuple fields ->
+         let fields = List.to_seq fields in
+         all ~lk fields
+     | Array { length; ty } -> (
+         match length with
+         | Expr.Lit (Int z) when Z.equal z Z.zero -> return_true lk
+         | _ ->
+             let+ for_ty, lk = is_zst ~lk ~tyenv ty in
+             (for_ty #|| (length #== Expr.zero_i), lk))
+     | Adt (name, subst) -> (
+         let adt = Common.Tyenv.adt_def ~tyenv name in
+         match adt with
+         | Struct (_, fields) ->
+             let fields =
+               List.to_seq fields
+               |> Seq.map (fun (_, ty) -> Ty.subst_params ~subst ty)
+             in
+             all ~lk fields
+         | Enum variants -> (
+             match variants with
+             | [ (_, variant_fields) ] ->
+                 let fields =
+                   List.to_seq variant_fields |> Seq.map (Ty.subst_params ~subst)
+                 in
+                 all ~lk fields
+             | _ ->
+                 return_false lk
+                 (* more than 1 variant means we have to store at least the discriminant *)
+             ))
+     | Slice _ | Str -> failwith "checking if unsized type is zst?"
+     | Ty.Unresolved _ as ty_param ->
+         let+ e, lk = size_of ~lk ty_param in
+         (e #== Expr.zero_i, lk)
+   in
+   Logging.verbose (fun m -> m "IS ZST?? %a: %a" Ty.pp ty Formula.pp ret);
+   (ret, lk) *)
 
 let lvars lk =
   Map.fold

@@ -1,5 +1,9 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
   --> ../tests/noproph/wp.rs:34:30
    |
@@ -8,16 +12,12 @@ warning: unused variable: `p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
 warning: unused variable: `p`
   --> ../tests/noproph/wp.rs:41:30
    |
 41 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: struct `WP` is never constructed
  --> ../tests/noproph/wp.rs:9:8
   |

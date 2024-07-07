@@ -16,8 +16,12 @@ let cons_observation (t : t) (obs : Formula.t) : (unit, Err.t) DR.t =
 
 let prod_observation (t : t) (obs : Formula.t) : t Delayed.t =
   let open Delayed.Syntax in
+  let* obs = Delayed.reduce_formula obs in
   let* is_sat = Delayed.check_sat (Formula.conjunct (obs :: t)) in
-  if is_sat then Delayed.return (obs :: t) else Delayed.vanish ()
+  if is_sat then
+    let obs = Formula.split_conjunct_formulae obs in
+    Delayed.return (obs @ t)
+  else Delayed.vanish ()
 
 let check_sat (t : t) : unit Delayed.t =
   let open Delayed.Syntax in

@@ -1,4 +1,5 @@
-use rustc_middle::ty::{ParamEnv, ParamTy};
+use num_bigint::BigInt;
+use rustc_middle::ty::{self, ParamEnv};
 use rustc_type_ir::TyKind;
 
 use crate::prelude::*;
@@ -7,7 +8,7 @@ pub fn is_mut_ref(ty: Ty) -> bool {
     matches!(ty.kind(), TyKind::Ref(_, _, Mutability::Mut))
 }
 
-pub fn mut_ref_inner(ty: Ty) -> Option<Ty> {
+pub fn peel_mut_ref(ty: Ty) -> Option<Ty> {
     if let TyKind::Ref(_, ty, Mutability::Mut) = ty.kind() {
         Some(*ty)
     } else {
@@ -15,27 +16,15 @@ pub fn mut_ref_inner(ty: Ty) -> Option<Ty> {
     }
 }
 
+pub fn peel_any_ptr(ty: Ty) -> Option<Ty> {
+    match ty.kind() {
+        TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => Some(*ty),
+        _ => None,
+    }
+}
+
 pub fn is_unsigned_integral(ty: Ty) -> bool {
     matches!(ty.kind(), TyKind::Uint(_))
-}
-
-pub fn is_ty_param(ty: Ty) -> bool {
-    matches!(ty.kind(), TyKind::Param(_))
-}
-
-pub fn extract_param_ty(ty: Ty) -> ParamTy {
-    match *ty.kind() {
-        TyKind::Param(pty) => pty,
-        _ => panic!("unexpected ParamTy"),
-    }
-}
-
-pub fn is_mut_ref_of_param_ty(ty: Ty) -> bool {
-    if let Some(inner_ty) = mut_ref_inner(ty) {
-        is_ty_param(inner_ty)
-    } else {
-        false
-    }
 }
 
 pub fn is_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
@@ -50,12 +39,22 @@ pub fn is_ref_of_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 
 pub fn is_nonnull<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     if let Some(adt_def) = ty.ty_adt_def() {
-        if let "core::ptr::NonNull" | "std::ptr::NonNull" = tcx.def_path_str(adt_def.did()).as_str()
-        {
-            return true;
-        }
+        tcx.is_diagnostic_item(Symbol::intern("NonNull"), adt_def.did())
+    } else {
+        false
     }
-    false
+}
+
+pub fn peel_nonnull<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+    if let TyKind::Adt(adt_def, subst) = ty.kind() {
+        if tcx.is_diagnostic_item(Symbol::intern("NonNull"), adt_def.did()) {
+            Some(subst.type_at(0))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 pub fn is_seq<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
@@ -66,9 +65,41 @@ pub fn is_seq<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
 
 pub fn is_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     if let Some(adt_def) = ty.ty_adt_def() {
+        // Sadly, no diagnostic item for Unique
         if let "core::ptr::Unique" | "std::ptr::Unique" = tcx.def_path_str(adt_def.did()).as_str() {
             return true;
         }
     }
     false
+}
+
+pub fn peel_unique<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+    if let TyKind::Adt(adt_def, subst) = ty.kind() {
+        if let "core::ptr::Unique" | "std::ptr::Unique" = tcx.def_path_str(adt_def.did()).as_str() {
+            Some(subst.type_at(0))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub fn int_bounds<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> (BigInt, BigInt) {
+    match ty.kind() {
+        TyKind::Uint(uint) => (
+            BigInt::from(0),
+            BigInt::from(1) << (uint.bit_width().unwrap_or(64)),
+        ),
+        TyKind::Int(int) => {
+            // For now we assume 64 bit for usize.
+            let width = int.bit_width().unwrap_or(64);
+            let lb = BigInt::from(1) << (width - 1);
+            let hb = lb.clone() - 1;
+            (-lb, hb)
+        }
+        _ => tcx
+            .dcx()
+            .fatal(format!("Invalid type for int_bounds: {:#?}", ty)),
+    }
 }

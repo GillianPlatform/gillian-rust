@@ -96,7 +96,7 @@ impl<'tcx> ProgCtx<'tcx> {
             }
 
             if crate::utils::attrs::should_translate(did, self.tcx())
-                && !parent_trusted(did, self.tcx())
+            // && !parent_trusted(did, self.tcx())
             {
                 if crate::utils::attrs::is_logic(did, self.tcx()) {
                     self.compile_logic(global_env, did);
@@ -124,7 +124,7 @@ impl<'tcx> ProgCtx<'tcx> {
             // For every spec and predicate to be loaded.
             if crate::utils::attrs::should_translate(did, self.tcx())
                 && crate::utils::attrs::is_logic(did, self.tcx())
-                && !parent_trusted(did, self.tcx())
+            // && !parent_trusted(did, self.tcx())
             {
                 if is_predicate(did, self.tcx()) {
                     global_env.predicate(did);

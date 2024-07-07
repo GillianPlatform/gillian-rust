@@ -1,6 +1,8 @@
 (* PROCS *)
 
-proc "core::slice::<impl [T]>::len"(T, p) { (* First param is ignored *)
+proc "core::slice::<impl [T]>::len"() { (* First param is ignored *)
+       as := args;
+       p := l-nth(as, (l-len as) i- 1i);
        goto [(typeOf l-nth(p, 0i)) = List] ctn err;
   ctn: ret := l-nth(p, 1i);
        return;
@@ -65,6 +67,11 @@ proc "core::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
     return
 };
 
+proc "std::ptr::const_ptr::<impl *const T>::add"(T, p, i) {
+    ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
+    return
+};
+
 proc "core::ptr::const_ptr::<impl *const T>::offset"(T, p, i) {
     ret := {{ l-nth(p, 0i), l+ (l-nth(p, 1i), {{ {{ "+", false, i, T }} }}) }};
     return
@@ -80,9 +87,14 @@ proc "std::ptr::Unique::<T>::dangling"(T) {
      return
 };
 
-proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
+(* proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
      rep := [is_zst](T);
      ret := l-nth(rep, 0i);
+     return
+}; *)
+
+proc "<T as std::mem::SizedTypeProperties>::IS_ZST"(T) {
+     ret := false;
      return
 };
 
@@ -110,7 +122,8 @@ proc "std::alloc::Layout::align"(lft, layout) {
 
 proc "std::alloc::Layout::array"(T, n) {
      (* We don't handle alignment yet. Not because it's not possible, it works exactly like size.
-        But because it requires "std::ptr::Unique::<T>::cast"more research into Rust's current rules regarding alignment that I know less of. *)
+        But because it requires "std::ptr::Unique::<T>::cast", which more research into Rust's current rules
+        regarding alignment that I know less of. *)
      (* We also simplify things: we could encode requirements on size proportionally to total allocable memory etc...
         However, we do not do so for now, because there again it is beside the point of what we are trying to show
         with this prototype. *)
@@ -264,6 +277,24 @@ proc "core::num::<impl usize>::MAX"() {
 
 proc "std::ptr::write"(T, dest, value) {
      u := [store_value](l-nth(dest, 0i), l-nth(dest, 1i), T, value);
+     ret := {{}};
+     return
+};
+
+proc "std::ptr::read"(T, from) {
+     r := [load_value](l-nth(from, 0i), l-nth(from, 1i), T, true);
+     ret := l-nth(r, 0i);
+     return
+};
+
+(* While the following is sound, it is not the most precise.
+   It might lead to failures when the actual requirements of
+   std::ptr::swap are weaker and would allow for the operation to proceed. *)
+proc "std::ptr::swap"(T, l, r) {
+     lv := [load_value](l-nth(l, 0i), l-nth(l, 1i), T, true);
+     rv := [load_value](l-nth(r, 0i), l-nth(r, 1i), T, true);
+     u := [store_value](l-nth(l, 0i), l-nth(l, 1i), T, l-nth(rv, 0i));
+     u := [store_value](l-nth(r, 0i), l-nth(r, 1i), T, l-nth(lv, 0i));
      ret := {{}};
      return
 };

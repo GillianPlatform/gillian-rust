@@ -1,5 +1,21 @@
-module DR = Gillian.Monadic.Delayed_result
+open Gillian.Monadic
+module DR = Delayed_result
 open DR.Syntax
+open Delayed.Syntax
+
+(* At this point I might as well use a monad transfomer library... *)
+
+module Delayed_list = struct
+  let fold_with_lk ~lk f init l =
+    let rec aux acc_lk l =
+      match l with
+      | [] -> acc_lk
+      | a :: r ->
+          let* acc, lk = acc_lk in
+          aux (f ~lk acc a) r
+    in
+    aux (Delayed.return (init, lk)) l
+end
 
 module DR_list = struct
   let rec map f l =
@@ -17,6 +33,16 @@ module DR_list = struct
         let** a, lk = f ~lk a in
         let++ r, lk = map_with_lk ~lk f r in
         (a :: r, lk)
+
+  let fold_with_lk ~lk f init l =
+    let rec aux acc_lk l =
+      match l with
+      | [] -> acc_lk
+      | a :: r ->
+          let** acc, lk = acc_lk in
+          aux (f ~lk acc a) r
+    in
+    aux (DR.ok (init, lk)) l
 
   let rec map2 f la lb =
     match (la, lb) with

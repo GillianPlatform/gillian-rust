@@ -1,4 +1,5 @@
 open Gillian.Gil_syntax
+open Monadic
 (* module Partial_layout = Partial_layout *)
 
 type arith_kind = Wrap | Overflow [@@deriving show, yojson, eq]
@@ -148,6 +149,9 @@ let of_expr (expr : Expr.t) : t =
       Logging.verbose (fun m ->
           m "of_expr is assigning everything to base %a" Expr.pp e);
       { base = Some e; from_base = [] }
+
+let of_expr_reduce (e : Expr.t) : t Delayed.t =
+  Delayed.map (Delayed.reduce e) of_expr
 
 let pp ft t =
   let pp_base ft = function

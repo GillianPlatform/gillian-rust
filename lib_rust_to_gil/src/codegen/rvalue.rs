@@ -9,20 +9,7 @@ use rustc_middle::ty::{self, AdtKind, ConstKind};
 
 impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
     pub fn int_bounds(&self, ty: Ty<'tcx>) -> (BigInt, BigInt) {
-        match ty.kind() {
-            TyKind::Uint(uint) => (
-                BigInt::from(0),
-                BigInt::from(1) << (uint.bit_width().unwrap_or(64)),
-            ),
-            TyKind::Int(int) => {
-                // For now we assume 64 bit for usize.
-                let width = int.bit_width().unwrap_or(64);
-                let lb = BigInt::from(1) << (width - 1);
-                let hb = lb.clone() - 1;
-                (-lb, hb)
-            }
-            _ => fatal!(self, "Invalid type for int_bounds: {:#?}", ty),
-        }
+        crate::utils::ty::int_bounds(ty, self.tcx())
     }
 
     pub fn push_encode_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Expr {
@@ -32,27 +19,37 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             | Rvalue::CheckedBinaryOp(binop, box (left, right)) => {
                 self.push_encode_binop(binop, left, right)
             }
-            &Rvalue::Ref(_region, _, place) => {
+            &Rvalue::Ref(_region, bk, place) => {
                 // I need to know how to handle the BorrowKind
                 // I don't know what needs to be done, maybe nothing
                 // Polonius will come into the game here.
-                if self.prophecies_enabled()
-                    && matches!(
-                        self.rvalue_ty(rvalue).kind(),
-                        TyKind::Ref(_, _, Mutability::Mut)
-                    )
-                {
-                    // The case of mutable references, what do we do with the prophecy?
-                    if place.projection.len() == 1 && place.projection[0] == PlaceElem::Deref {
-                        // This will just create a new prophecy variable. This is not wrong at all,
-                        // as we can always allocate ghost state. But it's not always the right thing to do.
-                        let local = Expr::PVar(self.name_from_local(place.local));
-                        self.push_read_gil_place(
-                            GilPlace::base(local, self.place_ty(place).ty),
-                            self.rvalue_ty(rvalue),
+                if self.prophecies_enabled() && matches!(bk, BorrowKind::Mut { .. }) {
+                    let local_ty = self.place_ty(place.local.into()).ty;
+                    if place.projection.len() == 1
+                        && place.projection[0] == PlaceElem::Deref
+                        && ty_utils::is_mut_ref(local_ty)
+                    {
+                        // If we're just copying a reference, we want to make sure we don't
+                        // create a new prophecy but simply copy it.
+                        // We hardcode that case.
+                        // Note that, the choice of prophecy has absolutely no impact on soundness.
+                        // Any value would be valid, but the wrong value will prevent verification to pass.
+                        // So we are taking absolutely no soundness risk in hardcoding some choices here.
+                        let cur_gil_place =
+                            GilPlace::base(Expr::PVar(self.name_from_local(place.local)), local_ty);
+                        let copied = self.temp_var();
+                        let cur_typ = self.place_ty_until(place, 0);
+                        self.push_read_gil_place_in_memory(
+                            copied.clone(),
+                            cur_gil_place,
+                            cur_typ.ty,
                             true,
-                        )
+                        );
+                        // The difference with push_get_gil_place is that push_get_gil_place will only return
+                        // the place in memory, and therefore peels the prophecy, returning Expr::PVar(copied).lnth(0)
+                        Expr::PVar(copied)
                     } else {
+                        // Otherwise we do create new prophecy.
                         let gil_place = self.push_get_gil_place(place);
                         let prophecy = self.push_alloc_prophecy();
                         [gil_place.into_expr_ptr(), prophecy].into()
@@ -82,8 +79,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 Expr::PVar(target)
             }
             &Rvalue::Len(place) => {
-                let expr = self.push_place_read(place, true);
-                expr.lst_len()
+                let gil_place = self.push_get_gil_place(place);
+                let (_loc, _proj, meta) = gil_place.into_loc_proj_meta();
+                meta.unwrap_or_else(|| fatal!(self, "Getting len of non-slice!?"))
             }
             Rvalue::Aggregate(box kind, ops) => {
                 let ops: Vec<Expr> = ops.iter().map(|op| self.push_encode_operand(op)).collect();
@@ -156,7 +154,9 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             // These two operations do nothing in our semantics.
             // It will lead to some failures, but it's ok, it's sound and it supports a large
             // set of programs.
-            CastKind::PointerExposeProvenance | CastKind::PointerWithExposedProvenance => enc_op,
+            CastKind::PointerExposeProvenance
+            | CastKind::PointerWithExposedProvenance
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => enc_op,
             CastKind::IntToInt => {
                 let (low, high) = self.int_bounds(ty_to);
                 let low_comp = Formula::ILessEq {

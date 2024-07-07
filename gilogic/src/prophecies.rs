@@ -180,6 +180,7 @@ where
         controller(p.prophecy(), r)
 }
 )]
+#[gillian::timeless]
 pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
     let _ = p;
     unreachable!();
@@ -189,8 +190,15 @@ pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
     requires { p.own(m) }
     ensures { $(m.0 == m.1)$ }
 )]
+#[gillian::timeless]
 pub fn prophecy_resolve<T: Ownable>(p: &mut T) {
     let _ = p;
+    unreachable!();
+}
+
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::prophecy::check_obs_sat"]
+pub fn check_obs_sat() {
     unreachable!();
 }
 
@@ -244,7 +252,8 @@ pub fn observer<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
 #[macro_export]
 macro_rules! mutref_auto_resolve {
     ($x: expr) => {
-        ::gilogic::prophecies::prophecy_auto_update($x);
-        ::gilogic::prophecies::prophecy_resolve($x);
+        gilogic::prophecies::check_obs_sat();
+        gilogic::prophecies::prophecy_auto_update($x);
+        gilogic::prophecies::prophecy_resolve($x);
     };
 }

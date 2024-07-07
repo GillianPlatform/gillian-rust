@@ -165,12 +165,25 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         }
         Term::Field(TermField {
             base,
-            dot_token,
+            dot_token: _,
             member,
         }) => {
             let base = encode_expr(base)?;
 
             tokens.extend(quote! { #base . #member })
+        }
+        Term::Impl(TermImpl {
+            hyp,
+            eqeq_token: _,
+            gt_token: _,
+            cons,
+        }) => {
+            let span = inner.span();
+            let hyp = encode_expr(hyp)?;
+            let cons = encode_expr(cons)?;
+            tokens.extend(quote_spanned! {span=>
+                gilogic::__stubs::expr_implies(#hyp, #cons)
+            });
         }
         Term::Exists(TermExists {
             exists_token: _,
@@ -269,6 +282,10 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             }
         }
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
+        Term::Cast(TermCast { expr, as_token, ty }) => {
+            let expr = encode_expr(expr)?;
+            tokens.extend(quote! { #expr #as_token #ty })
+        }
         e => {
             return Err(Error::new(
                 inner.span(),
@@ -467,6 +484,7 @@ impl ToTokens for Predicate {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ins = gather_ins(&self.args);
         let Predicate {
+            vis,
             name,
             body,
             generics,
@@ -479,7 +497,7 @@ impl ToTokens for Predicate {
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
               #(#attributes)*
-              fn #name #generics (#args) -> gilogic::RustAssertion {
+              #vis fn #name #generics (#args) -> gilogic::RustAssertion {
                 unreachable!()
               }
             }),
@@ -498,7 +516,7 @@ impl ToTokens for Predicate {
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]
                   #(#attributes)*
-                  fn #name #generics (#args) -> gilogic::RustAssertion
+                  #vis fn #name #generics (#args) -> gilogic::RustAssertion
                 });
                 brace_token.surround(tokens, |tokens| {
                     tokens.extend(quote!(gilogic::__stubs::defs([#(#stmts),*])));
@@ -612,6 +630,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
                     ensures { $(m.0 == m.1)$ }
                 )]
                 #[gillian::trusted]
+                #[gillian::timeless]
                 pub fn #resolve_fn_name<T: Ownable>(p: &mut #own_impl_ty) {
                     let _ = p;
                     unreachable!();
@@ -619,6 +638,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
 
                 macro_rules! #macro_name {
                     ($x: expr) => {
+                        gilogic::prophecies::check_obs_sat();
                         gilogic::prophecies::prophecy_auto_update($x);
                         #resolve_fn_name($x);
                     };

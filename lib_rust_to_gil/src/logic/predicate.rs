@@ -406,12 +406,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .map(|a| self.compile_assertion(a.1))
             .collect();
 
-        let mut real_sig = build_signature(
-            self.global_env,
-            self.body_id,
-            self.args,
-            &mut self.sig.temp_gen,
-        );
+        let mut real_sig =
+            build_signature(self.global_env, self.body_id, self.args, self.sig.temp_gen);
 
         let mut definitions = Vec::new();
 
@@ -607,8 +603,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             todo!("shl for floats")
                         }
                     }
+                    BinOp::Div => {
+                        if left_ty.is_integral() {
+                            GExpr::i_div(left, right)
+                        } else {
+                            GExpr::f_div(left, right)
+                        }
+                    }
                     BinOp::And => GExpr::and(left, right),
                     BinOp::Or => GExpr::or(left, right),
+                    BinOp::Impl => GExpr::implies(left, right),
                     BinOp::Ge => {
                         if left_ty.is_integral() {
                             GExpr::i_ge(left, right)
@@ -622,7 +626,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         } else {
                             GExpr::f_gt(left, right)
                         }
-                    },
+                    }
                 }
             }
             ExprKind::Constructor {
@@ -745,14 +749,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .push(core_preds::pcy_value(prophecy, value.clone()));
                 value
             }
-            ExprKind::Exists { var, body } => GExpr::EExists(
-                vec![(var.0.to_string(), None)],
-                Box::new(self.compile_expression_inner(*body)),
-            ),
-            ExprKind::EForall { var, body } => GExpr::EForall(
-                vec![(var.0.to_string(), None)],
-                Box::new(self.compile_expression_inner(*body)),
-            ),
+            ExprKind::Exists { var, body } => {
+                let ty = gil_type_of_rust_ty(var.1);
+                GExpr::EExists(
+                    vec![(var.0.to_string(), ty)],
+                    Box::new(self.compile_expression_inner(*body)),
+                )
+            }
+            ExprKind::EForall { var, body } => {
+                let ty = gil_type_of_rust_ty(var.1);
+                GExpr::EForall(
+                    vec![(var.0.to_string(), ty)],
+                    Box::new(self.compile_expression_inner(*body)),
+                )
+            }
+
             ExprKind::UnOp { op, arg } => {
                 let arg = self.compile_expression_inner(*arg);
 
@@ -761,7 +772,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     mir::UnOp::Neg => GExpr::minus(GExpr::int(0), arg),
                 }
             }
+            ExprKind::PtrToMutRef { ptr } => {
+                GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
+            }
         }
+    }
+}
+
+pub fn gil_type_of_rust_ty(ty: Ty) -> Option<Type> {
+    match ty.kind() {
+        TyKind::Bool => Some(Type::BoolType),
+        TyKind::Int(_) | TyKind::Uint(_) => Some(Type::IntType),
+        TyKind::Float(_) => Some(Type::NumberType),
+        TyKind::Tuple(_) | TyKind::Array(..) => Some(Type::ListType),
+        _ => None,
     }
 }
 

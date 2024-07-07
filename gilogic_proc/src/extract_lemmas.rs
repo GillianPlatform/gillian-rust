@@ -267,7 +267,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let item_attrs = std::mem::take(&mut item.attrs);
     let extract_lemma = parse_macro_input!(args as ExtractLemma);
 
-    let encoded_el = match extract_lemma.encode() {
+    let _encoded_el = match extract_lemma.encode() {
         Ok(stream) => stream,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -319,7 +319,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[rustc_diagnostic_item=#spec_name_string]
         #[gillian::decl::specification]
         #[gillian::decl::pred_ins=#ins]
-        #[gillian::trusted]
         fn #spec_name #generics (#inputs) -> gilogic::RustAssertion {
             #spec
         }
@@ -328,6 +327,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         #[gillian::extract_lemma=#name_string]
         #[gillian::spec=#spec_name_string]
         #[allow(unsused_variables)]
+        #[gillian::trusted]
         #sig {
             unreachable!()
         }

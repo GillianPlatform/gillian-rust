@@ -25,10 +25,6 @@ type t = {
 
 type action_ret = (t * vt list, err_t) result
 
-let projections_of_expr (e : Expr.t) : Projections.t Delayed.t =
-  let+ e = Delayed.reduce e in
-  Projections.of_expr e
-
 let resolve_loc_result loc =
   Delayed_result.of_do ~none:(Err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
@@ -69,7 +65,7 @@ let execute_store mem args =
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
-      let* proj = projections_of_expr proj in
+      let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
       let++ new_heap, lk = Heap.store ~tyenv ~lk heap loc proj ty value in
       make_branch ~mem:{ mem with heap = new_heap; lk } ()
@@ -80,7 +76,7 @@ let execute_load mem args =
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
       let ty = Ty.of_expr ty in
-      let* proj = projections_of_expr proj in
+      let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
       let++ (value, new_heap), lk =
         Heap.load ~tyenv ~lk heap loc proj ty copy
@@ -94,9 +90,9 @@ let execute_copy_nonoverlapping mem args =
   | [ from_loc; from_proj; to_loc; to_proj; ty; size ] ->
       let ty = Ty.of_expr ty in
       let** old_loc = resolve_loc_result from_loc in
-      let* old_proj = projections_of_expr from_proj in
+      let* old_proj = Projections.of_expr_reduce from_proj in
       let** to_loc = resolve_loc_result to_loc in
-      let* to_proj = projections_of_expr to_proj in
+      let* to_proj = Projections.of_expr_reduce to_proj in
       let++ new_heap, lk =
         Heap.copy_nonoverlapping ~tyenv ~lk heap ~from:(old_loc, old_proj)
           ~to_:(to_loc, to_proj) ty size
@@ -108,7 +104,7 @@ let execute_load_discr mem args =
   match args with
   | [ loc; proj; enum_typ ] ->
       let enum_typ = Ty.of_expr enum_typ in
-      let* proj = projections_of_expr proj in
+      let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
       let++ discr, lk =
         Heap.load_discr ~tyenv:mem.tyenv ~lk:mem.lk mem.heap loc proj enum_typ
@@ -157,7 +153,7 @@ let execute_cons_value mem args =
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
-      let* proj = projections_of_expr proj_exp in
+      let* proj = Projections.of_expr_reduce proj_exp in
       let++ (value, heap), lk =
         Heap.cons_value ~tyenv ~lk heap loc_name proj ty
       in
@@ -166,16 +162,8 @@ let execute_cons_value mem args =
 
 let execute_prod_value mem args =
   let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj; ty; value ] ->
-      let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
-      let* proj = projections_of_expr proj in
-      let+ new_heap, lk =
-        Heap.prod_value ~tyenv ~lk heap loc_name proj ty value
-      in
-      { mem with heap = new_heap; lk }
-  | _ -> Fmt.failwith "Invalid arguments for set_value"
+  let+ heap, lk = Heap.execute_prod_value ~tyenv ~lk heap args in
+  { mem with heap; lk }
 
 let execute_cons_uninit mem args =
   let { heap; tyenv; lk; _ } = mem in
@@ -183,21 +171,15 @@ let execute_cons_uninit mem args =
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
-      let* proj = projections_of_expr proj_exp in
+      let* proj = Projections.of_expr_reduce proj_exp in
       let++ heap, lk = Heap.cons_uninit ~tyenv ~lk heap loc_name proj ty in
       make_branch ~mem:{ mem with heap; lk } ~rets:[] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_uninit"
 
 let execute_prod_uninit mem args =
   let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj; ty ] ->
-      let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
-      let* proj = projections_of_expr proj in
-      let+ new_heap, lk = Heap.prod_uninit ~tyenv ~lk heap loc_name proj ty in
-      { mem with heap = new_heap; lk }
-  | _ -> Fmt.failwith "Invalid arguments for prod_uninit"
+  let+ heap, lk = Heap.execute_prod_uninit ~tyenv ~lk heap args in
+  { mem with heap; lk }
 
 let execute_cons_maybe_uninit mem args =
   let { heap; tyenv; lk; _ } = mem in
@@ -205,7 +187,7 @@ let execute_cons_maybe_uninit mem args =
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
-      let* proj = projections_of_expr proj_exp in
+      let* proj = Projections.of_expr_reduce proj_exp in
       let++ v, heap, lk =
         Heap.cons_maybe_uninit ~tyenv ~lk heap loc_name proj ty
       in
@@ -214,16 +196,8 @@ let execute_cons_maybe_uninit mem args =
 
 let execute_prod_maybe_uninit mem args =
   let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj; ty; value ] ->
-      let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
-      let* proj = projections_of_expr proj in
-      let+ new_heap, lk =
-        Heap.prod_maybe_uninit ~tyenv ~lk heap loc_name proj ty value
-      in
-      { mem with heap = new_heap; lk }
-  | _ -> Fmt.failwith "Invalid arguments for prod_maybe_uninit"
+  let+ heap, lk = Heap.execute_prod_maybe_uninit ~tyenv ~lk heap args in
+  { mem with heap; lk }
 
 let execute_cons_many_maybe_uninits mem args =
   let { heap; tyenv; lk; _ } = mem in
@@ -231,7 +205,7 @@ let execute_cons_many_maybe_uninits mem args =
   | [ loc; proj_exp; ty_exp; size ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
-      let* proj = projections_of_expr proj_exp in
+      let* proj = Projections.of_expr_reduce proj_exp in
       let++ v, heap, lk =
         Heap.cons_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size
       in
@@ -240,17 +214,8 @@ let execute_cons_many_maybe_uninits mem args =
 
 let execute_prod_many_maybe_uninits mem args =
   let { heap; tyenv; lk; _ } = mem in
-  match args with
-  | [ loc; proj; ty; size; maybe_values ] ->
-      let ty = Ty.of_expr ty in
-      let* loc_name = resolve_or_create_loc_name loc in
-      let* proj = projections_of_expr proj in
-      let+ new_heap, lk =
-        Heap.prod_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size
-          maybe_values
-      in
-      { mem with heap = new_heap; lk }
-  | _ -> Fmt.failwith "Invalid arguments for prod_many_maybe_uninits"
+  let+ heap, lk = Heap.execute_prod_many_maybe_uninits ~tyenv ~lk heap args in
+  { mem with heap; lk }
 
 let formula_of_expr_exn expr =
   match Formula.lift_logic_expr expr with
@@ -428,16 +393,16 @@ let execute_size_of mem args =
       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ ret ] ())
   | _ -> Fmt.failwith "Invalid arguments for size_of"
 
-let execute_is_zst mem args =
-  match args with
-  | [ ty ] ->
-      let ty = Ty.of_expr ty in
-      let+ formula, new_lk =
-        Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
-      in
-      let expr = Formula.to_expr formula |> Option.get in
-      Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
-  | _ -> Fmt.failwith "Invalid arguments for is_zst"
+(* let execute_is_zst mem args =
+   match args with
+   | [ ty ] ->
+       let ty = Ty.of_expr ty in
+       let+ formula, new_lk =
+         Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
+       in
+       let expr = Formula.to_expr formula |> Option.get in
+       Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
+   | _ -> Fmt.failwith "Invalid arguments for is_zst" *)
 
 let execute_cons_ty_size mem args =
   match args with
@@ -514,7 +479,7 @@ let produce ~core_pred mem args =
     | Pcy_controller -> execute_prod_pcy_controller mem args
     | Value_observer -> execute_prod_value_observer mem args
     | Observation -> execute_prod_observation mem args
-    | _ -> Fmt.failwith "Unimplemented: Produce %s" core_pred
+    | Freed -> Fmt.failwith "Unimplemented: Produce %s" core_pred
   in
   Logging.verbose (fun m -> m "Resulting in: %a" pp res);
   res
@@ -536,7 +501,7 @@ let execute_action ~action_name mem args =
     | New_lft -> execute_new_lft mem args
     | Kill_lft -> execute_kill_lft mem args
     | Size_of -> execute_size_of mem args
-    | Is_zst -> execute_is_zst mem args
+    (* | Is_zst -> execute_is_zst mem args *)
     | Pcy_alloc -> execute_pcy_alloc mem args
     | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args

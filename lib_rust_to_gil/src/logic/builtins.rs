@@ -69,6 +69,7 @@ pub(crate) enum LogicStubs {
     ExprForall,
     ExprEq,
     ExprNe,
+    ExprImpl,
 }
 
 impl LogicStubs {
@@ -98,6 +99,7 @@ impl LogicStubs {
                 "gillian::expr::forall" => Some(Self::ExprForall),
                 "gillian::expr::eq" => Some(Self::ExprEq),
                 "gillian::expr::ne" => Some(Self::ExprNe),
+                "gillian::expr::implies" => Some(Self::ExprImpl),
                 "gillian::formula::implication" => Some(Self::FormulaImplication),
                 "gillian::mut_ref::get_prophecy" => Some(Self::MutRefGetProphecy),
                 "gillian::mut_ref::set_prophecy" => Some(Self::MutRefSetProphecy),
@@ -166,6 +168,7 @@ impl FnStubs {
 
         crate::utils::attrs::diagnostic_item_string(def_id, tcx).and_then(|name| {
             match name.as_str() {
+                // "gillian::prophecies::check_obs_sat" => Some(Self::CheckObsSat),
                 x if x.len() >= 17 && &x[..17] == "gillian::unfold::" => {
                     Some(Self::UnfoldSomething)
                 }
