@@ -1,5 +1,7 @@
 use core::ptr::NonNull;
 
+use crate::tys::RustProof;
+
 use super::tys::{RustAssertion, RustFormula};
 
 #[gillian::no_translate]
@@ -228,10 +230,17 @@ pub fn spec<const N: usize>(_pre: RustAssertion, _post: [RustAssertion; N]) -> R
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::extract_lemma"]
 pub fn extract_lemma<P>(
-    _assuming: bool,
+    _assuming: RustFormula,
     _from: RustAssertion,
     _extract: RustAssertion,
     _prophecise: P,
 ) -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::package"]
+pub fn package(pre: RustAssertion, post: RustAssertion) -> RustProof {
     unreachable!()
 }

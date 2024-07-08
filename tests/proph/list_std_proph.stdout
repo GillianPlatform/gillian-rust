@@ -38,6 +38,34 @@ pred "<usize as ShallowModel>::shallow_model"(+self_, v):
   (#self_ == #v) * (v == #v) * (self_ == #self_);
 
 
+pred "extract_head$$extract_proof$$pre"(+pty_T0, +list, head, tail, len, p):
+  "list_ref_mut_htl::<T>$$inner"(pty_T0, #list, #m, #head, #tail, #len)
+  * (list == #list)
+  * (head == #head)
+  * (tail == #tail)
+  * (len == #len)
+  * (p == #p)
+  * types(#len: Int)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }})
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (#head == {{ 1i, {{ #p }} }});
+
+
+pred "extract_head$$extract_proof$$post"(+pty_T0, +list, +head, +tail, +len, +p):
+  "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #mh)
+  * (list == #list)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (head == #head)
+  * (tail == #tail)
+  * (len == #len)
+  * (p == #p)
+  * types(#len: Int)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }})
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ pty_T0 }} }}, #p, #lvar_0);
+
+
 pred "dll_seg::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, data):
   (#head == #tail_next) * (#tail == #head_prev) * (#data == {{  }})
   * (data == #data)
@@ -109,6 +137,54 @@ pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +sel
   * (self == #self);
 
 
+pred "list_ref_mut_inner_htl::<T>$$inner"(+pty_T0, +REFERENCE, head, tail, len):
+  (#SELF == {{ #head, #tail, #len, {{  }} }}) * (#len == l-len #model)
+  * "dll_seg::<T>"(pty_T0, #head, {{ 0i, {{  }} }}, #tail, {{ 0i, {{  }} }}, #model)
+  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #SELF)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * types(#len: Int)
+  * (len == #len)
+  * (tail == #tail)
+  * (head == #head)
+  * (REFERENCE == #REFERENCE);
+
+
+pred "list_ref_mut_htl::<T>$$inner"(+pty_T0, +REFERENCE, model, head, tail, len):
+  (#model == {{ #current, #lvar_3 }})
+  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
+  * "list_ref_mut_inner_htl::<T>$$inner"(pty_T0, #REFERENCE, #head, #tail, #len)
+  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_3)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * types(#len: Int)
+  * (len == #len)
+  * (tail == #tail)
+  * (head == #head)
+  * (model == #model)
+  * (REFERENCE == #REFERENCE);
+
+
+pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (this == #this);
+
+
+pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
+  * <value_observer>(l-nth(#self, 1i); #a)
+  * (#lvar_3 == #b)
+  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * (model == #model)
+  * (self == #self);
+
+
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
@@ -164,36 +240,12 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>"(+pLft_a, +pty_T
   * (this == #this);
 guard: <lft>(pLft_a; true);
 
-pred "list_ref_mut_inner_htl::<T>$$inner"(+pty_T0, +REFERENCE, head, tail, len):
-  (#SELF == {{ #head, #tail, #len, {{  }} }}) * (#len == l-len #model)
-  * "dll_seg::<T>"(pty_T0, #head, {{ 0i, {{  }} }}, #tail, {{ 0i, {{  }} }}, #model)
-  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #SELF)
-  * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
-  * types(#lvar_5: Obj, #lvar_6: List, #lvar_7: Obj)
-  * (#REFERENCE == {{ {{ #lvar_5, #lvar_6 }}, #lvar_7 }})
-  * types(#len: Int)
-  * (len == #len)
-  * (tail == #tail)
-  * (head == #head)
-  * (REFERENCE == #REFERENCE);
+lemma "extract_head$$extract_proof"(pty_T0, list, head, tail, len, p)[[ "extract_head$$extract_proof$$pre"(#pty_T0, #list, #head, #tail, #len, #p) ]]
+[["extract_head$$extract_proof$$post"(#pty_T0, #list, #head, #tail, #len, #p) * ("extract_head$$extract_proof$$post"(#pty_T0, #list, #head, #tail, #len, #p) -* "extract_head$$extract_proof$$pre"(#pty_T0, #list, #head, #tail, #len, #p))]]
 
-
-pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
-  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
-  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
-  * <pcy_controller>(l-nth(#this, 1i); #repr)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (this == #this);
-
-
-pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>$$inner"(+pty_T0, +this):
-  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
-  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
-  * <pcy_controller>(l-nth(#this, 1i); #repr)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (this == #this);
+[*
+package ("extract_head$$extract_proof$$post"(#pty_T0, #list, #head, #tail, #len, #p) -* "extract_head$$extract_proof$$pre"(#pty_T0, #list, #head, #tail, #len, #p))
+*]
 
 
 lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_2: Obj, #lvar_3: List, #lvar_4: Obj) * (#REFERENCE == {{ {{ #lvar_2, #lvar_3 }}, #lvar_4 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]

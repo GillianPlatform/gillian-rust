@@ -32,6 +32,7 @@ mod ownable;
 pub use ownable::Ownable;
 pub mod alloc;
 pub mod iterated;
+pub mod lemma;
 pub mod prophecies;
 
 pub mod symex_ctrl {

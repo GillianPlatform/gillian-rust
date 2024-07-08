@@ -41,6 +41,7 @@ pub fn resolve_candidate<'tcx>(
                 Ok(Some(selection)) => selection,
                 Ok(None) => panic!("Ambiguous!"),
                 Err(Unimplemented) => {
+                    panic!();
                     fatal2!(
                         tcx,
                         "Got unimplemented when resolving {:?}.\n\

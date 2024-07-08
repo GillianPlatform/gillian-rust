@@ -16,13 +16,6 @@ pred "<i32 as gilogic::Ownable>::own"(+self):
   * (self == #self);
 
 
-pred "<&mut i32 as gilogic::Ownable>::own$$inner"(+self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), "i32"; #v)
-  * "<i32 as gilogic::Ownable>::own"(#v)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
-  * (self == #self);
-
-
 proc swap_borrows(pLft_a, pLft_b, x, y) {
         m_1x := x;
         g_0 := m_1x;

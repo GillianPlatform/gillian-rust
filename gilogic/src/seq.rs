@@ -55,7 +55,6 @@ impl<T> Seq<T> {
         unreachable!()
     }
 
-
     #[gillian::builtin]
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::permutation_of"]

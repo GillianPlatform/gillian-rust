@@ -55,7 +55,7 @@ impl<T> Node<T> {
 #[extract_lemma(
     forall head, tail, len, p.
     model m.
-    extract model mh: (T::RepresentationTy, T::RepresentationTy).
+    extract model mh.
     assuming { head == Some(p) }
     from { list_ref_mut_htl(list, m, head, tail, len) }
     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }

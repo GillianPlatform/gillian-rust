@@ -1,0 +1,142 @@
+warning: unused import: `mutref_auto_resolve`
+ --> ../tests/proph/lemma_tests.rs:7:5
+  |
+7 |     mutref_auto_resolve,
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused macro definition: `auto_resolve_list_ref_mut_htl`
+   --> ../tests/proph/lemma_tests.rs:129:26
+    |
+129 |     resolve_macro_name = auto_resolve_list_ref_mut_htl
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_macros)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+e18
+e51
+pred "list_ref_mut_htl::<T>$$inner"(+pty_T0, +REFERENCE, model, head, tail, len):
+  (#model == {{ #current, #lvar_3 }})
+  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
+  * "list_ref_mut_inner_htl::<T>$$inner"(pty_T0, #REFERENCE, #head, #tail, #len)
+  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_3)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * types(#len: Int)
+  * (len == #len)
+  * (tail == #tail)
+  * (head == #head)
+  * (model == #model)
+  * (REFERENCE == #REFERENCE);
+
+pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
+  (#model == {{ #a, #b }})
+  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
+  * <value_observer>(l-nth(#self, 1i); #a)
+  * (#lvar_3 == #b)
+  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * (model == #model)
+  * (self == #self);
+
+warning: unused variable: `list`
+  --> ../tests/proph/lemma_tests.rs:67:33
+   |
+67 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `head`
+   --> ../tests/proph/lemma_tests.rs:117:5
+    |
+117 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/proph/lemma_tests.rs:118:5
+    |
+118 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/proph/lemma_tests.rs:119:5
+    |
+119 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/proph/lemma_tests.rs:120:5
+    |
+120 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: fields `head`, `tail`, and `len` are never read
+  --> ../tests/proph/lemma_tests.rs:17:5
+   |
+16 | pub struct LinkedList<T> {
+   |            ---------- fields in this struct
+17 |     head: Option<NonNull<Node<T>>>,
+   |     ^^^^
+18 |     tail: Option<NonNull<Node<T>>>,
+   |     ^^^^
+19 |     len: usize,
+   |     ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `next`, `prev`, and `element` are never read
+  --> ../tests/proph/lemma_tests.rs:24:5
+   |
+23 | struct Node<T> {
+   |        ---- fields in this struct
+24 |     next: Option<NonNull<Node<T>>>,
+   |     ^^^^
+25 |     prev: Option<NonNull<Node<T>>>,
+   |     ^^^^
+26 |     element: T,
+   |     ^^^^^^^
+
+warning: associated function `shallow_model` is never used
+  --> ../tests/proph/lemma_tests.rs:32:8
+   |
+29 | trait ShallowModel: Ownable {
+   |       ------------ associated function in this trait
+...
+32 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
+   |        ^^^^^^^^^^^^^
+
+warning: associated items `new` and `into_element` are never used
+  --> ../tests/proph/lemma_tests.rs:45:8
+   |
+44 | impl<T> Node<T> {
+   | --------------- associated items in this implementation
+45 |     fn new(element: T) -> Self {
+   |        ^^^
+...
+53 |     fn into_element(self: Box<Self>) -> T {
+   |        ^^^^^^^^^^^^
+
+warning: function `dll_seg_l_to_r` is never used
+   --> ../tests/proph/lemma_tests.rs:116:4
+    |
+116 | fn dll_seg_l_to_r<T: Ownable>(
+    |    ^^^^^^^^^^^^^^
+
+warning: variable `REFERENCE` should have a snake case name
+   --> ../tests/proph/lemma_tests.rs:135:12
+    |
+135 |     fn own(self, model: Self::RepresentationTy) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: 13 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

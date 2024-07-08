@@ -24,13 +24,6 @@ pred "<() as gilogic::Ownable>::own"(+self):
   (#self == {{  }}) * (self == #self);
 
 
-pred "<&mut Option<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "Option", {{ pty_T0 }} }}; #v)
-  * "<Option<T> as gilogic::Ownable>::own"(pty_T0, #v)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
-  * (self == #self);
-
-
 spec "Option::<T>::new"(pty_T0, x)
 [[ "<T as gilogic::Ownable>::own"(#pty_T0, #x) * (x == #x) * (pty_T0 == #pty_T0) ]]
 [["<Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]

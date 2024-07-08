@@ -5,7 +5,8 @@ use pearlite_syn::*;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
-    parse_quote, spanned::Spanned, BinOp, Error, ExprPath, Ident, Lit, Member, Pat, PatIdent, PatPath, PatStruct, PatTuple, PatTupleStruct, PatWild, Path, QSelf, UnOp
+    parse_quote, spanned::Spanned, BinOp, Error, ExprPath, Ident, Lit, Member, Pat, PatIdent,
+    PatPath, PatStruct, PatTuple, PatTupleStruct, PatWild, Path, QSelf, UnOp,
 };
 
 /// A fragment of Pearlite that we support
@@ -284,31 +285,41 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
             };
 
             if id == "result" {
-                Ok(CoreTerm::Var(VarKind::Source(Ident::new("ret", Span::call_site()))))
+                Ok(CoreTerm::Var(VarKind::Source(Ident::new(
+                    "ret",
+                    Span::call_site(),
+                ))))
             } else {
                 Ok(CoreTerm::Var(VarKind::Source(id.clone())))
             }
         }
         Term::Paren(TermParen { expr, .. }) => term_to_core(*expr),
         Term::Lit(lit) => Ok(CoreTerm::Lit(lit.lit)),
-        Term::Forall(TermForall { args,  term, .. }) => {
+        Term::Forall(TermForall { args, term, .. }) => {
             let body = term_to_core(*term)?;
-            let args = args.into_iter().map(|a| { VarKind::Source(a.ident) });
+            let args = args.into_iter().map(|a| VarKind::Source(a.ident));
             Ok(CoreTerm::Forall(args.collect(), Box::new(body)))
         }
         Term::Impl(TermImpl { hyp, cons, .. }) => {
             let hyp = term_to_core(*hyp)?;
             let cons = term_to_core(*cons)?;
 
-
             let not_hyp = CoreTerm::UnOp(UnOp::Not(Default::default()), Box::new(hyp));
-            Ok(CoreTerm::BinOp(Box::new(not_hyp), BinOp::Or(Default::default()), Box::new(cons)))
+            Ok(CoreTerm::BinOp(
+                Box::new(not_hyp),
+                BinOp::Or(Default::default()),
+                Box::new(cons),
+            ))
         }
         Term::Index(TermIndex { expr, index, .. }) => {
             let expr = term_to_core(*expr)?;
             let index = term_to_core(*index)?;
 
-            Ok(CoreTerm::MethodCall(Box::new(expr), parse_quote! { at }, vec![index]))
+            Ok(CoreTerm::MethodCall(
+                Box::new(expr),
+                parse_quote! { at },
+                vec![index],
+            ))
         }
         t => Err(Error::new(t.span(), &format!("Unsupported term {t:?}"))),
     }
