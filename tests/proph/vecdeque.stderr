@@ -1,4 +1,4 @@
-warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`, `extract_lemma`, `mutref_auto_resolve`, `prophecies::with_freeze_lemma_for_mutref`
+warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`, `extract_lemma`, `prophecies::with_freeze_lemma_for_mutref`
   --> ../tests/proph/vecdeque.rs:11:25
    |
 11 |     iterated::{all_own, all_own_swap},
@@ -7,8 +7,6 @@ warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`, `extract_lem
 13 |         assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
    |                    ^^^^^^^^^^^^^             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-16 |     mutref_auto_resolve,
-   |     ^^^^^^^^^^^^^^^^^^^
 17 |     prophecies::{Ownable, Prophecised, Prophecy},
    |                           ^^^^^^^^^^^  ^^^^^^^^
    |
@@ -21,39 +19,33 @@ warning: unused import: `std::slice`
    |     ^^^^^^^^^^
 
 warning: unnecessary parentheses around function argument
-   --> ../tests/proph/vecdeque.rs:360:23
+   --> ../tests/proph/vecdeque.rs:371:23
     |
-360 |             * (end == (head + len - cap))
+371 |             * (end == (head + len - cap))
     |                       ^                ^
     |
     = note: `#[warn(unused_parens)]` on by default
 help: remove these parentheses
     |
-360 -             * (end == (head + len - cap))
-360 +             * (end == head + len - cap)
+371 -             * (end == (head + len - cap))
+371 +             * (end == head + len - cap)
     |
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-warning: unused variable: `value`
-   --> ../tests/proph/vecdeque.rs:418:33
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: unused variable: `off`
+   --> ../tests/proph/vecdeque.rs:453:39
     |
-418 |     pub fn push_back(&mut self, value: T) {
-    |                                 ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
+453 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
+    |                                       ^^^ help: if this is intentional, prefix it with an underscore: `_off`
     |
     = note: `#[warn(unused_variables)]` on by default
 
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `off`
-   --> ../tests/proph/vecdeque.rs:441:39
-    |
-441 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
-    |                                       ^^^ help: if this is intentional, prefix it with an underscore: `_off`
-
 warning: unused variable: `value`
-   --> ../tests/proph/vecdeque.rs:441:51
+   --> ../tests/proph/vecdeque.rs:453:51
     |
-441 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
+453 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
     |                                                   ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
 
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
@@ -66,9 +58,9 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: unnecessary `unsafe` block
-   --> ../tests/proph/vecdeque.rs:442:9
+   --> ../tests/proph/vecdeque.rs:454:9
     |
-442 |         unsafe {
+454 |         unsafe {
     |         ^^^^^^ unnecessary `unsafe` block
     |
     = note: `#[warn(unused_unsafe)]` on by default
@@ -106,68 +98,28 @@ warning: function `handle_reserve` is never used
 78 | fn handle_reserve(result: Result<(), TryReserveError>) {
    |    ^^^^^^^^^^^^^^
 
-warning: field `ptr` is never read
-   --> ../tests/proph/vecdeque.rs:107:5
-    |
-106 | pub(crate) struct RawVec<T> {
-    |                   ------ field in this struct
-107 |     ptr: Unique<T>,
-    |     ^^^
-
-warning: function `finish_grow` is never used
-   --> ../tests/proph/vecdeque.rs:111:4
-    |
-111 | fn finish_grow(
-    |    ^^^^^^^^^^^
-
-warning: associated items `MIN_NON_ZERO_CAP`, `current_memory`, `ptr`, `grow_amortized`, and `reserve_for_push` are never used
-   --> ../tests/proph/vecdeque.rs:152:11
+warning: method `reserve_for_push` is never used
+   --> ../tests/proph/vecdeque.rs:267:12
     |
 151 | impl<T> RawVec<T> {
-    | ----------------- associated items in this implementation
-152 |     const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
-    |           ^^^^^^^^^^^^^^^^
-...
-169 |     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-    |        ^^^^^^^^^^^^^^
-...
-211 |     pub fn ptr(&self) -> *mut T {
-    |            ^^^
-...
-220 |     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-    |        ^^^^^^^^^^^^^^
+    | ----------------- method in this implementation
 ...
 267 |     pub fn reserve_for_push(&mut self, len: usize) {
     |            ^^^^^^^^^^^^^^^^
 
-warning: field `head` is never read
-   --> ../tests/proph/vecdeque.rs:300:5
-    |
-297 | pub struct VecDeque<T> {
-    |            -------- field in this struct
-...
-300 |     head: usize,
-    |     ^^^^
-
-warning: function `wrap_index` is never used
-   --> ../tests/proph/vecdeque.rs:528:4
-    |
-528 | fn wrap_index(logical_index: usize, capacity: usize) -> usize {
-    |    ^^^^^^^^^^
-
 warning: unused `std::result::Result` that must be used
-   --> ../tests/proph/vecdeque.rs:431:9
+   --> ../tests/proph/vecdeque.rs:443:9
     |
-431 |         self.buf.grow_amortized(self.len, 1);
+443 |         self.buf.grow_amortized(self.len, 1);
     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: this `Result` may be an `Err` variant, which should be handled
     = note: `#[warn(unused_must_use)]` on by default
 help: use `let _ = ...` to ignore the resulting value
     |
-431 |         let _ = self.buf.grow_amortized(self.len, 1);
+443 |         let _ = self.buf.grow_amortized(self.len, 1);
     |         +++++++
 
-warning: 18 warnings emitted
+warning: 13 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

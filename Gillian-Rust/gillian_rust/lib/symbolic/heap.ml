@@ -55,7 +55,7 @@ module TypePreds = struct
 
   let empty_array ty =
     match ty with
-    | Ty.Array { length; _ } -> Formula.Infix.(length #== (Expr.int 0))
+    | Ty.Array { length; _ } -> Formula.Infix.(length #<= (Expr.int 0))
     | _ -> False
 
   (* let valid_zst_value ~tyenv ty e = e #== (Ty.value_of_zst ~tyenv ty) *)
@@ -355,15 +355,11 @@ module TreeBlock = struct
 
   let block_size_equal_ty_size ~block ~ty ~lk =
     let+ result =
-      Logging.verbose (fun m ->
-          m "block_size_equal_ty_size:@\nblock: %a@\nty: %a" pp block Ty.pp ty);
       match block with
       | Structural { ty = ty'; _ } -> LK.size_equal ~lk ty ty'
       | Laid_out_root { index_ty; range; _ } ->
           LK.size_equal ~lk ty (Range.as_array_ty ~index_ty range)
     in
-    Logging.verbose (fun m ->
-        m "block_size_equal_ty_size returns: %a" Formula.pp (fst result));
     result
 
   let block_size_equal ~lk block_a block_b =
@@ -389,7 +385,7 @@ module TreeBlock = struct
   let rec to_rust_value ~tyenv ?(current_proj = []) ~ty:expected_ty block ~lk :
       (Expr.t * LK.t, Err.Conversion_error.t) DR.t =
     Logging.verbose (fun m ->
-        m "TO_RUST_VALUE:\nBlock: %a\nExpected ty: %a" pp block Ty.pp
+        m "TO_RUST_VALUE:@\nBlock: %a@\nExpected ty: %a" pp block Ty.pp
           expected_ty);
     let rec all ~lk acc ptvs =
       match ptvs () with
@@ -766,6 +762,7 @@ module TreeBlock = struct
     | _ -> DR.ok (Structural { content = ManySymbolicMaybeUninit e; ty })
 
   let outer_missing ~offset ~tyenv:_ ty =
+    let+ ty = Ty.reduce ty in
     let root = missing ty in
     { offset; root }
 
@@ -1147,13 +1144,12 @@ module TreeBlock = struct
                   { ty = structural.ty; content = Symbolic e }
             | Error err ->
                 Fmt.failwith
-                  "extract_range_structural: Failed to convert array symbolic:\n\
-                   Range: %a\n\
-                   Array: %a\n\
+                  "extract_range_structural: Failed to convert array symbolic:@\n\
+                   Range: %a@\n\
+                   Array: %a@\n\
                    Error: %a" Range.pp range (Fmt.Dump.list pp) l
                   Conversion_error.pp err))
     | Uninit | Missing ->
-        (* FIXME: the structural is wrong, I need to fix the type so that it has the right size! *)
         let* split =
           if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
             let left_range = (Expr.zero_i, snd range) in
@@ -1167,16 +1163,24 @@ module TreeBlock = struct
           else
             if%sat Formula.Infix.((snd range) #== end_as_index) then
               let left_range = (Expr.zero_i, fst range) in
+              let left_ty = Range.as_array_ty ~index_ty left_range in
+              let right_ty = Range.as_array_ty ~index_ty range in
               Delayed.return
-                (`Two ((structural, left_range), (structural, range)))
+                (`Two
+                  ( ({ structural with ty = left_ty }, left_range),
+                    ({ structural with ty = right_ty }, range) ))
             else
               let left_range = (Expr.zero_i, fst range) in
               let right_range = (snd range, end_as_index) in
+              let left_ty = Range.as_array_ty ~index_ty left_range in
+              let mid_ty = Range.as_array_ty ~index_ty range in
+              let right_ty = Range.as_array_ty ~index_ty right_range in
+
               Delayed.return
                 (`Three
-                  ( (structural, left_range),
-                    (structural, range),
-                    (structural, right_range) ))
+                  ( ({ structural with ty = left_ty }, left_range),
+                    ({ structural with ty = mid_ty }, range),
+                    ({ structural with ty = right_ty }, right_range) ))
         in
         let+ root = children_from_split split |> root_of_children in
         (root, lk)
@@ -1198,8 +1202,8 @@ module TreeBlock = struct
     Logging.verbose (fun m -> m "laid_out_of_children");
     if not (Ty.equal left.index_ty right.index_ty) then
       Fmt.failwith
-        "laid_out_of_children: need to reinterpreted sub-ranges.\n\
-         Left: %a\n\
+        "laid_out_of_children: need to reinterpreted sub-ranges.@\n\
+         Left: %a@\n\
          Right: %a" pp_laid_out left pp_laid_out right;
     let range = (fst left.range, snd right.range) in
     let index_ty = left.index_ty in
@@ -1208,8 +1212,8 @@ module TreeBlock = struct
 
   let rec extract ~lk ~range ~index_ty laid_out =
     Logging.verbose (fun m ->
-        m "extract:\nrange: %a : %a\nlaid_out: %a" Range.pp range Ty.pp index_ty
-          pp_laid_out laid_out);
+        m "extract:@\nrange: %a : %a@\nlaid_out: %a" Range.pp range Ty.pp
+          index_ty pp_laid_out laid_out);
     let* range, lk =
       Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:laid_out.index_ty range
     in
@@ -1327,7 +1331,7 @@ module TreeBlock = struct
       match (lc.structural, lc.children) with
       | Some structural, None ->
           let () =
-            Logging.tmi (fun m ->
+            Logging.verbose (fun m ->
                 m "Leaf!!! Structural = %a" pp_structural structural)
           in
           let rel_range =
@@ -1335,6 +1339,8 @@ module TreeBlock = struct
           in
           (* leaf, we try splitting further *)
           let* new_node, lk =
+            Logging.verbose (fun m ->
+                m "extract_range_structural within extract_laid_out_and_apply");
             extract_range_structural ~lk ~tyenv ~index_ty:lc.index_ty
               ~range:rel_range structural
           in
@@ -1376,6 +1382,7 @@ module TreeBlock = struct
               let new_lc = laid_out_of_children left right in
               ((value, new_lc), lk))
             else
+              let () = Logging.verbose (fun m -> m "rebalance") in
               (* We now that [this_low <= low < mid < high <= this_high ]
                  Remember that left.range = (this_low, mid) and right.range = (mid, this_high) *)
               let _this_low, this_high = lc.range in
@@ -1436,7 +1443,9 @@ module TreeBlock = struct
 
   (** This applies [return_and_update] on the range given index by [index_ty] within the block [t] *)
   and extract_and_apply ~return_and_update ~tyenv ~range ~index_ty t ~lk =
-    Logging.verbose (fun m -> m "extract_and_apply: %a" pp t);
+    Logging.verbose (fun m ->
+        m "extract_and_apply:@\nBLOCK: %a@\nRANGE: %a : %a" pp t Range.pp range
+          Ty.pp index_ty);
     let* eq, lk =
       block_size_equal_ty_size ~lk ~block:t
         ~ty:(Range.as_array_ty ~index_ty range)
@@ -1446,8 +1455,11 @@ module TreeBlock = struct
       match t with
       | Structural s ->
           let* new_node, lk =
+            Logging.verbose (fun m ->
+                m "extract_range_structural within extract_and_apply");
             extract_range_structural ~tyenv ~lk ~index_ty ~range s
           in
+          Logging.verbose (fun m -> m "OBTAINED A NEW NODE: %a" pp new_node);
           extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty
             new_node
       | Laid_out_root lc ->
@@ -1540,6 +1552,8 @@ module TreeBlock = struct
        The casts surely come with more general rules. *)
     match path with
     | [] ->
+        Logging.verbose (fun m ->
+            m "SACHA: ABOUT THE CHECK THE ENTAILMENT YOU CARE ABOUT");
         if%ent Formula.Infix.(Expr.zero_i #<= current_offset) then
           let range = (current_offset, Expr.Infix.(current_offset + size)) in
           let* t, lk =
@@ -1549,8 +1563,10 @@ module TreeBlock = struct
           in
           extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty:ty t
         else
-          Fmt.failwith "negative offset in array in frame_slice : %a" Expr.pp
-            current_offset
+          let+ pc = Delayed.leak_pc_copy () in
+          Fmt.failwith
+            "negative offset in array in frame_slice : %a. Current PC is: %a"
+            Expr.pp current_offset Gillian.Symbolic.Pure_context.pp pc.pfs
     | Plus (_, ofs, ofs_ty) :: rest ->
         let* ofs, lk =
           LK.reinterpret_offset ~lk ~from_ty:ofs_ty ~to_ty:ty ofs
@@ -2019,7 +2035,7 @@ module TreeBlock = struct
       match root with
       | Structural { ty; _ } ->
           let ty = Ty.substitution ~subst_expr ty in
-          let new_root =
+          let* new_root =
             outer_missing ~offset ~tyenv
               (Projections.base_ty ~leaf_ty:ty new_proj.from_base)
           in
@@ -2161,9 +2177,9 @@ let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
     let () =
       Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj)
     in
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2196,9 +2212,9 @@ let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
      else *)
   if%sat TypePreds.empty_array ty then Delayed.return (mem, lk)
   else
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2249,9 +2265,9 @@ let prod_maybe_uninit
         [ Formula.Infix.(maybe_value #== (Symb_opt.some (Expr.EList []))) ]
       (mem, lk)
   else
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2303,9 +2319,9 @@ let prod_many_maybe_uninits
              [ Symb_opt.valid_zst_array_maybe_uninit ~tyenv ty size maybe_values ]
            (mem, lk)
        else *)
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing

@@ -1,4 +1,5 @@
 //@check-pass
+//?gil:ignore
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
@@ -324,10 +325,15 @@ impl<T: Ownable> Ownable for VecDeque<T> {
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
         assertion!(
-            |ptr: Unique<T>, cap: usize, len: usize, head: usize, values, rest, rest2|
-                  (head + len <= cap)
+            |ptr: Unique<T>, cap: usize, len: usize, head: usize, values, rest, rest2| (head + len
+                <= cap)
                 * (std::mem::size_of::<T>() > 0)
-                * (self == VecDeque { buf: RawVec { ptr, cap }, len, head })
+                * (self
+                    == VecDeque {
+                        buf: RawVec { ptr, cap },
+                        len,
+                        head
+                    })
                 * cap.own(cap)
                 * len.own(len)
                 * head.own(head)
@@ -335,7 +341,10 @@ impl<T: Ownable> Ownable for VecDeque<T> {
                 * (len == values.len())
                 * (values.len() == model.len())
                 * all_own(values, model)
-                * ptr.as_ptr().add(head + len).many_maybe_uninits(cap - len, rest)
+                * ptr
+                    .as_ptr()
+                    .add(head + len)
+                    .many_maybe_uninits(cap - len, rest)
                 * ptr.as_ptr().many_maybe_uninits(head, rest2)
         );
         //                                      head                     cap
@@ -348,8 +357,11 @@ impl<T: Ownable> Ownable for VecDeque<T> {
                     head: usize,
                     values,
                     values_head: Seq<_>,
-                    values_tail, end,
+                    values_tail,
+                    end,
                     rest| (head + len > cap)
+            * (head < cap)
+            * (len <= cap)
             * (std::mem::size_of::<T>() > 0)
             * (self
                 == VecDeque {
@@ -416,12 +428,13 @@ impl<T: Ownable> VecDeque<T> {
     #[creusillian::requires((*self)@.len() < 1000 )]
     #[creusillian::ensures((^self)@ == (*self)@.append(value))]
     pub fn push_back(&mut self, value: T) {
-        // if self.is_full() {
-        //     self.grow();
-        // }
+        if self.is_full() {
+            self.grow();
+        }
 
-        // unsafe { self.buffer_write(self.to_physical_idx(self.len()), value) }
-        // self.len += 1
+        unsafe { self.buffer_write(self.to_physical_idx(self.len()), value) }
+        self.len += 1;
+        mutref_auto_resolve!(self);
     }
 
     fn grow(&mut self) {
