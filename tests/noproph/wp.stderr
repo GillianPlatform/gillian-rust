@@ -1,6 +1,8 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
-[TIMESTAMP DEBUG lib_rtg::logic] Extract lemma needs to be properly handled
+e41
+e38
+e41
+e38
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2

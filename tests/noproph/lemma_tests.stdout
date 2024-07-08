@@ -1,0 +1,14 @@
+#begin_init_data
+{}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+
+lemma test_lemma()[[ emp ]]
+[[emp]]
+
+[*
+
+*]
+
+

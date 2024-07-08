@@ -5,6 +5,7 @@ use num_traits::cast::ToPrimitive;
 use pretty::{docs, DocAllocator, Pretty};
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::{Add, Sub};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -769,16 +770,21 @@ impl Expr {
 
     pub fn lst_head(self) -> Self {
         match self {
-            Expr::EList(vec) => {
-                if vec.is_empty() {
-                    panic!("lst_head on empty list");
-                }
-                vec[0].clone()
-            }
+            Expr::EList(vec) => vec.first().expect("lst_head on empty list").clone(),
             s => Self::UnOp {
                 operator: UnOp::Car,
                 operand: Box::new(s),
             },
+        }
+    }
+
+    pub fn lst_last(self) -> Self {
+        match self {
+            Expr::EList(mut vec) => vec.pop().expect("lst_last on empty list"),
+            s => {
+                let len = s.clone().lst_len();
+                s.lnth_e(len - 1)
+            }
         }
     }
 
@@ -876,6 +882,28 @@ impl Expr {
     pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         let mut visitor = super::visitors::SubstPVar::new(mapping);
         visitor.visit_expr(self);
+    }
+}
+
+impl<I> Add<I> for Expr
+where
+    I: Into<Expr>,
+{
+    type Output = Self;
+
+    fn add(self, rhs: I) -> Self::Output {
+        Self::plus(self, rhs.into())
+    }
+}
+
+impl<I> Sub<I> for Expr
+where
+    I: Into<Expr>,
+{
+    type Output = Self;
+
+    fn sub(self, rhs: I) -> Self::Output {
+        Self::minus(self, rhs.into())
     }
 }
 

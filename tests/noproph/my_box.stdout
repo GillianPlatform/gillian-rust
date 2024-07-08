@@ -24,13 +24,6 @@ pred "<() as gilogic::Ownable>::own"(+self):
   (#self == {{  }}) * (self == #self);
 
 
-pred "<&mut MyBox<T> as gilogic::Ownable>::own$$inner"(+pty_T0, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v)
-  * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
-  * (self == #self);
-
-
 spec "MyBox::<T>::write"(pty_T0, self, v)
 [[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #v) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
 [["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]

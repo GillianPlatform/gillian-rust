@@ -128,6 +128,14 @@ pub(crate) fn get_gillian_spec_name(def_id: DefId, tcx: TyCtxt) -> Option<Symbol
         .and_then(|attr| attr.value_str())
 }
 
+pub(crate) fn get_gillian_extract_lemma_name(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
+    get_attr(
+        tcx.get_attrs_unchecked(def_id),
+        &["gillian", "extract_lemma"],
+    )
+    .and_then(|attr| attr.value_str())
+}
+
 pub(crate) fn is_logic(def_id: DefId, tcx: TyCtxt) -> bool {
     [
         is_predicate,

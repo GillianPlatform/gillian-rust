@@ -43,7 +43,6 @@ pub(crate) enum LogicStubs {
     MutRefGetProphecy,
     MutRefSetProphecy,
     ProphecyGetValue,
-    ProphecyField(u32),
     ProphecyObserver,
     ProphecyController,
     SeqNil,
@@ -51,6 +50,7 @@ pub(crate) enum LogicStubs {
     SeqPrepend,
     SeqConcat,
     SeqHead,
+    SeqLast,
     SeqTail,
     SeqLen,
     SeqAt,
@@ -65,11 +65,14 @@ pub(crate) enum LogicStubs {
     RefMutInner,
     InstantiateLVars,
     Spec,
+    ExtractLemma,
     ExprExists,
     ExprForall,
     ExprEq,
     ExprNe,
     ExprImpl,
+    // Proofs
+    Package,
 }
 
 impl LogicStubs {
@@ -110,7 +113,8 @@ impl LogicStubs {
                 "gillian::seq::append" => Some(Self::SeqAppend),
                 "gillian::seq::prepend" => Some(Self::SeqPrepend),
                 "gillian::seq::concat" => Some(Self::SeqConcat),
-                "gillian::seq::head" => Some(Self::SeqHead),
+                "gillian::seq::head" | "gillian::seq::first" => Some(Self::SeqHead),
+                "gillian::seq::last" => Some(Self::SeqLast),
                 "gillian::seq::tail" => Some(Self::SeqTail),
                 "gillian::seq::len" => Some(Self::SeqLen),
                 "gillian::seq::at" => Some(Self::SeqAt),
@@ -126,16 +130,9 @@ impl LogicStubs {
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
                 "gillian::asrt::spec" => Some(Self::Spec),
-                _ => {
-                    if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
-                        let mut iter = fields.split("::");
-                        iter.next(); // skip "arity"
-                        let field = iter.next().unwrap().parse().unwrap();
-                        Some(Self::ProphecyField(field))
-                    } else {
-                        None
-                    }
-                }
+                "gillian::asrt::extract_lemma" => Some(Self::ExtractLemma),
+                "gillian::proof::package" => Some(Self::Package),
+                _ => None,
             }
         })
     }

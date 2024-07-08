@@ -29,14 +29,14 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 #[extract_lemma(
     forall x, y.
     from { wp_ref_mut_xy(p, x, y) }
-    extract { Ownable::own(&mut (*x).v) }
+    extract { <&mut T as Ownable>::own(&mut (*x).v) }
 )]
 fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[extract_lemma(
     forall x, y.
     from { wp_ref_mut_xy(p, x, y) }
-    extract { Ownable::own(&mut (*y).v) }
+    extract { <&mut T as Ownable>::own(&mut (*y).v) }
 )]
 fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
 

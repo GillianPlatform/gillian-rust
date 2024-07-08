@@ -381,7 +381,7 @@ pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {
         .collect()
 }
 
-fn make_wf_asrt<'tcx>(
+pub fn make_wf_asrt<'tcx>(
     ctx: &mut GlobalEnv<'tcx>,
     temps: &mut TempGenerator,
     e: Expr,

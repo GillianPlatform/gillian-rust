@@ -302,7 +302,7 @@ pub struct Vec<T> {
 #[extract_lemma(
     forall ptr: Unique<T>, cap, len.
     model m.
-    extract model mh: (T::RepresentationTy, T::RepresentationTy).
+    extract model mh.
     assuming { ix < len }
     from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
