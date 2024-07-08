@@ -368,14 +368,15 @@ impl ExtractLemma {
         };
 
         let assuming = match &self.assuming {
-            Some((_, assuming)) => assuming,
-            None => &Term::Lit(TermLit {
+            Some((_, assuming)) => Formula::from_term(assuming.clone()),
+            None => Formula::from_term(Term::Lit(TermLit {
                 lit: Lit::Bool(LitBool {
                     value: true,
                     span: Span::call_site(),
                 }),
-            }),
+            })),
         };
+        let assuming = assuming.encode()?;
         let (_, from) = &self.from;
         let (_, extract) = &self.extract;
         let el = quote!(
@@ -697,6 +698,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
             )]
             fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
 
+            #[gillian::frozen_borrow]
             #[gillian::borrow]
             #inner_predicate
 

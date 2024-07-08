@@ -228,7 +228,7 @@ pub fn spec<const N: usize>(_pre: RustAssertion, _post: [RustAssertion; N]) -> R
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::asrt::extract_lemma"]
 pub fn extract_lemma<P>(
-    _assuming: bool,
+    _assuming: RustFormula,
     _from: RustAssertion,
     _extract: RustAssertion,
     _prophecise: P,

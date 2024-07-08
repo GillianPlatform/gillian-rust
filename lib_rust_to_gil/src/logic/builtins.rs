@@ -43,7 +43,6 @@ pub(crate) enum LogicStubs {
     MutRefGetProphecy,
     MutRefSetProphecy,
     ProphecyGetValue,
-    ProphecyField(u32),
     ProphecyObserver,
     ProphecyController,
     SeqNil,
@@ -66,6 +65,7 @@ pub(crate) enum LogicStubs {
     RefMutInner,
     InstantiateLVars,
     Spec,
+    ExtractLemma,
     ExprExists,
     ExprForall,
     ExprEq,
@@ -128,16 +128,8 @@ impl LogicStubs {
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
                 "gillian::asrt::spec" => Some(Self::Spec),
-                _ => {
-                    if let Some(fields) = name.strip_prefix("gillian::prophecy::field::") {
-                        let mut iter = fields.split("::");
-                        iter.next(); // skip "arity"
-                        let field = iter.next().unwrap().parse().unwrap();
-                        Some(Self::ProphecyField(field))
-                    } else {
-                        None
-                    }
-                }
+                "gillian::asrt::extract_lemma" => Some(Self::ExtractLemma),
+                _ => None,
             }
         })
     }

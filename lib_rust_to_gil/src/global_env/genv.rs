@@ -4,7 +4,7 @@ use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::{get_gillian_spec_name, is_trusted};
+use crate::utils::attrs::{get_gillian_extract_lemma_name, get_gillian_spec_name, is_trusted};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
@@ -84,6 +84,9 @@ pub struct GlobalEnv<'tcx> {
     // Mapping from item -> specification
     spec_map: HashMap<DefId, DefId>,
 
+    // Maps Extract Lemma items (containing the proof body) to the actual lemma DefId
+    extract_lemma_map: HashMap<DefId, DefId>,
+
     /// Assertions & specifications from external dependencies
     metadata: Metadata<'tcx>,
 
@@ -122,7 +125,7 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
         let item_queue = QueueOnce::default();
-        let (mut spec_map, _) = Self::build_gillian_spec_map(tcx);
+        let (mut spec_map, extract_lemma_map) = Self::build_gillian_maps(tcx);
 
         let metadata = Metadata::load(tcx, &config.extern_paths);
 
@@ -131,12 +134,15 @@ impl<'tcx> GlobalEnv<'tcx> {
             spec_map.insert(*k, *v);
         });
 
+        // TODO: Import extract lemmas from dependencies?
+
         Self {
             config,
             tcx,
             adt_queue: Default::default(),
             item_queue,
             spec_map,
+            extract_lemma_map,
             metadata,
             inner_preds: Default::default(),
             bodies: Default::default(),
@@ -146,27 +152,60 @@ impl<'tcx> GlobalEnv<'tcx> {
     }
 
     /// Build a map from item to its specification closure(s)
-    fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
-        let mut sym_to_prog = HashMap::new();
+    /// Sacha: I think this had a more general purpose and is now too complex?
+    // fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
+    //     let mut sym_to_prog = HashMap::new();
+    //     for item in tcx.hir().body_owners() {
+    //         if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
+    //             sym_to_prog.insert(nm, item.to_def_id());
+    //             continue;
+    //         }
+    //     }
+    //     let mut specs = HashMap::new();
+    //     let mut progs = HashMap::new();
+
+    //     for item in tcx.hir().body_owners() {
+    //         if let Some(diag) = tcx.get_diagnostic_name(item.into()) {
+    //             let Some(prog_id) = sym_to_prog.remove(&diag) else {
+    //                 continue;
+    //             };
+    //             specs.insert(prog_id, item.into());
+    //             progs.insert(item.into(), prog_id);
+    //         }
+    //     }
+    //     (specs, progs)
+    // }
+
+    fn build_gillian_maps(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
+        let mut spec_map = HashMap::new();
+        let mut extract_lemma_map = HashMap::new();
         for item in tcx.hir().body_owners() {
             if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
-                sym_to_prog.insert(nm, item.to_def_id());
-                continue;
+                let spec = tcx
+                    .get_diagnostic_item(nm)
+                    .expect("Cannot find specification while building spec map");
+                spec_map.insert(item.to_def_id(), spec);
+            }
+            if let Some(nm) = get_gillian_extract_lemma_name(item.into(), tcx) {
+                let extract_lemma = tcx
+                    .get_diagnostic_item(nm)
+                    .expect("Cannot find extract lemma while building extract lemma map");
+                extract_lemma_map.insert(extract_lemma, item.to_def_id());
             }
         }
-        let mut specs = HashMap::new();
-        let mut progs = HashMap::new();
+        (spec_map, extract_lemma_map)
+    }
 
-        for item in tcx.hir().body_owners() {
-            if let Some(diag) = tcx.get_diagnostic_name(item.into()) {
-                let Some(prog_id) = sym_to_prog.remove(&diag) else {
-                    continue;
-                };
-                specs.insert(prog_id, item.into());
-                progs.insert(item.into(), prog_id);
-            }
-        }
-        (specs, progs)
+    pub fn prophecies_enabled(&self) -> bool {
+        self.config.prophecies
+    }
+
+    pub fn extract_lemma_name(&self, did: DefId) -> String {
+        let item = self
+            .extract_lemma_map
+            .get(&did)
+            .unwrap_or_else(|| fatal!(self, "Extract lemma not found in genv: {:?}", did));
+        self.tcx.def_path_str(*item)
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -216,9 +255,14 @@ impl<'tcx> GlobalEnv<'tcx> {
         (name, instance.def_id(), instance.args)
     }
 
-    pub(crate) fn inner_pred(&mut self, pred: String) -> String {
-        let name = pred.clone() + "$$inner";
-        self.inner_preds.insert(pred, name.clone());
+    pub(crate) fn resolve_inner_pred(
+        &mut self,
+        outer: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> String {
+        let name = self.tcx().def_path_str_with_args(outer, args) + "$$inner";
+        let auto_item = AutoItem::InnerPred(InnerPred::new(name.clone(), outer, args));
+        self.item_queue.push(name.clone(), auto_item);
         name
     }
 
@@ -282,7 +326,7 @@ impl<'tcx> GlobalEnv<'tcx> {
 
         self.assertions.insert(def_id, |_| {
             let (thir, e) = get_thir!(self, def_id);
-            let g = GilsoniteBuilder::new(thir.clone(), self.tcx(), self.config.prophecies);
+            let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
             Box::new(g.build_predicate(e))
         })
     }
@@ -303,7 +347,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.spec_terms
             .insert(def_id, |_| {
                 let (thir, e) = get_thir!(self, def_id);
-                let g = GilsoniteBuilder::new(thir.clone(), self.tcx(), self.config.prophecies);
+                let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
                 let spec = g.build_spec(e);
                 Box::new(Some(spec))
             })

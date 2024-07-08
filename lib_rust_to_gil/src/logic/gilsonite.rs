@@ -9,7 +9,7 @@ use rustc_middle::{
 };
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::Symbol;
+use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::logic::predicate::fn_args_and_tys;
@@ -223,6 +223,13 @@ pub struct Predicate<'tcx> {
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+pub struct AssertPredCall<'tcx> {
+    pub def_id: DefId,
+    pub substs: GenericArgsRef<'tcx>,
+    pub args: Vec<Expr<'tcx>>,
+}
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<'tcx> {
     /// Separating conjunction
     Star {
@@ -234,11 +241,7 @@ pub enum AssertKind<'tcx> {
         formula: Formula<'tcx>,
     },
     /// Predicate calls
-    Call {
-        def_id: DefId,
-        substs: GenericArgsRef<'tcx>,
-        args: Vec<Expr<'tcx>>,
-    },
+    Call(AssertPredCall<'tcx>),
     /// Rust Points to predicate
     PointsTo {
         // TODO(xavier): Should probably be a Place, but that requires building the places first.
@@ -289,19 +292,69 @@ pub struct SpecTerm<'tcx> {
     pub trusted: bool,
 }
 
+#[derive(Debug)]
+pub struct ExtractLemmaTerm<'tcx> {
+    pub uni: Vec<(Symbol, Ty<'tcx>)>,
+    pub models: Option<((Symbol, Ty<'tcx>), (Symbol, Ty<'tcx>))>,
+    pub assuming: Formula<'tcx>,
+    pub from: AssertPredCall<'tcx>,
+    pub extract: AssertPredCall<'tcx>,
+    pub prophecise: Expr<'tcx>,
+}
+
 pub struct GilsoniteBuilder<'tcx> {
     thir: Thir<'tcx>,
     tcx: TyCtxt<'tcx>,
-    pcy_mode: bool,
 }
 
 impl<'tcx> GilsoniteBuilder<'tcx> {
-    pub fn new(thir: Thir<'tcx>, tcx: TyCtxt<'tcx>, pcy_mode: bool) -> Self {
-        Self {
-            thir,
-            tcx,
-            pcy_mode,
+    pub fn new(thir: Thir<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        Self { thir, tcx }
+    }
+
+    pub(crate) fn build_extract_lemma_no_proph(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
+        let (uni, (assuming, from, extract, prophecise)) =
+            self.peel_lvar_bindings(expr, |this, expr| {
+                let expr = this.peel_scope(expr);
+                let thir::ExprKind::Call {
+                    ty, fun: _, args, ..
+                } = &this.thir[expr].kind
+                else {
+                    unreachable!("ill formed extract lemma block {:?}", this.thir[expr])
+                };
+
+                let Some(LogicStubs::ExtractLemma) = this.get_stub(*ty) else {
+                    unreachable!("ill formed extract lemma block")
+                };
+
+                let assuming = this.build_formula(args[0]);
+                let AssertKind::Call(from) = this.build_assert_kind(args[1]) else {
+                    unreachable!(
+                        "ill formed extract lemma block, second argument must be a predicate call"
+                    )
+                };
+                let AssertKind::Call(extract) = this.build_assert_kind(args[2]) else {
+                    unreachable!(
+                        "ill formed extract lemma block, third argument must be a predicate call"
+                    )
+                };
+
+                // In no-proph mode, this will always be unit, but it's easier than to construct it.
+                let prophecise = this.build_expression(args[3]);
+                (assuming, from, extract, prophecise)
+            });
+        ExtractLemmaTerm {
+            uni,
+            models: None,
+            assuming,
+            from,
+            extract,
+            prophecise,
         }
+    }
+
+    pub(crate) fn build_extract_lemma_proph(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
+        todo!()
     }
 
     pub(crate) fn build_assert(&self, expr: ExprId) -> Assert<'tcx> {
@@ -514,11 +567,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                         let args = args.iter().map(|a| self.build_expression(*a)).collect();
 
-                        AssertKind::Call {
+                        AssertKind::Call(AssertPredCall {
                             def_id,
                             substs,
                             args,
-                        }
+                        })
                     }
                     Some(s) => self
                         .tcx
@@ -550,8 +603,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let id = self.peel_scope(id);
         let expr = &self.thir[id];
         if !self.is_formula_ty(expr.ty) {
-            todo!()
-            // fatal!(self, "{:?} is not the formula type", self.subst(expr.ty))
+            self.tcx
+                .dcx()
+                .fatal(format!("{:?} is not the formula type", expr.ty))
         }
 
         match &expr.kind {
@@ -599,7 +653,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let body = Self {
                     thir: thir.borrow().clone(),
                     tcx: self.tcx,
-                    pcy_mode: self.pcy_mode,
                 }
                 .build_formula_body(expr);
                 Formula {
@@ -637,7 +690,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let body = Self {
                     thir: thir.borrow().clone(),
                     tcx: self.tcx,
-                    pcy_mode: self.pcy_mode,
                 }
                 .build_expression(expr);
                 mk_quant((name.name, ty), Box::new(body))
@@ -852,9 +904,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 let arg = &self.thir[inner_id];
 
                 match arg.kind {
-                    thir::ExprKind::Deref { arg: e }
-                        if matches!(b, BorrowKind::Mut { .. }) && self.pcy_mode =>
-                    {
+                    thir::ExprKind::Deref { arg: e } if matches!(b, BorrowKind::Mut { .. }) => {
                         let inner_ty = self.thir[e].ty;
                         if crate::logic::ty_utils::is_mut_ref(inner_ty) {
                             // Reborrowing a mut-ref, it is already of the right shape
@@ -1157,7 +1207,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                 let (thir, expr) = self.tcx.thir_body(clos.closure_id).unwrap();
 
-                let inner = Self::new(thir.borrow().clone(), self.tcx, self.pcy_mode);
+                let inner = Self::new(thir.borrow().clone(), self.tcx);
                 let x = k(&inner, expr);
 
                 (lvars, x)

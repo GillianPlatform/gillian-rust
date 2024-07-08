@@ -1,6 +1,6 @@
 use super::gilsonite::{self, Assert, SpecTerm};
 use super::is_borrow;
-use crate::logic::gilsonite::SeqOp;
+use crate::logic::gilsonite::{AssertPredCall, SeqOp};
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
     codegen::place::{GilPlace, GilProj},
@@ -277,11 +277,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .compile_assertion_inner(*left)
                 .star(self.compile_assertion_inner(*right)),
             AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula_inner(formula)),
-            AssertKind::Call {
+            AssertKind::Call(AssertPredCall {
                 def_id,
                 substs,
                 args,
-            } => {
+            }) => {
                 let param_env = self.param_env;
                 let (name, def_id, substs) = self
                     .global_env_mut()
@@ -774,7 +774,11 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 }
             }
             ExprKind::PtrToMutRef { ptr } => {
-                GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
+                if self.prophecies_enabled() {
+                    GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
+                } else {
+                    self.compile_expression_inner(*ptr)
+                }
             }
         }
     }

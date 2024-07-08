@@ -314,6 +314,17 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let mut inputs = item.sig.inputs.clone();
     let generics = &item.sig.generics;
 
+    // We need to build the extract lemma term before we add ret to the inputs.
+    let extract_lemma_term = quote! {
+        #[cfg(gillian)]
+        #[rustc_diagnostic_item=#name_string]
+        #[gillian::decl::extract_lemma]
+        fn #name #generics (#inputs) -> gilogic::RustAssertion {
+            // gilogic::__stubs::emp()
+            #encoded_el
+        }
+    };
+
     inputs.push(parse_quote! { ret : #ret_ty });
 
     let spec = match extract_lemma
@@ -327,13 +338,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let sig = &item.sig;
 
     let result = quote! {
-        #[cfg(gillian)]
-        #[rustc_diagnostic_item=#name_string]
-        #[gillian::decl::extract_lemma]
-        fn #name #generics (#inputs) -> gilogic::RustAssertion {
-            // gilogic::__stubs::emp()
-            #encoded_el
-        }
+        #extract_lemma_term
 
         #[cfg(gillian)]
         #[rustc_diagnostic_item=#spec_name_string]
