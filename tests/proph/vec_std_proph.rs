@@ -402,7 +402,7 @@ impl<T: Ownable> Vec<T> {
         forall current, future, v_repr.
         requires {
             self.own((current, future)) *
-            $current.len() < (isize::MAX as usize) $ *
+            $current.len() < (isize::MAX as usize)$ *
             value.own(v_repr)
         }
         ensures {

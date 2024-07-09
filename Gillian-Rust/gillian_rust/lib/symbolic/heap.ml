@@ -1562,11 +1562,12 @@ module TreeBlock = struct
             extend_on_right_if_needed ~lk ~range ~can_extend ~index_ty:ty t
           in
           extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty:ty t
-        else
+        else (
+          Logging.verbose (fun m -> m "We're in here???");
           let+ pc = Delayed.leak_pc_copy () in
           Fmt.failwith
             "negative offset in array in frame_slice : %a. Current PC is: %a"
-            Expr.pp current_offset Gillian.Symbolic.Pure_context.pp pc.pfs
+            Expr.pp current_offset Gillian.Symbolic.Pure_context.pp pc.pfs)
     | Plus (_, ofs, ofs_ty) :: rest ->
         let* ofs, lk =
           LK.reinterpret_offset ~lk ~from_ty:ofs_ty ~to_ty:ty ofs
