@@ -110,6 +110,15 @@ proc "core::num::<impl usize>::unchecked_mul"(i, j) {
      return
 };
 
+proc "core::num::<impl usize>::wrapping_add"(u1, u2) {
+          ret := (u1 i+ u2);
+          goto [ (1i << 64i) i<= res ] ov ok;
+     ov : ret := res i- (1i << 64i);
+          return;
+     ok : ret := res;
+          return
+};
+
 proc "std::alloc::Layout::from_size_align_unchecked"(size, align) {
      ret := {{ size, align }};
      return

@@ -1198,17 +1198,13 @@ module TreeBlock = struct
         Fmt.failwith "Not implemented yet: extracting range from structural %a"
           pp_structural structural
 
-  let laid_out_of_children left right =
+  let laid_out_of_children ~lk left right =
     Logging.verbose (fun m -> m "laid_out_of_children");
-    if not (Ty.equal left.index_ty right.index_ty) then
-      Fmt.failwith
-        "laid_out_of_children: need to reinterpreted sub-ranges.@\n\
-         Left: %a@\n\
-         Right: %a" pp_laid_out left pp_laid_out right;
+    let+ right, lk = reinterpret_lc_ranges ~lk ~to_ty:left.index_ty right in
     let range = (fst left.range, snd right.range) in
     let index_ty = left.index_ty in
     let children = Some (left, right) in
-    { structural = None; range; children; index_ty }
+    ({ structural = None; range; children; index_ty }, lk)
 
   let rec extract ~lk ~range ~index_ty laid_out =
     Logging.verbose (fun m ->
@@ -1228,13 +1224,13 @@ module TreeBlock = struct
       in
       if%sat Range.is_inside range_as_left left.range then (
         Logging.verbose (fun m -> m "extract: Inside left");
-        let+ (extracted, new_left), lk =
+        let* (extracted, new_left), lk =
           extract ~lk ~range:range_as_left ~index_ty:left.index_ty left
         in
-        let new_self =
+        let+ new_self, lk =
           match new_left with
-          | Some left -> laid_out_of_children left right
-          | None -> right
+          | Some left -> laid_out_of_children ~lk left right
+          | None -> Delayed.return (right, lk)
         in
         ((extracted, Some new_self), lk))
       else (
@@ -1242,31 +1238,31 @@ module TreeBlock = struct
         let* range_as_right, lk =
           Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:right.index_ty range
         in
-        let+ (extracted, new_right), lk =
+        let* (extracted, new_right), lk =
           extract ~lk ~range:range_as_right ~index_ty:right.index_ty right
         in
-        let new_self =
+        let+ new_self, lk =
           match new_right with
-          | Some right -> laid_out_of_children left right
-          | None -> left
+          | Some right -> laid_out_of_children ~lk left right
+          | None -> Delayed.return (left, lk)
         in
         ((extracted, Some new_self), lk))
 
-  let rec add_to_the_left lc addition : laid_out =
+  let rec add_to_the_left ~lk lc addition : (laid_out * LK.t) Delayed.t =
     Logging.verbose (fun m -> m "add_to_the_left");
     match lc.children with
-    | None -> laid_out_of_children addition lc
+    | None -> laid_out_of_children ~lk addition lc
     | Some (left, right) ->
-        let new_left = add_to_the_left left addition in
-        laid_out_of_children new_left right
+        let* new_left, lk = add_to_the_left ~lk left addition in
+        laid_out_of_children ~lk new_left right
 
-  let rec add_to_the_right lc addition : laid_out =
+  let rec add_to_the_right ~lk lc addition : (laid_out * LK.t) Delayed.t =
     Logging.verbose (fun m -> m "add_to_the_right");
     match lc.children with
-    | None -> laid_out_of_children lc addition
+    | None -> laid_out_of_children ~lk lc addition
     | Some (left, right) ->
-        let new_right = add_to_the_right right addition in
-        laid_out_of_children left new_right
+        let* new_right, lk = add_to_the_right ~lk right addition in
+        laid_out_of_children ~lk left new_right
 
   (** Extract range from a given structural node.
     The range is given in the index type, is relative to the current structure.
@@ -1366,21 +1362,21 @@ module TreeBlock = struct
                Left: %a" Ty.pp lc.index_ty pp_laid_out left pp_laid_out right;
           if%sat Range.is_inside range left.range then (
             Logging.verbose (fun m -> m "Inside of left");
-            let++ (value, left), lk =
+            let** (value, left), lk =
               extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~index_ty
                 ~range left
             in
-            let new_lc = laid_out_of_children left right in
-            ((value, new_lc), lk))
+            let+ new_lc, lk = laid_out_of_children ~lk left right in
+            Ok ((value, new_lc), lk))
           else
             if%sat Range.is_inside range right.range then (
               Logging.verbose (fun m -> m "Inside of right");
-              let++ (value, right), lk =
+              let** (value, right), lk =
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty right
               in
-              let new_lc = laid_out_of_children left right in
-              ((value, new_lc), lk))
+              let+ new_lc, lk = laid_out_of_children ~lk left right in
+              Ok ((value, new_lc), lk))
             else
               let () = Logging.verbose (fun m -> m "rebalance") in
               (* We now that [this_low <= low < mid < high <= this_high ]
@@ -1409,9 +1405,9 @@ module TreeBlock = struct
                       left_opt);
                 Logging.verbose (fun m ->
                     m "Adding to the left of %a" pp_laid_out right);
-                let right = add_to_the_left right extracted in
-                let new_self =
-                  laid_out_of_children (Option.get left_opt) right
+                let* right, lk = add_to_the_left ~lk right extracted in
+                let* new_self, lk =
+                  laid_out_of_children ~lk (Option.get left_opt) right
                 in
 
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
@@ -1433,9 +1429,9 @@ module TreeBlock = struct
                       right_opt);
                 Logging.verbose (fun m ->
                     m "Adding to the right of %a" pp_laid_out left);
-                let left = add_to_the_right left extracted in
-                let new_self =
-                  laid_out_of_children left (Option.get right_opt)
+                let* left, lk = add_to_the_right ~lk left extracted in
+                let* new_self, lk =
+                  laid_out_of_children ~lk left (Option.get right_opt)
                 in
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty new_self
@@ -1476,7 +1472,7 @@ module TreeBlock = struct
   let extend_on_right_if_needed ~can_extend ~range ~index_ty t ~lk =
     Logging.verbose (fun m ->
         m "Extending on the right! Can extend: %b" can_extend);
-    let* (_, current_high), lk =
+    let* (current_low, current_high), lk =
       match t with
       | Structural { ty = Ty.Array { length; ty = ty' }; _ } ->
           Range.reinterpret ~lk ~from_ty:ty' ~to_ty:index_ty
@@ -1532,11 +1528,25 @@ module TreeBlock = struct
             }
           in
           Delayed.return (Laid_out_root lc, lk)
-      | _ ->
-          Fmt.failwith
-            "extend on the right for layed out content: not implemented %a, \
-             range: %a, index_ty: %a"
-            pp t Range.pp range Ty.pp index_ty
+      | Laid_out_root lc ->
+          let right_child =
+            let ty = Range.as_array_ty ~index_ty range in
+            {
+              structural = Some { content = Missing; ty };
+              range;
+              children = None;
+              index_ty;
+            }
+          in
+          let parent =
+            {
+              structural = None;
+              range = (current_low, snd range);
+              children = Some (lc, right_child);
+              index_ty;
+            }
+          in
+          Delayed.return (Laid_out_root parent, lk)
 
   let rec frame_slice
       ~tyenv
@@ -1552,8 +1562,6 @@ module TreeBlock = struct
        The casts surely come with more general rules. *)
     match path with
     | [] ->
-        Logging.verbose (fun m ->
-            m "SACHA: ABOUT THE CHECK THE ENTAILMENT YOU CARE ABOUT");
         if%ent Formula.Infix.(Expr.zero_i #<= current_offset) then
           let range = (current_offset, Expr.Infix.(current_offset + size)) in
           let* t, lk =

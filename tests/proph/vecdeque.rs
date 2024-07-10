@@ -535,6 +535,39 @@ impl<T: Ownable> VecDeque<T> {
     fn ptr(&self) -> *mut T {
         self.buf.ptr()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    #[inline]
+    unsafe fn buffer_read(&mut self, off: usize) -> T {
+        unsafe { std::ptr::read(self.ptr().add(off)) }
+    }
+
+    #[specification(forall curr, proph.
+        requires { self.own((curr, proph)) * (curr.len() < 100) }
+        exists ret_repr.
+        ensures {
+            ret.own(ret_repr) *
+            $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
+            $
+         }
+    )]
+    pub fn pop_back(&mut self) -> Option<T> {
+        let res = if self.is_empty() {
+            None
+        } else {
+            self.len -= 1;
+            unsafe {
+                assert!(self.len < self.capacity());
+                Some(self.buffer_read(self.to_physical_idx(self.len)))
+            }
+        };
+        mutref_auto_resolve!(self);
+        res
+    }
 }
 
 #[inline]
