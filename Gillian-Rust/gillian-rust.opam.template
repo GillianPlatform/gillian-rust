@@ -1,3 +1,3 @@
 pin-depends: [
-  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#d907538570b1914b6983c3b9afc837f7dceb97e6"
+  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#0c327c865126818afc89caabe555f33486364ffb"
 ]
