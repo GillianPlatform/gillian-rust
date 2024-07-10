@@ -783,13 +783,24 @@ pub(crate) mod parsing {
 
     impl Parse for Assertion {
         fn parse(input: ParseStream) -> Result<Self> {
-            let (pipe1, lvars, pipe2) = if input.peek(Token![|]) {
+            let mut lvars = Punctuated::new();
+            let (pipe1, pipe2) = if input.peek(Token![|]) {
                 let pipe1 = input.parse()?;
-                let lvars = Punctuated::parse_separated_nonempty(input)?;
-                let pipe2 = input.parse()?;
-                (Some(pipe1), lvars, Some(pipe2))
+                loop {
+                    if input.peek(Token![|]) {
+                        break;
+                    }
+                    let value = input.parse()?;
+                    lvars.push_value(value);
+                    if input.peek(Token![|]) {
+                        break;
+                    }
+                    let punct: Token![,] = input.parse()?;
+                    lvars.push_punct(punct);
+                }
+                (Some(pipe1), Some(input.parse()?))
             } else {
-                (None, Punctuated::new(), None)
+                (None, None)
             };
             let def = Punctuated::parse_separated_nonempty(input)?;
             Ok(Self {

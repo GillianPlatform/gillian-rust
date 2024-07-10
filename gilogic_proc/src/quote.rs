@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt, StmtMacro, Type};
+use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, PatType, Stmt, StmtMacro, Type};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -324,86 +324,86 @@ impl AsrtFragment {
     }
 }
 
-impl ExtractLemma {
-    pub(crate) fn encode(&self, ref_ty: Type, ret_ty: Type) -> syn::Result<TokenStream> {
-        // There's a lot of repetition here, but no time to refactor.
+// impl ExtractLemma {
+//     pub(crate) fn encode(&self, ref_ty: Type, ret_ty: Type) -> syn::Result<TokenStream> {
+//         // There's a lot of repetition here, but no time to refactor.
 
-        let param_ty = if self.prophecise.is_some() {
-            super::utils::repr_type(&super::utils::peel_mut_ref(
-                ref_ty.clone(),
-                "Extract lemmas must take a mutable reference as first argument",
-            )?)
-        } else {
-            parse_quote! { () }
-        };
+//         let param_ty = if self.prophecise.is_some() {
+//             super::utils::repr_type(&super::utils::peel_mut_ref(
+//                 ref_ty.clone(),
+//                 "Extract lemmas must take a mutable reference as first argument",
+//             )?)
+//         } else {
+//             parse_quote! { () }
+//         };
 
-        let prophecise = match &self.prophecise {
-            Some((_, term)) => {
-                let models = self.models.as_ref().unwrap();
-                let model = &models.1;
-                let new_model = &models.5;
-                let model_ty = super::utils::repr_type(&super::utils::peel_mut_ref(
-                    ref_ty.clone(),
-                    "Extract lemmas must take a mutable reference as first argument",
-                )?);
-                let new_model_ty = super::utils::peel_prophecy_adt(
-                    ret_ty.clone(),
-                    "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
-                )?;
-                quote! {
-                    gilogic::__stubs::instantiate_lvars(
-                        #[gillian::no_translate]
-                        |#model: #model_ty, #new_model: #new_model_ty| {
-                            #term
-                        }
-                    )
-                }
-            }
-            None => quote! { () },
-        };
+//         let prophecise = match &self.prophecise {
+//             Some((_, term)) => {
+//                 let models = self.models.as_ref().unwrap();
+//                 let model = &models.1;
+//                 let new_model = &models.5;
+//                 let model_ty = super::utils::repr_type(&super::utils::peel_mut_ref(
+//                     ref_ty.clone(),
+//                     "Extract lemmas must take a mutable reference as first argument",
+//                 )?);
+//                 let new_model_ty = super::utils::peel_prophecy_adt(
+//                     ret_ty.clone(),
+//                     "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
+//                 )?;
+//                 quote! {
+//                     gilogic::__stubs::instantiate_lvars(
+//                         #[gillian::no_translate]
+//                         |#model: #model_ty, #new_model: #new_model_ty| {
+//                             #term
+//                         }
+//                     )
+//                 }
+//             }
+//             None => quote! { () },
+//         };
 
-        let assuming = match &self.assuming {
-            Some((_, assuming)) => Formula::from_term(assuming.clone()),
-            None => Formula::from_term(parse_quote! {  true == true }),
-        };
-        let assuming = assuming.encode()?;
-        let (_, from) = &self.from;
-        let (_, extract) = &self.extract;
-        let el = quote!(
-            gilogic::__stubs::extract_lemma::<#param_ty>(
-                #assuming,
-                #from,
-                #extract,
-                #prophecise
-            )
-        );
-        let el = if let Some((_, model, _, _, _, new_model, _)) = &self.models {
-            let model_ty = super::utils::repr_type(&ref_ty);
-            let prophecy_peeled = super::utils::peel_prophecy_adt(
-                ret_ty.clone(),
-                "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
-            )?;
-            let new_model_ty: Type = parse_quote! { (#prophecy_peeled, #prophecy_peeled) };
+//         let assuming = match &self.assuming {
+//             Some((_, assuming)) => Formula::from_term(assuming.clone()),
+//             None => Formula::from_term(parse_quote! {  true == true }),
+//         };
+//         let assuming = assuming.encode()?;
+//         let (_, from) = &self.from;
+//         let (_, extract) = &self.extract;
+//         let el = quote!(
+//             gilogic::__stubs::extract_lemma::<#param_ty>(
+//                 #assuming,
+//                 #from,
+//                 #extract,
+//                 #prophecise
+//             )
+//         );
+//         let el = if let Some((_, model, _, _, _, new_model, _)) = &self.models {
+//             let model_ty = super::utils::repr_type(&ref_ty);
+//             let prophecy_peeled = super::utils::peel_prophecy_adt(
+//                 ret_ty.clone(),
+//                 "Extract lemmas must return Prophecy<K> for some K in prophecy mode",
+//             )?;
+//             let new_model_ty: Type = parse_quote! { (#prophecy_peeled, #prophecy_peeled) };
 
-            quote!( gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] | #model: #model_ty, #new_model: #new_model_ty | { #el }) )
-        } else {
-            el
-        };
-        let foralls = match &self.forall {
-            Some((_, foralls, _)) => foralls,
-            None => &syn::punctuated::Punctuated::new(),
-        };
-        Ok(quote!(
-            unsafe {
-                gilogic::__stubs::instantiate_lvars(
-                #[gillian::no_translate]
-                |#foralls| {
-                    #el
-                })
-            }
-        ))
-    }
-}
+//             quote!( gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] | #model: #model_ty, #new_model: #new_model_ty | { #el }) )
+//         } else {
+//             el
+//         };
+//         let foralls = match &self.forall {
+//             Some((_, foralls, _)) => foralls,
+//             None => &syn::punctuated::Punctuated::new(),
+//         };
+//         Ok(quote!(
+//             unsafe {
+//                 gilogic::__stubs::instantiate_lvars(
+//                 #[gillian::no_translate]
+//                 |#foralls| {
+//                     #el
+//                 })
+//             }
+//         ))
+//     }
+// }
 
 impl SpecEnsures {
     pub fn encode(&self) -> syn::Result<TokenStream> {
@@ -485,10 +485,7 @@ impl Assertion {
 
 impl ToTokens for PredParamS {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = &self.name;
-        let ty = &self.ty;
-        let colon = &self.colon_token;
-        tokens.extend(quote!(#name #colon #ty))
+        self.pat_ty.to_tokens(tokens)
     }
 }
 
@@ -591,117 +588,62 @@ impl ToTokens for Lemma {
     }
 }
 
-impl ToTokens for frozen_borrow::FreezeMutRefOwn {
+impl ToTokens for frozen_borrow::FreezeOwn {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let own_impl = &self.own_impl;
-        let predicate = &self.predicate;
-        let generics = &predicate.generics;
-        let own_impl_ty = &self.own_impl.self_ty;
-        let name = &predicate.name;
-        // Then we generate the corresponding lemma.
+        let mut predicate = self.predicate.clone();
 
-        let additional_args: Vec<_> = predicate
-            .args
-            .iter()
-            .skip(predicate.args.len() - self.args.frozen_variables.len())
-            .map(|x| match x {
-                PredParam::Receiver(..) => unreachable!(),
-                PredParam::S(s) => &s.name,
-            })
-            .collect();
         let lemma_name = &self.args.lemma_name;
 
-        tokens.extend(quote! {
+        // I should store this separately, but no time!!
+        let generics = &mut predicate.take_generics();
 
-            #[gilogic::macros::lemma]
-            #[allow(non_snake_case)]
-            #[specification(
-                requires { REFERENCE.own() }
-                exists #(#additional_args),*.
-                ensures { #name(REFERENCE, #(#additional_args),*) }
-            )]
-            fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
+        let PredParam::S(PredParamS {
+            pat_ty: PatType {
+                ty: tuple_arg_ty, ..
+            },
+            ..
+        }) = predicate.args.last().unwrap()
+        else {
+            unreachable!()
+        };
 
-            #[gillian::borrow]
-            // #lifetimes
-            #predicate
-
-            #own_impl
-        })
-    }
-}
-
-impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let own_impl = &self.own_impl;
-        let predicate = &self.predicate;
-        let generics = &predicate.generics;
-        let inner_predicate = &self.inner_predicate;
-
-        let own_impl_ty = &self.own_impl.self_ty;
-
-        let additional_args: Vec<_> = predicate
-            .args
-            .iter()
-            .skip(predicate.args.len() - self.args.frozen_variables.len())
-            .map(|x| match x {
-                PredParam::Receiver(..) => {
-                    unreachable!()
-                }
-                PredParam::S(s) => &s.name,
-            })
-            .collect();
-        let lemma_name = &self.args.lemma_name;
-        let outer_name = &predicate.name;
+        let self_ty = &own_impl.self_ty;
 
         if let Some(macro_name) = &self.args.resolve_macro_name {
-            let resolve_fn_name = format_ident!("__{}_just_resolve", macro_name);
-            let frozen = &self.args.frozen_variables;
-            let predicate_name = &predicate.name;
-
             tokens.extend(quote! {
 
-                #[gilogic::macros::specification(
-                    forall m, #(#frozen),*.
-                    requires { #predicate_name(p, m, #(#frozen),*) }
-                    ensures { $(m.0 == m.1)$ }
-                )]
-                #[gillian::trusted]
-                #[gillian::timeless]
-                pub fn #resolve_fn_name<T: Ownable>(p: &mut #own_impl_ty) {
-                    let _ = p;
-                    unreachable!();
+                fn #macro_name #generics (x : &mut #self_ty) {
+                    gilogic::mutref_auto_resolve!(x, #tuple_arg_ty);
                 }
-
-                macro_rules! #macro_name {
-                    ($x: expr) => {
-                        gilogic::prophecies::check_obs_sat();
-                        gilogic::prophecies::prophecy_auto_update($x);
-                        #resolve_fn_name($x);
-                    };
-                }
-
-            })
+            });
         }
 
-        tokens.extend(quote! {
+        let predicate_name = &self.args.predicate_name;
+        generics.params.insert(0, parse_quote! { 'a });
 
-            #[gilogic::macros::lemma]
-            #[specification(
-                forall MODEL: <&mut #own_impl_ty as gilogic::prophecies::Ownable>::RepresentationTy.
-                requires { REFERENCE.own(MODEL) }
-                exists #(#additional_args),*.
-                ensures { #outer_name(REFERENCE, MODEL, #(#additional_args),*) }
-            )]
-            fn #lemma_name #generics (REFERENCE: &mut #own_impl_ty);
+        let result = quote! {
 
-            #[gillian::frozen_borrow]
-            #[gillian::borrow]
-            #inner_predicate
+            unsafe impl #generics gilogic::prophecies::FrozenOwn<#tuple_arg_ty> for #self_ty {
+                    #predicate
+            }
 
-            #predicate
+            fn #lemma_name #generics (x: &'a mut #self_ty) {
+                gilogic::prophecies::freeze_params::<#tuple_arg_ty, #self_ty>(x)
+            }
+
+            #[predicate]
+            fn #predicate_name #generics (
+                this: In<&'a mut #self_ty>,
+                model: <&'a mut #self_ty as gilogic::prophecies::Ownable>::RepresentationTy,
+                frozen: #tuple_arg_ty
+            ) {
+                <#self_ty as gilogic::prophecies::FrozenOwn<#tuple_arg_ty>>::mut_ref_own_frozen(this, model, frozen)
+            }
 
             #own_impl
-        })
+        };
+
+        tokens.extend(result);
     }
 }

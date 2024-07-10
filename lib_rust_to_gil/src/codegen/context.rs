@@ -252,7 +252,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
-    pub fn original_name_from_local(&self, local: Local) -> Option<String> {
+    pub fn original_name_from_local(&self, local: Local) -> String {
         self.mir()
             .var_debug_info
             .iter()
@@ -264,10 +264,11 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
                 _ => None,
             })
+            .unwrap_or(temp_name_from_local(local))
     }
 
     pub fn name_from_local(&self, local: Local) -> String {
-        temp_name_from_local(local) + &self.original_name_from_local(local).unwrap_or_default()
+        temp_name_from_local(local) + &self.original_name_from_local(local)
     }
 
     pub fn temp_var(&mut self) -> String {

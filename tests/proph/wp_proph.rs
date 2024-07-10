@@ -5,10 +5,7 @@ extern crate gilogic;
 extern crate creusillian;
 
 use gilogic::{
-    macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
-    },
+    macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
 };
@@ -39,11 +36,10 @@ fn wp<T: Ownable>(
     )
 }
 
-#[with_freeze_lemma_for_mutref(
+#[with_freeze_lemma(
     lemma_name = freeze_xy,
     predicate_name = wp_ref_mut_xy,
     frozen_variables = [x, y],
-    inner_predicate_name = wp_ref_mut_inner_xy
 )]
 impl<T: Ownable> Ownable for WP<T> {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
@@ -58,18 +54,18 @@ impl<T: Ownable> Ownable for WP<T> {
     forall x: *mut N<T>, y: *mut N<T>.
     model m.
     extract model mx.
-    from { wp_ref_mut_xy(p, m, x, y) }
+    from { wp_ref_mut_xy(p, m, (x, y)) }
     extract { Ownable::own(&mut (*x).v, mx) }
     prophecise { (mx, m.1) }
 )]
-fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {}
 
 
 #[extract_lemma(
     forall x, y.
     model m.
     extract model mx.
-    from { wp_ref_mut_xy(p, m, x, y) }
+    from { wp_ref_mut_xy(p, m, (x, y)) }
     extract { Ownable::own(&mut (*y).v, mx) }
     prophecise { (m.0, mx) }
 )]
@@ -111,7 +107,7 @@ impl<T: Ownable> WP<T> {
             ret.with_prophecy(proph)
         }
     }
-    
+
     #[creusillian::ensures(*ret == (*self@).1 && ^ret@ == (^self@).1 && (^self@).0 == (*self@).0)]
     fn second_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {

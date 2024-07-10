@@ -2,16 +2,39 @@ use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Ident, Span};
-use syn::{
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ImplItemFn, ReturnType, Token, TraitItemFn, Type
+use syn::{ExprPath,
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type
 };
 
 use quote::{format_ident, quote};
 
 use crate::{
-    kw, subst::VarSubst, AsrtFragment, AsrtPredCall, Formula, LvarDecl, Observation, SpecEnsures,
-    Specification, Term,
+    kw, subst::VarSubst, utils::peel_mut_ref, AsrtFragment, AsrtPredCall, Formula, LvarDecl,
+    Observation, SpecEnsures, Specification, Term, TermPath,
 };
+
+fn term_ident(term: &Term) -> syn::Result<Ident> {
+    if let Term::Path(TermPath {
+        inner: ExprPath {
+            attrs,
+            qself: None,
+            path,
+        },
+    }) = term
+    {
+        if !attrs.is_empty()
+            || path.leading_colon.is_some()
+            || path.segments.len() != 1
+            || !path.segments[0].arguments.is_none()
+        {
+            return Err(syn::Error::new(term.span(), "Expected a path term"));
+        }
+
+        Ok(path.segments[0].ident.clone())
+    } else {
+        Err(syn::Error::new(term.span(), "Expected a path term"))
+    }
+}
 
 pub struct ExtractLemma {
     // forall x, y.
@@ -288,18 +311,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         }
     };
 
-    let encoded_el = match extract_lemma.encode(ref_ty, ret_ty.clone()) {
-        Ok(stream) => stream,
-        Err(error) => return error.to_compile_error().into(),
-    };
-
-    let id = uuid::Uuid::new_v4().to_string();
-    let name = {
-        let ident = item.sig.ident.to_string();
-        let name_with_uuid = format!("{}_extract_lemma_{}", ident, id).replace('-', "_");
-        format_ident!("{}", name_with_uuid, span = Span::call_site())
-    };
-    let name_string = name.to_string();
+    let name = item.sig.ident.clone();
 
     let spec_id = uuid::Uuid::new_v4().to_string();
     let spec_name = {
@@ -314,13 +326,71 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let generics = &item.sig.generics;
 
     // We need to build the extract lemma term before we add ret to the inputs.
-    let extract_lemma_term = quote! {
-        #[cfg(gillian)]
-        #[rustc_diagnostic_item=#name_string]
-        #[gillian::decl::extract_lemma]
-        fn #name #generics (#inputs) -> gilogic::RustAssertion {
-            // gilogic::__stubs::emp()
-            #encoded_el
+    let extract_lemma_term = {
+        let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
+            let mut lvars = lvars.clone();
+            if let Some((_, model, _, _, _, new_model, _)) = &extract_lemma.models {
+                lvars.push(LvarDecl::from(model.clone()));
+                lvars.push(LvarDecl::from(new_model.clone()));
+            }
+
+            let forall = quote! { #forall #lvars #dot };
+            Some(forall)
+        } else {
+            None
+        };
+
+        let proof_name = format_ident!("{}___proof", name);
+        let from_args = extract_lemma.from.1.args().clone();
+
+        let mut extract_args = extract_lemma.extract.1.args().clone();
+        if extract_args.len() < 3 {
+            // It's an own predicate and not a frozen own predicate, we add the unit parameter.
+            extract_args.push(parse_quote!(()));
+        }
+
+        let assuming = if let Some((_, term)) = &extract_lemma.assuming {
+            Some(quote! { * (#term) })
+        } else {
+            None
+        };
+
+        let prophecise_check = if let Some((_, term)) = &extract_lemma.prophecise {
+            let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().unwrap();
+            Some(quote! { * (#model == #term) })
+        } else {
+            None
+        };
+
+        quote! {
+
+            #[gilogic::macros::lemma]
+            #[gillian::trusted]
+            #[gilogic::macros::specification(
+                    #forall
+                    requires {
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                        #assuming
+                    }
+                    ensures {
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
+                        #prophecise_check
+                        * gilogic::__stubs::wand(
+                            // Ici, dans les extract_args dans la wand,
+                            // Il faut remplacer new_model par une nouvelle variable "NEW_new_model"
+                            // Ownable::own(&mut (*p.element), mh)
+                            // => Ownable::own(&mut (*p.element), NEW_mh)
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args),
+                            // Ici dans from_args, il faut remplacer model par
+                            // prophecise[new_model / NEW_new_model]
+                            // Ownable::own(p, m, frozen)
+                            // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                        )
+                    }
+            )]
+            #[gillian::timeless]
+            fn #proof_name #generics (#inputs);
         }
     };
 
@@ -348,7 +418,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         }
 
         #(#item_attrs)*
-        #[gillian::extract_lemma=#name_string]
         #[gillian::spec=#spec_name_string]
         #[allow(unsused_variables)]
         #[gillian::trusted]

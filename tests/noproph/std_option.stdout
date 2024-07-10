@@ -32,12 +32,12 @@ normal
 proc "Option::<T>::new"(pty_T0, x) {
         m_1x := x;
   bb0:  g_0 := m_1x;
-        m_2 := g_0;
-        g_1 := m_2;
-        m_0 := {{ 1i, {{ g_1 }} }};
+        m_2m_2 := g_0;
+        g_1 := m_2m_2;
+        m_0m_0 := {{ 1i, {{ g_1 }} }};
         goto bb1;
   bb1:  goto bb2;
-  bb2:  g_2 := m_0;
+  bb2:  g_2 := m_0m_0;
         ret := g_2;
         goto rlab;
   rlab: return
@@ -55,19 +55,19 @@ proc "Option::<T>::put"(pLft_0, pty_T0, self, x) {
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, g_0);
         m_2x := x;
   bb0:  g_1 := m_2x;
-        m_4 := g_1;
-        g_2 := m_4;
-        m_3 := {{ 1i, {{ g_2 }} }};
+        m_4m_4 := g_1;
+        g_2 := m_4m_4;
+        m_3m_3 := {{ 1i, {{ g_2 }} }};
         goto bb1;
   bb1:  goto bb2;
-  bb2:  g_3 := m_3;
+  bb2:  g_3 := m_3m_3;
         g_5 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }}, true);
         g_4 := l-nth(g_5, 0i);
         u := [store_value](l-nth(g_4, 0i), l-nth(g_4, 1i), {{ "adt", "Option", {{ pty_T0 }} }}, g_3);
-        m_0 := {{}};
+        m_0m_0 := {{}};
         goto bb4;
   bb4:  goto bb5;
-  bb5:  g_6 := m_0;
+  bb5:  g_6 := m_0m_0;
         ret := g_6;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "Option", {{ pty_T0 }} }} }});

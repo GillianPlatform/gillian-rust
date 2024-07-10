@@ -354,7 +354,7 @@ pub fn build_signature<'tcx, 'genv>(
 }
 
 pub(crate) fn anonymous_param_symbol(idx: usize) -> Symbol {
-    Symbol::intern(&format!("t_{}", idx + 1))
+    Symbol::intern(&format!("G_{}", idx + 1))
 }
 
 pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {

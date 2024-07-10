@@ -143,7 +143,8 @@ where
                         )
                         .parens(),
                 )
-                .append(" -* ")
+                .append(alloc.line())
+                .append("-* ")
                 .append(
                     alloc.text(super::print_utils::maybe_quoted(&rhs.0)).append(
                         alloc
@@ -151,7 +152,8 @@ where
                                 rhs.1.iter().map(|expr| expr.pretty(alloc)),
                                 alloc.text(", "),
                             )
-                            .parens(),
+                            .parens()
+                            .nest(2),
                     ),
                 )
                 .parens(),

@@ -1,5 +1,15 @@
+warning: unused import: `specification`
+ --> ../tests/proph/wp_proph.rs:8:51
+  |
+8 |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
+  |                                                   ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+compiling trusted lemma Signature { args: [Lifetime("pLft_a"), Generic("pty_T0"), Program("p", &'{erased} mut WP<T/#0>), Logic("x", *mut N<T/#0>), Logic("y", *mut N<T/#0>), Logic("m", (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))), Logic("mx", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: true, pre: Pred { name: "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])] }, post: [([], Star { left: Star { left: Pred { name: "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])] }, right: Pure(Eq { left: LVar("#m"), right: EList([LVar("#mx"), BinOp { operator: LstNth, left_operand: LVar("#m"), right_operand: Lit(Int(1)) }]) }) }, right: Wand { lhs: ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])]), rhs: ("<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])]) } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 7 } }
+compiling trusted lemma Signature { args: [Lifetime("pLft_a"), Generic("pty_T0"), Program("p", &'{erased} mut WP<T/#0>), Logic("x", *mut N<T/#0>), Logic("y", *mut N<T/#0>), Logic("m", (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))), Logic("mx", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: true, pre: Pred { name: "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])] }, post: [([], Star { left: Star { left: Pred { name: "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])] }, right: Pure(Eq { left: LVar("#m"), right: EList([BinOp { operator: LstNth, left_operand: LVar("#m"), right_operand: Lit(Int(0)) }, LVar("#mx")]) }) }, right: Wand { lhs: ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])]), rhs: ("<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])]) } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 14 } }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
@@ -10,41 +20,61 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:65:30
+  --> ../tests/proph/wp_proph.rs:61:30
    |
-65 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+61 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {}
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:76:30
+  --> ../tests/proph/wp_proph.rs:72:30
    |
-76 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+72 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
-warning: struct `WP` is never constructed
-  --> ../tests/proph/wp_proph.rs:16:8
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/wp_proph.rs:14:5
    |
-16 | struct WP<T> {
-   |        ^^
+13 | struct WP<T> {
+   |        -- fields in this struct
+14 |     x: *mut N<T>,
+   |     ^
+15 |     y: *mut N<T>,
+   |     ^
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: struct `N` is never constructed
-  --> ../tests/proph/wp_proph.rs:21:8
+warning: fields `v` and `o` are never read
+  --> ../tests/proph/wp_proph.rs:19:5
    |
-21 | struct N<T> {
-   |        ^
+18 | struct N<T> {
+   |        - fields in this struct
+19 |     v: T,
+   |     ^
+20 |     o: *mut N<T>,
+   |     ^
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:52:12
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:48:12
    |
-52 |     fn own(self, model: Self::RepresentationTy) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
+48 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `this`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
-warning: 5 warnings emitted
+warning: function `extract_x___proof` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:61:4
+   |
+61 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {}
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
+
+warning: function `extract_y___proof` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:72:4
+   |
+72 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
+
+warning: 8 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

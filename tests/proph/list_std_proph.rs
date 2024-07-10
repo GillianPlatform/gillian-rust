@@ -4,7 +4,7 @@ extern crate gilogic;
 
 use gilogic::{
     macros::{
-        assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        assertion, extract_lemma, lemma, predicate, with_freeze_lemma,
         specification,
     },
     mutref_auto_resolve,
@@ -61,7 +61,7 @@ impl<T> Node<T> {
     model m.
     extract model mh.
     assuming { head == Some(p) }
-    from { list_ref_mut_htl(list, m, head, tail, len) }
+    from { list_ref_mut_htl(list, m, (head, tail, len)) }
     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
     prophecise { m.tail().prepend(mh) }
 )]
@@ -122,6 +122,8 @@ fn dll_seg_r_appened_left<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
 );
 
+
+
 #[lemma]
 #[gillian::trusted]
 #[specification(
@@ -138,7 +140,7 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-);
+) { }
 
 #[lemma]
 #[gillian::trusted]
@@ -156,13 +158,12 @@ fn dll_seg_r_to_l<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-);
+) { }
 
-#[with_freeze_lemma_for_mutref(
+#[with_freeze_lemma(
     lemma_name = freeze_htl,
     predicate_name = list_ref_mut_htl,
     frozen_variables = [head, tail, len],
-    inner_predicate_name = list_ref_mut_inner_htl,
     resolve_macro_name = auto_resolve_list_ref_mut_htl
 )]
 impl<T: Ownable> Ownable for LinkedList<T> {
@@ -291,11 +292,12 @@ impl<T: Ownable> LinkedList<T> {
             && ((^self@).at(0) == ^head@)
             && (forall < i: usize > (0 < i && i < (*self@).len()) ==> (*self@).at(i) == (^self@).at(i))
     })]
+
     pub fn front_mut(&mut self) -> Option<&mut T> {
         freeze_htl(self);
         match self.head.as_mut() {
             None => {
-                auto_resolve_list_ref_mut_htl!(self);
+                auto_resolve_list_ref_mut_htl(self);
                 None
             }
             Some(node) => unsafe {

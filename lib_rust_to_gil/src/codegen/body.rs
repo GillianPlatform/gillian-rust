@@ -12,8 +12,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 self.push_cmd(Cmd::Assignment {
                     variable: self.name_from_local(loc),
                     assigned_expr: Expr::PVar(
-                        self.original_name_from_local(loc)
-                            .unwrap_or("__debug__".into()),
+                        self.original_name_from_local(loc),
                     ),
                 });
             };

@@ -797,10 +797,10 @@ impl Expr {
                 vec.remove(0);
                 Expr::EList(vec)
             }
-            s => Self::UnOp {
-                operator: UnOp::Cdr,
-                operand: Box::new(s),
-            },
+            s => {
+                let len = s.clone().lst_len() - 1;
+                s.lst_sub_e(Expr::from(1), len)
+            }
         }
     }
 

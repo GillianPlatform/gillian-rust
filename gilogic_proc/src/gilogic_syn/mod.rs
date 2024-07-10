@@ -5,7 +5,6 @@ mod utils;
 
 pub mod asrt;
 pub mod frozen_borrow;
-pub mod frozen_borrow_pcy;
 pub mod lemma;
 pub mod predicate;
 pub mod subst;

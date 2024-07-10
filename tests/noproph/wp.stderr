@@ -1,49 +1,126 @@
+error[E0432]: unresolved import `gilogic::macros::no_prophecies`
+ --> ../tests/noproph/wp.rs:5:14
+  |
+5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:34:30
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+  --> ../tests/noproph/wp.rs:31:26
    |
-34 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+29 | / #[extract_lemma(
+30 | |     forall x, y.
+31 | |     from { wp_ref_mut_xy(p, x, y) }
+   | |                          ^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
+32 | |     extract { <&mut T as Ownable>::own(&mut (*x).v) }
+33 | | )]
+   | |__- required by a bound introduced by this call
    |
-   = note: `#[warn(unused_variables)]` on by default
-
-warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:41:30
+   = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+             &mut T
+             ()
+             (T, U)
+             i128
+             i16
+             i32
+             i64
+             i8
+           and 8 others
+note: required by a bound in `gilogic::prophecies::FrozenOwn::just_ref_mut_points_to`
+  --> /Users/xavier/Code/rust-to-gil/gilogic/src/prophecies.rs:78:61
    |
-41 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+78 | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
+   |                                                             ^^^^^^^ required by this bound in `FrozenOwn::just_ref_mut_points_to`
+...
+83 |     fn just_ref_mut_points_to(
+   |        ---------------------- required by a bound in this associated function
 
-warning: struct `WP` is never constructed
- --> ../tests/noproph/wp.rs:9:8
-  |
-9 | struct WP<T> {
-  |        ^^
-  |
-  = note: `#[warn(dead_code)]` on by default
-
-warning: struct `N` is never constructed
-  --> ../tests/noproph/wp.rs:14:8
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::FrozenOwn<()>` is not satisfied
+  --> ../tests/noproph/wp.rs:31:32
    |
-14 | struct N<T> {
-   |        ^
-
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/noproph/wp.rs:50:12
+29 | / #[extract_lemma(
+30 | |     forall x, y.
+31 | |     from { wp_ref_mut_xy(p, x, y) }
+   | |                                ^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`, which is required by `WP<T>: gilogic::prophecies::FrozenOwn<_>`
+32 | |     extract { <&mut T as Ownable>::own(&mut (*x).v) }
+33 | | )]
+   | |__- required by a bound introduced by this call
    |
-50 |     fn own(self) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
+   = note: required for `WP<T>` to implement `gilogic::prophecies::FrozenOwn<()>`
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> ../tests/noproph/wp.rs:29:1
    |
-   = note: `#[warn(non_snake_case)]` on by default
+29 | / #[extract_lemma(
+30 | |     forall x, y.
+31 | |     from { wp_ref_mut_xy(p, x, y) }
+32 | |     extract { <&mut T as Ownable>::own(&mut (*x).v) }
+33 | | )]
+   | |__^ an argument is missing
+   |
+note: associated function defined here
+  --> /Users/xavier/Code/rust-to-gil/gilogic/src/prophecies.rs:83:8
+   |
+83 |     fn just_ref_mut_points_to(
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `extract_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide the argument
+   |
+33 ~ )](&mut (*x).v, #[extract_lemma(
+34 +     forall x, y.
+35 +     from { wp_ref_mut_xy(p, x, y) }
+36 +     extract { <&mut T as Ownable>::own(&mut (*x).v) }
+37 + )], /* frozen */)
+   |
 
-warning: 5 warnings emitted
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+  --> ../tests/noproph/wp.rs:31:29
+   |
+31 |     from { wp_ref_mut_xy(p, x, y) }
+   |                             ^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
+   |
+   = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+             &mut T
+             ()
+             (T, U)
+             i128
+             i16
+             i32
+             i64
+             i8
+           and 8 others
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+error: Predicate body failed to typecheck for DefId(0:22 ~ wp[e568]::extract_x___proof_spec_5bccff2d_f996_42ae_9c4a_20a194ba6195) ErrorGuaranteed(())
+
+error[E0425]: cannot find function `wp_ref_mut_xy` in this scope
+  --> ../tests/noproph/wp.rs:31:12
+   |
+31 |     from { wp_ref_mut_xy(p, x, y) }
+   |            ^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `wp_ref_mut_xy` in this scope
+  --> ../tests/noproph/wp.rs:38:12
+   |
+38 |     from { wp_ref_mut_xy(p, x, y) }
+   |            ^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `freeze_xy` in this scope
+  --> ../tests/noproph/wp.rs:87:13
+   |
+87 |             freeze_xy(self);
+   |             ^^^^^^^^^------
+   |             |
+   |             help: try calling `freeze_xy` as a method: `self.freeze_xy()`
+
+error[E0425]: cannot find function `freeze_xy` in this scope
+  --> ../tests/noproph/wp.rs:97:13
+   |
+97 |             freeze_xy(self);
+   |             ^^^^^^^^^------
+   |             |
+   |             help: try calling `freeze_xy` as a method: `self.freeze_xy()`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0061, E0277, E0425, E0432.
+For more information about an error, try `rustc --explain E0061`.

@@ -284,6 +284,10 @@ pub enum AssertKind<'tcx> {
         pointees: Expr<'tcx>,
         size: Expr<'tcx>,
     },
+    Wand {
+        lhs: Box<Assert<'tcx>>,
+        rhs: Box<Assert<'tcx>>,
+    },
     Let {
         pattern: Pattern<'tcx>,
         arg: Expr<'tcx>,
@@ -607,12 +611,42 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
     pub fn build_predicate(&self, expr: ExprId) -> Predicate<'tcx> {
         let defs = self.resolve_definitions(expr);
-        let aserts = defs
+        let asserts = defs
             .into_iter()
-            .map(|eid| self.build_quantified_assert(eid));
+            .map(|eid| self.build_quantified_assert(eid))
+            .map(|(vars, asrt)| {
+                let asrt = self
+                    .thir
+                    .params
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, param)| {
+                        Some((idx, param.ty, self.pattern_term(param.pat.as_ref()?)))
+                    })
+                    .fold(asrt, |body, (idx, ty, pattern)| match pattern {
+                        Pattern::Binder(_) | Pattern::Wildcard(_) => body,
+                        _ => {
+                            let arg = Expr {
+                                ty,
+                                kind: ExprKind::Var {
+                                    id: anonymous_param_symbol(idx),
+                                },
+                            };
+                            Assert {
+                                kind: AssertKind::Let {
+                                    pattern,
+                                    arg,
+                                    body: Box::new(body),
+                                },
+                            }
+                        }
+                    });
+
+                (vars, asrt)
+            });
 
         Predicate {
-            disjuncts: aserts.collect(),
+            disjuncts: asserts.collect(),
         }
     }
 
@@ -650,7 +684,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         });
 
         // eprintln!("params: {:?}", self.thir.params);
-        let res = self
+        let pre = self
             .thir
             .params
             .iter()
@@ -676,7 +710,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     }
                 }
             });
-        let pre = res;
 
         SpecTerm {
             uni,
@@ -765,6 +798,15 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         }
                     }
                     Some(LogicStubs::AssertEmp) => AssertKind::Emp,
+                    Some(LogicStubs::AssertWand) => {
+                        let lhs = self.build_assert(args[0]);
+                        let rhs = self.build_assert(args[1]);
+
+                        AssertKind::Wand {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }
+                    }
                     Some(LogicStubs::AssertPointsTo) => {
                         let src = self.build_expression(args[0]);
                         let tgt = self.build_expression(args[1]);
