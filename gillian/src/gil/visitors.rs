@@ -183,8 +183,13 @@ macro_rules! make_gil_visitor {
           match lcmd {
             LCmd::If { guard, then_branch, else_branch } => {
               self.visit_expr(guard);
-              self.visit_lcmd(then_branch);
-              self.visit_lcmd(else_branch);
+              for lcmd in  then_branch {
+                  self.visit_lcmd(lcmd);
+              }
+
+              for lcmd in else_branch {
+                  self.visit_lcmd(lcmd);
+              }
             },
             LCmd::Branch(formula) | LCmd::Assert(formula) | LCmd::Assume(formula) => {
               self.visit_formula(formula);

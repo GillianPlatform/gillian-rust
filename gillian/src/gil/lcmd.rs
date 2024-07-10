@@ -1,13 +1,15 @@
 use std::fmt::Display;
 
+use pretty::{docs, DocAllocator, Pretty};
+
 use super::{Expr, Formula, SLCmd, Type};
 
 #[derive(Debug)]
 pub enum LCmd {
     If {
         guard: Expr,
-        then_branch: Box<LCmd>,
-        else_branch: Box<LCmd>,
+        then_branch: Vec<LCmd>,
+        else_branch: Vec<LCmd>,
     },
     Branch(Formula),
     Assert(Formula),
@@ -20,25 +22,44 @@ pub enum LCmd {
     SL(SLCmd),
 }
 
-impl Display for LCmd {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use LCmd::*;
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a LCmd
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
         match self {
-            If {
+            LCmd::If {
                 guard,
                 then_branch,
                 else_branch,
-            } => write!(
-                f,
-                "if ({}) then {{ {} }} else {{ {} }}",
-                guard, then_branch, else_branch
-            ),
-            Branch(formula) => write!(f, "branch ({})", formula),
-            Assert(formula) => write!(f, "assert ({})", formula),
-            Assume(formula) => write!(f, "assume ({})", formula),
-            AssumeType { variable, typ } => write!(f, "assume_type ({}, {})", variable, typ),
-            FreshSVar(variable) => write!(f, "{} := fresh_svar()", variable),
-            SL(sl_cmd) => sl_cmd.fmt(f),
+            } => {
+                docs![
+                    alloc,
+                    "if ",
+                    guard.pretty(alloc).parens(),
+                    " then ",
+                    alloc.intersperse(then_branch, alloc.line()).braces(),
+                    " else ",
+                    alloc.intersperse(else_branch, alloc.line()).braces(),
+                ]
+            }
+            LCmd::Branch(f) => {
+                docs![alloc, "branch ", f.pretty(alloc).parens()]
+            }
+            LCmd::Assert(f) => docs![alloc, "assert ", f.pretty(alloc).parens()],
+            LCmd::Assume(f) => docs![alloc, "assume ", f.pretty(alloc).parens()],
+            LCmd::AssumeType { variable, typ } => {
+                docs![alloc, "assume_type ", "(", variable, ",", typ.clone(), ")"]
+            }
+            LCmd::FreshSVar(v) => docs![alloc, v, " := ", "fresh_svar", "()"],
+            LCmd::SL(sl) => docs![alloc, format!("{sl}")],
         }
+    }
+}
+
+impl Display for LCmd {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let alloc = pretty::Arena::new();
+        self.pretty(&alloc).render_fmt(80, f)
     }
 }
