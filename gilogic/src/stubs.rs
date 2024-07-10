@@ -244,3 +244,20 @@ pub fn extract_lemma<P>(
 pub fn package(pre: RustAssertion, post: RustAssertion) -> RustProof {
     unreachable!()
 }
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::unfold"]
+pub fn unfold_proof(pre: RustAssertion) -> RustProof {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::fold"]
+pub fn fold_proof(pre: RustAssertion) -> RustProof {
+    unreachable!()
+}
+
+
+

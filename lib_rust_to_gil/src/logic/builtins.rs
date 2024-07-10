@@ -73,6 +73,9 @@ pub(crate) enum LogicStubs {
     ExprImpl,
     // Proofs
     Package,
+    Unfold,
+    Fold,
+    AssertBind,
 }
 
 impl LogicStubs {
@@ -132,6 +135,9 @@ impl LogicStubs {
                 "gillian::asrt::spec" => Some(Self::Spec),
                 "gillian::asrt::extract_lemma" => Some(Self::ExtractLemma),
                 "gillian::proof::package" => Some(Self::Package),
+                "gillian::proof::unfold" => Some(Self::Unfold),
+                "gillian::proof::fold" => Some(Self::Fold),
+                "gillian::proof::assert_bind" => Some(Self::AssertBind),
                 _ => None,
             }
         })
