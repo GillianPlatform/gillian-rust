@@ -2,8 +2,6 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-e18
-e51
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
@@ -12,31 +10,6 @@ e51
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-pred "list_ref_mut_htl::<T>$$inner"(+pty_T0, +REFERENCE, model, head, tail, len):
-  (#model == {{ #current, #lvar_3 }})
-  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
-  * "list_ref_mut_inner_htl::<T>$$inner"(pty_T0, #REFERENCE, #head, #tail, #len)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_3)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * types(#len: Int)
-  * (len == #len)
-  * (tail == #tail)
-  * (head == #head)
-  * (model == #model)
-  * (REFERENCE == #REFERENCE);
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_3 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * (model == #model)
-  * (self == #self);
-
 warning: unused variable: `list`
   --> ../tests/proph/list_std_proph.rs:64:33
    |

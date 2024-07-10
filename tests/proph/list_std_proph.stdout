@@ -35,7 +35,8 @@ axiomatic spec "gilogic::prophecies::prophecy_resolve::<LinkedList<T>>"(pLft_0, 
 normal
 
 pred "<usize as ShallowModel>::shallow_model"(+self_, v):
-  (#self_ == #v) * (v == #v) * (self_ == #self_);
+  (#self_ == #v) * types(#self_: Int) * types(#v: Int) * (v == #v)
+  * (self_ == #self_);
 
 
 pred "extract_head$$extract_proof$$pre"(+pty_T0, +list, head, tail, len, p):

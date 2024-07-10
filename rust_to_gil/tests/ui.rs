@@ -15,15 +15,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_tests(config: Config) -> Result<()> {
-    let name = display(&config.root_dir);
-    run_tests_generic(
-        vec![config],
-        default_file_filter,
-        default_per_file_config,
-        (Text::diff(), status_emitter::Gha::<true> { name }),
-    )
-}
+// fn run_tests(config: Config) -> Result<()> {
+//     let name = display(&config.root_dir);
+//     run_tests_generic(
+//         vec![config],
+//         default_file_filter,
+//         default_per_file_config,
+//         (Text::diff(), status_emitter::Gha::<true> { name }),
+//     )
+// }
 
 
 fn display(path: &Path) -> String {
