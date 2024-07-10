@@ -30,5 +30,5 @@ build: [
 ]
 dev-repo: "git+https://github.com/GillianPlatform/rust-to-gil.git"
 pin-depends: [
-  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#0c327c865126818afc89caabe555f33486364ffb"
+  "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#6cc5c5e2e78fcc022c58a284875079258956d4a2"
 ]
