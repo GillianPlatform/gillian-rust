@@ -1,4 +1,4 @@
-use super::gilsonite::{self, Assert, Predicate, SpecTerm};
+use super::gilsonite::{self, Assert, Pattern, Predicate, SpecTerm};
 use super::is_borrow;
 use crate::logic::gilsonite::{AssertPredCall, SeqOp};
 use crate::signature::{build_signature, raw_ins, Signature};
@@ -362,12 +362,37 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             AssertKind::MaybeUninit { pointer, pointee } => {
                 self.compile_maybe_uninit(pointer, pointee)
             }
+            AssertKind::Let { pattern, arg, body } => {
+                let arg = self.compile_expression(arg);
+                let body = self.compile_assertion(*body);
+
+                let pat = self.compile_pattern(pattern);
+
+                arg.eq_f(pat).into_asrt().star(body)
+            }
             AssertKind::ManyMaybeUninits {
                 pointer,
                 pointees,
                 size,
             } => self.compile_many_maybe_uninits(pointer, size, pointees),
         }
+    }
+
+    fn compile_pattern(&mut self, pat: Pattern<'tcx>) -> GExpr {
+        match pat {
+            Pattern::Constructor { adt, substs, variant, fields } => todo!(),
+            Pattern::Tuple(pats) => {
+                let fields: Vec<_> = pats
+                    .into_iter()
+                    .map(|f| self.compile_pattern(f))
+                    .collect();
+                fields.into()
+            },
+            Pattern::Wildcard(ty) => self.temp_lvar(ty),
+            Pattern::Binder(s) => Expr::LVar(format!("#{s}")),
+            Pattern::Boolean(_) => todo!(),
+        }
+
     }
 
     pub(crate) fn compile_abstract(mut self) -> Pred {

@@ -120,8 +120,6 @@ impl<'tcx> InnerPred<'tcx> {
             pred.ins.remove(0);
             pred.ins.iter_mut().for_each(|a| *a -= 1);
 
-            eprintln!("{pred}");
-
             prog.add_pred(pred);
             return;
         }
