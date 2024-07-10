@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use ui_test::status_emitter::Text;
 use ui_test::dependencies::DependencyBuilder;
+use ui_test::status_emitter::Text;
 use ui_test::*;
 
 fn main() -> Result<()> {
@@ -33,7 +33,6 @@ fn run_tests(mut config: Config) -> Result<()> {
         (Text::diff(), status_emitter::Gha::<true> { name }),
     )
 }
-
 
 fn display(path: &Path) -> String {
     path.display().to_string().replace('\\', "/")
@@ -103,7 +102,7 @@ fn build_config(path: PathBuf, prophecies: bool) -> Config {
     ));
     // dep_builder.program = PathBuf::from(env!("CARGO_BIN_EXE_rust_to_gil"));
     let mut dep_builder = DependencyBuilder::default();
-    dep_builder.program = dep_command; 
+    dep_builder.program = dep_command;
     dep_builder.crate_manifest_path = PathBuf::from("../tests/Cargo.toml");
     config
         .comment_defaults

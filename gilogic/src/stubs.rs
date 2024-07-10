@@ -1,4 +1,5 @@
 use core::ptr::NonNull;
+use std::marker::Tuple;
 
 use crate::tys::RustProof;
 
@@ -259,5 +260,9 @@ pub fn fold_proof(pre: RustAssertion) -> RustProof {
     unreachable!()
 }
 
-
-
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::assert_bind"]
+pub fn assert_bind<A: Tuple, F: FnOnce<A, Output = RustAssertion>>(f: F) -> A {
+    unreachable!()
+}

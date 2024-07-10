@@ -323,6 +323,10 @@ pub enum ProofStep<'tcx> {
     Call {
         pred: AssertPredCall<'tcx>,
     },
+    AssertBind {
+        vars: Vec<Symbol>,
+        assertion: Assert<'tcx>,
+    },
 }
 
 #[derive(Debug, Clone, TyDecodable, TyEncodable)]
@@ -473,8 +477,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         for stmt in &*self.thir[block].stmts {
             match self.thir[*stmt].kind {
                 thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(expr)),
-                thir::StmtKind::Let { .. } => {
-                    fatal2!(self.tcx, "assert bindings are currently unsupported")
+                thir::StmtKind::Let { initializer, .. } => {
+                    steps.push(self.proof_step(initializer.unwrap()));
+                    // fatal2!(self.tcx, "assert bindings are currently unsupported")
                 }
             };
         }
@@ -514,6 +519,10 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         fatal2!(self.tcx, "fold expects a call")
                     };
                     ProofStep::Fold { pred: pre }
+                }
+                Some(LogicStubs::AssertBind) => {
+                    let (vars, assertion) = self.build_assert_bind(args[0]);
+                    ProofStep::AssertBind { assertion, vars }
                 }
                 Some(_) => fatal2!(self.tcx, "unsupported proof step"),
                 None => {
@@ -555,6 +564,32 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 }
             }
             _ => fatal2!(self.tcx, "unsupported proof step"),
+        }
+    }
+
+    fn build_assert_bind(&self, expr: ExprId) -> (Vec<Symbol>, Assert<'tcx>) {
+        match &self.thir[expr].kind {
+            thir::ExprKind::Scope { value, .. } => self.build_assert_bind(*value),
+            thir::ExprKind::Closure(box ClosureExpr {
+                closure_id,
+                args: UpvarArgs::Closure(_),
+                ..
+            }) => {
+                let names = self.tcx.fn_arg_names(*closure_id);
+
+                let (thir, expr) = self.tcx.thir_body(closure_id).unwrap();
+
+                let body = Self {
+                    thir: thir.borrow().clone(),
+                    tcx: self.tcx,
+                }
+                .peel_lvar_bindings(expr, |this, expr| this.build_assert(expr));
+                (names.iter().map(|i| i.name).collect(), body.1)
+            }
+            kind => self
+                .tcx
+                .dcx()
+                .fatal(format!("Unexpected quantified form: {:?}", kind)),
         }
     }
 

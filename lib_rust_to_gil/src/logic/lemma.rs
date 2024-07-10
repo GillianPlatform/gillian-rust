@@ -210,7 +210,15 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                         parameters,
                         existentials: Vec::new(),
                     }))
-                } // _ => todo!(),
+                }
+                ProofStep::AssertBind { assertion, vars } => {
+                    let assertion = pred_ctx.compile_assertion(assertion);
+
+                    gil_proof.push(LCmd::SL(SLCmd::SepAssert {
+                        assertion,
+                        existentials: vars.iter().map(|v| v.to_string()).collect(),
+                    }))
+                }
             };
         }
         gil_proof

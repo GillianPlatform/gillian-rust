@@ -3,34 +3,54 @@ warning: unused imports: `Ownable`, `no_prophecies::with_freeze_lemma_for_mutref
   |
 5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-6 |     Ownable,
+6 |     assert_bind,
+7 |     Ownable,
   |     ^^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 warning: unused variable: `a`
-  --> ../tests/noproph/lemma_tests.rs:14:16
+  --> ../tests/noproph/lemma_tests.rs:15:16
    |
-14 | fn test_lemma((a, b) : (i32, i32)) {
+15 | fn test_lemma((a, b) : (i32, i32)) {
    |                ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `b`
-  --> ../tests/noproph/lemma_tests.rs:14:19
+  --> ../tests/noproph/lemma_tests.rs:15:19
    |
-14 | fn test_lemma((a, b) : (i32, i32)) {
+15 | fn test_lemma((a, b) : (i32, i32)) {
    |                   ^ help: if this is intentional, prefix it with an underscore: `_b`
 
-warning: function `test_lemma` is never used
-  --> ../tests/noproph/lemma_tests.rs:14:4
+warning: unused variable: `y`
+  --> ../tests/noproph/lemma_tests.rs:29:21
    |
-14 | fn test_lemma((a, b) : (i32, i32)) {
+29 |     assert_bind!(x, y | (x == a) * (y == b));
+   |                     ^
+   |
+help: `y` is captured in macro and introduced a unused variable
+  --> ../tests/noproph/lemma_tests.rs:29:5
+   |
+29 |     assert_bind!(x, y | (x == a) * (y == b));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this warning originates in the macro `assert_bind` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `test_lemma` is never used
+  --> ../tests/noproph/lemma_tests.rs:15:4
+   |
+15 | fn test_lemma((a, b) : (i32, i32)) {
    |    ^^^^^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: 4 warnings emitted
+warning: function `test_lemma2` is never used
+  --> ../tests/noproph/lemma_tests.rs:28:4
+   |
+28 | fn test_lemma2((a, b) : (i32, i32)) {
+   |    ^^^^^^^^^^^
+
+warning: 6 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

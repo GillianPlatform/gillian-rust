@@ -380,19 +380,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     fn compile_pattern(&mut self, pat: Pattern<'tcx>) -> GExpr {
         match pat {
-            Pattern::Constructor { adt, substs, variant, fields } => todo!(),
+            Pattern::Constructor {
+                adt,
+                substs,
+                variant,
+                fields,
+            } => todo!(),
             Pattern::Tuple(pats) => {
-                let fields: Vec<_> = pats
-                    .into_iter()
-                    .map(|f| self.compile_pattern(f))
-                    .collect();
+                let fields: Vec<_> = pats.into_iter().map(|f| self.compile_pattern(f)).collect();
                 fields.into()
-            },
+            }
             Pattern::Wildcard(ty) => self.temp_lvar(ty),
             Pattern::Binder(s) => Expr::LVar(format!("#{s}")),
             Pattern::Boolean(_) => todo!(),
         }
-
     }
 
     pub(crate) fn compile_abstract(mut self) -> Pred {
