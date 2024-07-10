@@ -124,7 +124,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             let ctx = GilsoniteBuilder::new(thir.clone(), self.tcx());
 
             let proof = ctx.build_lemma_proof(expr);
-
+            // let proof = vec![];
             res.push(self.compile_proof(proof));
             // fatal!(self, "Can't compile untrusted lemmas yet")
         }

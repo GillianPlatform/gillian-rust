@@ -31,9 +31,9 @@ where
                     alloc.text(", "),
                 )
                 .parens(),
-            self.hyp.pretty(alloc).enclose("\n[[\n", "\n]]"),
+            self.hyp.pretty(alloc).nest(2).enclose(alloc.text("[[").append(alloc.line()), alloc.line().append("]]")),
             alloc
-                .intersperse(self.concs.iter(), ";\n")
+                .intersperse(self.concs.iter(), ";\n").nest(2)
                 .enclose("\n[[", "\n]]"),
             if let Some(proof) = &self.proof {
                 alloc

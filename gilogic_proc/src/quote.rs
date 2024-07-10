@@ -1,8 +1,9 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, PatType, Stmt, StmtMacro, Type};
+use uuid::Uuid;
 
-use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
+use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*, spec::compile_spec};
 
 impl Formula {
     fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
@@ -428,6 +429,10 @@ impl SpecEnsures {
     }
 }
 
+//
+// specification( .. ) fn f. --> fn xxxx_spec( ) { instantiate_lvar( ... )}   #[spec_name = "foo"] fn f( ) { .. }
+// specifcation ( .. ) fn lemma --> #[spec_name = "foo" fn lemma( .. ) { instantiate_lvar(...) { let _ = || { specification}; lemma_proof }}
+
 impl Specification {
     pub fn encode(&self) -> syn::Result<TokenStream> {
         // Temporary for easier compatibility with existing code;
@@ -454,6 +459,30 @@ impl Specification {
             unsafe { gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |#(#lvars),*| {
                 gilogic::__stubs::spec(#precond_tokens, [#(#postcond_tokens),*])
             }) }
+        })
+    }
+
+    pub fn encode_lemma(&self) -> syn::Result<TokenStream> {
+        let precond_tokens = {
+            let mut fragments = self.precond.iter();
+            let first = fragments.next().unwrap().encode();
+            fragments.fold(first, |acc, fragment| {
+                let acc = acc?;
+                let right = fragment.encode()?;
+                Ok(quote!(gilogic::__stubs::star(#acc, #right)))
+            })?
+        };
+
+        let postcond_tokens = self
+            .postconds
+            .iter()
+            .map(|a| a.encode())
+            .collect::<syn::Result<Vec<_>>>()?;
+
+        Ok(quote! {
+            unsafe {
+                gilogic::__stubs::spec(#precond_tokens, [#(#postcond_tokens),*])
+            }
         })
     }
 }
@@ -564,6 +593,7 @@ impl ToTokens for Lemma {
         let Lemma {
             pub_token,
             attributes,
+            specification,
             sig,
             body,
         } = self;
@@ -577,13 +607,44 @@ impl ToTokens for Lemma {
                     unreachable!()
                 }
             }),
-            Some(body) => tokens.extend(quote! {
-                #[cfg(gillian)]
-                #(#attributes)*
-                #[gillian::decl::lemma]
-                // #[gillian::trusted]
-                #pub_token #sig #body
-            }),
+            Some(body) => {
+                let uni = specification.lvars.clone();
+
+                let id = Uuid::new_v4().to_string();
+                let name = {
+                    let ident = sig.ident.to_string();
+                    let name_with_uuid = format!("{}_spec_{}", ident, id).replace('-', "_");
+                    format_ident!("{}", name_with_uuid, span = Span::call_site())
+                };
+
+                let name = name.to_string();
+                let stmts = &body.stmts;
+                // TODO(xavier): Remove this.
+                let ins = format!("{}", sig.inputs.len());
+
+                // panic!("here");
+                let spec = specification.encode_lemma().unwrap();
+                tokens.extend(quote! {
+                    #[cfg(gillian)]
+                    #[gillian::decl::lemma]
+                    #(#attributes)*
+                    #[gillian::spec=#name]
+                    #pub_token #sig {
+                        unsafe {
+                        gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
+                            |#uni| {
+                                let _  =
+                                    (   #[gillian::no_translate]
+                                        #[gillian::item=#name]
+                                        #[gillian::decl::specification]
+                                        #[gillian::decl::pred_ins=#ins]
+                                    || -> gilogic::RustAssertion { #spec });
+                                #(#stmts);*
+                            }
+                        )}
+                    }
+                })
+            }
         }
     }
 }

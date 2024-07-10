@@ -37,6 +37,7 @@ pub fn compile_logic<'tcx, 'genv>(
 
         vec![LogicItem::Pred(pred)]
     } else if is_lemma(did, tcx) || is_extract_lemma(did, tcx) {
+        eprintln!("compiling {did:?}");
         lemma::LemmaCtx::new(
             global_env,
             did,

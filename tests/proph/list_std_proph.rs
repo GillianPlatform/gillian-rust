@@ -57,15 +57,16 @@ impl<T> Node<T> {
 }
 
 #[extract_lemma(
-    forall head, tail, len, p.
-    model m.
-    extract model mh.
+    forall head, tail, len, p : NonNull<Node<T>>.
+    model  m .
+    extract model mh  .
     assuming { head == Some(p) }
     from { list_ref_mut_htl(list, m, (head, tail, len)) }
     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
     prophecise { m.tail().prepend(mh) }
 )]
 fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+
 
 #[predicate]
 fn dll_seg<T: Ownable>(

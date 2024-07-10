@@ -43,11 +43,11 @@ pub struct ExtractLemma {
     // new model mp.
     pub models: Option<(
         kw::model,
-        Ident, // Identifier of `m`
+        LvarDecl, // Identifier of `m`
         Token![.],
         kw::extract,
         kw::model,
-        Ident, // Identifier of `mp`
+        LvarDecl, // Identifier of `mp`
         Token![.],
     )>,
     // assuming { F }
@@ -100,8 +100,9 @@ impl ExtractLemma {
                 "extract_lemma must return Prophecy<K> for some K when used with prophecies",
             )?;
             let new_model_ty: Type = parse_quote! { (#prophecy_ty, #prophecy_ty) };
+            // panic!("{new_model:?}");
 
-            rvars.push(LvarDecl::from((new_model.clone(), new_model_ty)));
+            rvars.push(LvarDecl::from((new_model.ident.clone(), new_model_ty)));
             let fresh_prophecy = format_ident!("ret");
             let extract_span = extract.span();
             let ptr_arg_extracted_mut = extract.args_mut().first_mut().ok_or_else(|| {
@@ -154,16 +155,16 @@ impl ExtractLemma {
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model.to_string(), old_proph_val_var.clone());
-                tbl.insert(new_model.to_string(), new_proph_val_var);
+                tbl.insert(model.ident.to_string(), old_proph_val_var.clone());
+                tbl.insert(new_model.ident.to_string(), new_proph_val_var);
                 tbl
             };
             prophecise.subst(&subst);
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model.to_string(), old_proph_val_var);
-                tbl.insert(new_model.to_string(), new_proph_old_val_var);
+                tbl.insert(model.ident.to_string(), old_proph_val_var);
+                tbl.insert(new_model.ident.to_string(), new_proph_old_val_var);
                 tbl
             };
             prophecise_past.subst(&subst);
@@ -327,19 +328,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
 
     // We need to build the extract lemma term before we add ret to the inputs.
     let extract_lemma_term = {
-        let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
-            let mut lvars = lvars.clone();
-            if let Some((_, model, _, _, _, new_model, _)) = &extract_lemma.models {
-                lvars.push(LvarDecl::from(model.clone()));
-                lvars.push(LvarDecl::from(new_model.clone()));
-            }
-
-            let forall = quote! { #forall #lvars #dot };
-            Some(forall)
-        } else {
-            None
-        };
-
         let proof_name = format_ident!("{}___proof", name);
         let from_args = extract_lemma.from.1.args().clone();
 
@@ -349,48 +337,73 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
             extract_args.push(parse_quote!(()));
         }
 
+        let new_new_model = format_ident!("new_new_model");
+        let new_model = extract_args[1].clone();
+
+        let mut wand_pre_args = extract_args.clone();
+        wand_pre_args[1] = parse_quote! { #new_new_model };
+
         let assuming = if let Some((_, term)) = &extract_lemma.assuming {
-            Some(quote! { * (#term) })
+            Some(quote! { (#term) * })
         } else {
             None
         };
 
-        let prophecise_check = if let Some((_, term)) = &extract_lemma.prophecise {
-            let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().unwrap();
-            Some(quote! { * (#model == #term) })
+        let (_, term) = &extract_lemma.prophecise.as_ref().unwrap();
+
+        let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().unwrap();
+        let prophecise_check = Some(quote! { * (#model == #term) });
+
+        let mut subst = HashMap::new();
+        subst.insert(_new_model.ident.to_string(), new_new_model.clone());
+        let mut wand_proph = term.clone();
+        wand_proph.subst(&subst);
+        let mut wand_post_args = from_args.clone();
+        wand_post_args[1] = wand_proph;
+
+        let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
+            let mut lvars = lvars.clone();
+            if let Some((_, model, _, _, _, new_model, _)) = &extract_lemma.models {
+                lvars.push(LvarDecl::from(model.clone()));
+                lvars.push(LvarDecl::from(new_model.clone()));
+            }
+            lvars.push(parse_quote! { #new_new_model});
+
+            let forall = quote! { #forall #lvars #dot };
+            Some(forall)
         } else {
-            None
+            Some(quote! { forall #new_new_model .})
         };
 
         quote! {
 
             #[gilogic::macros::lemma]
-            #[gillian::trusted]
             #[gilogic::macros::specification(
                     #forall
                     requires {
-                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
                         #assuming
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
                     }
                     ensures {
                         gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
                         #prophecise_check
                         * gilogic::__stubs::wand(
-                            // Ici, dans les extract_args dans la wand,
-                            // Il faut remplacer new_model par une nouvelle variable "NEW_new_model"
-                            // Ownable::own(&mut (*p.element), mh)
-                            // => Ownable::own(&mut (*p.element), NEW_mh)
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args),
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
                             // Ici dans from_args, il faut remplacer model par
                             // prophecise[new_model / NEW_new_model]
                             // Ownable::own(p, m, frozen)
                             // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
                         )
                     }
             )]
             #[gillian::timeless]
-            fn #proof_name #generics (#inputs);
+            fn #proof_name #generics (#inputs) {
+                ::gilogic :: package!(
+                  gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
+                , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                );
+            }
         }
     };
 

@@ -463,16 +463,17 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 
     pub(crate) fn build_lemma_proof(&self, expr: ExprId) -> Vec<ProofStep<'tcx>> {
-        let (unis, steps) = self.peel_lvar_bindings(expr, |this, expr| {
+        let expr = self.peel_scope(expr);
+        let (_, steps) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
-            let thir::ExprKind::Block { block } = self.thir[expr].kind else {
-                return vec![self.proof_step(expr)];
+            let thir::ExprKind::Block { block } = this.thir[expr].kind else {
+                return vec![this.proof_step(expr)];
             };
             //  else {
             //
             // };
 
-            self.proof_sequence(block)
+            this.proof_sequence(block)
         });
         steps
     }
@@ -481,15 +482,20 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let mut steps = Vec::new();
 
         for stmt in &*self.thir[block].stmts {
-            match self.thir[*stmt].kind {
-                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(expr)),
-                thir::StmtKind::Let { initializer, .. } => {
+            match &self.thir[*stmt].kind {
+                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(*expr)),
+                thir::StmtKind::Let { pattern, initializer, .. } => {
+                    if pattern.ty.is_closure() {
+                    continue;
+                }
                     steps.push(self.proof_step(initializer.unwrap()));
                     // fatal2!(self.tcx, "assert bindings are currently unsupported")
                 }
             };
+
         }
 
+        eprintln!("{:?}",self.thir[block].expr.map(|e| &self.thir[self.peel_scope(e)].kind));
         assert_eq!(self.thir[block].expr, None);
 
         steps
@@ -513,7 +519,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                     ProofStep::Package { pre, post }
                 }
-
                 Some(LogicStubs::Unfold) => {
                     let AssertKind::Call(pre) = self.build_assert(expr).kind else {
                         fatal2!(self.tcx, "unfold expects a call")

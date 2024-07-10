@@ -5,7 +5,7 @@ use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 use indexmap::IndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{def::DefKind, Unsafety};
-use rustc_middle::ty::{GenericArgsRef, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{EarlyBinder, GenericArgsRef, ParamEnv, Ty, TyCtxt, TyKind};
 use rustc_span::{symbol, Symbol};
 
 use crate::{
@@ -245,7 +245,7 @@ pub fn build_signature<'tcx, 'genv>(
     assert!(
         matches!(
             global_env.tcx().def_kind(id),
-            DefKind::Fn | DefKind::AssocFn
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure
         ),
         "Cannot build signature for {:?}",
         global_env.tcx().def_kind(id)
@@ -257,11 +257,13 @@ pub fn build_signature<'tcx, 'genv>(
     // This means I don't think we want to use the generics at all?
 
     let mut args = Vec::new();
-    let sig = tcx.fn_sig(id).instantiate(tcx, subst);
+    let (inputs, output) = inputs_and_output(tcx, id);
+    let inputs : Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
+    // let sig = tcx.fn_sig(id).instantiate(tcx, subst);
     let substsref = subst;
 
-    let mut regions = collect_regions(sig.inputs()).regions;
-    regions.extend(collect_regions(sig.output()).regions);
+    let mut regions = collect_regions(inputs.clone()).regions;
+    regions.extend(collect_regions(output).regions);
     for (ix, r) in regions.iter().enumerate() {
         match r.kind() {
             rustc_type_ir::RegionKind::ReVar(_) => todo!("re var??"),
@@ -292,8 +294,8 @@ pub fn build_signature<'tcx, 'genv>(
         }
     }
 
-    let params: IndexSet<_> = collect_params(sig.inputs())
-        .chain(collect_params(sig.output()))
+    let params: IndexSet<_> = collect_params(inputs)
+        .chain(collect_params(output))
         .collect();
 
     for pty in params {

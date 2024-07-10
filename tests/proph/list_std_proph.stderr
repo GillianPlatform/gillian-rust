@@ -1,130 +1,81 @@
+warning: unused import: `specification`
+ --> ../tests/proph/list_std_proph.rs:8:9
+  |
+8 |         specification,
+  |         ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+building predctx DefId(0:50 ~ list_std_proph[4767]::{impl#0}::shallow_model) []
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-compiling trusted lemma Signature { args: [Lifetime("pLft_a"), Generic("pty_T0"), Program("list", &'{erased} mut LinkedList<T/#0>), Logic("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("len", usize), Logic("p", std::ptr::NonNull<Node<T/#0>>), Logic("m", gilogic::Seq<Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) })>), Logic("mh", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: true, pre: Star { left: Pred { name: "<LinkedList<T> as gilogic::prophecies::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), LVar("#list"), LVar("#m"), EList([LVar("#head"), LVar("#tail"), LVar("#len")])] }, right: Pure(Eq { left: LVar("#head"), right: EList([Lit(Int(1)), EList([LVar("#p")])]) }) }, post: [([], Star { left: Star { left: Star { left: Star { left: Pred { name: "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#lvar_2"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#lvar_2"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(2)), EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mh"), EList([])] }, right: Pure(Eq { left: LVar("#m"), right: NOp { operator: LstCat, operands: [EList([LVar("#mh")]), LstSub { list: LVar("#m"), start: Lit(Int(1)), length: BinOp { operator: IMinus, left_operand: UnOp { operator: LstLen, operand: LVar("#m") }, right_operand: Lit(Int(1)) } }] } }) }, right: Wand { lhs: ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#lvar_3"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#lvar_3"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(2)), EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mh"), EList([])]), rhs: ("<LinkedList<T> as gilogic::prophecies::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), LVar("#list"), LVar("#m"), EList([LVar("#head"), LVar("#tail"), LVar("#len")])]) } }, right: Pred { name: "std::ptr::NonNull::<T>::as_ptr", params: [EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])]), LVar("#p"), LVar("#lvar_2")] } }, right: Pred { name: "std::ptr::NonNull::<T>::as_ptr", params: [EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])]), LVar("#p"), LVar("#lvar_3")] } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 4 } }
-compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("x", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("ptr", std::ptr::NonNull<Node<T/#0>>), Logic("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("element", T/#0), Logic("data", gilogic::Seq<Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) })>), Logic("repr", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: false, pre: Star { left: Star { left: Star { left: Pure(Eq { left: LVar("#x"), right: EList([Lit(Int(1)), EList([LVar("#ptr")])]) }), right: Star { left: Star { left: Types([(LVar("#lvar_15"), ObjectType), (LVar("#lvar_16"), ListType)]), right: Pure(Eq { left: EList([EList([LVar("#lvar_15"), LVar("#lvar_16")])]), right: LVar("#ptr") }) }, right: GA { name: "value", ins: [LVar("#lvar_15"), LVar("#lvar_16"), EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])])], outs: [EList([LVar("#next"), LVar("#prev"), LVar("#element")])] } } }, right: Pred { name: "<T as gilogic::prophecies::Ownable>::own", params: [PVar("pty_T0"), LVar("#element"), LVar("#repr")] } }, right: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#next"), LVar("#tail_next"), LVar("#tail"), LVar("#x"), LVar("#data")] } }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#x"), LVar("#tail_next"), LVar("#tail"), LVar("#prev"), NOp { operator: LstCat, operands: [EList([LVar("#repr")]), LVar("#data")] }] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 17 } }
-compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("data", gilogic::Seq<Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) })>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 19 } }
-compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Logic("data", gilogic::Seq<Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) })>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] }, post: [([], Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 19 } }
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `list`
-  --> ../tests/proph/list_std_proph.rs:68:33
-   |
-68 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
-   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
-   |
-   = note: `#[warn(unused_variables)]` on by default
+compiling DefId(0:52 ~ list_std_proph[4767]::extract_head___proof)
+building predctx DefId(0:56 ~ list_std_proph[4767]::extract_head___proof::{closure#0}::{closure#0}) [T/#0]
+None
+building predctx DefId(0:52 ~ list_std_proph[4767]::extract_head___proof) [T/#0]
+building predctx DefId(0:56 ~ list_std_proph[4767]::extract_head___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:56 ~ list_std_proph[4767]::extract_head___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:58 ~ list_std_proph[4767]::extract_head_spec_58d57223_542b_4648_85be_db2c95e081f3) [T/#0]
+building predctx DefId(0:66 ~ list_std_proph[4767]::dll_seg) [T/#0]
+building predctx DefId(0:70 ~ list_std_proph[4767]::dll_seg_r) [T/#0]
+compiling DefId(0:74 ~ list_std_proph[4767]::dll_seg_r_appened_left)
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("x", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: None, temp_gen: TempGenerator { cur_lvar: 6 } }
+thread 'rustc' panicked at lib_rust_to_gil/src/logic/lemma.rs:114:18:
+Expected lemma to have contract
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic_display
+   3: core::option::expect_failed
+   4: core::option::Option<T>::expect
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/core/src/option.rs:895:21
+   5: lib_rtg::logic::lemma::LemmaCtx::compile
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/lemma.rs:112:22
+   6: lib_rtg::logic::compile_logic
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/mod.rs:41:9
+   7: lib_rtg::prog_context::ProgCtx::compile_logic
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:38:27
+   8: lib_rtg::prog_context::ProgCtx::final_prog
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:102:21
+   9: lib_rtg::prog_context::ProgCtx::compile_prog
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:156:24
+  10: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion::{{closure}}
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:79:36
+  11: rustc_middle::ty::context::GlobalCtxt::enter::{{closure}}
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:37
+  12: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  13: std::thread::local::LocalKey<T>::try_with
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:286:12
+  14: std::thread::local::LocalKey<T>::with
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:262:9
+  15: rustc_middle::ty::context::tls::enter_context
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+  16: rustc_middle::ty::context::GlobalCtxt::enter
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:9
+  17: rustc_interface::queries::QueryResult<&rustc_middle::ty::context::GlobalCtxt>::enter
+             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_interface/src/queries.rs:70:9
+  18: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion
+             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:77:9
+  19: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+  20: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+  21: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 
-warning: unused variable: `next`
-   --> ../tests/proph/list_std_proph.rs:120:5
-    |
-120 |     next: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
+error: the compiler unexpectedly panicked. this is a bug.
 
-warning: unused variable: `x`
-   --> ../tests/proph/list_std_proph.rs:119:5
-    |
-119 |     x: Option<NonNull<Node<T>>>,
-    |     ^ help: if this is intentional, prefix it with an underscore: `_x`
+note: we would appreciate a bug report: https://github.com/GillianPlatform/rust-to-gil
 
-warning: unused variable: `tail_next`
-   --> ../tests/proph/list_std_proph.rs:121:5
-    |
-121 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+note: please make sure that you have updated to the latest nightly
 
-warning: unused variable: `tail`
-   --> ../tests/proph/list_std_proph.rs:122:5
-    |
-122 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+note: please attach the file at `/Users/xavier/Code/rust-to-gil/rust_to_gil/rustc-ice-2024-07-12T13_29_04-13470.txt` to your bug report
 
-warning: unused variable: `head`
-   --> ../tests/proph/list_std_proph.rs:139:5
-    |
-139 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+note: compiler flags: -Z crate-attr=feature(register_tool) -Z crate-attr=register_tool(gillian) -Z crate-attr=feature(rustc_attrs) -Z crate-attr=allow(internal_features) -Z crate-attr=feature(stmt_expr_attributes) --crate-type lib
 
-warning: unused variable: `tail_next`
-   --> ../tests/proph/list_std_proph.rs:140:5
-    |
-140 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+query stack during panic:
+end of query stack
+warning: 1 warning emitted
 
-warning: unused variable: `tail`
-   --> ../tests/proph/list_std_proph.rs:141:5
-    |
-141 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/proph/list_std_proph.rs:142:5
-    |
-142 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: unused variable: `head`
-   --> ../tests/proph/list_std_proph.rs:157:5
-    |
-157 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
-
-warning: unused variable: `tail_next`
-   --> ../tests/proph/list_std_proph.rs:158:5
-    |
-158 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-   --> ../tests/proph/list_std_proph.rs:159:5
-    |
-159 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/proph/list_std_proph.rs:160:5
-    |
-160 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: associated function `shallow_model` is never used
-  --> ../tests/proph/list_std_proph.rs:33:8
-   |
-30 | trait ShallowModel: Ownable {
-   |       ------------ associated function in this trait
-...
-33 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
-   |        ^^^^^^^^^^^^^
-   |
-   = note: `#[warn(dead_code)]` on by default
-
-warning: function `extract_head___proof` should have a snake case name
-  --> ../tests/proph/list_std_proph.rs:68:4
-   |
-68 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
-   |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
-
-warning: variable `THIS` should have a snake case name
-   --> ../tests/proph/list_std_proph.rs:173:12
-    |
-173 |     fn own(self, model: Self::RepresentationTy) {
-    |            ^^^^ help: convert the identifier to snake case: `this`
-
-warning: 16 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!

@@ -8,17 +8,60 @@ warning: unused import: `specification`
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-compiling trusted lemma Signature { args: [Lifetime("pLft_a"), Generic("pty_T0"), Program("p", &'{erased} mut WP<T/#0>), Logic("x", *mut N<T/#0>), Logic("y", *mut N<T/#0>), Logic("m", (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))), Logic("mx", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: true, pre: Pred { name: "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])] }, post: [([], Star { left: Star { left: Pred { name: "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])] }, right: Pure(Eq { left: LVar("#m"), right: EList([LVar("#mx"), BinOp { operator: LstNth, left_operand: LVar("#m"), right_operand: Lit(Int(1)) }]) }) }, right: Wand { lhs: ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#x"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])]), rhs: ("<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])]) } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 7 } }
-compiling trusted lemma Signature { args: [Lifetime("pLft_a"), Generic("pty_T0"), Program("p", &'{erased} mut WP<T/#0>), Logic("x", *mut N<T/#0>), Logic("y", *mut N<T/#0>), Logic("m", (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))), Logic("mx", Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(20:104 ~ gilogic[1999]::prophecies::Ownable::RepresentationTy) }))], contract: Some(Contract { timeless: true, pre: Pred { name: "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])] }, post: [([], Star { left: Star { left: Pred { name: "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", params: [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])] }, right: Pure(Eq { left: LVar("#m"), right: EList([BinOp { operator: LstNth, left_operand: LVar("#m"), right_operand: Lit(Int(0)) }, LVar("#mx")]) }) }, right: Wand { lhs: ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), EList([EList([BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(0)) }, NOp { operator: LstCat, operands: [BinOp { operator: LstNth, left_operand: LVar("#y"), right_operand: Lit(Int(1)) }, EList([EList([Lit(String("f")), Lit(Int(0)), EList([Lit(String("adt")), Lit(String("N")), EList([PVar("pty_T0")])])])])] }]), EList([Lit(Null), EList([])])]), LVar("#mx"), EList([])]), rhs: ("<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to", [PVar("pLft_a"), PVar("pty_T0"), LVar("#p"), LVar("#m"), EList([LVar("#x"), LVar("#y")])]) } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 14 } }
+building predctx DefId(0:27 ~ wp_proph[6031]::wp) [T/#0]
+building predctx DefId(0:39 ~ wp_proph[6031]::{impl#1}::frozen_own) [DefId(0:31 ~ wp_proph[6031]::{impl#1}::'a)_'a/#0, T/#1]
+building predctx DefId(0:41 ~ wp_proph[6031]::wp_ref_mut_xy) [T/#0]
+building predctx DefId(0:44 ~ wp_proph[6031]::{impl#2}::own) [T/#0]
+compiling DefId(0:46 ~ wp_proph[6031]::extract_x___proof)
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+None
+building predctx DefId(0:46 ~ wp_proph[6031]::extract_x___proof) [T/#0]
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:52 ~ wp_proph[6031]::extract_x_spec_b5fec72c_7b59_4ded_b108_3bb0047264b8) [T/#0]
+compiling DefId(0:60 ~ wp_proph[6031]::extract_y___proof)
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+None
+building predctx DefId(0:60 ~ wp_proph[6031]::extract_y___proof) [T/#0]
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:66 ~ wp_proph[6031]::extract_y_spec_c9e929a1_b5c2_4881_9442_2932594b5687) [T/#0]
+building predctx DefId(0:74 ~ wp_proph[6031]::{impl#0}::new_spec_abef1b6e_21d4_4966_923e_c5ce364e47a8) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+building predctx DefId(0:74 ~ wp_proph[6031]::{impl#0}::new_spec_abef1b6e_21d4_4966_923e_c5ce364e47a8) [T/#0]
+building predctx DefId(0:78 ~ wp_proph[6031]::{impl#0}::assign_first_spec_196be207_e880_4309_ba04_dd1c6c46d333) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:78 ~ wp_proph[6031]::{impl#0}::assign_first_spec_196be207_e880_4309_ba04_dd1c6c46d333) [T/#0]
+building predctx DefId(0:82 ~ wp_proph[6031]::{impl#0}::first_mut_spec_1a953856_477a_4194_a243_9f58fc3b9f49) [T/#0]
+building predctx DefId(0:82 ~ wp_proph[6031]::{impl#0}::first_mut_spec_1a953856_477a_4194_a243_9f58fc3b9f49) [T/#0]
+building predctx DefId(0:88 ~ wp_proph[6031]::{impl#0}::second_mut_spec_0946d2f0_81d7_4ab8_9f2b_217316f47e28) [T/#0]
+building predctx DefId(0:88 ~ wp_proph[6031]::{impl#0}::second_mut_spec_0946d2f0_81d7_4ab8_9f2b_217316f47e28) [T/#0]
+building predctx DefId(20:254 ~ gilogic[1999]::prophecies::Ownable::own) [T/#0]
+building predctx DefId(20:345 ~ gilogic[1999]::prophecies::freeze_params_spec_f31d858a_1d71_4ab6_9842_200dc6482cd2) [(*mut N<T/#0>, *mut N<T/#0>), WP<T/#0>]
+building predctx DefId(20:260 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_own_frozen) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:256 ~ gilogic[1999]::prophecies::FrozenOwn::just_ref_mut_points_to) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:256 ~ gilogic[1999]::prophecies::FrozenOwn::just_ref_mut_points_to) [T/#0, ()]
+building predctx DefId(20:264 ~ gilogic[1999]::prophecies::{impl#1}::own) ['{erased}, T/#0]
+building predctx DefId(20:264 ~ gilogic[1999]::prophecies::{impl#1}::own) ['{erased}, WP<T/#0>]
+building predctx DefId(20:319 ~ gilogic[1999]::prophecies::{impl#4}::own) []
+building predctx DefId(20:325 ~ gilogic[1999]::prophecies::prophecy_auto_update_spec_dc2e1893_ea75_4584_8d8a_6d8fb065f0a0) [(), WP<T/#0>]
+building predctx DefId(20:334 ~ gilogic[1999]::prophecies::prophecy_resolve_spec_c86f5ac1_f675_4969_937f_70edd690eeb3) [(), WP<T/#0>]
+building predctx DefId(0:52 ~ wp_proph[6031]::extract_x_spec_b5fec72c_7b59_4ded_b108_3bb0047264b8) [T/#0]
+building predctx DefId(0:66 ~ wp_proph[6031]::extract_y_spec_c9e929a1_b5c2_4881_9442_2932594b5687) [T/#0]
+building predctx DefId(20:258 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_inner_frozen) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:262 ~ gilogic[1999]::prophecies::{impl#0}::frozen_own) [T/#0]
+building predctx DefId(20:260 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_own_frozen) [T/#0, ()]
+building predctx DefId(20:260 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_own_frozen) [WP<T/#0>, ()]
+building predctx DefId(20:262 ~ gilogic[1999]::prophecies::{impl#0}::frozen_own) [WP<T/#0>]
+building predctx DefId(20:258 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_inner_frozen) [T/#0, ()]
+building predctx DefId(20:258 ~ gilogic[1999]::prophecies::FrozenOwn::mut_ref_inner_frozen) [WP<T/#0>, ()]
 warning: unused variable: `p`
   --> ../tests/proph/wp_proph.rs:61:30
    |

@@ -155,7 +155,8 @@ where
                             .parens()
                             .nest(2),
                     ),
-                )
+                ).group()
+                .nest(2)
                 .parens(),
         }
     }

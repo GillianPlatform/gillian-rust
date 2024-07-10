@@ -63,6 +63,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
+        eprintln!("building predctx {body_id:?} {args:?}");
         PredCtx {
             sig: build_signature(global_env, body_id, args, temp_gen),
             global_env,
@@ -291,9 +292,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         if has_regions {
             if self.sig.lifetimes().next().is_none() {
+                eprintln!("{:?}", self.sig);
                 fatal!(
                             self,
-                            "predicate calling ({:?}) another one ({:?}), it has a lifetime param but not self?", self.body_id, def_id
+                            "predicate calling ({:?}, {:?}) another one ({:?}, {:?}), it has a lifetime param but not self?", self.body_id, self.args, def_id, substs
                         )
             };
             let lft = self.sig.lifetimes().next().unwrap();
