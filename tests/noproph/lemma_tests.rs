@@ -12,5 +12,9 @@ use gilogic::{
     ensures { emp }
 )]
 fn test_lemma((a, b) : (i32, i32)) {
+    if true {
 
+    } else {
+
+    }
 }

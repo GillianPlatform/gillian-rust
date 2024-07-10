@@ -456,11 +456,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let (unis, steps) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
             let thir::ExprKind::Block { block } = self.thir[expr].kind else {
-                fatal2!(
-                    self.tcx,
-                    "proofs are expected to be sequences of statements"
-                );
+                return vec![self.proof_step(expr)];
             };
+            //  else {
+            //
+            // };
 
             self.proof_sequence(block)
         });
@@ -471,7 +471,12 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let mut steps = Vec::new();
 
         for stmt in &*self.thir[block].stmts {
-            steps.push(self.proof_step(*stmt))
+            match self.thir[*stmt].kind {
+                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(expr)),
+                thir::StmtKind::Let { .. } => {
+                    fatal2!(self.tcx, "assert bindings are currently unsupported")
+                }
+            };
         }
 
         assert_eq!(self.thir[block].expr, None);
@@ -479,87 +484,77 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         steps
     }
 
-    pub(crate) fn proof_step(&self, stmt: StmtId) -> ProofStep<'tcx> {
-        match self.thir[stmt].kind {
-            thir::StmtKind::Expr { expr, .. } => {
-                let expr = self.peel_scope(expr);
+    pub(crate) fn proof_step(&self, expr: ExprId) -> ProofStep<'tcx> {
+        let expr = self.peel_scope(expr);
 
-                match &self.thir[expr].kind {
-                    thir::ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
-                        Some(LogicStubs::Package) => {
-                            let mut args: Vec<_> =
-                                args.iter().map(|a| self.build_assert(*a)).collect();
+        match &self.thir[expr].kind {
+            thir::ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
+                Some(LogicStubs::Package) => {
+                    let mut args: Vec<_> = args.iter().map(|a| self.build_assert(*a)).collect();
 
-                            let AssertKind::Call(pre) = args.remove(0).kind else {
-                                fatal2!(self.tcx, "expected precondition of package to be a call")
-                            };
+                    let AssertKind::Call(pre) = args.remove(0).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
 
-                            let AssertKind::Call(post) = args.remove(0).kind else {
-                                fatal2!(self.tcx, "expected precondition of package to be a call")
-                            };
+                    let AssertKind::Call(post) = args.remove(0).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
 
-                            ProofStep::Package { pre, post }
-                        }
+                    ProofStep::Package { pre, post }
+                }
 
-                        Some(LogicStubs::Unfold) => {
-                            let AssertKind::Call(pre) = self.build_assert(expr).kind else {
-                                fatal2!(self.tcx, "unfold expects a call")
-                            };
-                            ProofStep::Unfold { pred: pre }
-                        }
-                        Some(LogicStubs::Fold) => {
-                            let AssertKind::Call(pre) = self.build_assert(expr).kind else {
-                                fatal2!(self.tcx, "fold expects a call")
-                            };
-                            ProofStep::Fold { pred: pre }
-                        }
-                        Some(_) => fatal2!(self.tcx, "unsupported proof step"),
-                        None => {
-                            let AssertKind::Call(pred) = self.build_assert(expr).kind else {
-                                fatal2!(self.tcx, "expected precondition of package to be a call")
-                            };
+                Some(LogicStubs::Unfold) => {
+                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "unfold expects a call")
+                    };
+                    ProofStep::Unfold { pred: pre }
+                }
+                Some(LogicStubs::Fold) => {
+                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "fold expects a call")
+                    };
+                    ProofStep::Fold { pred: pre }
+                }
+                Some(_) => fatal2!(self.tcx, "unsupported proof step"),
+                None => {
+                    let AssertKind::Call(pred) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
 
-                            ProofStep::Call { pred }
-                        }
-                    },
-                    thir::ExprKind::If {
-                        cond,
-                        then,
-                        else_opt,
-                        ..
-                    } => {
-                        let cond = self.build_expression(*cond);
-                        let thir::ExprKind::Block { block } =
-                            self.thir[self.peel_scope(*then)].kind
-                        else {
-                            fatal2!(self.tcx, "expected block in proof")
-                        };
+                    ProofStep::Call { pred }
+                }
+            },
+            thir::ExprKind::If {
+                cond,
+                then,
+                else_opt,
+                ..
+            } => {
+                let cond = self.build_expression(*cond);
+                let thir::ExprKind::Block { block } = self.thir[self.peel_scope(*then)].kind else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
 
-                        let Some(else_opt) = else_opt else {
-                            fatal2!(self.tcx, "expected block in proof")
-                        };
+                let Some(else_opt) = else_opt else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
 
-                        let thir::ExprKind::Block { block: else_block } =
-                            self.thir[self.peel_scope(*else_opt)].kind
-                        else {
-                            fatal2!(self.tcx, "expected block in proof")
-                        };
+                let thir::ExprKind::Block { block: else_block } =
+                    self.thir[self.peel_scope(*else_opt)].kind
+                else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
 
-                        let t_branch = self.proof_sequence(block);
-                        let f_branch = self.proof_sequence(else_block);
+                let t_branch = self.proof_sequence(block);
+                let f_branch = self.proof_sequence(else_block);
 
-                        ProofStep::If {
-                            cond,
-                            t_branch,
-                            f_branch,
-                        }
-                    }
-                    _ => fatal2!(self.tcx, "unsupported proof step"),
+                ProofStep::If {
+                    cond,
+                    t_branch,
+                    f_branch,
                 }
             }
-            thir::StmtKind::Let { .. } => {
-                fatal2!(self.tcx, "assert bindings are currently unsupported")
-            }
+            _ => fatal2!(self.tcx, "unsupported proof step"),
         }
     }
 

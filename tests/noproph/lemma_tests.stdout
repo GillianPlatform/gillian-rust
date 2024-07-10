@@ -8,7 +8,7 @@ lemma test_lemma(t_1)[[ (#t_1 == {{ #a, #b }}) * (#b i<# #a) ]]
 [[emp]]
 
 [*
-
+if (true) then {} else {}
 *]
 
 
