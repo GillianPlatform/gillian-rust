@@ -323,6 +323,7 @@ pub enum ProofStep<'tcx> {
     Call {
         pred: AssertPredCall<'tcx>,
     },
+    Auto,
 }
 
 #[derive(Debug, Clone, TyDecodable, TyEncodable)]
@@ -507,6 +508,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             };
                             ProofStep::Unfold { pred: pre }
                         }
+                        Some(LogicStubs::ProofAuto) => ProofStep::Auto,
                         Some(LogicStubs::Fold) => {
                             let AssertKind::Call(pre) = self.build_assert(expr).kind else {
                                 fatal2!(self.tcx, "fold expects a call")

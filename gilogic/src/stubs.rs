@@ -258,3 +258,10 @@ pub fn unfold_proof(pre: RustAssertion) -> RustProof {
 pub fn fold_proof(pre: RustAssertion) -> RustProof {
     unreachable!()
 }
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::auto"]
+pub fn proof_auto() -> RustProof {
+    unreachable!()
+}

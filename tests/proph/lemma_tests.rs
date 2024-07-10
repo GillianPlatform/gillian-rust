@@ -2,6 +2,7 @@
 extern crate gilogic;
 
 use gilogic::{
+    auto,
     macros::{
         assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
         specification,
@@ -109,4 +110,9 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
 ) {
+    if head == tail_next {
+        auto!();
+    } else {
+        auto!();
+    }
 }

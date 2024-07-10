@@ -1,9 +1,8 @@
-
 #[macro_export]
 macro_rules! package {
-	($x:expr, $y:expr) => {
-		gilogic :: __stubs :: package ( $x, $y )
-	}
+    ($x:expr, $y:expr) => {
+        gilogic::__stubs::package($x, $y)
+    };
 }
 
 #[macro_export]
@@ -23,6 +22,13 @@ macro_rules! fold {
 #[macro_export]
 macro_rules! assert_bind {
 	($($x:ident),* | $e:expr ) => {
-		let ($x) = gilogic 
+		let ($x) = gilogic
 	}
+}
+
+#[macro_export]
+macro_rules! auto {
+    () => {
+        gilogic::__stubs::proof_auto()
+    };
 }

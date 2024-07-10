@@ -204,6 +204,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                         else_branch,
                     });
                 }
+                ProofStep::Auto => {}
                 ProofStep::Call { pred } => {
                     let (lemma_name, parameters) = pred_ctx.compile_pred_call(pred);
                     gil_proof.push(LCmd::SL(SLCmd::ApplyLem {
