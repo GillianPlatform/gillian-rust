@@ -36,7 +36,7 @@ proc "std::option::Option::<T>::map"(T, U, F, opt, fname) {
           discr := l-nth(opt, 0i);
           goto [discr = 0i] nn so;
      nn:  ret := {{ 0i, {{ }} }};
-          return; 
+          return;
           (* The last argument is the closure name *)
      so:  val := l-nth(l-nth(opt, 1i), 0i);
           res := fname(U, val);
@@ -162,7 +162,7 @@ proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
      u := "i__lang_assert"(not (size = 0i), "Allocate should not be called with a zero-sized allocation");
      ptr := [alloc]({{ "array", "u8", size }});
      (* The following corresponds to Ok(NonNull::slice_from_raw_parts(ptr, size)) *)
-     ret := {{ 0i, {{ 
+     ret := {{ 0i, {{
           {{ {{ ptr, size }} }}
      }} }};
      return
@@ -170,7 +170,7 @@ proc "std::alloc::Allocator::allocate"(lft, alloc_ty, alloc_ptr, layout) {
 
 proc "i__alloc_maybe_zero"(layout) {
          goto [l-nth(layout, 0i) = 0i] z nz;
-     z:  ret := {{ 0i, {{ 
+     z:  ret := {{ 0i, {{
                {{ {{ {{ $l_dangling, {{ }} }}, size }} }}
          }} }};
          return;
@@ -188,14 +188,14 @@ proc "std::alloc::Allocator::grow"(lft, alloc_ty, alloc_ptr, ptr, old_layout, ne
      z:   ret := "i__alloc_maybe_zero"(new_layout);
           return;
      nz:  new_ptr := "std::alloc::Allocator::allocate"(null, null, null, new_layout);
-          
+
           (* unwrap result |> NonNull::<[T]>as_mut_ptr() *)
           new_ptr := l-nth(l-nth(l-nth(l-nth(new_ptr, 1i), 0i), 0i), 0i);
           ptr := l-nth(ptr, 0i); (* NonNull::as_ptr() *)
           (* We copy the old data into the new data *)
           u := [copy_nonoverlapping](l-nth(ptr, 0i), l-nth(ptr, 1i), l-nth(new_ptr, 0i), l-nth(new_ptr, 1i), "u8", old_size);
           u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), {{ "array", "u8", old_size }}); (* We free the old data *)
-          ret := {{ 0i, {{ 
+          ret := {{ 0i, {{
                {{ {{ new_ptr, new_size }} }}
           }} }};
           return
@@ -302,16 +302,16 @@ proc "std::ptr::swap"(T, l, r) {
 (* PREDS *)
 
 pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):
-     out == l-nth(nn, 0i);
-     
+     (nn == {{ out }});
+
 pred "std::ptr::Unique::<T>::as_ptr"(+T, +ptr, out):
-     "std::ptr::NonNull::<T>::as_ptr"(T, l-nth(ptr, 0i), out);
-     
+     (ptr == {{ #ptr, {{ }} }}) * "std::ptr::NonNull::<T>::as_ptr"(T, #ptr, out);
+
 pred "std::ptr::mut_ptr::<impl *mut T>::offset"(+T, +ptr, +ofs, out):
-     out == {{ l-nth(ptr, 0i), l+ (l-nth(ptr, 1i), {{ {{ "+", false, ofs, T }} }}) }};
-     
+     (ptr == {{ #ptr_1, #ptr_2 }}) * (out == {{ #ptr_1, l+ (#ptr_2, {{ {{ "+", false, ofs, T }} }}) }});
+
 pred "std::ptr::mut_ptr::<impl *mut T>::add"(+T, +ptr, +ofs, out):
-     out == {{ l-nth(ptr, 0i), l+ (l-nth(ptr, 1i), {{ {{ "+", false, ofs, T }} }}) }};
-     
+     (ptr == {{ #ptr_1, #ptr_2 }}) * (out == {{ #ptr_1, l+ (#ptr_2, {{ {{ "+", false, ofs, T }} }}) }});
+
 pred "std::mem::size_of"(+T, out):
      <ty_size>(T; out);
