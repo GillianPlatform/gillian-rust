@@ -1,10 +1,11 @@
+use itertools::Itertools;
 use num_bigint::BigInt;
-use rustc_ast::LitKind;
+use rustc_ast::{LitKind, Mutability};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
-    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, StmtId, Thir},
+    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
@@ -12,7 +13,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-use crate::logic::predicate::fn_args_and_tys;
+use crate::{logic::predicate::fn_args_and_tys, signature::anonymous_param_symbol};
 
 use super::{builtins::LogicStubs, fatal2};
 
@@ -281,7 +282,26 @@ pub enum AssertKind<'tcx> {
         pointees: Expr<'tcx>,
         size: Expr<'tcx>,
     },
+    Let {
+        pattern: Pattern<'tcx>,
+        arg: Expr<'tcx>,
+        body: Box<Assert<'tcx>>,
+    },
     // ... other core predicates
+}
+
+#[derive(Clone, Debug, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable)]
+pub enum Pattern<'tcx> {
+    Constructor {
+        adt: DefId,
+        substs: GenericArgsRef<'tcx>,
+        variant: VariantIdx,
+        fields: Vec<Pattern<'tcx>>,
+    },
+    Tuple(Vec<Pattern<'tcx>>),
+    Wildcard(Ty<'tcx>),
+    Binder(Symbol),
+    Boolean(bool),
 }
 
 pub enum ProofStep<'tcx> {
@@ -380,10 +400,8 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     pub(crate) fn build_extract_lemma(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
         let (uni, (assuming, from, extract, proph_model, prophecise)) =
             self.peel_lvar_bindings(expr, |this, expr| {
-                eprintln!("{expr:?}");
                 this.peel_lvar_bindings(expr, |this, expr| {
                     let expr = this.peel_scope(expr);
-                    eprintln!("{expr:?}");
                     let thir::ExprKind::Call {
                         ty, fun: _, args, ..
                     } = &this.thir[expr].kind
@@ -598,6 +616,35 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
             (pre, posts)
         });
+
+        // eprintln!("params: {:?}", self.thir.params);
+        let res = self
+            .thir
+            .params
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, param)| {
+                Some((idx, param.ty, self.pattern_term(&*param.pat.as_ref()?)))
+            })
+            .fold(pre, |body, (idx, ty, pattern)| match pattern {
+                Pattern::Binder(_) | Pattern::Wildcard(_) => body,
+                _ => {
+                    let arg = Expr {
+                        ty,
+                        kind: ExprKind::Var {
+                            id: anonymous_param_symbol(idx),
+                        },
+                    };
+                    Assert {
+                        kind: AssertKind::Let {
+                            pattern,
+                            arg,
+                            body: Box::new(body),
+                        },
+                    }
+                }
+            });
+        let pre = res;
 
         SpecTerm {
             uni,
@@ -1352,6 +1399,94 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 .tcx
                 .dcx()
                 .fatal(format!("Unsupported expression: {:?}", expr)),
+        }
+    }
+
+    fn pattern_term(&self, pat: &Pat<'tcx>) -> Pattern<'tcx> {
+        use thir::PatKind;
+        match &pat.kind {
+            PatKind::Wild => Pattern::Wildcard(pat.ty),
+            PatKind::Binding { name, .. } => Pattern::Binder(*name),
+            PatKind::Variant {
+                subpatterns,
+                adt_def,
+                variant_index,
+                args,
+                ..
+            } => {
+                let mut fields: Vec<_> = subpatterns
+                    .iter()
+                    .map(|pat| (pat.field, self.pattern_term(&pat.pattern)))
+                    .collect();
+                fields.sort_by_key(|f| f.0);
+
+                let raw_fields = &adt_def.variants()[0usize.into()].fields;
+                let defaults = raw_fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| (i.into(), Pattern::Wildcard(f.ty(self.tcx, args))));
+
+                let fields = defaults
+                    .merge_join_by(fields, |i: &(FieldIdx, _), j: &(FieldIdx, _)| i.0.cmp(&j.0))
+                    .map(|el| el.reduce(|_, a| a).1)
+                    .collect();
+
+                Pattern::Constructor {
+                    adt: adt_def.variants()[*variant_index].def_id,
+                    substs: args,
+                    variant: *variant_index,
+                    fields,
+                }
+            }
+            PatKind::Leaf { subpatterns } => {
+                let mut fields: Vec<_> = subpatterns
+                    .iter()
+                    .map(|pat| (pat.field, self.pattern_term(&pat.pattern)))
+                    .collect();
+                fields.sort_by_key(|f| f.0);
+
+                if matches!(pat.ty.kind(), TyKind::Tuple(_)) {
+                    let fields = fields.into_iter().map(|a| a.1).collect();
+                    Pattern::Tuple(fields)
+                } else {
+                    let (adt_def, substs) = if let TyKind::Adt(def, substs) = pat.ty.kind() {
+                        (def, substs)
+                    } else {
+                        unreachable!()
+                    };
+
+                    let raw_fields = &adt_def.variants()[0usize.into()].fields;
+                    let defaults = raw_fields
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| (i.into(), Pattern::Wildcard(f.ty(self.tcx, substs))));
+
+                    let fields = defaults
+                        .merge_join_by(fields, |i: &(FieldIdx, _), j| i.0.cmp(&j.0))
+                        .map(|el| el.reduce(|_, a| a).1)
+                        .collect();
+                    Pattern::Constructor {
+                        adt: adt_def.variants()[0usize.into()].def_id,
+                        substs,
+                        variant: 0u32.into(),
+                        fields,
+                    }
+                }
+            }
+            PatKind::Deref { subpattern } => {
+                if !(pat.ty.is_box() || pat.ty.ref_mutability() == Some(Mutability::Not)) {
+                    fatal2!(self.tcx, "unsupported pattern")
+                }
+
+                self.pattern_term(subpattern)
+            }
+            PatKind::Constant { value } => {
+                if !pat.ty.is_bool() {
+                    fatal2!(self.tcx, "non-boolean constant patterns are unsupported",)
+                }
+                Pattern::Boolean(value.try_to_bool().unwrap())
+            }
+            ref pk => todo!("lower_pattern: unsupported pattern kind {:?}", pk),
         }
     }
 

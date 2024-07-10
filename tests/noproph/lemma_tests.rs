@@ -6,12 +6,11 @@ use gilogic::{
     Ownable,
 };
 
-
 #[lemma]
 #[specification(
-    requires { emp }
+    requires { (a > b) }
     ensures { emp }
 )]
-fn test_lemma() {
+fn test_lemma((a, b) : (i32, i32)) {
 
 }

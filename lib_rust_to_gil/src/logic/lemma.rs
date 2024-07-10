@@ -120,7 +120,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             res.push(LogicItem::Lemma(lemma));
         } else {
             let (thir, expr) = get_thir!(self, self.did);
-            let mut ctx = GilsoniteBuilder::new(thir.clone(), self.tcx());
+            let ctx = GilsoniteBuilder::new(thir.clone(), self.tcx());
 
             let proof = ctx.build_lemma_proof(expr);
 
@@ -144,6 +144,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
 
         let params = sig.all_vars().map(|a| a.0.to_string()).collect();
+
         let proof_lemma = Lemma {
             name,
             params,
