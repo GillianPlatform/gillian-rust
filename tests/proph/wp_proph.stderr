@@ -1,6 +1,4 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-e12
-e42
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
@@ -10,33 +8,6 @@ e42
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, model, x, y):
-  (#model == {{ #current, #lvar_7 }})
-  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
-  * "wp_ref_mut_inner_xy::<T>$$inner"(pty_T0, #REFERENCE, #x, #y)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_7)
-  * types(#lvar_8: Obj, #lvar_9: List, #lvar_10: Obj)
-  * (#REFERENCE == {{ {{ #lvar_8, #lvar_9 }}, #lvar_10 }})
-  * types(#lvar_11: Obj, #lvar_12: List)
-  * (#x == {{ #lvar_11, #lvar_12 }})
-  * types(#lvar_13: Obj, #lvar_14: List)
-  * (#y == {{ #lvar_13, #lvar_14 }})
-  * (y == #y)
-  * (x == #x)
-  * (model == #model)
-  * (REFERENCE == #REFERENCE);
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_3 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * (model == #model)
-  * (self == #self);
-
 warning: unused variable: `p`
   --> ../tests/proph/wp_proph.rs:66:30
    |

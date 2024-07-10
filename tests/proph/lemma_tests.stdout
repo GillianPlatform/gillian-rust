@@ -15,7 +15,8 @@ axiomatic spec "__auto_resolve_list_ref_mut_htl_just_resolve"(pLft_0, pty_T0, p)
 normal
 
 pred "<usize as ShallowModel>::shallow_model"(+self_, v):
-  (#self_ == #v) * (v == #v) * (self_ == #self_);
+  (#self_ == #v) * types(#self_: Int) * types(#v: Int) * (v == #v)
+  * (self_ == #self_);
 
 
 pred "extract_head$$extract_proof$$pre"(+pty_T0, +list, head, tail, len, p):

@@ -7,39 +7,9 @@ warning: unused import: `all_own_swap`
    = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-e18
-e56
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _12
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-pred "vec_ref_mut_pcl::<T>$$inner"(+pty_T0, +REFERENCE, model, ptr, cap, len):
-  (#model == {{ #current, #lvar_9 }})
-  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
-  * "vec_ref_mut_inner_pcl::<T>$$inner"(pty_T0, #REFERENCE, #ptr, #cap, #len)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_9)
-  * types(#lvar_10: Obj, #lvar_11: List, #lvar_12: Obj)
-  * (#REFERENCE == {{ {{ #lvar_10, #lvar_11 }}, #lvar_12 }})
-  * types(#lvar_13: Obj, #lvar_14: List)
-  * (#ptr == {{ {{ {{ #lvar_13, #lvar_14 }} }}, {{  }} }})
-  * types(#cap: Int)
-  * types(#len: Int)
-  * (len == #len)
-  * (cap == #cap)
-  * (ptr == #ptr)
-  * (model == #model)
-  * (REFERENCE == #REFERENCE);
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_3 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * (model == #model)
-  * (self == #self);
-
 warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
  --> ../tests/proph/vec_std_proph.rs:5:12
   |
