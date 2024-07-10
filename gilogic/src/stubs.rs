@@ -258,6 +258,3 @@ pub fn unfold_proof(pre: RustAssertion) -> RustProof {
 pub fn fold_proof(pre: RustAssertion) -> RustProof {
     unreachable!()
 }
-
-
-

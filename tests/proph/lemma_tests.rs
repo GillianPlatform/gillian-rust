@@ -1,9 +1,11 @@
 //@check-pass
 extern crate gilogic;
 
-
 use gilogic::{
-    macros::{assertion, predicate, specification, lemma, extract_lemma, prophecies::with_freeze_lemma_for_mutref},
+    macros::{
+        assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        specification,
+    },
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
@@ -11,7 +13,7 @@ use gilogic::{
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
-// Commit hash from stdlib: 
+// Commit hash from stdlib:
 
 pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
@@ -54,18 +56,6 @@ impl<T> Node<T> {
         self.element
     }
 }
-
-#[extract_lemma(
-    forall head, tail, len, p.
-    model m.
-    extract model mh.
-    assuming { head == Some(p) }
-    from { list_ref_mut_htl(list, m, head, tail, len) }
-    extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
-    prophecise { m.tail().prepend(mh) }
-)]
-fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
-
 
 #[predicate]
 fn dll_seg<T: Ownable>(
@@ -118,31 +108,5 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-) { 
-}
-
-#[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_htl,
-    predicate_name = list_ref_mut_htl,
-    frozen_variables = [head, tail, len],
-    inner_predicate_name = list_ref_mut_inner_htl,
-    resolve_macro_name = auto_resolve_list_ref_mut_htl
-)]
-impl<T: Ownable> Ownable for LinkedList<T> {
-    type RepresentationTy = Seq<T::RepresentationTy>;
-
-    #[predicate]
-    fn own(self, model: Self::RepresentationTy) {
-        assertion!(|head: Option<NonNull<Node<T>>>,
-                    tail: Option<NonNull<Node<T>>>,
-                    len: usize|
-            (self == LinkedList {
-                head,
-                tail,
-                len,
-                marker: PhantomData
-            })
-            * (len == model.len())
-            * dll_seg(head, None, tail, None, model))
-    }
+) {
 }

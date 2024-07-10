@@ -96,6 +96,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             let name = sig.name.clone();
 
             // We set temporary hyp and conclusion, which we be replaced later by the specs
+            log::debug!("Name: {}, params: {:?}", name, &sig.params);
             let mut lemma = Lemma {
                 name: name.clone(),
                 params: sig.params,
@@ -143,7 +144,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
 
-        let params = sig.all_vars().map(|a| a.0.to_string()).collect();
+        let params = sig.physical_args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
             name,
