@@ -81,15 +81,14 @@ fn merge_aux(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>, out: &mut LinkedL
 
     snapshot!(permut_frame_app::<i32>);
     snapshot!(permut_app::<i32>);
+    snapshot!(permut_app2::<i32>);
     snapshot!(permut_push::<i32>);
 
     match (a, b) {
         (Some(a), Some(b)) => {
             if a <= b {
-                proof_assert!(forall<i : _> 0 <= i && i < l@.len() ==> a <= l@[i]);
                 out.push_back(a);
                 r.push_front(b);
-                proof_assert!(r@.ext_eq(old_r@));
 
                 merge_aux(l, r, out)
             } else {
@@ -98,27 +97,22 @@ fn merge_aux(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>, out: &mut LinkedL
                 l.push_front(a);
                 proof_assert!(l@.ext_eq(old_l@));
                 merge_aux(r, l, out);
+                proof_assert!(old_out@.concat(old_r@.concat(old_l@)).permutation_of(old_out@.concat(old_r@).concat(old_l@)));
                 proof_assert!(out@.permutation_of(old_out@.concat(old_l@).concat(old_r@)));
-        }
+            }
         }
         (None, Some(b)) => {
             r.push_front(b);
-            proof_assert!(r@.ext_eq(old_r@));
             extend(out, r);
-            proof_assert!(out@.ext_eq(old_out@.concat(old_r@)));
-            proof_assert!(out@.permutation_of(old_out@.concat(old_r@)));
             return;
         }
         (Some(a), None) => {
             l.push_front(a);
-            proof_assert!(l@.ext_eq(old_l@));
             extend(out, l);
-            proof_assert!(out@.permutation_of(old_out@.concat(old_l@)));
             return;
         }
         _ => return (),
     }
-
 }
 
 #[requires(sorted(l@))]
@@ -132,7 +126,6 @@ fn merge(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>) -> LinkedList<i32> {
 
     merge_aux(l, r, &mut out);
     out
-
 }
 // Loads seq.FreeMonoid
 #[trusted]
@@ -172,6 +165,40 @@ pub fn permut_push<T>(s: Seq<T>, t: Seq<T>, q: T) {}
 #[ensures(t.permutation_of(s))]
 pub fn permut_sym<T>(s: Seq<T>, t: Seq<T>) {}
 
+
+#[logic]
+#[open(self)]
+#[requires(s.permutation_of(t))]
+#[requires(q.permutation_of(r))]
+#[ensures(s.concat(q).permutation_of(t.concat(r)))]
+pub fn permut_app2<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>,  r: Seq<T>) {
+
+}
+
+#[logic]
+#[requires(s.permutation_of(t.concat(r)))]
+#[ensures(s.push(e).permutation_of(Seq::singleton(e).concat(t).concat(r)))]
+fn perm_left<T>(s: Seq<T>, t: Seq<T>, r: Seq<T>, e: T) {
+    let _ = permut_push::<T>;
+    let _ = permut_sym::<T>;
+    let _ = permut_app2::<T>;
+
+    proof_assert!(Seq::singleton(e).concat(t).concat(r).permutation_of(t.concat(r).push(e)));
+
+}
+
+
+#[logic]
+#[requires(s.permutation_of(t.concat(r)))]
+#[ensures(s.push(e).permutation_of(t.concat(Seq::singleton(e).concat(r))))]
+fn perm_right<T>(s: Seq<T>, t: Seq<T>, r: Seq<T>, e: T) {
+    let _ = permut_push::<T>;
+    let _ = permut_sym::<T>;
+    let _ = permut_app2::<T>;
+
+    proof_assert!(t.concat(Seq::singleton(e).concat(r)).permutation_of(t.concat(r).push(e)));
+}
+
 #[ensures((^inp)@ == Seq::EMPTY)]
 #[ensures(inp@.permutation_of(result.0@.concat(result.1@)))]
 fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
@@ -185,16 +212,9 @@ fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
     #[invariant(popped.permutation_of(left@.concat(right@)))]
     while let Some(i) = inp.pop_front() {
         popped = snapshot! { popped.push(i)};
-        snapshot!(free_monoid(*popped));
-        snapshot!(permut_frame_app::<i32>);
-        snapshot!(permut_app::<i32>);
-        snapshot!(permut_push::<i32>);
-        proof_assert!(popped.concat(inp@).ext_eq(old_inp@));
-        proof_assert!(popped.permutation_of(left@.concat(right@).push(i)));
-        proof_assert!(Seq::singleton(i).concat(left@.concat(right@)).permutation_of(left@.concat(right@).push(i)));
-        proof_assert!(left@.concat(Seq::singleton(i).concat(right@)).permutation_of(left@.concat(right@.concat(Seq::singleton(i)))));
-        let old_left = snapshot!(left);
-        let old_right = snapshot!(right);
+        snapshot!(perm_right::<i32>);
+        snapshot!(perm_left::<i32>);
+
         if push_left {
             left.push_front(i);
         } else {
@@ -205,7 +225,6 @@ fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
 
     (left, right)
 }
-
 
 #[predicate]
 fn sorted_range<T: OrdLogic>(s: Seq<T>, l: Int, u: Int) -> bool {
