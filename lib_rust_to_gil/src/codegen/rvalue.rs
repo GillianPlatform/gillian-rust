@@ -253,7 +253,19 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             }
             Shl if left_ty.is_integral() && right_ty.is_integral() => Expr::i_shl(e1, e2),
+            BitAnd if left_ty.is_integral() && right_ty.is_integral() => Expr::BinOp {
+                operator: gillian::gil::BinOp::BitwiseAndL,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
+            BitAnd if left_ty.is_bool() && right_ty.is_bool() => Expr::and(e1, e2),
+            Rem if left_ty.is_integral() && right_ty.is_integral() => Expr::BinOp {
+                operator: gillian::gil::BinOp::IMod,
+                left_operand: Box::new(e1),
+                right_operand: Box::new(e2),
+            },
             Eq if left_ty.is_numeric() && left_ty == right_ty => Expr::eq_expr(e1, e2),
+            Ne if left_ty.is_numeric() && left_ty == right_ty => Expr::eq_expr(e1, e2).e_not(),
             _ => fatal!(
                 self,
                 "Cannot yet encode binop {:#?} with operands {:#?} and {:#?}",

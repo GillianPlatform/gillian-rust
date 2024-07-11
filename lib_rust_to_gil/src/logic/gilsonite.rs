@@ -193,6 +193,7 @@ pub enum BinOp {
     Sub,
     Add,
     Div,
+    Rem,
     Shl,
     And,
     Or,
@@ -1238,6 +1239,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     mir::BinOp::Le => BinOp::Le,
                     mir::BinOp::Ge => BinOp::Ge,
                     mir::BinOp::Gt => BinOp::Gt,
+                    mir::BinOp::Rem => BinOp::Rem,
                     _ => todo!("Gilsonite Expr Kind: {:?}", op),
                 };
 

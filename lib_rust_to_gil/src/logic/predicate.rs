@@ -635,6 +635,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             GExpr::fplus(left, right)
                         }
                     }
+                    BinOp::Rem => {
+                        if left_ty.is_integral() {
+                            GExpr::BinOp {
+                                operator: gillian::gil::BinOp::IMod,
+                                left_operand: Box::new(left),
+                                right_operand: Box::new(right),
+                            }
+                        } else {
+                            todo!("Non-integral rem")
+                        }
+                    }
                     BinOp::Shl => {
                         if left_ty.is_integral() {
                             GExpr::i_shl(left, right)

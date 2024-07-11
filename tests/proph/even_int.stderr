@@ -1,0 +1,21 @@
+warning: unused import: `Prophecised`
+ --> ../tests/proph/even_int.rs:6:36
+  |
+6 | use gilogic::prophecies::{Ownable, Prophecised};
+  |                                    ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+warning: struct `EvenInt` is never constructed
+ --> ../tests/proph/even_int.rs:8:8
+  |
+8 | struct EvenInt {
+  |        ^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: 2 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!
