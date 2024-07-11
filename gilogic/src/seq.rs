@@ -40,6 +40,20 @@ impl<T> Seq<T> {
         unreachable!()
     }
 
+    #[gillian::builtin]
+    #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::seq::first"]
+    pub fn first(self) -> T {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::seq::last"]
+    pub fn last(self) -> T {
+        unreachable!()
+    }
+
     #[allow(clippy::len_without_is_empty)]
     #[gillian::builtin]
     #[gillian::no_translate]

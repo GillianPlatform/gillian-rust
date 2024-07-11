@@ -2,7 +2,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{assertion, predicate, specification, extract_lemma, prophecies::with_freeze_lemma_for_mutref},
+    macros::{assertion, predicate, specification, lemma, extract_lemma, prophecies::with_freeze_lemma_for_mutref},
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
@@ -82,6 +82,61 @@ fn dll_seg<T: Ownable>(
     )
 }
 
+
+ #[predicate]
+ fn dll_seg_r<T: Ownable>(
+     head: In<Option<NonNull<Node<T>>>>,
+     tail_next: In<Option<NonNull<Node<T>>>>,
+     tail: In<Option<NonNull<Node<T>>>>,
+     head_prev: In<Option<NonNull<Node<T>>>>,
+     data: Seq<T::RepresentationTy>,
+ ) {
+     assertion!((head == tail_next) * (tail == head_prev) * (data == Seq::nil()));
+     assertion!(|tptr, tail_next, tail_prev, element, e_repr, rest: Seq<T::RepresentationTy>|
+         (tail == Some(tptr)) *
+         (tptr -> Node { next: tail_next, prev: tail_prev, element }) *
+         element.own(e_repr) *
+         (data == rest.append(e_repr)) *
+         dll_seg_r(head, tail, tail_prev, head_prev, rest)
+     )
+ }
+
+ #[lemma]
+ #[gillian::trusted]
+ #[specification(
+     forall data.
+     requires {
+         dll_seg(head, tail_next, tail, head_prev, data)
+     }
+     ensures {
+         dll_seg_r(head, tail_next, tail, head_prev, data)
+     }
+ )]
+ fn dll_seg_l_to_r<T: Ownable>(
+     head: Option<NonNull<Node<T>>>,
+     tail_next: Option<NonNull<Node<T>>>,
+     tail: Option<NonNull<Node<T>>>,
+     head_prev: Option<NonNull<Node<T>>>,
+ );
+
+ #[lemma]
+ #[gillian::trusted]
+ #[specification(
+     forall data.
+     requires {
+         dll_seg_r(head, tail_next, tail, head_prev, data)
+     }
+     ensures {
+         dll_seg(head, tail_next, tail, head_prev, data)
+     }
+ )]
+ fn dll_seg_r_to_l<T: Ownable>(
+     head: Option<NonNull<Node<T>>>,
+     tail_next: Option<NonNull<Node<T>>>,
+     tail: Option<NonNull<Node<T>>>,
+     head_prev: Option<NonNull<Node<T>>>,
+ );
+
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_htl,
     predicate_name = list_ref_mut_htl,
@@ -130,6 +185,47 @@ impl<T: Ownable> LinkedList<T> {
             marker: PhantomData,
         }
     }
+    
+    fn push_back_node(&mut self, mut node: Box<Node<T>>) {
+         // This method takes care not to create mutable references to whole nodes,
+         // to maintain validity of aliasing pointers into `element`.
+         unsafe {
+             node.next = None;
+             node.prev = self.tail;
+             let node = Some(Box::leak(node).into());
+
+             match self.tail {
+                 None => self.head = node,
+                 // Not creating new mutable (unique!) references overlapping `element`.
+                 Some(tail) => (*tail.as_ptr()).next = node,
+             }
+
+             self.tail = node;
+             self.len += 1;
+         }
+     }
+     
+        /// Removes and returns the node at the back of the list.
+     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
+         // This method takes care not to create mutable references to whole nodes,
+         // to maintain validity of aliasing pointers into `element`.
+         match self.tail {
+             None => None,
+             Some(node) => unsafe {
+                 let node = Box::from_raw(node.as_ptr());
+                 self.tail = node.prev;
+
+                 match self.tail {
+                     None => self.head = None,
+                     // Not creating new mutable (unique!) references overlapping `element`.
+                     Some(tail) => (*tail.as_ptr()).next = None,
+                 }
+
+                 self.len -= 1;
+                 Some(node)
+             }
+         }
+     }
 
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
@@ -245,6 +341,33 @@ impl<T: Ownable> LinkedList<T> {
         self.push_front_node(Box::new(Node::new(elt)));
         mutref_auto_resolve!(self); // <- Unique thing added
     }
+    
+    #[specification(forall current, proph.
+        requires { self.own((current, proph)) }
+        exists ret_repr.
+        ensures { 
+            ret.own(ret_repr) *
+            $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
+            || ((current != Seq::empty()) && (proph == current.sub(0, current.len() - 1)) && (ret_repr == Some(current.last())))$ }
+     )]
+     pub fn pop_back(&mut self) -> Option<T> {
+         dll_seg_l_to_r(self.head, None, self.tail, None);
+         let res = self.pop_back_node().map(Node::into_element);
+         dll_seg_r_to_l(self.head, None, self.tail, None);
+         mutref_auto_resolve!(self);
+         res
+     }
+     
+    #[specification(forall current, proph, elt_repr.
+        requires { self.own((current, proph)) * $current.len() < usize::MAX$ * elt.own(elt_repr) }
+        ensures { ret.own(()) * $proph == current.append(elt_repr)$ }
+     )]
+     pub fn push_back(&mut self, elt: T) {
+         dll_seg_l_to_r(self.head, None, self.tail, None);
+         self.push_back_node(Box::new(Node::new(elt)));
+         dll_seg_r_to_l(self.head, None, self.tail, None);
+         mutref_auto_resolve!(self);
+     }
 
     // #[requires(|vdata: Seq<T>, vdll, vself| (self == vself) * (vself -> vdll) * vdll.shallow_repr(vdata) )]
     // #[ensures(|vself: &mut LinkedList<T>, vdata: Seq<T>, vdll|  (vself -> vdll) * (ret == vdata.len()) * vdll.shallow_repr(vdata))]
