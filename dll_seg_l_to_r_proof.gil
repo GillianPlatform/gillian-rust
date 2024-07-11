@@ -1,0 +1,17 @@
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+      "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
+      [["dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)]]
+[*
+    unfold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data);
+    if (#data = {{ }}) then {
+      fold "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+    } else {
+      sep_assert (
+            (#head == {{ 1i, {{ #hptr }} }}) *
+            ({{ {{ #lvar_0, #lvar_1 }} }} == #hptr) *
+            <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #head_next, #head_prev, #element }})
+      ) [bind: #head_next, #head_prev, #element];
+      apply "dll_seg_l_to_r::<T>"(#pty_T0, #head_next, #tail_next, #tail, #head);
+      apply "dll_seg_r_appened_left::<T>"(#pty_T0, #head, #head_next, #tail_next, #tail)
+    }
+*]

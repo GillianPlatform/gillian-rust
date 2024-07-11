@@ -308,6 +308,11 @@ proc "std::ptr::swap"(T, l, r) {
      return
 };
 
+proc "core::num::<impl i32>::MAX"() {
+     ret := 2147483647i;
+     return
+};
+
 (* PREDS *)
 
 pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):

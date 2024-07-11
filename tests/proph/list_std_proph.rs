@@ -82,7 +82,6 @@ fn dll_seg<T: Ownable>(
     )
 }
 
-
  #[predicate]
  fn dll_seg_r<T: Ownable>(
      head: In<Option<NonNull<Node<T>>>>,
@@ -101,6 +100,25 @@ fn dll_seg<T: Ownable>(
      )
  }
 
+#[lemma]
+#[gillian::trusted]
+#[specification(
+    forall ptr, next, prev, element, data, repr.
+    requires {
+        (x == Some(ptr)) * (ptr -> Node { next, prev, element }) * element.own(repr) *
+        dll_seg_r(next, tail_next, tail, x, data)
+    }
+    ensures {
+        dll_seg_r(x, tail_next, tail, prev, data.prepend(repr))
+    }
+)] 
+fn dll_seg_r_appened_left<T: Ownable>(
+    x: Option<NonNull<Node<T>>>,
+    next: Option<NonNull<Node<T>>>,
+    tail_next: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
+);
+ 
  #[lemma]
  #[gillian::trusted]
  #[specification(
