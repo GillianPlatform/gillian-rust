@@ -2,8 +2,13 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `list`
@@ -14,14 +19,86 @@ warning: unused variable: `list`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/noproph/list_std.rs:75:12
-   |
-75 |     fn own(self) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
+warning: unused variable: `next`
+   --> ../tests/noproph/list_std.rs:103:5
+    |
+103 |     next: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
 
-warning: 2 warnings emitted
+warning: unused variable: `x`
+   --> ../tests/noproph/list_std.rs:102:5
+    |
+102 |     x: Option<NonNull<Node<T>>>,
+    |     ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:104:5
+    |
+104 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:105:5
+    |
+105 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head`
+   --> ../tests/noproph/list_std.rs:121:5
+    |
+121 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:122:5
+    |
+122 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:123:5
+    |
+123 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/noproph/list_std.rs:124:5
+    |
+124 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: unused variable: `head`
+   --> ../tests/noproph/list_std.rs:139:5
+    |
+139 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:140:5
+    |
+140 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:141:5
+    |
+141 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/noproph/list_std.rs:142:5
+    |
+142 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: variable `REFERENCE` should have a snake case name
+   --> ../tests/noproph/list_std.rs:150:12
+    |
+150 |     fn own(self) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: 14 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

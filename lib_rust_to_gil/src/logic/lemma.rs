@@ -90,8 +90,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let sig = self.sig();
 
         if self.is_extract_lemma {
-            let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
-            res.extend(defs);
+            // let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
+            // res.extend(defs);
         } else if self.trusted {
             let name = sig.name.clone();
 

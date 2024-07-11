@@ -16,8 +16,7 @@ lemma test_lemma2(t_1)[[ (#t_1 == {{ #a, #b }}) * (#b i<# #a) ]]
 [[emp]]
 
 [*
-sep_assert ((#x == #a) * (#y == #b))[bind: x,y];
-if (not ((#x) i<= (0i))) then {} else {}
+
 *]
 
 

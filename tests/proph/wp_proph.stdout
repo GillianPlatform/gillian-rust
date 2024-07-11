@@ -72,33 +72,6 @@ pred "<WP<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   * (self == #self);
 
 
-pred "extract_x$$extract_proof$$pre"(+pty_T0, +p, p, x, y):
-  "wp_ref_mut_xy::<T>$$inner"(pty_T0, #p, #m, #x, #y) * (p == #p) * (p == #p)
-  * (x == #x)
-  * (y == #y)
-  * types(#lvar_3: Obj, #lvar_4: List, #lvar_5: Obj)
-  * (#p == {{ {{ #lvar_3, #lvar_4 }}, #lvar_5 }})
-  * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }})
-  * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }})
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (true == true);
-
-
-pred "extract_x$$extract_proof$$post"(+pty_T0, +p, +p, +x, +y):
-  "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #mx)
-  * (p == #p)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (p == #p)
-  * (x == #x)
-  * (y == #y)
-  * types(#lvar_3: Obj, #lvar_4: List, #lvar_5: Obj)
-  * (#p == {{ {{ #lvar_3, #lvar_4 }}, #lvar_5 }})
-  * types(#lvar_6: Obj, #lvar_7: List) * (#x == {{ #lvar_6, #lvar_7 }})
-  * types(#lvar_8: Obj, #lvar_9: List) * (#y == {{ #lvar_8, #lvar_9 }});
-
-
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
@@ -126,55 +99,6 @@ pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +sel
   * (self == #self);
 
 
-pred "wp_ref_mut_inner_xy::<T>$$inner"(+pty_T0, +REFERENCE, x, y):
-  "wp::<T>"(pty_T0, #SELF, #x, #y, #model)
-  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
-  * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
-  * (y == #y)
-  * (x == #x)
-  * (REFERENCE == #REFERENCE);
-
-
-pred "wp_ref_mut_xy::<T>$$inner"(+pty_T0, +REFERENCE, model, x, y):
-  (#model == {{ #current, #lvar_7 }})
-  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
-  * "wp_ref_mut_inner_xy::<T>$$inner"(pty_T0, #REFERENCE, #x, #y)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_7)
-  * types(#lvar_8: Obj, #lvar_9: List, #lvar_10: Obj)
-  * (#REFERENCE == {{ {{ #lvar_8, #lvar_9 }}, #lvar_10 }})
-  * types(#lvar_11: Obj, #lvar_12: List)
-  * (#x == {{ #lvar_11, #lvar_12 }})
-  * types(#lvar_13: Obj, #lvar_14: List)
-  * (#y == {{ #lvar_13, #lvar_14 }})
-  * (y == #y)
-  * (x == #x)
-  * (model == #model)
-  * (REFERENCE == #REFERENCE);
-
-
-pred "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(+pty_T0, +this):
-  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
-  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (this == #this);
-
-
-pred "<&mut T as gilogic::prophecies::Ownable>::own$$inner"(+pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<T>$$inner"(pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_3 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_3)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#self == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * (model == #model)
-  * (self == #self);
-
-
 pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(+pLft_a, +pty_T0, +this):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
   * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
@@ -195,14 +119,6 @@ guard: <lft>(pLft_a; true);
 
 lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj) * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
 [["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y) * <lft>(#pLft_0; true)]]
-
-
-lemma "extract_x$$extract_proof"(pty_T0, p, p, x, y)[[ "extract_x$$extract_proof$$pre"(#pty_T0, #p, #p, #x, #y) ]]
-[["extract_x$$extract_proof$$post"(#pty_T0, #p, #p, #x, #y) * ("extract_x$$extract_proof$$post"(#pty_T0, #p, #p, #x, #y) -* "extract_x$$extract_proof$$pre"(#pty_T0, #p, #p, #x, #y))]]
-
-[*
-package ("extract_x$$extract_proof$$post"(#pty_T0, #p, #p, #x, #y) -* "extract_x$$extract_proof$$pre"(#pty_T0, #p, #p, #x, #y))
-*]
 
 
 spec "WP::<T>::new"(pty_T0, x, y)

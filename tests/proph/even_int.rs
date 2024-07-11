@@ -1,3 +1,4 @@
+//@check-pass
 extern crate creusillian;
 extern crate gilogic;
 
