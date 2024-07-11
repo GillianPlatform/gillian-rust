@@ -151,31 +151,6 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    /// Build a map from item to its specification closure(s)
-    /// Sacha: I think this had a more general purpose and is now too complex?
-    // fn build_gillian_spec_map(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
-    //     let mut sym_to_prog = HashMap::new();
-    //     for item in tcx.hir().body_owners() {
-    //         if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
-    //             sym_to_prog.insert(nm, item.to_def_id());
-    //             continue;
-    //         }
-    //     }
-    //     let mut specs = HashMap::new();
-    //     let mut progs = HashMap::new();
-
-    //     for item in tcx.hir().body_owners() {
-    //         if let Some(diag) = tcx.get_diagnostic_name(item.into()) {
-    //             let Some(prog_id) = sym_to_prog.remove(&diag) else {
-    //                 continue;
-    //             };
-    //             specs.insert(prog_id, item.into());
-    //             progs.insert(item.into(), prog_id);
-    //         }
-    //     }
-    //     (specs, progs)
-    // }
-
     fn build_gillian_maps(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
         let mut spec_map = HashMap::new();
         let mut extract_lemma_map = HashMap::new();
@@ -255,6 +230,18 @@ impl<'tcx> GlobalEnv<'tcx> {
         (name, instance.def_id(), instance.args)
     }
 
+    pub fn try_resolve(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        did: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+        match resolve_candidate(self.tcx, param_env, did, args) {
+            ResolvedImpl::Param => None,
+            ResolvedImpl::Impl(instance) => Some((instance.def_id(), instance.args)),
+        }
+    }
+
     pub(crate) fn resolve_inner_pred(
         &mut self,
         outer: DefId,
@@ -281,40 +268,8 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    fn add_inner_pred_to_prog(&mut self, prog: &mut Prog) {
-        let inner_preds = std::mem::take(&mut self.inner_preds);
-        for (pred, inner_pred) in inner_preds {
-            let outer_pred = prog.preds.get(&pred).unwrap_or_else(|| {
-                fatal!(
-                    self,
-                    "Cannot find {:?} to add its inner pred not found in genv",
-                    pred
-                )
-            });
-            if outer_pred.guard.is_none() {
-                fatal!(
-                    self,
-                    "Adding inner pred for {:?}, which is not a borrow!",
-                    pred
-                )
-            }
-            let mut outer_pred: Pred = outer_pred.clone();
-            outer_pred.guard = None;
-            let zero_idx = outer_pred.ins.iter().position(|x| *x == 0).unwrap();
-            outer_pred.ins.swap_remove(zero_idx);
-            for in_ in outer_pred.ins.iter_mut() {
-                *in_ -= 1;
-            }
-            outer_pred.num_params -= 1;
-            outer_pred.params.remove(0);
-            outer_pred.name = inner_pred;
-            prog.add_pred(outer_pred);
-        }
-    }
-
     pub fn flush_remaining_defs_to_prog(&mut self, prog: &mut Prog) {
         self.add_items_to_prog(prog);
-        self.add_inner_pred_to_prog(prog);
     }
 
     pub fn predicate(&self, def_id: DefId) -> &gilsonite::Predicate<'tcx> {

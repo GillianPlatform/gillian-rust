@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use ui_test::dependencies::DependencyBuilder;
+use ui_test::status_emitter::Text;
 use ui_test::*;
 
 fn main() -> Result<()> {
@@ -11,6 +13,29 @@ fn main() -> Result<()> {
     run_tests(config2)?;
     run_tests(config3)?;
     Ok(())
+}
+
+fn run_tests(mut config: Config) -> Result<()> {
+    let args = Args::test()?;
+    if let Format::Pretty = args.format {
+        println!(
+            "Compiler: {}",
+            config.program.display().to_string().replace('\\', "/")
+        );
+    }
+    config.with_args(&args);
+
+    let name = display(&config.root_dir);
+    run_tests_generic(
+        vec![config],
+        default_file_filter,
+        default_per_file_config,
+        (Text::diff(), status_emitter::Gha::<true> { name }),
+    )
+}
+
+fn display(path: &Path) -> String {
+    path.display().to_string().replace('\\', "/")
 }
 
 fn build_config(path: PathBuf, prophecies: bool) -> Config {
@@ -65,21 +90,28 @@ fn build_config(path: PathBuf, prophecies: bool) -> Config {
         ..Config::rustc(path)
     };
 
-    let mut dep_builder = CommandBuilder::cargo();
-    dep_builder.envs.push((
+    let mut dep_command = CommandBuilder::cargo();
+    dep_command.envs.push((
         "RUSTC_WRAPPER".into(),
         Some(env!("CARGO_BIN_EXE_rust_to_gil").into()),
     ));
-    dep_builder.envs.push((
+    dep_command.envs.push((
         "GILLIAN_ARGS".into(),
         // Some("true".into())
         Some(r#"{ "stdout": true, "prophecies": true, "dependency": true, "extern_paths": [], "output_file": null }"#.into()),
     ));
     // dep_builder.program = PathBuf::from(env!("CARGO_BIN_EXE_rust_to_gil"));
-
-    config.dependency_builder = dep_builder;
-    config.dependencies_crate_manifest_path = Some(PathBuf::from("../tests/Cargo.toml"));
+    let mut dep_builder = DependencyBuilder::default();
+    dep_builder.program = dep_command;
+    dep_builder.crate_manifest_path = PathBuf::from("../tests/Cargo.toml");
+    config
+        .comment_defaults
+        .base()
+        .set_custom("dependencies", dep_builder);
+    // config.dependency_builder = dep_builder;
+    // config.dependencies_crate_manifest_path = Some(PathBuf::from("../tests/Cargo.toml"));
     config.out_dir = PathBuf::from("../target/ui");
     config.filter(r"(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d).", "TIMESTAMP");
+
     config
 }

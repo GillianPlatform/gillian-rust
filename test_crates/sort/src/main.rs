@@ -46,56 +46,159 @@ pub fn gnome_sort(v: &mut Vec<i32>) {
     }
 }
 
+#[ensures((^this)@ == (*this)@.concat(ext@))]
 fn extend(this: &mut LinkedList<i32>, ext: &mut LinkedList<i32>) {
+    let old_ext = snapshot!(ext);
+    let old_this = snapshot!(this);
+    let mut popped = snapshot! { Seq::EMPTY };
+    #[invariant(popped.concat(ext@).ext_eq(old_ext@))]
+    #[invariant(this@.ext_eq(old_this@.concat(*popped)))]
     while let Some(i) = ext.pop_front() {
-        this.push_front(i)
+        popped = snapshot! { popped.push(i)};
+        this.push_back(i)
     }
+
+    proof_assert!(this@.ext_eq(old_this@.concat(old_ext@)));
 }
 
 #[ensures(
-    result@ == l@.concat(r@)
+    (^out)@.permutation_of(out@.concat(l@).concat(r@))
+)]
+#[requires(sorted(l@))]
+#[requires(sorted(r@))]
+#[requires(sorted(out@))]
+#[ensures(sorted((^out)@))]
+#[requires(forall<i : _, j : _> 0 <= i && i < out@.len() ==> 0 <= j && j < l@.len() ==> out@[i] <= l@[j] )]
+#[requires(forall<i : _, j : _> 0 <= i && i < out@.len() ==> 0 <= j && j < r@.len() ==> out@[i] <= r@[j] )]
+fn merge_aux(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>, out: &mut LinkedList<i32>) {
+    let old_out = snapshot! { out };
+    let old_l = snapshot! { l };
+    let old_r = snapshot! { r };
+    let a = l.pop_front();
+    proof_assert!(sorted(l@));
+    let b = r.pop_front();
+    proof_assert!(sorted(r@));
+
+    snapshot!(permut_frame_app::<i32>);
+    snapshot!(permut_app::<i32>);
+    snapshot!(permut_push::<i32>);
+
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if a <= b {
+                proof_assert!(forall<i : _> 0 <= i && i < l@.len() ==> a <= l@[i]);
+                out.push_back(a);
+                r.push_front(b);
+                proof_assert!(r@.ext_eq(old_r@));
+
+                merge_aux(l, r, out)
+            } else {
+                proof_assert!(forall<i : _> 0 <= i && i < r@.len() ==> b <= r@[i]);
+                out.push_back(b);
+                l.push_front(a);
+                proof_assert!(l@.ext_eq(old_l@));
+                merge_aux(r, l, out);
+                proof_assert!(out@.permutation_of(old_out@.concat(old_l@).concat(old_r@)));
+        }
+        }
+        (None, Some(b)) => {
+            r.push_front(b);
+            proof_assert!(r@.ext_eq(old_r@));
+            extend(out, r);
+            proof_assert!(out@.ext_eq(old_out@.concat(old_r@)));
+            proof_assert!(out@.permutation_of(old_out@.concat(old_r@)));
+            return;
+        }
+        (Some(a), None) => {
+            l.push_front(a);
+            proof_assert!(l@.ext_eq(old_l@));
+            extend(out, l);
+            proof_assert!(out@.permutation_of(old_out@.concat(old_l@)));
+            return;
+        }
+        _ => return (),
+    }
+
+}
+
+#[requires(sorted(l@))]
+#[requires(sorted(r@))]
+#[ensures(sorted(result@))]
+#[ensures(
+    result@.permutation_of(l@.concat(r@))
 )]
 fn merge(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>) -> LinkedList<i32> {
     let mut out = LinkedList::new();
-    loop {
-        let a = l.pop_front();
-        let b = r.pop_front();
 
-        match (a, b) {
-            (Some(a), Some(b)) => {
-                if a <= b {
-                    out.push_front(b);
-                    out.push_front(a);
-                } else {
-                    out.push_front(a);
-                    out.push_front(b);
-                }
-            }
-            (None, _) => {
-                extend(&mut out, r);
-                return out;
-            }
-            (_, None) => {
-                extend(&mut out, l);
-                return out;
-            }
-        }
-    }
+    merge_aux(l, r, &mut out);
+    out
+
+}
+// Loads seq.FreeMonoid
+#[trusted]
+#[logic]
+#[open(self)]
+#[creusot::builtins = "seq.FreeMonoid.left_neutral"]
+pub fn free_monoid<T>(s: Seq<T>) {
+    absurd
 }
 
-#[ensures(result.0@.concat(result.1@) == inp@)]
+#[logic]
+#[open(self)]
+#[requires(t.permutation_of(q))]
+#[ensures(s.concat(t).permutation_of(s.concat(q)))]
+pub fn permut_frame_app<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>) {}
+
+#[logic]
+#[open(self)]
+#[requires(s.permutation_of(t))]
+#[ensures(s.concat(q).permutation_of(t.concat(q)))]
+pub fn permut_frame_app_l<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>) {}
+
+#[logic]
+#[open(self)]
+#[ensures(s.concat(t).permutation_of(t.concat(s)))]
+pub fn permut_app<T>(s: Seq<T>, t: Seq<T>) {}
+
+#[logic]
+#[open(self)]
+#[requires(s.permutation_of(t))]
+#[ensures(s.push(q).permutation_of(t.push(q)))]
+pub fn permut_push<T>(s: Seq<T>, t: Seq<T>, q: T) {}
+
+#[logic]
+#[open(self)]
+#[requires(s.permutation_of(t))]
+#[ensures(t.permutation_of(s))]
+pub fn permut_sym<T>(s: Seq<T>, t: Seq<T>) {}
+
 #[ensures((^inp)@ == Seq::EMPTY)]
+#[ensures(inp@.permutation_of(result.0@.concat(result.1@)))]
 fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
     let mut push_left = true;
-
+    let old_inp = snapshot!(inp);
     let mut left = LinkedList::new();
     let mut right = LinkedList::new();
+    let mut popped = snapshot! { Seq::EMPTY };
 
+    #[invariant(popped.concat(inp@).ext_eq(old_inp@))]
+    #[invariant(popped.permutation_of(left@.concat(right@)))]
     while let Some(i) = inp.pop_front() {
+        popped = snapshot! { popped.push(i)};
+        snapshot!(free_monoid(*popped));
+        snapshot!(permut_frame_app::<i32>);
+        snapshot!(permut_app::<i32>);
+        snapshot!(permut_push::<i32>);
+        proof_assert!(popped.concat(inp@).ext_eq(old_inp@));
+        proof_assert!(popped.permutation_of(left@.concat(right@).push(i)));
+        proof_assert!(Seq::singleton(i).concat(left@.concat(right@)).permutation_of(left@.concat(right@).push(i)));
+        proof_assert!(left@.concat(Seq::singleton(i).concat(right@)).permutation_of(left@.concat(right@.concat(Seq::singleton(i)))));
+        let old_left = snapshot!(left);
+        let old_right = snapshot!(right);
         if push_left {
-            left.push_front(i)
+            left.push_front(i);
         } else {
-            right.push_front(i)
+            right.push_front(i);
         };
         push_left = !push_left;
     }
@@ -103,19 +206,34 @@ fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
     (left, right)
 }
 
-#[requires(length@ == l@.len())]
-fn merge_sort(l: &mut LinkedList<i32>, length: usize) {
-    if length >= 2 {
-        let new_l = length / 2;
-        let (mut left, mut right) = split(l);
 
-        merge_sort(&mut left, new_l);
-        merge_sort(&mut right, new_l);
-
-        let mut out = merge(&mut left, &mut right);
-
-        std::mem::swap(l, &mut out)
+#[predicate]
+fn sorted_range<T: OrdLogic>(s: Seq<T>, l: Int, u: Int) -> bool {
+    pearlite! {
+        forall<i : Int, j : Int> l <= i && i < j && j < u ==> s[i] <= s[j]
     }
+}
+
+#[predicate]
+fn sorted<T: OrdLogic>(s: Seq<T>) -> bool {
+    sorted_range(s, 0, s.len())
+}
+
+#[ensures(sorted((^l)@))]
+#[ensures(l@.permutation_of((^l)@))]
+pub fn merge_sort(l: &mut LinkedList<i32>) {
+    if l.is_empty() {
+        return;
+    }
+
+    let (mut left, mut right) = split(l);
+
+    merge_sort(&mut left);
+    merge_sort(&mut right);
+
+    let mut out = merge(&mut left, &mut right);
+
+    std::mem::swap(l, &mut out)
 }
 // fn merge_sort(l : &mut LinkedList<i32>, length: usize) {
 //     if length == 2 {

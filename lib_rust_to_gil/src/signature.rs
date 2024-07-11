@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter};
 
 use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 
 use indexmap::IndexSet;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{GenericArgsRef, ParamEnv, Ty, TyCtxt};
-use rustc_span::Symbol;
+use rustc_hir::{def::DefKind, Unsafety};
+use rustc_middle::ty::{GenericArgsRef, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_span::{symbol, Symbol};
 
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
@@ -302,22 +302,17 @@ pub fn build_signature<'tcx, 'genv>(
         args.push(arg)
     }
 
-    let fn_args = tcx
-        .fn_arg_names(id)
-        .iter()
-        .enumerate()
-        .zip(tcx.fn_sig(id).instantiate_identity().inputs().iter());
-
+    let (ins, _) = inputs_and_output(tcx, id);
     let mut subst = HashMap::new();
 
-    for ((_, nm), ty) in fn_args {
-        let prog_name: Symbol = if is_lemma(id, tcx) || is_predicate(id, tcx) {
-            nm.name
+    for (idx, (ident, ty)) in ins.enumerate() {
+        let prog_name = if ident.name.as_str().is_empty() {
+            anonymous_param_symbol(idx)
         } else {
-            Symbol::intern(&format!("{}", nm))
+            ident.name
         };
-        args.push(ParamKind::Program(prog_name, *ty.skip_binder()));
-        subst.insert(nm.name.to_string(), Expr::PVar(prog_name.to_string()));
+        args.push(ParamKind::Program(prog_name, ty));
+        subst.insert(prog_name.to_string(), Expr::PVar(prog_name.to_string()));
     }
 
     let (uni_vars, contract) = if let Some(spec_id) = global_env.specification_id(id) {
@@ -358,6 +353,10 @@ pub fn build_signature<'tcx, 'genv>(
     }
 }
 
+pub(crate) fn anonymous_param_symbol(idx: usize) -> Symbol {
+    Symbol::intern(&format!("t_{}", idx + 1))
+}
+
 pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {
     let Some(ins_attr) = crate::utils::attrs::get_attr(
         tcx.get_attrs_unchecked(id),
@@ -381,7 +380,7 @@ pub fn raw_ins(tcx: TyCtxt<'_>, id: DefId) -> Vec<usize> {
         .collect()
 }
 
-fn make_wf_asrt<'tcx>(
+pub fn make_wf_asrt<'tcx>(
     ctx: &mut GlobalEnv<'tcx>,
     temps: &mut TempGenerator,
     e: Expr,
@@ -496,4 +495,47 @@ fn make_is_mut_ref_proph_asrt(fresh: &mut TempGenerator, e: Expr, sized: bool) -
 
 fn temp_lvar(fresh: &mut TempGenerator) -> Expr {
     Expr::LVar(fresh.fresh_lvar())
+}
+
+pub(crate) fn inputs_and_output<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> (impl Iterator<Item = (symbol::Ident, Ty<'tcx>)>, Ty<'tcx>) {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    let (inputs, output): (Box<dyn Iterator<Item = (rustc_span::symbol::Ident, _)>>, _) = match ty
+        .kind()
+    {
+        TyKind::FnDef(..) => {
+            let gen_sig = tcx.fn_sig(def_id).instantiate_identity();
+            let sig = tcx.normalize_erasing_late_bound_regions(tcx.param_env(def_id), gen_sig);
+            let iter = tcx
+                .fn_arg_names(def_id)
+                .iter()
+                .cloned()
+                .zip(sig.inputs().iter().cloned());
+            (Box::new(iter), sig.output())
+        }
+        TyKind::Closure(_, subst) => {
+            let sig = tcx.signature_unclosure(subst.as_closure().sig(), Unsafety::Normal);
+            let sig = tcx.normalize_erasing_late_bound_regions(tcx.param_env(def_id), sig);
+            let env_ty = tcx.closure_env_ty(ty, subst.as_closure().kind(), tcx.lifetimes.re_erased);
+
+            // I wish this could be called "self"
+            let closure_env = (symbol::Ident::empty(), env_ty);
+            let names = tcx
+                .fn_arg_names(def_id)
+                .iter()
+                .cloned()
+                .chain(iter::repeat(rustc_span::symbol::Ident::empty()));
+            (
+                Box::new(iter::once(closure_env).chain(names.zip(sig.inputs().iter().cloned()))),
+                sig.output(),
+            )
+        }
+        _ => (
+            Box::new(iter::empty()),
+            tcx.type_of(def_id).instantiate_identity(),
+        ),
+    };
+    (inputs, output)
 }

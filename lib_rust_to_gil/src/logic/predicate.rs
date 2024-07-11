@@ -1,4 +1,4 @@
-use super::gilsonite::{self, Assert, SpecTerm};
+use super::gilsonite::{self, Assert, Pattern, Predicate, SpecTerm};
 use super::is_borrow;
 use crate::logic::gilsonite::{AssertPredCall, SeqOp};
 use crate::signature::{build_signature, raw_ins, Signature};
@@ -24,7 +24,7 @@ pub(crate) struct PredSig {
 pub(crate) struct PredCtx<'tcx, 'genv> {
     param_env: ParamEnv<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
-    /// Identifier of the item providing the body (aka specification).
+    // Deprecated: Remove this
     body_id: DefId,
     args: GenericArgsRef<'tcx>,
     local_toplevel_asrts: Vec<Assertion>, // Assertions that are local to a single definition
@@ -81,6 +81,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         args: GenericArgsRef<'tcx>,
     ) -> Self {
         let param_env = global_env.tcx().param_env(body_id);
+        let param_env = EarlyBinder::bind(param_env).instantiate(global_env.tcx(), args);
         Self::new(global_env, temp_gen, param_env, body_id, args)
     }
 
@@ -124,7 +125,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Expr::LVar(name)
     }
 
-    fn pred_name(&self) -> String {
+    pub fn pred_name(&self) -> String {
         self.global_env
             .just_pred_name_with_args(self.body_id, self.args)
     }
@@ -137,12 +138,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             let lft = self.sig.lifetimes().next().unwrap();
             core_preds::alive_lft(Expr::PVar(lft.to_string()))
         })
-    }
-
-    fn sig(&mut self) -> PredSig {
-        PredSig {
-            name: self.pred_name(),
-        }
     }
 
     fn unwrap_prophecy_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -174,8 +169,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         size: gilsonite::Expr<'tcx>,
     ) -> Assertion {
         let ty = pointer.ty.builtin_deref(true).unwrap().ty;
-        let pointer = self.compile_expression_inner(pointer);
-        let size = self.compile_expression_inner(size);
+        let pointer = self.compile_expression(pointer);
+        let size = self.compile_expression(size);
         let typ = self.encode_type_with_args(ty);
 
         super::core_preds::many_uninits(pointer, typ, size)
@@ -189,9 +184,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     ) -> Assertion {
         let ty = pointer.ty.builtin_deref(true).unwrap().ty;
 
-        let pointer = self.compile_expression_inner(pointer);
-        let size = self.compile_expression_inner(size);
-        let pointee = self.compile_expression_inner(pointee);
+        let pointer = self.compile_expression(pointer);
+        let size = self.compile_expression(size);
+        let pointee = self.compile_expression(pointee);
         let typ = self.encode_type_with_args(ty);
         super::core_preds::many_maybe_uninits(pointer, typ, size, pointee)
     }
@@ -204,8 +199,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let ty = pointer.ty.builtin_deref(true).unwrap().ty;
 
         let ty = self.encode_type_with_args(ty);
-        let pointer = self.compile_expression_inner(pointer);
-        let pointee = self.compile_expression_inner(pointee);
+        let pointer = self.compile_expression(pointer);
+        let pointee = self.compile_expression(pointee);
 
         super::core_preds::maybe_uninit(pointer, ty, pointee)
     }
@@ -217,8 +212,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     ) -> Assertion {
         let ty = self.encode_type_with_args(tgt.ty);
         let left_ty = src.ty;
-        let left = self.compile_expression_inner(src);
-        let right = self.compile_expression_inner(tgt);
+        let left = self.compile_expression(src);
+        let right = self.compile_expression(tgt);
         // If the type is a box or a nonnull, we need to access its pointer.
         let (left, pfs) = if left_ty.is_box() {
             // boxes have to be block pointers.
@@ -259,7 +254,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Assertion::star(pfs, super::core_preds::value(left, ty, right))
     }
 
-    fn compile_assertion(&mut self, assert: Assert<'tcx>) -> Assertion {
+    pub fn compile_assertion(&mut self, assert: Assert<'tcx>) -> Assertion {
         assert!(self.local_toplevel_asrts.is_empty());
         let assert = self.subst(assert);
 
@@ -270,68 +265,77 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         assert
     }
 
+    pub fn compile_pred_call(
+        &mut self,
+        call: gilsonite::AssertPredCall<'tcx>,
+    ) -> (String, Vec<Expr>) {
+        let AssertPredCall {
+            def_id,
+            substs,
+            args,
+        } = call;
+        let param_env = self.param_env;
+        let (name, def_id, substs) = self
+            .global_env_mut()
+            .resolve_predicate_param_env(param_env, def_id, substs);
+
+        let ty_params = param_collector::collect_params_on_args(substs)
+            .with_consider_arguments(args.iter().map(|id| id.ty));
+        let mut params = Vec::new();
+        let has_regions = build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
+            .lifetimes()
+            .count()
+            > 0;
+
+        if has_regions {
+            if self.sig.lifetimes().next().is_none() {
+                fatal!(
+                            self,
+                            "predicate calling ({:?}) another one ({:?}), it has a lifetime param but not self?", self.body_id, def_id
+                        )
+            };
+            let lft = self.sig.lifetimes().next().unwrap();
+
+            params.push(Expr::PVar(lft.to_string()));
+        }
+        for tyarg in ty_params.parameters {
+            let tyarg = self.encode_param_ty(tyarg);
+            params.push(tyarg.into());
+        }
+        for arg in args.into_iter() {
+            params.push(self.compile_expression(arg));
+        }
+
+        (name, params)
+    }
+
     fn compile_assertion_inner(&mut self, gil: gilsonite::Assert<'tcx>) -> Assertion {
         use gilsonite::AssertKind;
         match gil.kind {
             AssertKind::Star { left, right } => self
                 .compile_assertion_inner(*left)
                 .star(self.compile_assertion_inner(*right)),
-            AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula_inner(formula)),
-            AssertKind::Call(AssertPredCall {
-                def_id,
-                substs,
-                args,
-            }) => {
-                let param_env = self.param_env;
-                let (name, def_id, substs) = self
-                    .global_env_mut()
-                    .resolve_predicate_param_env(param_env, def_id, substs);
-
-                let ty_params = param_collector::collect_params_on_args(substs)
-                    .with_consider_arguments(args.iter().map(|id| id.ty));
-                let mut params = Vec::new();
-                let has_regions =
-                    build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
-                        .lifetimes()
-                        .count()
-                        > 0;
-
-                if has_regions {
-                    if self.sig.lifetimes().next().is_none() {
-                        fatal!(
-                            self,
-                            "predicate calling ({:?}) another one ({:?}), it has a lifetime param but not self?", self.body_id, def_id
-                        )
-                    };
-                    let lft = self.sig.lifetimes().next().unwrap();
-
-                    params.push(Expr::PVar(lft.to_string()));
-                }
-                for tyarg in ty_params.parameters {
-                    let tyarg = self.encode_param_ty(tyarg);
-                    params.push(tyarg.into());
-                }
-                for arg in args.into_iter() {
-                    params.push(self.compile_expression_inner(arg));
-                }
+            AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula(formula)),
+            AssertKind::Call(call) => {
+                let (name, params) = self.compile_pred_call(call);
                 Assertion::Pred { name, params }
             }
             AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
             AssertKind::Emp => Assertion::Emp,
             AssertKind::Observation { expr } => {
-                let expr = self.compile_expression_inner(expr);
+                let expr = self.compile_expression(expr);
                 core_preds::observation(expr)
             }
             AssertKind::ProphecyController { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let prophecy = self.compile_expression_inner(prophecy);
-                let model = self.compile_expression_inner(model);
+                let prophecy = self.compile_expression(prophecy);
+                let model = self.compile_expression(model);
                 super::core_preds::controller(prophecy, model)
             }
             AssertKind::ProphecyObserver { prophecy, model } => {
                 self.assert_prophecies_enabled("using prophecy::controller");
-                let prophecy = self.compile_expression_inner(prophecy);
-                let model = self.compile_expression_inner(model);
+                let prophecy = self.compile_expression(prophecy);
+                let model = self.compile_expression(model);
                 super::core_preds::observer(prophecy, model)
             }
             AssertKind::PointsToSlice {
@@ -340,16 +344,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 pointees,
             } => {
                 let ty = src.ty.builtin_deref(true).unwrap().ty;
-                let pointer = self.compile_expression_inner(src);
-                let size = self.compile_expression_inner(size);
-                let pointees = self.compile_expression_inner(pointees);
+                let pointer = self.compile_expression(src);
+                let size = self.compile_expression(size);
+                let pointees = self.compile_expression(pointees);
 
                 let typ = self.encode_array_type(ty, size);
                 super::core_preds::value(pointer, typ, pointees)
             }
             AssertKind::Uninit { pointer } => {
                 let ty = pointer.ty.builtin_deref(true).unwrap().ty;
-                let pointer = self.compile_expression_inner(pointer);
+                let pointer = self.compile_expression(pointer);
                 let typ = self.encode_type_with_args(ty);
 
                 super::core_preds::uninit(pointer, typ)
@@ -357,6 +361,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             AssertKind::ManyUninits { pointer, size } => self.compile_many_uninits(pointer, size),
             AssertKind::MaybeUninit { pointer, pointee } => {
                 self.compile_maybe_uninit(pointer, pointee)
+            }
+            AssertKind::Let { pattern, arg, body } => {
+                let arg = self.compile_expression(arg);
+                let body = self.compile_assertion(*body);
+
+                let pat = self.compile_pattern(pattern);
+
+                arg.eq_f(pat).into_asrt().star(body)
             }
             AssertKind::ManyMaybeUninits {
                 pointer,
@@ -366,10 +378,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
+    fn compile_pattern(&mut self, pat: Pattern<'tcx>) -> GExpr {
+        match pat {
+            Pattern::Constructor {
+                adt,
+                substs,
+                variant,
+                fields,
+            } => todo!(),
+            Pattern::Tuple(pats) => {
+                let fields: Vec<_> = pats.into_iter().map(|f| self.compile_pattern(f)).collect();
+                fields.into()
+            }
+            Pattern::Wildcard(ty) => self.temp_lvar(ty),
+            Pattern::Binder(s) => Expr::LVar(format!("#{s}")),
+            Pattern::Boolean(_) => todo!(),
+        }
+    }
+
     pub(crate) fn compile_abstract(mut self) -> Pred {
-        let sig = self.sig();
-        self.global_env_mut()
-            .mark_pred_as_compiled(sig.name.clone());
+        let name = self.pred_name();
+        self.global_env_mut().mark_pred_as_compiled(name.clone());
         let params: Vec<_> = self
             .sig
             .args
@@ -383,7 +412,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .collect();
 
         Pred {
-            name: sig.name,
+            name: name,
             num_params: params.len(),
             params,
             abstract_: true,
@@ -395,11 +424,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn compile_concrete(mut self) -> Pred {
-        let sig = self.sig();
-        let name = sig.name.clone();
-
-        let raw_definitions = self.global_env.predicate(self.body_id).clone().disjuncts;
+    pub(crate) fn compile_predicate_body(&mut self, pred: Predicate<'tcx>) -> Vec<Assertion> {
+        let raw_definitions = pred.disjuncts;
 
         let raw_definitions: Vec<_> = raw_definitions
             .into_iter()
@@ -424,8 +450,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .rfold(definition, Assertion::star);
             definitions.push(definition);
         }
+        definitions
+    }
 
-        self.global_env_mut().mark_pred_as_compiled(name);
+    pub(crate) fn finalize_pred(&mut self, name: String, defs: Vec<Assertion>) -> Pred {
         let params: Vec<_> = self
             .sig
             .args
@@ -440,16 +468,27 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .collect();
 
         Pred {
-            name: sig.name,
+            name,
             num_params: params.len(),
             params,
             abstract_: false,
             facts: vec![],
-            definitions,
+            definitions: defs,
             ins,
             pure: false,
             guard: self.guard(),
         }
+    }
+
+    pub(crate) fn compile_concrete(mut self) -> Pred {
+        let name = self.pred_name();
+
+        let pred = self.global_env.predicate(self.body_id).clone();
+        let definitions = self.compile_predicate_body(pred);
+
+        self.global_env_mut().mark_pred_as_compiled(name.clone());
+
+        self.finalize_pred(name, definitions)
     }
 
     /// Returns a tuple of universally quantified lvars, precondition, (existentially quantified lvars, postcondition, trusted)
@@ -483,7 +522,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         // (uni.into_iter().collect(), pre, (exi, post))
     }
 
-    fn compile_formula_inner(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
+    pub fn compile_formula(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
         assert!(formula.bound_vars.is_empty());
 
         self.compile_formula_body(formula.body)
@@ -505,8 +544,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             FormulaKind::EOp { left, op, right } => {
                 let ty = left.ty;
-                let left = Box::new(self.compile_expression_inner(*left));
-                let right = Box::new(self.compile_expression_inner(*right));
+                let left = Box::new(self.compile_expression(*left));
+                let right = Box::new(self.compile_expression(*right));
                 match op {
                     EOp::Lt => {
                         if ty.is_floating_point() {
@@ -533,7 +572,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
-    fn compile_expression_inner(&mut self, body: gilsonite::Expr<'tcx>) -> GExpr {
+    pub fn compile_expression(&mut self, body: gilsonite::Expr<'tcx>) -> GExpr {
         use gilsonite::{BinOp, ExprKind};
         match body.kind {
             ExprKind::Call {
@@ -546,7 +585,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .filter_map(|x| self.encode_generic_arg(x))
                     .map(|x| x.into())
                     .collect();
-                params.extend(args.into_iter().map(|e| self.compile_expression_inner(e)));
+                params.extend(args.into_iter().map(|e| self.compile_expression(e)));
 
                 let fn_sig = self.tcx().fn_sig(def_id).skip_binder();
                 let out = fn_sig.output().skip_binder();
@@ -563,8 +602,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::BinOp { left, op, right } => {
                 let left_ty = left.ty;
-                let left = self.compile_expression_inner(*left);
-                let right = self.compile_expression_inner(*right);
+                let left = self.compile_expression(*left);
+                let right = self.compile_expression(*right);
                 match op {
                     BinOp::Eq => GExpr::eq_expr(left, right),
                     BinOp::Lt => {
@@ -637,7 +676,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             } => {
                 let fields: Vec<_> = fields
                     .into_iter()
-                    .map(|f| self.compile_expression_inner(f))
+                    .map(|f| self.compile_expression(f))
                     .collect();
 
                 match self.tcx().adt_def(def_id).adt_kind() {
@@ -654,16 +693,16 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::Tuple { fields } => {
                 let fields: Vec<_> = fields
                     .into_iter()
-                    .map(|f| self.compile_expression_inner(f))
+                    .map(|f| self.compile_expression(f))
                     .collect();
                 fields.into()
             }
             ExprKind::Field { lhs, field } => {
                 if matches!(lhs.ty.kind(), TyKind::Tuple(..)) {
-                    self.compile_expression_inner(*lhs).lnth(field.as_u32())
+                    self.compile_expression(*lhs).lnth(field.as_u32())
                 } else if lhs.ty.is_any_ptr() {
                     let ty = lhs.ty.builtin_deref(true).unwrap().ty;
-                    let gil_derefed = self.compile_expression_inner(*lhs);
+                    let gil_derefed = self.compile_expression(*lhs);
                     let mut place = GilPlace::base(gil_derefed, ty);
                     if ty.is_enum() {
                         panic!("enum field, need to handle")
@@ -681,7 +720,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     match lhs.ty.ty_adt_def() {
                         Some(adt) => {
                             if adt.is_struct() {
-                                let lhs = self.compile_expression_inner(*lhs);
+                                let lhs = self.compile_expression(*lhs);
                                 lhs.lnth(field.as_usize())
                             } else {
                                 fatal!(self, "Can't use field access on enums in assertions.")
@@ -707,7 +746,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::SeqOp { op, args } => {
                 let mut args: Vec<_> = args
                     .into_iter()
-                    .map(|a| self.compile_expression_inner(a))
+                    .map(|a| self.compile_expression(a))
                     .collect();
                 match op {
                     SeqOp::Append => args.remove(0).lst_concat(vec![args.remove(0)].into()),
@@ -728,13 +767,13 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             ExprKind::ZST => vec![].into(),
             ExprKind::SetProphecy { mut_ref, prophecy } => {
                 self.assert_prophecies_enabled("using `Prophecised::assign`");
-                let mut_ref = self.compile_expression_inner(*mut_ref);
-                let pcy = self.compile_expression_inner(*prophecy);
+                let mut_ref = self.compile_expression(*mut_ref);
+                let pcy = self.compile_expression(*prophecy);
                 [mut_ref.lnth(0), pcy].into()
             }
             ExprKind::GetProphecy { mut_ref } => {
                 self.assert_prophecies_enabled("using `Prophecised::prophecy`");
-                let mut_ref = self.compile_expression_inner(*mut_ref);
+                let mut_ref = self.compile_expression(*mut_ref);
                 mut_ref.lnth(1)
             }
             ExprKind::GetValue { mut_ref } => {
@@ -744,7 +783,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .try_normalize_erasing_regions(self.param_env, mut_ref.ty)
                     .unwrap_or(mut_ref.ty);
                 let ty = self.unwrap_prophecy_ty(ty);
-                let prophecy = self.compile_expression_inner(*mut_ref);
+                let prophecy = self.compile_expression(*mut_ref);
                 let value = self.temp_lvar(ty);
                 self.local_toplevel_asrts
                     .push(core_preds::pcy_value(prophecy, value.clone()));
@@ -754,19 +793,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let ty = gil_type_of_rust_ty(var.1);
                 GExpr::EExists(
                     vec![(var.0.to_string(), ty)],
-                    Box::new(self.compile_expression_inner(*body)),
+                    Box::new(self.compile_expression(*body)),
                 )
             }
             ExprKind::EForall { var, body } => {
                 let ty = gil_type_of_rust_ty(var.1);
                 GExpr::EForall(
                     vec![(var.0.to_string(), ty)],
-                    Box::new(self.compile_expression_inner(*body)),
+                    Box::new(self.compile_expression(*body)),
                 )
             }
 
             ExprKind::UnOp { op, arg } => {
-                let arg = self.compile_expression_inner(*arg);
+                let arg = self.compile_expression(*arg);
 
                 match op {
                     mir::UnOp::Not => arg.e_not(),
@@ -775,9 +814,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::PtrToMutRef { ptr } => {
                 if self.prophecies_enabled() {
-                    GExpr::EList(vec![self.compile_expression_inner(*ptr), Expr::null()])
+                    GExpr::EList(vec![self.compile_expression(*ptr), Expr::null()])
                 } else {
-                    self.compile_expression_inner(*ptr)
+                    self.compile_expression(*ptr)
                 }
             }
         }

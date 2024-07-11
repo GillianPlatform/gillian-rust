@@ -41,9 +41,32 @@ type t =
   | Unresolved of Expr.t
       (** A parameter in an ADT def, should be substituted before used *)
 [@@deriving yojson, eq, ord]
-(* FIXME: type equality cannot be decided syntactically in theory. It has to be decided by SAT.
-   But it requires a lot of changes in Projections and Partial_layout that I'm not ready to make yet.
-   However, as it is right now, nothing is unsound, simply less complete. *)
+
+let rec reduce ty =
+  let open Gillian.Monadic in
+  let open Delayed.Syntax in
+  let reduce_all l = Delayed.all @@ List.map reduce l in
+  match ty with
+  | Scalar _ | Str | Unresolved _ -> Delayed.return ty
+  | Tuple l ->
+      let+ l = reduce_all l in
+      Tuple l
+  | Adt (name, l) ->
+      let+ l = reduce_all l in
+      Adt (name, l)
+  | Ref { mut; ty } ->
+      let+ ty = reduce ty in
+      Ref { mut; ty }
+  | Ptr { mut; ty } ->
+      let+ ty = reduce ty in
+      Ptr { mut; ty }
+  | Array { length; ty } ->
+      let* length = Delayed.reduce length in
+      let+ ty = reduce ty in
+      Array { length; ty }
+  | Slice ty ->
+      let+ ty = reduce ty in
+      Slice ty
 
 let rec lvars =
   let open Gillian.Utils.Containers in

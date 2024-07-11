@@ -1,4 +1,7 @@
 use core::ptr::NonNull;
+use std::marker::Tuple;
+
+use crate::tys::RustProof;
 
 use super::tys::{RustAssertion, RustFormula};
 
@@ -233,5 +236,33 @@ pub fn extract_lemma<P>(
     _extract: RustAssertion,
     _prophecise: P,
 ) -> RustAssertion {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::package"]
+pub fn package(pre: RustAssertion, post: RustAssertion) -> RustProof {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::unfold"]
+pub fn unfold_proof(pre: RustAssertion) -> RustProof {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::fold"]
+pub fn fold_proof(pre: RustAssertion) -> RustProof {
+    unreachable!()
+}
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::assert_bind"]
+pub fn assert_bind<A: Tuple, F: FnOnce<A, Output = RustAssertion>>(f: F) -> A {
     unreachable!()
 }

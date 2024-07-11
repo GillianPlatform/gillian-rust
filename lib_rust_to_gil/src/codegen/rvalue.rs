@@ -231,6 +231,13 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                     Expr::f_gt(e1, e2)
                 }
             }
+            Ge if left_ty.is_numeric() && left_ty == right_ty => {
+                if left_ty.is_integral() {
+                    Expr::i_ge(e1, e2)
+                } else {
+                    Expr::f_ge(e1, e2)
+                }
+            }
             Lt if left_ty.is_numeric() && left_ty == right_ty => {
                 if left_ty.is_integral() {
                     Expr::i_lt(e1, e2)

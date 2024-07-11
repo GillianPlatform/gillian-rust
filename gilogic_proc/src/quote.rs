@@ -369,12 +369,7 @@ impl ExtractLemma {
 
         let assuming = match &self.assuming {
             Some((_, assuming)) => Formula::from_term(assuming.clone()),
-            None => Formula::from_term(Term::Lit(TermLit {
-                lit: Lit::Bool(LitBool {
-                    value: true,
-                    span: Span::call_site(),
-                }),
-            })),
+            None => Formula::from_term(parse_quote! {  true == true }),
         };
         let assuming = assuming.encode()?;
         let (_, from) = &self.from;
@@ -588,7 +583,7 @@ impl ToTokens for Lemma {
                 #[cfg(gillian)]
                 #(#attributes)*
                 #[gillian::decl::lemma]
-                #[gillian::trusted]
+                // #[gillian::trusted]
                 #pub_token #sig #body
             }),
         }

@@ -1,10 +1,11 @@
+use itertools::Itertools;
 use num_bigint::BigInt;
-use rustc_ast::LitKind;
+use rustc_ast::{LitKind, Mutability};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
-    thir::{self, AdtExpr, ClosureExpr, ExprId, LogicalOp, Thir},
+    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
@@ -12,9 +13,9 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-use crate::logic::predicate::fn_args_and_tys;
+use crate::{logic::predicate::fn_args_and_tys, signature::anonymous_param_symbol};
 
-use super::builtins::LogicStubs;
+use super::{builtins::LogicStubs, fatal2};
 
 #[derive(Debug, Clone)]
 pub struct EncDeBigInt(pub BigInt);
@@ -281,7 +282,51 @@ pub enum AssertKind<'tcx> {
         pointees: Expr<'tcx>,
         size: Expr<'tcx>,
     },
+    Let {
+        pattern: Pattern<'tcx>,
+        arg: Expr<'tcx>,
+        body: Box<Assert<'tcx>>,
+    },
     // ... other core predicates
+}
+
+#[derive(Clone, Debug, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable)]
+pub enum Pattern<'tcx> {
+    Constructor {
+        adt: DefId,
+        substs: GenericArgsRef<'tcx>,
+        variant: VariantIdx,
+        fields: Vec<Pattern<'tcx>>,
+    },
+    Tuple(Vec<Pattern<'tcx>>),
+    Wildcard(Ty<'tcx>),
+    Binder(Symbol),
+    Boolean(bool),
+}
+
+pub enum ProofStep<'tcx> {
+    Package {
+        pre: AssertPredCall<'tcx>,
+        post: AssertPredCall<'tcx>,
+    },
+    Unfold {
+        pred: AssertPredCall<'tcx>,
+    },
+    Fold {
+        pred: AssertPredCall<'tcx>,
+    },
+    If {
+        cond: Expr<'tcx>,
+        t_branch: Vec<ProofStep<'tcx>>,
+        f_branch: Vec<ProofStep<'tcx>>,
+    },
+    Call {
+        pred: AssertPredCall<'tcx>,
+    },
+    AssertBind {
+        vars: Vec<Symbol>,
+        assertion: Assert<'tcx>,
+    },
 }
 
 #[derive(Debug, Clone, TyDecodable, TyEncodable)]
@@ -299,7 +344,51 @@ pub struct ExtractLemmaTerm<'tcx> {
     pub assuming: Formula<'tcx>,
     pub from: AssertPredCall<'tcx>,
     pub extract: AssertPredCall<'tcx>,
+    pub proph_model: Option<((Symbol, Ty<'tcx>), (Symbol, Ty<'tcx>))>,
     pub prophecise: Expr<'tcx>,
+}
+
+impl<'tcx> Assert<'tcx> {
+    pub fn unstar(&self) -> Vec<&Self> {
+        let mut r = Vec::new();
+
+        self.unstar_inner(&mut r);
+
+        r
+    }
+    fn unstar_inner<'a>(&'a self, pars: &mut Vec<&'a Self>) {
+        match &self.kind {
+            AssertKind::Star { left, right } => {
+                left.unstar_inner(pars);
+                right.unstar_inner(pars);
+            }
+            _ => pars.push(self),
+        }
+    }
+
+    pub fn star(self, other: Assert<'tcx>) -> Self {
+        match (&self.kind, &other.kind) {
+            (AssertKind::Emp, _) => other,
+            (_, AssertKind::Emp) => self,
+            _ => Assert {
+                kind: AssertKind::Star {
+                    left: Box::new(self),
+                    right: Box::new(other),
+                },
+            },
+        }
+    }
+}
+
+impl<'tcx> FromIterator<Assert<'tcx>> for Assert<'tcx> {
+    fn from_iter<T: IntoIterator<Item = Assert<'tcx>>>(iter: T) -> Self {
+        iter.into_iter().fold(
+            Assert {
+                kind: AssertKind::Emp,
+            },
+            |acc, a| acc.star(a),
+        )
+    }
 }
 
 pub struct GilsoniteBuilder<'tcx> {
@@ -312,36 +401,49 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         Self { thir, tcx }
     }
 
-    pub(crate) fn build_extract_lemma_no_proph(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
-        let (uni, (assuming, from, extract, prophecise)) =
+    pub(crate) fn build_extract_lemma(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
+        let (uni, (assuming, from, extract, proph_model, prophecise)) =
             self.peel_lvar_bindings(expr, |this, expr| {
-                let expr = this.peel_scope(expr);
-                let thir::ExprKind::Call {
-                    ty, fun: _, args, ..
-                } = &this.thir[expr].kind
-                else {
-                    unreachable!("ill formed extract lemma block {:?}", this.thir[expr])
-                };
+                this.peel_lvar_bindings(expr, |this, expr| {
+                    let expr = this.peel_scope(expr);
+                    let thir::ExprKind::Call {
+                        ty, fun: _, args, ..
+                    } = &this.thir[expr].kind
+                    else {
+                        unreachable!("ill formed extract lemma block {:?}", this.thir[expr])
+                    };
 
-                let Some(LogicStubs::ExtractLemma) = this.get_stub(*ty) else {
-                    unreachable!("ill formed extract lemma block")
-                };
+                    let Some(LogicStubs::ExtractLemma) = this.get_stub(*ty) else {
+                        unreachable!("ill formed extract lemma block")
+                    };
 
-                let assuming = this.build_formula(args[0]);
-                let AssertKind::Call(from) = this.build_assert_kind(args[1]) else {
-                    unreachable!(
+                    let assuming = this.build_formula(args[0]);
+                    let AssertKind::Call(from) = this.build_assert_kind(args[1]) else {
+                        unreachable!(
                         "ill formed extract lemma block, second argument must be a predicate call"
                     )
-                };
-                let AssertKind::Call(extract) = this.build_assert_kind(args[2]) else {
-                    unreachable!(
+                    };
+                    let AssertKind::Call(extract) = this.build_assert_kind(args[2]) else {
+                        unreachable!(
                         "ill formed extract lemma block, third argument must be a predicate call"
                     )
-                };
+                    };
 
-                // In no-proph mode, this will always be unit, but it's easier than to construct it.
-                let prophecise = this.build_expression(args[3]);
-                (assuming, from, extract, prophecise)
+                    // In no-proph mode, this will always be unit, but it's easier than to construct it.
+                    let mut prophecise = this.peel_lvar_bindings(args[3], |this, expr| {
+                        let expr = this.peel_scope(expr);
+                        this.build_expression(expr)
+                    });
+                    assert!(prophecise.0.len() == 0 || prophecise.0.len() == 2);
+                    let proph_model = if prophecise.0.len() == 2 {
+                        Some((prophecise.0.remove(0), prophecise.0.remove(0)))
+                    } else {
+                        None
+                    };
+
+                    (assuming, from, extract, proph_model, prophecise.1)
+                })
+                .1
             });
         ExtractLemmaTerm {
             uni,
@@ -349,12 +451,146 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             assuming,
             from,
             extract,
+            proph_model,
             prophecise,
         }
     }
 
-    pub(crate) fn build_extract_lemma_proph(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
-        todo!()
+    pub(crate) fn build_lemma_proof(&self, expr: ExprId) -> Vec<ProofStep<'tcx>> {
+        let (unis, steps) = self.peel_lvar_bindings(expr, |this, expr| {
+            let expr = this.peel_scope(expr);
+            let thir::ExprKind::Block { block } = self.thir[expr].kind else {
+                return vec![self.proof_step(expr)];
+            };
+            //  else {
+            //
+            // };
+
+            self.proof_sequence(block)
+        });
+        steps
+    }
+
+    pub(crate) fn proof_sequence(&self, block: BlockId) -> Vec<ProofStep<'tcx>> {
+        let mut steps = Vec::new();
+
+        for stmt in &*self.thir[block].stmts {
+            match self.thir[*stmt].kind {
+                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(expr)),
+                thir::StmtKind::Let { initializer, .. } => {
+                    steps.push(self.proof_step(initializer.unwrap()));
+                    // fatal2!(self.tcx, "assert bindings are currently unsupported")
+                }
+            };
+        }
+
+        assert_eq!(self.thir[block].expr, None);
+
+        steps
+    }
+
+    pub(crate) fn proof_step(&self, expr: ExprId) -> ProofStep<'tcx> {
+        let expr = self.peel_scope(expr);
+
+        match &self.thir[expr].kind {
+            thir::ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
+                Some(LogicStubs::Package) => {
+                    let mut args: Vec<_> = args.iter().map(|a| self.build_assert(*a)).collect();
+
+                    let AssertKind::Call(pre) = args.remove(0).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
+
+                    let AssertKind::Call(post) = args.remove(0).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
+
+                    ProofStep::Package { pre, post }
+                }
+
+                Some(LogicStubs::Unfold) => {
+                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "unfold expects a call")
+                    };
+                    ProofStep::Unfold { pred: pre }
+                }
+                Some(LogicStubs::Fold) => {
+                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "fold expects a call")
+                    };
+                    ProofStep::Fold { pred: pre }
+                }
+                Some(LogicStubs::AssertBind) => {
+                    let (vars, assertion) = self.build_assert_bind(args[0]);
+                    ProofStep::AssertBind { assertion, vars }
+                }
+                Some(_) => fatal2!(self.tcx, "unsupported proof step"),
+                None => {
+                    let AssertKind::Call(pred) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
+                    };
+
+                    ProofStep::Call { pred }
+                }
+            },
+            thir::ExprKind::If {
+                cond,
+                then,
+                else_opt,
+                ..
+            } => {
+                let cond = self.build_expression(*cond);
+                let thir::ExprKind::Block { block } = self.thir[self.peel_scope(*then)].kind else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
+
+                let Some(else_opt) = else_opt else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
+
+                let thir::ExprKind::Block { block: else_block } =
+                    self.thir[self.peel_scope(*else_opt)].kind
+                else {
+                    fatal2!(self.tcx, "expected block in proof")
+                };
+
+                let t_branch = self.proof_sequence(block);
+                let f_branch = self.proof_sequence(else_block);
+
+                ProofStep::If {
+                    cond,
+                    t_branch,
+                    f_branch,
+                }
+            }
+            _ => fatal2!(self.tcx, "unsupported proof step"),
+        }
+    }
+
+    fn build_assert_bind(&self, expr: ExprId) -> (Vec<Symbol>, Assert<'tcx>) {
+        match &self.thir[expr].kind {
+            thir::ExprKind::Scope { value, .. } => self.build_assert_bind(*value),
+            thir::ExprKind::Closure(box ClosureExpr {
+                closure_id,
+                args: UpvarArgs::Closure(_),
+                ..
+            }) => {
+                let names = self.tcx.fn_arg_names(*closure_id);
+
+                let (thir, expr) = self.tcx.thir_body(closure_id).unwrap();
+
+                let body = Self {
+                    thir: thir.borrow().clone(),
+                    tcx: self.tcx,
+                }
+                .peel_lvar_bindings(expr, |this, expr| this.build_assert(expr));
+                (names.iter().map(|i| i.name).collect(), body.1)
+            }
+            kind => self
+                .tcx
+                .dcx()
+                .fatal(format!("Unexpected quantified form: {:?}", kind)),
+        }
     }
 
     pub(crate) fn build_assert(&self, expr: ExprId) -> Assert<'tcx> {
@@ -410,6 +646,35 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
             (pre, posts)
         });
+
+        // eprintln!("params: {:?}", self.thir.params);
+        let res = self
+            .thir
+            .params
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, param)| {
+                Some((idx, param.ty, self.pattern_term(&*param.pat.as_ref()?)))
+            })
+            .fold(pre, |body, (idx, ty, pattern)| match pattern {
+                Pattern::Binder(_) | Pattern::Wildcard(_) => body,
+                _ => {
+                    let arg = Expr {
+                        ty,
+                        kind: ExprKind::Var {
+                            id: anonymous_param_symbol(idx),
+                        },
+                    };
+                    Assert {
+                        kind: AssertKind::Let {
+                            pattern,
+                            arg,
+                            body: Box::new(body),
+                        },
+                    }
+                }
+            });
+        let pre = res;
 
         SpecTerm {
             uni,
@@ -1167,6 +1432,94 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         }
     }
 
+    fn pattern_term(&self, pat: &Pat<'tcx>) -> Pattern<'tcx> {
+        use thir::PatKind;
+        match &pat.kind {
+            PatKind::Wild => Pattern::Wildcard(pat.ty),
+            PatKind::Binding { name, .. } => Pattern::Binder(*name),
+            PatKind::Variant {
+                subpatterns,
+                adt_def,
+                variant_index,
+                args,
+                ..
+            } => {
+                let mut fields: Vec<_> = subpatterns
+                    .iter()
+                    .map(|pat| (pat.field, self.pattern_term(&pat.pattern)))
+                    .collect();
+                fields.sort_by_key(|f| f.0);
+
+                let raw_fields = &adt_def.variants()[0usize.into()].fields;
+                let defaults = raw_fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| (i.into(), Pattern::Wildcard(f.ty(self.tcx, args))));
+
+                let fields = defaults
+                    .merge_join_by(fields, |i: &(FieldIdx, _), j: &(FieldIdx, _)| i.0.cmp(&j.0))
+                    .map(|el| el.reduce(|_, a| a).1)
+                    .collect();
+
+                Pattern::Constructor {
+                    adt: adt_def.variants()[*variant_index].def_id,
+                    substs: args,
+                    variant: *variant_index,
+                    fields,
+                }
+            }
+            PatKind::Leaf { subpatterns } => {
+                let mut fields: Vec<_> = subpatterns
+                    .iter()
+                    .map(|pat| (pat.field, self.pattern_term(&pat.pattern)))
+                    .collect();
+                fields.sort_by_key(|f| f.0);
+
+                if matches!(pat.ty.kind(), TyKind::Tuple(_)) {
+                    let fields = fields.into_iter().map(|a| a.1).collect();
+                    Pattern::Tuple(fields)
+                } else {
+                    let (adt_def, substs) = if let TyKind::Adt(def, substs) = pat.ty.kind() {
+                        (def, substs)
+                    } else {
+                        unreachable!()
+                    };
+
+                    let raw_fields = &adt_def.variants()[0usize.into()].fields;
+                    let defaults = raw_fields
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| (i.into(), Pattern::Wildcard(f.ty(self.tcx, substs))));
+
+                    let fields = defaults
+                        .merge_join_by(fields, |i: &(FieldIdx, _), j| i.0.cmp(&j.0))
+                        .map(|el| el.reduce(|_, a| a).1)
+                        .collect();
+                    Pattern::Constructor {
+                        adt: adt_def.variants()[0usize.into()].def_id,
+                        substs,
+                        variant: 0u32.into(),
+                        fields,
+                    }
+                }
+            }
+            PatKind::Deref { subpattern } => {
+                if !(pat.ty.is_box() || pat.ty.ref_mutability() == Some(Mutability::Not)) {
+                    fatal2!(self.tcx, "unsupported pattern")
+                }
+
+                self.pattern_term(subpattern)
+            }
+            PatKind::Constant { value } => {
+                if !pat.ty.is_bool() {
+                    fatal2!(self.tcx, "non-boolean constant patterns are unsupported",)
+                }
+                Pattern::Boolean(value.try_to_bool().unwrap())
+            }
+            ref pk => todo!("lower_pattern: unsupported pattern kind {:?}", pk),
+        }
+    }
+
     fn peel_scope(&self, e: ExprId) -> ExprId {
         let expr = &self.thir.exprs[e];
         match &expr.kind {
@@ -1176,7 +1529,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 value,
             } => self.peel_scope(*value),
             thir::ExprKind::Use { source } => self.peel_scope(*source),
-            thir::ExprKind::Block { block } if self.thir[*block].stmts.is_empty() => {
+            thir::ExprKind::Block { block }
+                if self.thir[*block].stmts.is_empty() && self.thir[*block].expr.is_some() =>
+            {
                 self.peel_scope(self.thir[*block].expr.unwrap())
             }
             _ => e,
@@ -1212,9 +1567,10 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                 (lvars, x)
             }
-            thir::ExprKind::Block { block } => {
+            thir::ExprKind::Block { block }
+                if self.thir[*block].stmts.is_empty() && self.thir[*block].expr.is_some() =>
+            {
                 let block = &self.thir[*block];
-                assert!(block.stmts.is_empty());
 
                 // let StmtKind::Expr { expr, .. }  = thir[block.stmts[0]].kind else { panic!() };
                 self.peel_lvar_bindings(block.expr.unwrap(), k)

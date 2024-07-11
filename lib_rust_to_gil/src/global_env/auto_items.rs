@@ -1,9 +1,9 @@
-use rustc_middle::ty::ParamEnv;
+use rustc_middle::ty::{EarlyBinder, ParamEnv};
 
-use crate::logic::PredCtx;
+use crate::logic::gilsonite::Assert;
+use crate::logic::{gilsonite, PredCtx};
 use crate::signature::build_signature;
 use crate::temp_gen::TempGenerator;
-use crate::utils::attrs::is_borrow;
 use crate::{prelude::*, temp_gen};
 
 pub(super) struct MonoSpec<'tcx> {
@@ -42,17 +42,104 @@ impl<'tcx> InnerPred<'tcx> {
         Self { name, did, args }
     }
 
-    // Possibly duplicated compilation if the outer predicate
-    // is already generated but it's fine
+    // TODO: Rewrite this awful awful code. Unfortunately, the POPL deadline demands we march forward
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
-        if global_env.prophecies_enabled() {
-            fatal!(global_env, "InnerPred to wait for prophecies")
-        }
         let mut temp_gen = TempGenerator::new();
+        // let ctx = PredCtx::new_with_identity_args(global_env, &mut temp_gen, self.did);
+
+        if global_env.prophecies_enabled() {
+            let outer_term = EarlyBinder::bind(global_env.predicate(self.did).clone())
+                .instantiate(global_env.tcx(), self.args);
+            assert_eq!(outer_term.disjuncts.len(), 1);
+            let assert = outer_term.disjuncts[0].1.clone();
+            let asserts = assert.unstar();
+
+            let mut call: Vec<_> = asserts
+                .iter()
+                .filter(|a| matches!(a.kind, gilsonite::AssertKind::Call(_)))
+                .collect();
+            assert_eq!(call.len(), 1);
+
+            let gilsonite::AssertKind::Call(call) = &call.remove(0).kind else {
+                unreachable!()
+            };
+
+            let mut term = EarlyBinder::bind(global_env.predicate(call.def_id).clone())
+                .instantiate(global_env.tcx(), &call.substs);
+            assert_eq!(term.disjuncts.len(), 1);
+            let assert = term.disjuncts[0].1.clone();
+
+            let inner_asserts: Assert = assert
+                .unstar()
+                .into_iter()
+                .filter(|a| !matches!(a.kind, gilsonite::AssertKind::ProphecyController { .. }))
+                .cloned()
+                .collect();
+
+            term.disjuncts[0].1 = inner_asserts;
+
+            let ref_mut = global_env.just_pred_name_with_args(call.def_id, call.substs);
+            let ref_mut_inner = format!("{}$$inner", ref_mut);
+            let mut ctx =
+                PredCtx::new_with_args(global_env, &mut temp_gen, call.def_id, call.substs);
+            let body = ctx.compile_predicate_body(term);
+            let mut pred = ctx.finalize_pred(ref_mut_inner.clone(), body);
+
+            pred.params.remove(0);
+            pred.num_params -= 1;
+            pred.ins.remove(0);
+            pred.ins.iter_mut().for_each(|a| *a -= 1);
+            pred.guard = None;
+            prog.add_pred(pred);
+
+            let base_name = global_env.just_pred_name_with_args(self.did, self.args);
+            let body_term = global_env.predicate(self.did).clone();
+            let mut ctx = PredCtx::new_with_args(global_env, &mut temp_gen, self.did, self.args);
+            let body = ctx.compile_predicate_body(body_term);
+            let body: Vec<_> = body
+                .into_iter()
+                .map(|def| {
+                    let mut parts = def.unstar();
+                    parts.iter_mut().for_each(|a| match a {
+                        Assertion::Pred { name, params } if *name == ref_mut => {
+                            *name = ref_mut_inner.clone();
+                            params.remove(0);
+                        }
+                        _ => (),
+                    });
+
+                    parts.into_iter().reduce(Assertion::star).unwrap()
+                })
+                .collect();
+
+            let mut pred = ctx.finalize_pred(base_name, body);
+            pred.name = format!("{}$$inner", pred.name);
+            pred.guard = None;
+            pred.params.remove(0);
+            pred.num_params -= 1;
+            pred.ins.remove(0);
+            pred.ins.iter_mut().for_each(|a| *a -= 1);
+
+            prog.add_pred(pred);
+            return;
+        }
+
         let ctx = PredCtx::new_with_args(global_env, &mut temp_gen, self.did, self.args);
+
         let mut gil_pred = ctx.compile_concrete();
+        // if global_env.prophecies_enabled() {
+        //     fatal!(
+        //         global_env,
+        //         "InnerPred currently doesn't support prophecies {gil_pred}"
+        //     );
+        // }
+        gil_pred.name = self.name;
+        gil_pred.params.remove(0);
+        gil_pred.num_params -= 1;
+        gil_pred.ins.remove(0);
+        gil_pred.ins.iter_mut().for_each(|a| *a -= 1);
         if let None = std::mem::take(&mut gil_pred.guard) {
-            fatal!(global_env, "InnerPred for something that is not a borrow")
+            // fatal!(global_env, "InnerPred for something that is not a borrow {:?}", self.did)
         }
         prog.add_pred(gil_pred);
     }
@@ -111,7 +198,7 @@ impl<'tcx> AutoItem<'tcx> {
                     // if is_borrow(instance.def_id(), global_env.tcx()) {
                     //     global_env.inner_pred(pred.name.clone());
                     // };
-                    // prog.add_pred(pred);
+                    prog.add_pred(pred);
                 } else {
                     fatal!(
                         global_env,

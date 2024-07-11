@@ -55,7 +55,7 @@ module TypePreds = struct
 
   let empty_array ty =
     match ty with
-    | Ty.Array { length; _ } -> Formula.Infix.(length #== (Expr.int 0))
+    | Ty.Array { length; _ } -> Formula.Infix.(length #<= (Expr.int 0))
     | _ -> False
 
   (* let valid_zst_value ~tyenv ty e = e #== (Ty.value_of_zst ~tyenv ty) *)
@@ -355,15 +355,11 @@ module TreeBlock = struct
 
   let block_size_equal_ty_size ~block ~ty ~lk =
     let+ result =
-      Logging.verbose (fun m ->
-          m "block_size_equal_ty_size:@\nblock: %a@\nty: %a" pp block Ty.pp ty);
       match block with
       | Structural { ty = ty'; _ } -> LK.size_equal ~lk ty ty'
       | Laid_out_root { index_ty; range; _ } ->
           LK.size_equal ~lk ty (Range.as_array_ty ~index_ty range)
     in
-    Logging.verbose (fun m ->
-        m "block_size_equal_ty_size returns: %a" Formula.pp (fst result));
     result
 
   let block_size_equal ~lk block_a block_b =
@@ -389,7 +385,7 @@ module TreeBlock = struct
   let rec to_rust_value ~tyenv ?(current_proj = []) ~ty:expected_ty block ~lk :
       (Expr.t * LK.t, Err.Conversion_error.t) DR.t =
     Logging.verbose (fun m ->
-        m "TO_RUST_VALUE:\nBlock: %a\nExpected ty: %a" pp block Ty.pp
+        m "TO_RUST_VALUE:@\nBlock: %a@\nExpected ty: %a" pp block Ty.pp
           expected_ty);
     let rec all ~lk acc ptvs =
       match ptvs () with
@@ -766,6 +762,7 @@ module TreeBlock = struct
     | _ -> DR.ok (Structural { content = ManySymbolicMaybeUninit e; ty })
 
   let outer_missing ~offset ~tyenv:_ ty =
+    let+ ty = Ty.reduce ty in
     let root = missing ty in
     { offset; root }
 
@@ -1147,13 +1144,12 @@ module TreeBlock = struct
                   { ty = structural.ty; content = Symbolic e }
             | Error err ->
                 Fmt.failwith
-                  "extract_range_structural: Failed to convert array symbolic:\n\
-                   Range: %a\n\
-                   Array: %a\n\
+                  "extract_range_structural: Failed to convert array symbolic:@\n\
+                   Range: %a@\n\
+                   Array: %a@\n\
                    Error: %a" Range.pp range (Fmt.Dump.list pp) l
                   Conversion_error.pp err))
     | Uninit | Missing ->
-        (* FIXME: the structural is wrong, I need to fix the type so that it has the right size! *)
         let* split =
           if%sat Formula.Infix.((fst range) #== Expr.zero_i) then
             let left_range = (Expr.zero_i, snd range) in
@@ -1167,16 +1163,24 @@ module TreeBlock = struct
           else
             if%sat Formula.Infix.((snd range) #== end_as_index) then
               let left_range = (Expr.zero_i, fst range) in
+              let left_ty = Range.as_array_ty ~index_ty left_range in
+              let right_ty = Range.as_array_ty ~index_ty range in
               Delayed.return
-                (`Two ((structural, left_range), (structural, range)))
+                (`Two
+                  ( ({ structural with ty = left_ty }, left_range),
+                    ({ structural with ty = right_ty }, range) ))
             else
               let left_range = (Expr.zero_i, fst range) in
               let right_range = (snd range, end_as_index) in
+              let left_ty = Range.as_array_ty ~index_ty left_range in
+              let mid_ty = Range.as_array_ty ~index_ty range in
+              let right_ty = Range.as_array_ty ~index_ty right_range in
+
               Delayed.return
                 (`Three
-                  ( (structural, left_range),
-                    (structural, range),
-                    (structural, right_range) ))
+                  ( ({ structural with ty = left_ty }, left_range),
+                    ({ structural with ty = mid_ty }, range),
+                    ({ structural with ty = right_ty }, right_range) ))
         in
         let+ root = children_from_split split |> root_of_children in
         (root, lk)
@@ -1194,22 +1198,18 @@ module TreeBlock = struct
         Fmt.failwith "Not implemented yet: extracting range from structural %a"
           pp_structural structural
 
-  let laid_out_of_children left right =
+  let laid_out_of_children ~lk left right =
     Logging.verbose (fun m -> m "laid_out_of_children");
-    if not (Ty.equal left.index_ty right.index_ty) then
-      Fmt.failwith
-        "laid_out_of_children: need to reinterpreted sub-ranges.\n\
-         Left: %a\n\
-         Right: %a" pp_laid_out left pp_laid_out right;
+    let+ right, lk = reinterpret_lc_ranges ~lk ~to_ty:left.index_ty right in
     let range = (fst left.range, snd right.range) in
     let index_ty = left.index_ty in
     let children = Some (left, right) in
-    { structural = None; range; children; index_ty }
+    ({ structural = None; range; children; index_ty }, lk)
 
   let rec extract ~lk ~range ~index_ty laid_out =
     Logging.verbose (fun m ->
-        m "extract:\nrange: %a : %a\nlaid_out: %a" Range.pp range Ty.pp index_ty
-          pp_laid_out laid_out);
+        m "extract:@\nrange: %a : %a@\nlaid_out: %a" Range.pp range Ty.pp
+          index_ty pp_laid_out laid_out);
     let* range, lk =
       Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:laid_out.index_ty range
     in
@@ -1224,13 +1224,13 @@ module TreeBlock = struct
       in
       if%sat Range.is_inside range_as_left left.range then (
         Logging.verbose (fun m -> m "extract: Inside left");
-        let+ (extracted, new_left), lk =
+        let* (extracted, new_left), lk =
           extract ~lk ~range:range_as_left ~index_ty:left.index_ty left
         in
-        let new_self =
+        let+ new_self, lk =
           match new_left with
-          | Some left -> laid_out_of_children left right
-          | None -> right
+          | Some left -> laid_out_of_children ~lk left right
+          | None -> Delayed.return (right, lk)
         in
         ((extracted, Some new_self), lk))
       else (
@@ -1238,31 +1238,31 @@ module TreeBlock = struct
         let* range_as_right, lk =
           Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:right.index_ty range
         in
-        let+ (extracted, new_right), lk =
+        let* (extracted, new_right), lk =
           extract ~lk ~range:range_as_right ~index_ty:right.index_ty right
         in
-        let new_self =
+        let+ new_self, lk =
           match new_right with
-          | Some right -> laid_out_of_children left right
-          | None -> left
+          | Some right -> laid_out_of_children ~lk left right
+          | None -> Delayed.return (left, lk)
         in
         ((extracted, Some new_self), lk))
 
-  let rec add_to_the_left lc addition : laid_out =
+  let rec add_to_the_left ~lk lc addition : (laid_out * LK.t) Delayed.t =
     Logging.verbose (fun m -> m "add_to_the_left");
     match lc.children with
-    | None -> laid_out_of_children addition lc
+    | None -> laid_out_of_children ~lk addition lc
     | Some (left, right) ->
-        let new_left = add_to_the_left left addition in
-        laid_out_of_children new_left right
+        let* new_left, lk = add_to_the_left ~lk left addition in
+        laid_out_of_children ~lk new_left right
 
-  let rec add_to_the_right lc addition : laid_out =
+  let rec add_to_the_right ~lk lc addition : (laid_out * LK.t) Delayed.t =
     Logging.verbose (fun m -> m "add_to_the_right");
     match lc.children with
-    | None -> laid_out_of_children lc addition
+    | None -> laid_out_of_children ~lk lc addition
     | Some (left, right) ->
-        let new_right = add_to_the_right right addition in
-        laid_out_of_children left new_right
+        let* new_right, lk = add_to_the_right ~lk right addition in
+        laid_out_of_children ~lk left new_right
 
   (** Extract range from a given structural node.
     The range is given in the index type, is relative to the current structure.
@@ -1327,7 +1327,7 @@ module TreeBlock = struct
       match (lc.structural, lc.children) with
       | Some structural, None ->
           let () =
-            Logging.tmi (fun m ->
+            Logging.verbose (fun m ->
                 m "Leaf!!! Structural = %a" pp_structural structural)
           in
           let rel_range =
@@ -1335,6 +1335,8 @@ module TreeBlock = struct
           in
           (* leaf, we try splitting further *)
           let* new_node, lk =
+            Logging.verbose (fun m ->
+                m "extract_range_structural within extract_laid_out_and_apply");
             extract_range_structural ~lk ~tyenv ~index_ty:lc.index_ty
               ~range:rel_range structural
           in
@@ -1360,22 +1362,23 @@ module TreeBlock = struct
                Left: %a" Ty.pp lc.index_ty pp_laid_out left pp_laid_out right;
           if%sat Range.is_inside range left.range then (
             Logging.verbose (fun m -> m "Inside of left");
-            let++ (value, left), lk =
+            let** (value, left), lk =
               extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~index_ty
                 ~range left
             in
-            let new_lc = laid_out_of_children left right in
-            ((value, new_lc), lk))
+            let+ new_lc, lk = laid_out_of_children ~lk left right in
+            Ok ((value, new_lc), lk))
           else
             if%sat Range.is_inside range right.range then (
               Logging.verbose (fun m -> m "Inside of right");
-              let++ (value, right), lk =
+              let** (value, right), lk =
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty right
               in
-              let new_lc = laid_out_of_children left right in
-              ((value, new_lc), lk))
+              let+ new_lc, lk = laid_out_of_children ~lk left right in
+              Ok ((value, new_lc), lk))
             else
+              let () = Logging.verbose (fun m -> m "rebalance") in
               (* We now that [this_low <= low < mid < high <= this_high ]
                  Remember that left.range = (this_low, mid) and right.range = (mid, this_high) *)
               let _this_low, this_high = lc.range in
@@ -1402,9 +1405,9 @@ module TreeBlock = struct
                       left_opt);
                 Logging.verbose (fun m ->
                     m "Adding to the left of %a" pp_laid_out right);
-                let right = add_to_the_left right extracted in
-                let new_self =
-                  laid_out_of_children (Option.get left_opt) right
+                let* right, lk = add_to_the_left ~lk right extracted in
+                let* new_self, lk =
+                  laid_out_of_children ~lk (Option.get left_opt) right
                 in
 
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
@@ -1426,9 +1429,9 @@ module TreeBlock = struct
                       right_opt);
                 Logging.verbose (fun m ->
                     m "Adding to the right of %a" pp_laid_out left);
-                let left = add_to_the_right left extracted in
-                let new_self =
-                  laid_out_of_children left (Option.get right_opt)
+                let* left, lk = add_to_the_right ~lk left extracted in
+                let* new_self, lk =
+                  laid_out_of_children ~lk left (Option.get right_opt)
                 in
                 extract_laid_out_and_apply ~tyenv ~lk ~return_and_update ~range
                   ~index_ty new_self
@@ -1436,7 +1439,9 @@ module TreeBlock = struct
 
   (** This applies [return_and_update] on the range given index by [index_ty] within the block [t] *)
   and extract_and_apply ~return_and_update ~tyenv ~range ~index_ty t ~lk =
-    Logging.verbose (fun m -> m "extract_and_apply: %a" pp t);
+    Logging.verbose (fun m ->
+        m "extract_and_apply:@\nBLOCK: %a@\nRANGE: %a : %a" pp t Range.pp range
+          Ty.pp index_ty);
     let* eq, lk =
       block_size_equal_ty_size ~lk ~block:t
         ~ty:(Range.as_array_ty ~index_ty range)
@@ -1446,8 +1451,11 @@ module TreeBlock = struct
       match t with
       | Structural s ->
           let* new_node, lk =
+            Logging.verbose (fun m ->
+                m "extract_range_structural within extract_and_apply");
             extract_range_structural ~tyenv ~lk ~index_ty ~range s
           in
+          Logging.verbose (fun m -> m "OBTAINED A NEW NODE: %a" pp new_node);
           extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty
             new_node
       | Laid_out_root lc ->
@@ -1464,7 +1472,7 @@ module TreeBlock = struct
   let extend_on_right_if_needed ~can_extend ~range ~index_ty t ~lk =
     Logging.verbose (fun m ->
         m "Extending on the right! Can extend: %b" can_extend);
-    let* (_, current_high), lk =
+    let* (current_low, current_high), lk =
       match t with
       | Structural { ty = Ty.Array { length; ty = ty' }; _ } ->
           Range.reinterpret ~lk ~from_ty:ty' ~to_ty:index_ty
@@ -1520,11 +1528,25 @@ module TreeBlock = struct
             }
           in
           Delayed.return (Laid_out_root lc, lk)
-      | _ ->
-          Fmt.failwith
-            "extend on the right for layed out content: not implemented %a, \
-             range: %a, index_ty: %a"
-            pp t Range.pp range Ty.pp index_ty
+      | Laid_out_root lc ->
+          let right_child =
+            let ty = Range.as_array_ty ~index_ty range in
+            {
+              structural = Some { content = Missing; ty };
+              range;
+              children = None;
+              index_ty;
+            }
+          in
+          let parent =
+            {
+              structural = None;
+              range = (current_low, snd range);
+              children = Some (lc, right_child);
+              index_ty;
+            }
+          in
+          Delayed.return (Laid_out_root parent, lk)
 
   let rec frame_slice
       ~tyenv
@@ -1549,8 +1571,10 @@ module TreeBlock = struct
           in
           extract_and_apply ~lk ~tyenv ~return_and_update ~range ~index_ty:ty t
         else
-          Fmt.failwith "negative offset in array in frame_slice : %a" Expr.pp
-            current_offset
+          let+ pc = Delayed.leak_pc_copy () in
+          Fmt.failwith
+            "negative offset in array in frame_slice : %a. Current PC is: %a"
+            Expr.pp current_offset Gillian.Symbolic.Pure_context.pp pc.pfs
     | Plus (_, ofs, ofs_ty) :: rest ->
         let* ofs, lk =
           LK.reinterpret_offset ~lk ~from_ty:ofs_ty ~to_ty:ty ofs
@@ -2019,7 +2043,7 @@ module TreeBlock = struct
       match root with
       | Structural { ty; _ } ->
           let ty = Ty.substitution ~subst_expr ty in
-          let new_root =
+          let* new_root =
             outer_missing ~offset ~tyenv
               (Projections.base_ty ~leaf_ty:ty new_proj.from_base)
           in
@@ -2161,9 +2185,9 @@ let prod_value ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty value =
     let () =
       Logging.tmi (fun m -> m "Producing with proj: %a" Projections.pp proj)
     in
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2196,9 +2220,9 @@ let prod_uninit ~tyenv ~lk (mem : t) loc (proj : Projections.t) ty =
      else *)
   if%sat TypePreds.empty_array ty then Delayed.return (mem, lk)
   else
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2249,9 +2273,9 @@ let prod_maybe_uninit
         [ Formula.Infix.(maybe_value #== (Symb_opt.some (Expr.EList []))) ]
       (mem, lk)
   else
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
@@ -2303,9 +2327,9 @@ let prod_many_maybe_uninits
              [ Symb_opt.valid_zst_array_maybe_uninit ~tyenv ty size maybe_values ]
            (mem, lk)
        else *)
-    let root =
+    let* root =
       match MemMap.find_opt loc mem with
-      | Some (T root) -> root
+      | Some (T root) -> Delayed.return root
       | Some Freed -> failwith "use after free"
       | None ->
           TreeBlock.outer_missing
