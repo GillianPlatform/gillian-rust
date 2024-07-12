@@ -1,84 +1,22 @@
-error[E0432]: unresolved import `gilogic::macros::no_prophecies`
- --> ../tests/noproph/lemma_tests.rs:5:14
-  |
-5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
-
 warning: unused import: `Ownable`
- --> ../tests/noproph/lemma_tests.rs:7:5
+ --> ../tests/noproph/lemma_tests.rs:4:39
   |
-7 |     Ownable,
-  |     ^^^^^^^
+4 | use gilogic::{assert_bind, macros::*, Ownable};
+  |                                       ^^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-compiling DefId(0:10 ~ lemma_tests[3806]::test_lemma)
-building predctx DefId(0:12 ~ lemma_tests[3806]::test_lemma::{closure#0}::{closure#0}) []
-Some(If { if_then_scope: IfThen(63), cond: e9, then: e11, else_opt: Some(e13) })
-thread 'rustc' panicked at lib_rust_to_gil/src/logic/gilsonite.rs:499:9:
-assertion `left == right` failed
-  left: Some(e15)
- right: None
-stack backtrace:
-   0: _rust_begin_unwind
-   1: core::panicking::panic_fmt
-   2: core::panicking::assert_failed_inner
-   3: core::panicking::assert_failed
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/core/src/panicking.rs:363:5
-   4: lib_rtg::logic::gilsonite::GilsoniteBuilder::proof_sequence
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/gilsonite.rs:499:9
-   5: lib_rtg::logic::gilsonite::GilsoniteBuilder::build_lemma_proof::{{closure}}
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/gilsonite.rs:476:13
-   6: lib_rtg::logic::gilsonite::GilsoniteBuilder::peel_lvar_bindings
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/gilsonite.rs:1616:25
-   7: lib_rtg::logic::gilsonite::GilsoniteBuilder::build_lemma_proof
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/gilsonite.rs:467:26
-   8: lib_rtg::logic::lemma::LemmaCtx::compile
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/lemma.rs:126:25
-   9: lib_rtg::logic::compile_logic
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/mod.rs:41:9
-  10: lib_rtg::prog_context::ProgCtx::compile_logic
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:38:27
-  11: lib_rtg::prog_context::ProgCtx::final_prog
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:102:21
-  12: lib_rtg::prog_context::ProgCtx::compile_prog
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:156:24
-  13: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion::{{closure}}
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:79:36
-  14: rustc_middle::ty::context::GlobalCtxt::enter::{{closure}}
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:37
-  15: rustc_middle::ty::context::tls::enter_context::{{closure}}
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:82:9
-  16: std::thread::local::LocalKey<T>::try_with
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:286:12
-  17: std::thread::local::LocalKey<T>::with
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:262:9
-  18: rustc_middle::ty::context::tls::enter_context
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:79:9
-  19: rustc_middle::ty::context::GlobalCtxt::enter
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:9
-  20: rustc_interface::queries::QueryResult<&rustc_middle::ty::context::GlobalCtxt>::enter
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_interface/src/queries.rs:70:9
-  21: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:77:9
-  22: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
-  23: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-  24: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}>
-note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+compiling DefId(0:8 ~ lemma_tests[3806]::test_lemma)
+building predctx DefId(0:10 ~ lemma_tests[3806]::test_lemma::{closure#0}::{closure#0}) []
+building predctx DefId(0:8 ~ lemma_tests[3806]::test_lemma) []
+building predctx DefId(0:10 ~ lemma_tests[3806]::test_lemma::{closure#0}::{closure#0}) []
+building predctx DefId(0:10 ~ lemma_tests[3806]::test_lemma::{closure#0}::{closure#0}) []
+compiling DefId(0:12 ~ lemma_tests[3806]::test_lemma2)
+building predctx DefId(0:14 ~ lemma_tests[3806]::test_lemma2::{closure#0}::{closure#0}) []
+building predctx DefId(0:12 ~ lemma_tests[3806]::test_lemma2) []
+building predctx DefId(0:14 ~ lemma_tests[3806]::test_lemma2::{closure#0}::{closure#0}) []
+building predctx DefId(0:14 ~ lemma_tests[3806]::test_lemma2::{closure#0}::{closure#0}) []
+warning: 1 warning emitted
 
-error: the compiler unexpectedly panicked. this is a bug.
-
-note: we would appreciate a bug report: https://github.com/GillianPlatform/rust-to-gil
-
-note: please make sure that you have updated to the latest nightly
-
-note: please attach the file at `/Users/xavier/Code/rust-to-gil/rust_to_gil/rustc-ice-2024-07-12T13_56_08-16450.txt` to your bug report
-
-note: compiler flags: -Z crate-attr=feature(register_tool) -Z crate-attr=register_tool(gillian) -Z crate-attr=feature(rustc_attrs) -Z crate-attr=allow(internal_features) -Z crate-attr=feature(stmt_expr_attributes) --crate-type lib
-
-query stack during panic:
-end of query stack
-error: aborting due to 1 previous error; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0432`.
+[TIMESTAMP DEBUG rust_to_gil] Correct!

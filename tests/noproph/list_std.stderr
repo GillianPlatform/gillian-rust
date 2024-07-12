@@ -45,25 +45,25 @@ building predctx DefId(0:59 ~ list_std[c124]::dll_seg_r_to_l::{closure#0}::{clos
 building predctx DefId(0:59 ~ list_std[c124]::dll_seg_r_to_l::{closure#0}::{closure#0}) [T/#0]
 compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] }, post: [([], Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
 building predctx DefId(0:87 ~ list_std[c124]::{impl#2}::own) [T/#0]
-building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_9f36efd6_e68f_4def_8394_2d10e2355e07) [T/#0]
-building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_9f36efd6_e68f_4def_8394_2d10e2355e07) [T/#0]
+building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_16c4c6ca_32bc_4bbd_b44b_e2f4c0a00db8) [T/#0]
+building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_16c4c6ca_32bc_4bbd_b44b_e2f4c0a00db8) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_a6aa9221_8431_4dfb_b046_92242cfb2b7a) [T/#0]
-building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_a6aa9221_8431_4dfb_b046_92242cfb2b7a) [T/#0]
+building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_9d3cb2e2_c9c7_40e1_bef9_7569571c2c7a) [T/#0]
+building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_9d3cb2e2_c9c7_40e1_bef9_7569571c2c7a) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_81258ccc_4015_4250_9e81_a1222e5dbaa7) [T/#0]
+building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_834263e9_adf6_44ee_b846_f0efe693b765) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_81258ccc_4015_4250_9e81_a1222e5dbaa7) [T/#0]
-building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_fbb15bec_c6f5_4b94_847c_4225f460fc35) [T/#0]
+building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_834263e9_adf6_44ee_b846_f0efe693b765) [T/#0]
+building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_125f9d23_77d9_45d3_9efd_f99871808b87) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_fbb15bec_c6f5_4b94_847c_4225f460fc35) [T/#0]
-building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_35fa6042_63fa_419e_b054_2f5b16ad0495) [T/#0]
+building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_125f9d23_77d9_45d3_9efd_f99871808b87) [T/#0]
+building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_b608f108_d73b_42f0_8117_f2b2a4f16002) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_35fa6042_63fa_419e_b054_2f5b16ad0495) [T/#0]
+building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_b608f108_d73b_42f0_8117_f2b2a4f16002) [T/#0]
 error[E0425]: cannot find function `freeze_htl` in this scope
    --> ../tests/noproph/list_std.rs:284:9
     |
@@ -80,8 +80,8 @@ error[E0425]: cannot find function `extract_head` in this scope
     |                 |
     |                 help: try calling `extract_head` as a method: `self.extract_head()`
 
-building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_c7aa146f_0445_433f_b631_4fa4db4a3bcb) [T/#0]
-building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_c7aa146f_0445_433f_b631_4fa4db4a3bcb) [T/#0]
+building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_5a434793_a9cc_4643_8c50_896fad1adeeb) [T/#0]
+building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_5a434793_a9cc_4643_8c50_896fad1adeeb) [T/#0]
 building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
 building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, LinkedList<T/#0>]
 building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [T/#0]

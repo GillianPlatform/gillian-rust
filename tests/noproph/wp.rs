@@ -2,7 +2,7 @@
 extern crate gilogic;
 
 use gilogic::{
-    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+    macros::{with_freeze_lemma, *},
     Ownable,
 };
 
@@ -40,7 +40,7 @@ fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
 )]
 fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
 
-#[with_freeze_lemma_for_mutref(
+#[with_freeze_lemma(
     lemma_name = freeze_xy,
     predicate_name = wp_ref_mut_xy,
     frozen_variables = [x, y],

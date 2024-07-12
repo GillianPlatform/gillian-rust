@@ -1,15 +1,15 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 building predctx DefId(0:17 ~ my_box[fdf9]::{impl#0}::own) [T/#0]
-building predctx DefId(0:19 ~ my_box[fdf9]::{impl#1}::write_spec_b98480bc_e959_4186_99c8_17c768969ceb) [T/#0]
+building predctx DefId(0:19 ~ my_box[fdf9]::{impl#1}::write_spec_cc67725d_919e_44d3_bc99_2f4e6e5613ac) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*(_1.0: *mut T))
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:19 ~ my_box[fdf9]::{impl#1}::write_spec_b98480bc_e959_4186_99c8_17c768969ceb) [T/#0]
-building predctx DefId(0:23 ~ my_box[fdf9]::{impl#1}::update_spec_8440be3a_40ba_4836_ad97_b5fb687eeb62) [T/#0]
+building predctx DefId(0:19 ~ my_box[fdf9]::{impl#1}::write_spec_cc67725d_919e_44d3_bc99_2f4e6e5613ac) [T/#0]
+building predctx DefId(0:23 ~ my_box[fdf9]::{impl#1}::update_spec_f65803a0_dcfd_4602_a4db_56134d6018a4) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*((*_1).0: *mut T))
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:23 ~ my_box[fdf9]::{impl#1}::update_spec_8440be3a_40ba_4836_ad97_b5fb687eeb62) [T/#0]
+building predctx DefId(0:23 ~ my_box[fdf9]::{impl#1}::update_spec_f65803a0_dcfd_4602_a4db_56134d6018a4) [T/#0]
 building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
 building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, MyBox<T/#0>]
 building predctx DefId(20:237 ~ gilogic[8e9c]::ownable::{impl#4}::own) []

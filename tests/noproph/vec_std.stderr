@@ -35,13 +35,13 @@ building predctx DefId(0:94 ~ vec_std[56b5]::assert_correct_vs::{closure#0}::{cl
 building predctx DefId(0:94 ~ vec_std[56b5]::assert_correct_vs::{closure#0}::{closure#0}) [T/#0]
 compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("p", *const T/#0), Program("len", usize)], contract: Some(Contract { timeless: false, pre: Star { left: GA { name: "value", ins: [BinOp { operator: LstNth, left_operand: LVar("#p"), right_operand: Lit(Int(0)) }, BinOp { operator: LstNth, left_operand: LVar("#p"), right_operand: Lit(Int(1)) }, EList([Lit(String("array")), PVar("pty_T0"), LVar("#len")])], outs: [LVar("#values")] }, right: Pred { name: "gilogic::iterated::no_prophecies::all_own::<T>", params: [PVar("pty_T0"), LVar("#values")] } }, post: [([], Star { left: GA { name: "value", ins: [BinOp { operator: LstNth, left_operand: LVar("#p"), right_operand: Lit(Int(0)) }, BinOp { operator: LstNth, left_operand: LVar("#p"), right_operand: Lit(Int(1)) }, EList([Lit(String("array")), PVar("pty_T0"), LVar("#len")])], outs: [LVar("#values")] }, right: Pred { name: "gilogic::iterated::no_prophecies::all_own::<T>", params: [PVar("pty_T0"), LVar("#values")] } })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 0 } }
 building predctx DefId(0:126 ~ vec_std[56b5]::{impl#7}::own) [T/#0]
-building predctx DefId(0:96 ~ vec_std[56b5]::{impl#4}::new_spec_2e75f036_5b51_4f69_a419_09516dd2b043) [T/#0]
-building predctx DefId(0:96 ~ vec_std[56b5]::{impl#4}::new_spec_2e75f036_5b51_4f69_a419_09516dd2b043) [T/#0]
-building predctx DefId(0:100 ~ vec_std[56b5]::{impl#4}::with_capacity_spec_839e0c7f_29aa_45c1_b14d_48d52c092b1b) [T/#0]
-building predctx DefId(0:100 ~ vec_std[56b5]::{impl#4}::with_capacity_spec_839e0c7f_29aa_45c1_b14d_48d52c092b1b) [T/#0]
-building predctx DefId(0:104 ~ vec_std[56b5]::{impl#4}::push_spec_477b0c35_a8f2_4cec_a501_8d7a4e678649) [T/#0]
+building predctx DefId(0:96 ~ vec_std[56b5]::{impl#4}::new_spec_4fd66fdf_0053_4ff8_b550_a5008f21a978) [T/#0]
+building predctx DefId(0:96 ~ vec_std[56b5]::{impl#4}::new_spec_4fd66fdf_0053_4ff8_b550_a5008f21a978) [T/#0]
+building predctx DefId(0:100 ~ vec_std[56b5]::{impl#4}::with_capacity_spec_4c5f8477_b042_48d8_90e6_e6e6555af218) [T/#0]
+building predctx DefId(0:100 ~ vec_std[56b5]::{impl#4}::with_capacity_spec_4c5f8477_b042_48d8_90e6_e6e6555af218) [T/#0]
+building predctx DefId(0:104 ~ vec_std[56b5]::{impl#4}::push_spec_08b5f88f_b7ee_421f_9efc_23d657d42fc8) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:104 ~ vec_std[56b5]::{impl#4}::push_spec_477b0c35_a8f2_4cec_a501_8d7a4e678649) [T/#0]
+building predctx DefId(0:104 ~ vec_std[56b5]::{impl#4}::push_spec_08b5f88f_b7ee_421f_9efc_23d657d42fc8) [T/#0]
 error[E0425]: cannot find function `freeze_pcl` in this scope
    --> ../tests/noproph/vec_std.rs:389:9
     |
@@ -50,9 +50,9 @@ error[E0425]: cannot find function `freeze_pcl` in this scope
     |         |
     |         help: try calling `freeze_pcl` as a method: `self.freeze_pcl()`
 
-building predctx DefId(0:108 ~ vec_std[56b5]::{impl#4}::pop_spec_0720027b_4fca_4665_8e71_86a5784d7b37) [T/#0]
+building predctx DefId(0:108 ~ vec_std[56b5]::{impl#4}::pop_spec_e78e7ff8_9e98_4a11_b3e3_5d8972d7f9bb) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _18
-building predctx DefId(0:108 ~ vec_std[56b5]::{impl#4}::pop_spec_0720027b_4fca_4665_8e71_86a5784d7b37) [T/#0]
+building predctx DefId(0:108 ~ vec_std[56b5]::{impl#4}::pop_spec_e78e7ff8_9e98_4a11_b3e3_5d8972d7f9bb) [T/#0]
 error[E0425]: cannot find function `freeze_pcl` in this scope
    --> ../tests/noproph/vec_std.rs:426:9
     |
@@ -69,8 +69,8 @@ error[E0425]: cannot find function `extract_ith` in this scope
     |         |
     |         help: try calling `extract_ith` as a method: `self.extract_ith(ix)`
 
-building predctx DefId(0:112 ~ vec_std[56b5]::{impl#4}::index_mut_spec_d0c11dda_6848_4c51_b6b0_de2404e18be3) [T/#0]
-building predctx DefId(0:112 ~ vec_std[56b5]::{impl#4}::index_mut_spec_d0c11dda_6848_4c51_b6b0_de2404e18be3) [T/#0]
+building predctx DefId(0:112 ~ vec_std[56b5]::{impl#4}::index_mut_spec_31a338f3_c13c_4615_b5fc_ef754bcd1b12) [T/#0]
+building predctx DefId(0:112 ~ vec_std[56b5]::{impl#4}::index_mut_spec_31a338f3_c13c_4615_b5fc_ef754bcd1b12) [T/#0]
 error[E0425]: cannot find function `freeze_pcl` in this scope
    --> ../tests/noproph/vec_std.rs:440:9
     |
@@ -87,10 +87,10 @@ error[E0425]: cannot find function `extract_ith` in this scope
     |         |
     |         help: try calling `extract_ith` as a method: `self.extract_ith(ix)`
 
-building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_4c24306f_74ec_4406_bae6_544afeebb99f) [T/#0]
-building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_4c24306f_74ec_4406_bae6_544afeebb99f) [T/#0]
-building predctx DefId(0:120 ~ vec_std[56b5]::{impl#4}::get_mut_spec_7d2fce9a_2685_4c02_a529_5bc756b3a27d) [T/#0]
-building predctx DefId(0:120 ~ vec_std[56b5]::{impl#4}::get_mut_spec_7d2fce9a_2685_4c02_a529_5bc756b3a27d) [T/#0]
+building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_c51fe64a_0584_4ff6_8eb8_043146f7ac9d) [T/#0]
+building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_c51fe64a_0584_4ff6_8eb8_043146f7ac9d) [T/#0]
+building predctx DefId(0:120 ~ vec_std[56b5]::{impl#4}::get_mut_spec_3fa57161_482e_4084_907d_5ca10da58766) [T/#0]
+building predctx DefId(0:120 ~ vec_std[56b5]::{impl#4}::get_mut_spec_3fa57161_482e_4084_907d_5ca10da58766) [T/#0]
 building predctx DefId(20:246 ~ gilogic[8e9c]::iterated_no_pcy::all_own) [T/#0]
 building predctx DefId(20:210 ~ gilogic[8e9c]::ownable::{impl#10}::own) []
 building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, Vec<T/#0>]
@@ -99,7 +99,7 @@ building predctx DefId(20:237 ~ gilogic[8e9c]::ownable::{impl#4}::own) []
 building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [T/#0]
 building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, T/#0]
 building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [&'{erased} mut T/#0]
-building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_4c24306f_74ec_4406_bae6_544afeebb99f) [T/#0]
+building predctx DefId(0:116 ~ vec_std[56b5]::{impl#4}::get_unchecked_mut_spec_c51fe64a_0584_4ff6_8eb8_043146f7ac9d) [T/#0]
 error: aborting due to 7 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0425, E0432.

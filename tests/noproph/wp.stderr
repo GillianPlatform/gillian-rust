@@ -22,35 +22,56 @@ error: custom attribute panicked
    |
    = help: message: called `Option::unwrap()` on a `None` value
 
-error[E0432]: unresolved import `gilogic::macros::no_prophecies`
- --> ../tests/noproph/wp.rs:5:14
-  |
-5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
-
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-building predctx DefId(0:19 ~ wp[e568]::wp) [T/#0]
-building predctx DefId(0:46 ~ wp[e568]::{impl#1}::own) [T/#0]
-building predctx DefId(0:22 ~ wp[e568]::{impl#0}::new_spec_fd841745_1496_48a9_b814_3e2f53808da5) [T/#0]
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-building predctx DefId(0:22 ~ wp[e568]::{impl#0}::new_spec_fd841745_1496_48a9_b814_3e2f53808da5) [T/#0]
-building predctx DefId(0:26 ~ wp[e568]::{impl#0}::assign_first_spec_bc3e0676_6cd2_4148_9560_ab65dd03cb36) [T/#0]
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-building predctx DefId(0:26 ~ wp[e568]::{impl#0}::assign_first_spec_bc3e0676_6cd2_4148_9560_ab65dd03cb36) [T/#0]
-error[E0425]: cannot find function `freeze_xy` in this scope
-  --> ../tests/noproph/wp.rs:87:13
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+  --> ../tests/noproph/wp.rs:43:1
    |
-87 |             freeze_xy(self);
-   |             ^^^^^^^^^------
-   |             |
-   |             help: try calling `freeze_xy` as a method: `self.freeze_xy()`
+43 | / #[with_freeze_lemma(
+44 | |     lemma_name = freeze_xy,
+45 | |     predicate_name = wp_ref_mut_xy,
+46 | |     frozen_variables = [x, y],
+47 | | )]
+   | |__^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`, which is required by `&'a mut WP<T>: gilogic::prophecies::Ownable`
+   |
+   = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+             &mut T
+             ()
+             (T, U)
+             i128
+             i16
+             i32
+             i64
+             i8
+           and 8 others
+   = note: required for `&'a mut WP<T>` to implement `gilogic::prophecies::Ownable`
+   = note: this error originates in the attribute macro `with_freeze_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+   --> ../tests/noproph/wp.rs:48:30
+    |
+48  | impl<T: Ownable> Ownable for WP<T> {
+    |                              ^^^^^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
+    |
+    = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+              &mut T
+              ()
+              (T, U)
+              i128
+              i16
+              i32
+              i64
+              i8
+            and 8 others
+note: required by a bound in `gilogic::prophecies::FrozenOwn::mut_ref_own_frozen`
+   --> /Users/xavier/Code/rust-to-gil/gilogic/src/prophecies.rs:78:61
+    |
+78  | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
+    |                                                             ^^^^^^^ required by this bound in `FrozenOwn::mut_ref_own_frozen`
+...
+114 |     fn mut_ref_own_frozen(
+    |        ------------------ required by a bound in this associated function
+
+error: Predicate body failed to typecheck for DefId(0:32 ~ wp[e568]::wp_ref_mut_xy) ErrorGuaranteed(())
 
 error[E0425]: cannot find function `extract_x` in this scope
   --> ../tests/noproph/wp.rs:89:13
@@ -60,16 +81,6 @@ error[E0425]: cannot find function `extract_x` in this scope
    |             |
    |             help: try calling `extract_x` as a method: `self.extract_x()`
 
-building predctx DefId(0:32 ~ wp[e568]::{impl#0}::first_mut_spec_c2a8d83f_a2f1_454a_a5d3_cfd4e324328c) [T/#0]
-building predctx DefId(0:32 ~ wp[e568]::{impl#0}::first_mut_spec_c2a8d83f_a2f1_454a_a5d3_cfd4e324328c) [T/#0]
-error[E0425]: cannot find function `freeze_xy` in this scope
-  --> ../tests/noproph/wp.rs:97:13
-   |
-97 |             freeze_xy(self);
-   |             ^^^^^^^^^------
-   |             |
-   |             help: try calling `freeze_xy` as a method: `self.freeze_xy()`
-
 error[E0425]: cannot find function `extract_y` in this scope
   --> ../tests/noproph/wp.rs:99:13
    |
@@ -78,13 +89,7 @@ error[E0425]: cannot find function `extract_y` in this scope
    |             |
    |             help: try calling `extract_y` as a method: `self.extract_y()`
 
-building predctx DefId(0:38 ~ wp[e568]::{impl#0}::second_mut_spec_417fcf8f_d52b_490e_b30a_aed9c1440169) [T/#0]
-building predctx DefId(0:38 ~ wp[e568]::{impl#0}::second_mut_spec_417fcf8f_d52b_490e_b30a_aed9c1440169) [T/#0]
-building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
-building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, WP<T/#0>]
-building predctx DefId(20:237 ~ gilogic[8e9c]::ownable::{impl#4}::own) []
-building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, T/#0]
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0425, E0432.
-For more information about an error, try `rustc --explain E0425`.
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

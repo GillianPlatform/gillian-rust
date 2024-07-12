@@ -495,8 +495,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
         }
 
-        eprintln!("{:?}",self.thir[block].expr.map(|e| &self.thir[self.peel_scope(e)].kind));
-        assert_eq!(self.thir[block].expr, None);
+        if let Some(e) = self.thir[block].expr {
+            steps.push(self.proof_step(e))
+        }
 
         steps
     }

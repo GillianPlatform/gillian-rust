@@ -1,7 +1,7 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 building predctx DefId(0:12 ~ tiny_int[7f25]::{impl#0}::own) []
-building predctx DefId(0:14 ~ tiny_int[7f25]::{impl#1}::new_spec_edeed0f6_195a_41a0_9f85_ef6f1b1630de) []
-building predctx DefId(0:14 ~ tiny_int[7f25]::{impl#1}::new_spec_edeed0f6_195a_41a0_9f85_ef6f1b1630de) []
+building predctx DefId(0:14 ~ tiny_int[7f25]::{impl#1}::new_spec_7652ad01_0329_4463_a3d7_cad3463e9dc4) []
+building predctx DefId(0:14 ~ tiny_int[7f25]::{impl#1}::new_spec_7652ad01_0329_4463_a3d7_cad3463e9dc4) []
 building predctx DefId(20:201 ~ gilogic[8e9c]::ownable::{impl#7}::own) []
 building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [MyInt]
 warning: struct `MyInt` is never constructed

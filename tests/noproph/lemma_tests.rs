@@ -1,22 +1,16 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{
-    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-    assert_bind,
-    Ownable,
-};
+use gilogic::{assert_bind, macros::*, Ownable};
 
 #[lemma]
 #[specification(
     requires { (a > b) }
     ensures { emp }
 )]
-fn test_lemma((a, b) : (i32, i32)) {
+fn test_lemma((a, b): (i32, i32)) {
     if true {
-
     } else {
-
     }
 }
 
@@ -25,12 +19,10 @@ fn test_lemma((a, b) : (i32, i32)) {
     requires { (a > b) }
     ensures { emp }
 )]
-fn test_lemma2((a, b) : (i32, i32)) {
+fn test_lemma2((a, b): (i32, i32)) {
     assert_bind!(x, y | (x == a) * (y == b));
-    assert_bind!( (y < x) );
+    assert_bind!((y < x));
     if x > 0 {
-
     } else {
-
     };
 }
