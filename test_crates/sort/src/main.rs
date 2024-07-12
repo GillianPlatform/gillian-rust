@@ -254,42 +254,19 @@ pub fn merge_sort(l: &mut LinkedList<i32>) {
 
     std::mem::swap(l, &mut out)
 }
-// fn merge_sort(l : &mut LinkedList<i32>, length: usize) {
-//     if length == 2 {
-//         let a = l.pop_front().unwrap();
-//         let b = l.pop_front().unwrap();
 
-//         if a <= b {
-//             l.push_front(b);
-//             l.push_front(a);
-//         } else {
-//             l.push_front(a);
-//             l.push_front(b);
-//         }
+fn get_mut_client() {
 
-//     } else if length == 3 {
-//         let a = l.pop_front().unwrap();
-//         let b = l.pop_front().unwrap();
-//         let c = l.pop_front().unwrap();
+    // We have desugared this, as the macro uses parts of Rust our frontend does not support yet.
+    //let mut x = vec![100, 200, 300];
+    let mut x = Vec::new();
+    x.push(100);
+    x.push(200);
+    x.push(300);
 
-//         if a <= b {
-//             if b <= c {
+    let xr = x.get_mut(1).unwrap();
+    assert!(*xr == 200);
+    *xr = 42;
+    assert!(*x.get_mut(1).unwrap() == 42);
+}
 
-//             } else if a <= c {
-
-//             } else {
-
-//             }
-//         } else {
-//             if a <= c {
-
-//             } else if b <= c {
-
-//             } else {
-
-//             }
-//         }
-//     } else {
-
-//     }
-// }

@@ -10,61 +10,61 @@
 <path name=".."/><path name="sort-bin.mlcfg"/>
 <theory name="Sort_RightPad" proved="true">
  <goal name="right_pad&#39;vc" expl="VC for right_pad" proved="true">
- <proof prover="3"><result status="valid" time="0.108626" steps="19983"/></proof>
+ <proof prover="3"><result status="valid" time="0.108626" steps="19794"/></proof>
  </goal>
 </theory>
 <theory name="Sort_GnomeSort" proved="true">
  <goal name="gnome_sort&#39;vc" expl="VC for gnome_sort" proved="true">
  <transf name="split_vc" proved="true" >
   <goal name="gnome_sort&#39;vc.0" expl="loop invariant init" proved="true">
-  <proof prover="3"><result status="valid" time="0.035642" steps="9887"/></proof>
+  <proof prover="3"><result status="valid" time="0.035642" steps="9698"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.1" expl="loop invariant init" proved="true">
-  <proof prover="3"><result status="valid" time="0.044813" steps="12803"/></proof>
+  <proof prover="3"><result status="valid" time="0.044813" steps="12614"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.2" expl="loop invariant init" proved="true">
-  <proof prover="3"><result status="valid" time="0.054893" steps="13810"/></proof>
+  <proof prover="3"><result status="valid" time="0.054893" steps="13621"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.3" expl="postcondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.069032" steps="16788"/></proof>
+  <proof prover="3"><result status="valid" time="0.069032" steps="16599"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.4" expl="postcondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.063810" steps="15769"/></proof>
+  <proof prover="3"><result status="valid" time="0.063810" steps="15580"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.5" expl="integer overflow" proved="true">
-  <proof prover="3"><result status="valid" time="0.064355" steps="15789"/></proof>
+  <proof prover="3"><result status="valid" time="0.064355" steps="15600"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.6" expl="precondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.054649" steps="14918"/></proof>
+  <proof prover="3"><result status="valid" time="0.054649" steps="14729"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.7" expl="precondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.055770" steps="15154"/></proof>
+  <proof prover="3"><result status="valid" time="0.055770" steps="14965"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.8" expl="integer overflow" proved="true">
-  <proof prover="3"><result status="valid" time="0.071016" steps="17170"/></proof>
+  <proof prover="3"><result status="valid" time="0.071016" steps="16981"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.9" expl="precondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.058148" steps="16011"/></proof>
+  <proof prover="3"><result status="valid" time="0.058148" steps="15822"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.10" expl="precondition" proved="true">
-  <proof prover="3"><result status="valid" time="0.057405" steps="15463"/></proof>
+  <proof prover="3"><result status="valid" time="0.057405" steps="15274"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.11" expl="integer overflow" proved="true">
-  <proof prover="3"><result status="valid" time="0.069386" steps="17561"/></proof>
+  <proof prover="3"><result status="valid" time="0.069386" steps="17372"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.12" expl="integer overflow" proved="true">
-  <proof prover="3"><result status="valid" time="0.069822" steps="17469"/></proof>
+  <proof prover="3"><result status="valid" time="0.069822" steps="17280"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.13" expl="loop invariant preservation" proved="true">
-  <proof prover="3"><result status="valid" time="0.074421" steps="25491"/></proof>
+  <proof prover="3"><result status="valid" time="0.074421" steps="25302"/></proof>
   </goal>
   <goal name="gnome_sort&#39;vc.14" expl="loop invariant preservation" proved="true">
   <transf name="split_vc" proved="true" >
    <goal name="gnome_sort&#39;vc.14.0" expl="loop invariant preservation" proved="true">
-   <proof prover="2"><result status="valid" time="0.154625" steps="3087"/></proof>
+   <proof prover="2"><result status="valid" time="0.154625" steps="3076"/></proof>
    </goal>
    <goal name="gnome_sort&#39;vc.14.1" expl="loop invariant preservation" proved="true">
-   <proof prover="2"><result status="valid" time="0.250737" steps="3143"/></proof>
+   <proof prover="2"><result status="valid" time="0.250737" steps="3130"/></proof>
    </goal>
   </transf>
   </goal>
@@ -79,7 +79,7 @@
       <goal name="gnome_sort&#39;vc.15.0.0.0.0" expl="loop invariant preservation" proved="true">
       <transf name="remove" proved="true" arg1="empty,singleton">
        <goal name="gnome_sort&#39;vc.15.0.0.0.0.0" expl="loop invariant preservation" proved="true">
-       <proof prover="3" timelimit="5"><result status="valid" time="0.782715" steps="202813"/></proof>
+       <proof prover="3" timelimit="5"><result status="valid" time="0.782715" steps="202443"/></proof>
        </goal>
       </transf>
       </goal>
@@ -98,14 +98,14 @@
       <goal name="gnome_sort&#39;vc.15.1.0.0.0" expl="loop invariant preservation" proved="true">
       <transf name="remove" proved="true" arg1="empty,singleton">
        <goal name="gnome_sort&#39;vc.15.1.0.0.0.0" expl="loop invariant preservation" proved="true">
-       <proof prover="3" timelimit="5"><result status="valid" time="1.040668" steps="239342"/></proof>
+       <proof prover="3" timelimit="5"><result status="valid" time="0.732250" steps="191933"/></proof>
        </goal>
       </transf>
       </goal>
      </transf>
      </goal>
      <goal name="gnome_sort&#39;vc.15.1.0.1" expl="loop invariant preservation" proved="true">
-     <proof prover="3"><result status="valid" time="0.048724" steps="14592"/></proof>
+     <proof prover="3"><result status="valid" time="0.048724" steps="14409"/></proof>
      </goal>
     </transf>
     </goal>
@@ -628,6 +628,11 @@
   <proof prover="1"><result status="valid" time="0.595005" steps="158639"/></proof>
   </goal>
  </transf>
+ </goal>
+</theory>
+<theory name="Sort_GetMutClient" proved="true">
+ <goal name="get_mut_client&#39;vc" expl="VC for get_mut_client" proved="true">
+ <proof prover="3"><result status="valid" time="0.065261" steps="29237"/></proof>
  </goal>
 </theory>
 </file>

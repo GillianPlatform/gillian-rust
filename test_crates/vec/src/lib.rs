@@ -10,6 +10,8 @@ use creusillian::*;
 use gilogic::{macros::*, prophecies::*, RustAssertion, Seq};
 use std::marker::PhantomData;
 use creusot_contracts::logic::IndexLogic;
+
+#[creusot_contracts::trusted]
 pub struct Vec<T> {
     _data: PhantomData<T>,
 }
@@ -79,6 +81,20 @@ impl<T: Ownable> Vec<T> {
     pub fn len(&self) -> usize {
         0
     }
+
+    #[creusot_contracts::trusted]
+    #[cfg_attr(gillian, gillian::trusted)]
+    #[creusillian::ensures(match result {
+    None => (((*self)@.len() <= ix@) && (*self == ^self)),
+    Some(r) =>
+        ((*self)@[ix@] == (*r)) &&
+        ((^self)@[ix@] == (^r)) &&
+        ((^self)@ == (*self)@.subsequence(0, ix@).push((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len() - ix@ - 1)))
+    })]
+    pub fn get_mut(&mut self, ix: usize) -> Option<&mut T> { todo!() }
+
+    #[creusillian::ensures(result@ == creusot_contracts::Seq::EMPTY)]
+    pub const fn new() -> Self { todo!() }
 }
 
 
