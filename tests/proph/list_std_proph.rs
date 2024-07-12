@@ -284,13 +284,6 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    // #[requires(ix.in_bounds(self@))]
-    // #[ensures(ix.has_value(self@, *result))]
-    // #[ensures(ix.has_value((^self)@, ^result))]
-    // #[ensures(ix.resolve_elswhere(self@, (^self)@))]
-    // #[ensures((^self)@.len() == self@.len())]
-    // fn index_mut(&mut self, ix: I) -> &mut <Vec<T, A> as Index<I>>::Output;
-
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
         Some(head) =>
@@ -313,23 +306,7 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    // Obtained by automatically translating the Creusot specification:
-    //#[ensures(
-    // if (self@ = Seq::EMPTY) {
-    //    self^ = Seq::EMPTY && ret@ = None
-    // } else {
-    //    self^ = self@.tail() && ret@ = Some(self@.head())
-    // }
-    // )]
 
-    // #[specification(forall current, proph.
-    //     requires { self.own((current, proph)) }
-    //     exists ret_repr.
-    //     ensures {
-    //         ret.own(ret_repr) *
-    //         $   ((current == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-    //          || ((current != Seq::empty()) && (proph == current.tail()) && (ret_repr == Some(current.head())))$ }
-    // )]
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
         Some(head) => ((^self@) == (*self@).tail()) && ((*self@).at(0) == head@)

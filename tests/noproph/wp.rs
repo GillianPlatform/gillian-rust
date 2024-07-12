@@ -53,31 +53,27 @@ impl<T: Ownable> Ownable for WP<T> {
 }
 
 impl<T: Ownable> WP<T> {
-    // #[show_safety]
-    // fn new(x: T, y: T) -> Self {
-    //     let xbox = Box::new(N {
-    //         v: x,
-    //         o: std::ptr::null_mut(),
-    //     });
-    //     let ybox = Box::new(N {
-    //         v: y,
-    //         o: std::ptr::null_mut(),
-    //     });
+    #[show_safety]
+    fn new(x: T, y: T) -> Self {
+        let xbox = Box::new(N {
+            v: x,
+            o: std::ptr::null_mut(),
+        });
+        let ybox = Box::new(N {
+            v: y,
+            o: std::ptr::null_mut(),
+        });
 
-    //     let xptr = Box::leak(xbox) as *mut N<T>;
-    //     let yptr = Box::leak(ybox) as *mut N<T>;
+        let xptr = Box::leak(xbox) as *mut N<T>;
+        let yptr = Box::leak(ybox) as *mut N<T>;
 
-    //     unsafe {
-    //         (*yptr).o = xptr;
-    //         (*xptr).o = yptr;
-    //     }
-    //     WP { x: xptr, y: yptr }
-    // }
+        unsafe {
+            (*yptr).o = xptr;
+            (*xptr).o = yptr;
+        }
+        WP { x: xptr, y: yptr }
+    }
 
-    // HACK(xavier): Proper lifetime handling has broken all the previous hacks
-    // which automatically insert `pLft_a` in various places. Properly cleaning
-    // this up will take more time. In the mean time only lifetimes called 'a can
-    // used.
     #[show_safety]
     fn assign_first<'a>(&'a mut self, x: T) {
         unsafe {

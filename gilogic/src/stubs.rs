@@ -180,6 +180,7 @@ pub trait PointsToSlice<T>: Sized {
 }
 
 impl<T> PointsToSlice<T> for *mut T {}
+impl<T> PointsToSlice<T> for *const T {}
 
 pub trait PointsToMaybeUninit<T>: Sized {
     #[gillian::no_translate]

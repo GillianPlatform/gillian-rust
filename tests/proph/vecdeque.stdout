@@ -27,7 +27,7 @@ pred "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model)
   * <value>(l-nth(#lvar_2, 0i), l-nth(#lvar_2, 1i), {{ "array", pty_T0, #len }}; #values)
   * (#len == l-len #values)
   * (l-len #values == l-len #model)
-  * "gilogic::iterated::all_own::<T>"(pty_T0, #values, #model)
+  * "gilogic::iterated::with_prophecies::all_own::<T>"(pty_T0, #values, #model)
   * <many_maybe_uninits>(l-nth(#lvar_4, 0i), l-nth(#lvar_4, 1i), pty_T0, ((#cap) i- (#len)); #rest)
   * <many_maybe_uninits>(l-nth(#lvar_5, 0i), l-nth(#lvar_5, 1i), pty_T0, #head; #rest2)
   * "std::mem::size_of"(pty_T0, #lvar_0)
@@ -50,7 +50,7 @@ pred "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model)
   * <value>(l-nth(#lvar_9, 0i), l-nth(#lvar_9, 1i), {{ "array", pty_T0, #end }}; #values_tail)
   * (#len == l-len #values)
   * (l-len #values == l-len #model)
-  * "gilogic::iterated::all_own::<T>"(pty_T0, #values, #model)
+  * "gilogic::iterated::with_prophecies::all_own::<T>"(pty_T0, #values, #model)
   * <many_maybe_uninits>(l-nth(#lvar_11, 0i), l-nth(#lvar_11, 1i), pty_T0, ((#cap) i- (#len)); #rest)
   * "std::mem::size_of"(pty_T0, #lvar_6)
   * "std::ptr::Unique::<T>::as_ptr"(pty_T0, #ptr, #lvar_7)
@@ -70,11 +70,11 @@ pred "<usize as gilogic::prophecies::Ownable>::own"(+self, model):
   * (self == #self);
 
 
-pred "gilogic::iterated::all_own::<T>"(+pty_T0, +vs, reprs):
+pred "gilogic::iterated::with_prophecies::all_own::<T>"(+pty_T0, +vs, reprs):
   (#vs == {{  }}) * (#reprs == {{  }}) * (reprs == #reprs)
   * (vs == #vs), (#vs == l+(#rest, {{ #x }}))
   * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #x, #x_repr)
-  * "gilogic::iterated::all_own::<T>"(pty_T0, #rest, #rest_repr)
+  * "gilogic::iterated::with_prophecies::all_own::<T>"(pty_T0, #rest, #rest_repr)
   * (#reprs == l+(#rest_repr, {{ #x_repr }}))
   * (reprs == #reprs)
   * (vs == #vs);

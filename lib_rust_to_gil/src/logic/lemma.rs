@@ -90,8 +90,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let sig = self.sig();
 
         if self.is_extract_lemma {
-            let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
-            res.extend(defs);
+            // let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
+            // res.extend(defs);
         } else if self.trusted {
             let name = sig.name.clone();
 
@@ -216,7 +216,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
                     gil_proof.push(LCmd::SL(SLCmd::SepAssert {
                         assertion,
-                        existentials: vars.iter().map(|v| v.to_string()).collect(),
+                        existentials: vars.iter().map(|v| format!("#{v}")).collect(),
                     }))
                 }
             };

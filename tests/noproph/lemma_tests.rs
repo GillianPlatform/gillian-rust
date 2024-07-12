@@ -27,7 +27,7 @@ fn test_lemma((a, b) : (i32, i32)) {
 )]
 fn test_lemma2((a, b) : (i32, i32)) {
     assert_bind!(x, y | (x == a) * (y == b));
-
+    assert_bind!( (y < x) );
     if x > 0 {
 
     } else {

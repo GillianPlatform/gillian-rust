@@ -14,6 +14,12 @@ proc "std::ptr::NonNull::<T>::as_mut"(pLft_a, pLft_b, T, p) {
         return
 };
 
+
+proc "std::slice::from_raw_parts_mut"(lft, T, ptr, len) {
+        ret := {{ ptr, len }};
+        return
+};
+
 proc "core::slice::<impl [T]>::as_mut_ptr"(lft, T, slice) {
      ret := l-nth(slice, 0i); (* Peel metadata *)
      return
@@ -38,15 +44,16 @@ proc "std::option::Option::<T>::as_mut"(pLft_a, T, p) {
      er: fail[TYPERR]("Invalid discr")
 };
 
+(* Panic is safe, so it vanishes in type-checking *)
 
 proc "core::panicking::panic_explicit"() {
-     fail[panic]("core::panicking::panic_explicit")
+     assume(False)
 };
 
 proc "core::panicking::panic"(lft, msg) {
-     fail[panic]("core::panicking::panic", msg)
+     assume(False)
 };
 
 proc "std::rt::begin_panic"(lft, ty, str) {
-     fail[panic](str)
+     assume(False)
 };

@@ -1,0 +1,67 @@
+warning: unused import: `all_own_swap`
+  --> ../tests/noproph/vec_std.rs:11:40
+   |
+11 |     iterated::no_prophecies::{all_own, all_own_swap},
+   |                                        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _18
+warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
+ --> ../tests/noproph/vec_std.rs:5:12
+  |
+5 | #![feature(unchecked_math)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(stable_features)]` on by default
+
+warning: unused variable: `p`
+   --> ../tests/noproph/vec_std.rs:291:34
+    |
+291 | fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
+    |                                  ^ help: if this is intentional, prefix it with an underscore: `_p`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `len`
+   --> ../tests/noproph/vec_std.rs:291:47
+    |
+291 | fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
+    |                                               ^^^ help: if this is intentional, prefix it with an underscore: `_len`
+
+warning: unused variable: `vec`
+   --> ../tests/noproph/vec_std.rs:299:32
+    |
+299 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
+    |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
+
+warning: unused variable: `ix`
+   --> ../tests/noproph/vec_std.rs:299:53
+    |
+299 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
+    |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
+
+warning: variant `Zeroed` is never constructed
+  --> ../tests/noproph/vec_std.rs:64:5
+   |
+60 | enum AllocInit {
+   |      --------- variant in this enum
+...
+64 |     Zeroed,
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: variable `REFERENCE` should have a snake case name
+   --> ../tests/noproph/vec_std.rs:310:12
+    |
+310 |     fn own(self) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: 8 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

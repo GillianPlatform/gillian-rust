@@ -21,6 +21,7 @@ macro_rules! fold {
 
 #[macro_export]
 macro_rules! assert_bind {
+	($e:expr) => { gilogic :: __stubs :: assert_bind(#[gillian::no_translate] | | { assertion!($e) }) };
 	($($x:ident),* | $e:expr ) => {
 		let ($($x),*) = gilogic :: __stubs :: assert_bind(#[gillian::no_translate] |$($x),*| { assertion!($e) });
 	}

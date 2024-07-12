@@ -24,19 +24,6 @@ warning: unused variable: `b`
 15 | fn test_lemma((a, b) : (i32, i32)) {
    |                   ^ help: if this is intentional, prefix it with an underscore: `_b`
 
-warning: unused variable: `y`
-  --> ../tests/noproph/lemma_tests.rs:29:21
-   |
-29 |     assert_bind!(x, y | (x == a) * (y == b));
-   |                     ^
-   |
-help: `y` is captured in macro and introduced a unused variable
-  --> ../tests/noproph/lemma_tests.rs:29:5
-   |
-29 |     assert_bind!(x, y | (x == a) * (y == b));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `assert_bind` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 warning: function `test_lemma` is never used
   --> ../tests/noproph/lemma_tests.rs:15:4
    |
@@ -51,6 +38,6 @@ warning: function `test_lemma2` is never used
 28 | fn test_lemma2((a, b) : (i32, i32)) {
    |    ^^^^^^^^^^^
 
-warning: 6 warnings emitted
+warning: 5 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

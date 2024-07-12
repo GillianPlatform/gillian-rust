@@ -1,3 +1,4 @@
+//@check-pass
 extern crate creusillian;
 extern crate gilogic;
 
@@ -11,7 +12,6 @@ struct EvenInt {
 
 impl Ownable for EvenInt {
     type RepresentationTy = i32;
-
     #[predicate]
     fn own(self, model: i32) {
         assertion!((self == EvenInt { num: model }) * (model % 2 == 0));

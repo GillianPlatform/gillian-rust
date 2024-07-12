@@ -231,7 +231,7 @@ macro_rules! impl_varsubst_todo {
         $(
             impl VarSubst for $t {
                 fn subst(&mut self, _subst: &HashMap<String, Ident>) {
-                    todo!(stringify!($t :: VarSubst))
+                    todo!("VARSUBST: {}", stringify!($t :: VarSubst))
                 }
             }
         )*
