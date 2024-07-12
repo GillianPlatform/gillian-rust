@@ -2,6 +2,7 @@
 #![feature(concat_idents)]
 
 extern crate gilogic;
+extern crate creusillian;
 
 use gilogic::{
     macros::{
@@ -53,10 +54,8 @@ impl<T: Ownable> Ownable for WP<T> {
     }
 }
 
-// TODO: I need to not create matching plans for lemmas that do not have a proof!
-// Because the prophecy variable in the post condition is just generated out of nowhere.
 #[extract_lemma(
-    forall p, x: *mut N<T>, y: *mut N<T>.
+    forall x: *mut N<T>, y: *mut N<T>.
     model m.
     extract model mx.
     from { wp_ref_mut_xy(p, m, x, y) }
@@ -65,16 +64,20 @@ impl<T: Ownable> Ownable for WP<T> {
 )]
 fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
 
-//
-// fn extract_tuple<T>(p : &mut (T, T)) -> &mut T;
+
+#[extract_lemma(
+    forall x, y.
+    model m.
+    extract model mx.
+    from { wp_ref_mut_xy(p, m, x, y) }
+    extract { Ownable::own(&mut (*y).v, mx) }
+    prophecise { (m.0, mx) }
+)]
+fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+
 
 impl<T: Ownable> WP<T> {
-    #[specification(
-        forall lx, ly.
-        requires { x.own(lx) * y.own(ly) }
-        exists ret_v.
-        ensures { ret.own(ret_v) * $ret_v == (lx, ly)$ }
-    )]
+    #[creusillian::ensures(((ret@).0 == x@) && ((ret@).1 == y@))]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
 
@@ -91,11 +94,7 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    #[specification(
-        forall current, proph, xm.
-        requires { self.own((current, proph)) * x.own(xm) }
-        ensures { $proph == (xm, current.1)$ }
-    )]
+    #[creusillian::ensures(((^self@).0 == x@) && ((*self@).1 == (^self@).1))]
     fn assign_first(&mut self, x: T) {
         unsafe {
             (*self.x).v = x;
@@ -103,16 +102,22 @@ impl<T: Ownable> WP<T> {
         }
     }
 
-    #[specification(forall cself, pself.
-        requires { self.own((cself, pself)) }
-        exists c, p.
-        ensures {  ret.own((c, p)) * $cself.1 == pself.1 && pself.0 == p && cself.0 == c$ }
-    )]
+    #[creusillian::ensures(*ret == (*self@).0 && ^ret@ == (^self@).0 && (^self@).1 == (*self@).1)]
     fn first_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe {
             freeze_xy(self);
             let ret = &mut (*self.x).v;
             let proph = extract_x(self);
+            ret.with_prophecy(proph)
+        }
+    }
+    
+    #[creusillian::ensures(*ret == (*self@).1 && ^ret@ == (^self@).1 && (^self@).0 == (*self@).0)]
+    fn second_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            freeze_xy(self);
+            let ret = &mut (*self.y).v;
+            let proph = extract_y(self);
             ret.with_prophecy(proph)
         }
     }
