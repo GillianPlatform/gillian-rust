@@ -77,7 +77,11 @@
      <goal name="gnome_sort&#39;vc.15.0.0.0" expl="loop invariant preservation" proved="true">
      <transf name="split_vc" proved="true" >
       <goal name="gnome_sort&#39;vc.15.0.0.0.0" expl="loop invariant preservation" proved="true">
-      <proof prover="3" timelimit="5" memlimit="2000"><result status="valid" time="1.134286" steps="206496"/></proof>
+      <transf name="remove" proved="true" arg1="empty,singleton">
+       <goal name="gnome_sort&#39;vc.15.0.0.0.0.0" expl="loop invariant preservation" proved="true">
+       <proof prover="3" timelimit="5"><result status="valid" time="0.782715" steps="202813"/></proof>
+       </goal>
+      </transf>
       </goal>
      </transf>
      </goal>
@@ -92,7 +96,11 @@
      <goal name="gnome_sort&#39;vc.15.1.0.0" expl="loop invariant preservation" proved="true">
      <transf name="split_vc" proved="true" >
       <goal name="gnome_sort&#39;vc.15.1.0.0.0" expl="loop invariant preservation" proved="true">
-      <proof prover="3" timelimit="5" memlimit="2000"><result status="valid" time="1.572620" steps="241620"/></proof>
+      <transf name="remove" proved="true" arg1="empty,singleton">
+       <goal name="gnome_sort&#39;vc.15.1.0.0.0.0" expl="loop invariant preservation" proved="true">
+       <proof prover="3" timelimit="5"><result status="valid" time="1.040668" steps="239342"/></proof>
+       </goal>
+      </transf>
       </goal>
      </transf>
      </goal>
@@ -173,7 +181,11 @@
   <goal name="merge_aux&#39;vc.3" expl="assertion" proved="true">
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="merge_aux&#39;vc.3.0" expl="assertion" proved="true">
-   <proof prover="3" timelimit="5"><result status="valid" time="0.990189" steps="179619"/></proof>
+   <transf name="remove" proved="true" arg1="singleton,empty">
+    <goal name="merge_aux&#39;vc.3.0.0" expl="assertion" proved="true">
+    <proof prover="3"><result status="valid" time="0.648110" steps="177533"/></proof>
+    </goal>
+   </transf>
    </goal>
   </transf>
   </goal>
@@ -184,7 +196,6 @@
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="merge_aux&#39;vc.5.0" expl="precondition" proved="true">
    <proof prover="2"><result status="valid" time="0.018069" steps="57"/></proof>
-   <proof prover="3"><result status="valid" time="0.062397" steps="18791"/></proof>
    </goal>
   </transf>
   </goal>
@@ -199,7 +210,11 @@
    <goal name="merge_aux&#39;vc.8.0" expl="assertion" proved="true">
    <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
     <goal name="merge_aux&#39;vc.8.0.0" expl="assertion" proved="true">
-    <proof prover="3" timelimit="5" memlimit="2000"><result status="valid" time="1.211804" steps="213164"/></proof>
+    <transf name="remove" proved="true" arg1="singleton,empty">
+     <goal name="merge_aux&#39;vc.8.0.0.0" expl="assertion" proved="true">
+     <proof prover="3"><result status="valid" time="0.806007" steps="204222"/></proof>
+     </goal>
+    </transf>
     </goal>
    </transf>
    </goal>
@@ -325,22 +340,13 @@
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="merge_aux&#39;vc.21.0" expl="precondition" proved="true">
    <proof prover="2"><result status="valid" time="0.017411" steps="50"/></proof>
-   <proof prover="3"><result status="valid" time="0.059766" steps="17646"/></proof>
    </goal>
   </transf>
   </goal>
   <goal name="merge_aux&#39;vc.22" expl="precondition" proved="true">
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="merge_aux&#39;vc.22.0" expl="precondition" proved="true">
-   <transf name="remove" proved="true" arg1="extensionality,create&#39;spec,create&#39;spec&#39;0,empty&#39;def,set&#39;spec,set&#39;spec&#39;0,set&#39;spec&#39;1,set&#39;def,([&lt;-])&#39;def,singleton&#39;spec,singleton&#39;spec&#39;0,cat_back,cat_back&#39;0,snoc_dec,cat_dec">
-    <goal name="merge_aux&#39;vc.22.0.0" expl="precondition" proved="true">
-    <transf name="remove" proved="true" arg1="singleton,cons,snoc,(++),mem,occ_all,seq_eq_sub,exchange">
-     <goal name="merge_aux&#39;vc.22.0.0.0" expl="precondition" proved="true">
-     <proof prover="3"><result status="valid" time="0.050232" steps="14247"/></proof>
-     </goal>
-    </transf>
-    </goal>
-   </transf>
+   <proof prover="3"><result status="valid" time="0.048296" steps="18909"/></proof>
    </goal>
   </transf>
   </goal>
@@ -419,7 +425,7 @@
   <goal name="merge_aux&#39;vc.28" expl="precondition" proved="true">
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="merge_aux&#39;vc.28.0" expl="precondition" proved="true">
-   <proof prover="3" timelimit="5" memlimit="2000"><result status="valid" time="3.047567" steps="450425"/></proof>
+   <proof prover="3" timelimit="5"><result status="valid" time="2.203439" steps="450451"/></proof>
    </goal>
   </transf>
   </goal>
@@ -530,7 +536,7 @@
   </transf>
   </goal>
   <goal name="vc_perm_left.1" proved="true">
-  <proof prover="3"><result status="valid" time="0.609237" steps="165609"/></proof>
+  <proof prover="2" timelimit="5"><result status="valid" time="0.058927" steps="896"/></proof>
   </goal>
  </transf>
  </goal>
@@ -541,12 +547,12 @@
   <goal name="vc_perm_right.0" proved="true">
   <transf name="use_th" proved="true" arg1="seq.FreeMonoid">
    <goal name="vc_perm_right.0.0" proved="true">
-   <proof prover="2"><result status="valid" time="0.613834" steps="9373"/></proof>
+   <proof prover="2"><result status="valid" time="0.452438" steps="9376"/></proof>
    </goal>
   </transf>
   </goal>
   <goal name="vc_perm_right.1" proved="true">
-  <proof prover="3"><result status="valid" time="0.560412" steps="165168"/></proof>
+  <proof prover="2" timelimit="5"><result status="valid" time="0.059425" steps="894"/></proof>
   </goal>
  </transf>
  </goal>
