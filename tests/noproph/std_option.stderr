@@ -1,8 +1,16 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+building predctx DefId(0:18 ~ std_option[dc02]::{impl#0}::own) [T/#0]
+building predctx DefId(0:21 ~ std_option[dc02]::{impl#1}::new_spec_40a133d7_b61f_462c_912f_3a9bbbf66f4b) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+building predctx DefId(0:21 ~ std_option[dc02]::{impl#1}::new_spec_40a133d7_b61f_462c_912f_3a9bbbf66f4b) [T/#0]
+building predctx DefId(0:25 ~ std_option[dc02]::{impl#1}::put_spec_407ea9d9_943f_424c_bb87_939c6eac7c6c) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: (*_1)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:25 ~ std_option[dc02]::{impl#1}::put_spec_407ea9d9_943f_424c_bb87_939c6eac7c6c) [T/#0]
+building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
+building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, Option<T/#0>]
+building predctx DefId(20:237 ~ gilogic[8e9c]::ownable::{impl#4}::own) []
 [TIMESTAMP DEBUG rust_to_gil] Correct!

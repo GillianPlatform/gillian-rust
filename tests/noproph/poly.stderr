@@ -1,5 +1,14 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+building predctx DefId(0:7 ~ poly[df2d]::test_spec_e154afdf_03f0_4c3c_88ac_95856e80d60c) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+building predctx DefId(0:7 ~ poly[df2d]::test_spec_e154afdf_03f0_4c3c_88ac_95856e80d60c) [T/#0]
+building predctx DefId(0:13 ~ poly[df2d]::test2_spec_93c8120a_9671_4758_b740_25bd742f60ca) []
+building predctx DefId(0:13 ~ poly[df2d]::test2_spec_93c8120a_9671_4758_b740_25bd742f60ca) []
+building predctx DefId(20:235 ~ gilogic[8e9c]::ownable::{impl#3}::own) [T/#0]
+building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
+building predctx DefId(20:219 ~ gilogic[8e9c]::ownable::{impl#13}::own) []
+building predctx DefId(0:7 ~ poly[df2d]::test_spec_e154afdf_03f0_4c3c_88ac_95856e80d60c) [i32]
+building predctx DefId(20:235 ~ gilogic[8e9c]::ownable::{impl#3}::own) [i32]
 warning: function `test` is never used
  --> ../tests/noproph/poly.rs:7:4
   |

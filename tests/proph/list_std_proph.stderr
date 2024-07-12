@@ -18,64 +18,111 @@ None
 building predctx DefId(0:52 ~ list_std_proph[4767]::extract_head___proof) [T/#0]
 building predctx DefId(0:56 ~ list_std_proph[4767]::extract_head___proof::{closure#0}::{closure#0}) [T/#0]
 building predctx DefId(0:56 ~ list_std_proph[4767]::extract_head___proof::{closure#0}::{closure#0}) [T/#0]
-building predctx DefId(0:58 ~ list_std_proph[4767]::extract_head_spec_58d57223_542b_4648_85be_db2c95e081f3) [T/#0]
+building predctx DefId(0:58 ~ list_std_proph[4767]::extract_head_spec_f8c757c3_4588_46a5_904c_9cef14a17eae) [T/#0]
 building predctx DefId(0:66 ~ list_std_proph[4767]::dll_seg) [T/#0]
 building predctx DefId(0:70 ~ list_std_proph[4767]::dll_seg_r) [T/#0]
 compiling DefId(0:74 ~ list_std_proph[4767]::dll_seg_r_appened_left)
-compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("x", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: None, temp_gen: TempGenerator { cur_lvar: 6 } }
-thread 'rustc' panicked at lib_rust_to_gil/src/logic/lemma.rs:114:18:
-Expected lemma to have contract
-stack backtrace:
-   0: _rust_begin_unwind
-   1: core::panicking::panic_fmt
-   2: core::panicking::panic_display
-   3: core::option::expect_failed
-   4: core::option::Option<T>::expect
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/core/src/option.rs:895:21
-   5: lib_rtg::logic::lemma::LemmaCtx::compile
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/lemma.rs:112:22
-   6: lib_rtg::logic::compile_logic
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/logic/mod.rs:41:9
-   7: lib_rtg::prog_context::ProgCtx::compile_logic
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:38:27
-   8: lib_rtg::prog_context::ProgCtx::final_prog
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:102:21
-   9: lib_rtg::prog_context::ProgCtx::compile_prog
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/prog_context.rs:156:24
-  10: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion::{{closure}}
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:79:36
-  11: rustc_middle::ty::context::GlobalCtxt::enter::{{closure}}
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:37
-  12: rustc_middle::ty::context::tls::enter_context::{{closure}}
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:82:9
-  13: std::thread::local::LocalKey<T>::try_with
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:286:12
-  14: std::thread::local::LocalKey<T>::with
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/library/std/src/thread/local.rs:262:9
-  15: rustc_middle::ty::context::tls::enter_context
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context/tls.rs:79:9
-  16: rustc_middle::ty::context::GlobalCtxt::enter
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_middle/src/ty/context.rs:771:9
-  17: rustc_interface::queries::QueryResult<&rustc_middle::ty::context::GlobalCtxt>::enter
-             at /rustc/8f9080db423ca0fb6bef0686ce9a93940cdf1f13/compiler/rustc_interface/src/queries.rs:70:9
-  18: <lib_rtg::callbacks::ToGil as rustc_driver_impl::Callbacks>::after_expansion
-             at /Users/xavier/Code/rust-to-gil/lib_rust_to_gil/src/callbacks.rs:77:9
-  19: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
-  20: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-  21: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}>
-note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+building predctx DefId(0:77 ~ list_std_proph[4767]::dll_seg_r_appened_left::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:77 ~ list_std_proph[4767]::dll_seg_r_appened_left::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("x", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Star { left: Star { left: Star { left: Pure(Eq { left: LVar("#x"), right: EList([Lit(Int(1)), EList([LVar("#ptr")])]) }), right: Star { left: Star { left: Types([(LVar("#lvar_8"), ObjectType), (LVar("#lvar_9"), ListType)]), right: Pure(Eq { left: EList([EList([LVar("#lvar_8"), LVar("#lvar_9")])]), right: LVar("#ptr") }) }, right: GA { name: "value", ins: [LVar("#lvar_8"), LVar("#lvar_9"), EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])])], outs: [EList([LVar("#next"), LVar("#prev"), LVar("#element")])] } } }, right: Pred { name: "<T as gilogic::prophecies::Ownable>::own", params: [PVar("pty_T0"), LVar("#element"), LVar("#repr")] } }, right: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#next"), LVar("#tail_next"), LVar("#tail"), LVar("#x"), LVar("#data")] } }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#x"), LVar("#tail_next"), LVar("#tail"), LVar("#prev"), NOp { operator: LstCat, operands: [EList([LVar("#repr")]), LVar("#data")] }] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+compiling DefId(0:79 ~ list_std_proph[4767]::dll_seg_l_to_r)
+building predctx DefId(0:82 ~ list_std_proph[4767]::dll_seg_l_to_r::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:82 ~ list_std_proph[4767]::dll_seg_l_to_r::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+compiling DefId(0:84 ~ list_std_proph[4767]::dll_seg_r_to_l)
+building predctx DefId(0:87 ~ list_std_proph[4767]::dll_seg_r_to_l::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:87 ~ list_std_proph[4767]::dll_seg_r_to_l::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] }, post: [([], Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#data")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+building predctx DefId(0:100 ~ list_std_proph[4767]::{impl#4}::frozen_own) [DefId(0:92 ~ list_std_proph[4767]::{impl#4}::'a)_'a/#0, T/#1]
+building predctx DefId(0:102 ~ list_std_proph[4767]::list_ref_mut_htl) [T/#0]
+building predctx DefId(0:105 ~ list_std_proph[4767]::{impl#5}::own) [T/#0]
+building predctx DefId(0:107 ~ list_std_proph[4767]::{impl#2}::shallow_model) [T/#0]
+building predctx DefId(0:109 ~ list_std_proph[4767]::{impl#3}::new_spec_e8eb6016_16cb_49b1_9b51_edd1849ed4ef) [T/#0]
+building predctx DefId(0:109 ~ list_std_proph[4767]::{impl#3}::new_spec_e8eb6016_16cb_49b1_9b51_edd1849ed4ef) [T/#0]
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+building predctx DefId(0:113 ~ list_std_proph[4767]::{impl#3}::front_mut_spec_fe8ac6fd_4744_48ac_b5e4_4066d656c9b9) [T/#0]
+building predctx DefId(0:113 ~ list_std_proph[4767]::{impl#3}::front_mut_spec_fe8ac6fd_4744_48ac_b5e4_4066d656c9b9) [T/#0]
+building predctx DefId(0:119 ~ list_std_proph[4767]::{impl#3}::pop_front_spec_4a60c8ad_5c9d_46f5_a4c5_f0b71d539692) [T/#0]
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:119 ~ list_std_proph[4767]::{impl#3}::pop_front_spec_4a60c8ad_5c9d_46f5_a4c5_f0b71d539692) [T/#0]
+building predctx DefId(0:124 ~ list_std_proph[4767]::{impl#3}::push_front_spec_f44ef785_a2c3_44d5_b100_5d50293425cf) [T/#0]
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:124 ~ list_std_proph[4767]::{impl#3}::push_front_spec_f44ef785_a2c3_44d5_b100_5d50293425cf) [T/#0]
+building predctx DefId(0:128 ~ list_std_proph[4767]::{impl#3}::pop_back_spec_05bbd000_60e2_49b8_a550_c1f901ab0143) [T/#0]
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+building predctx DefId(0:128 ~ list_std_proph[4767]::{impl#3}::pop_back_spec_05bbd000_60e2_49b8_a550_c1f901ab0143) [T/#0]
+building predctx DefId(0:133 ~ list_std_proph[4767]::{impl#3}::push_back_spec_b4d94761_6067_4420_95e2_c5d09e0bce6b) [T/#0]
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:133 ~ list_std_proph[4767]::{impl#3}::push_back_spec_b4d94761_6067_4420_95e2_c5d09e0bce6b) [T/#0]
+building predctx DefId(21:268 ~ gilogic[8e9c]::prophecies::FrozenOwn::just_ref_mut_points_to) [LinkedList<T/#0>, (std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize)]
+building predctx DefId(21:268 ~ gilogic[8e9c]::prophecies::FrozenOwn::just_ref_mut_points_to) [T/#0, ()]
+building predctx DefId(21:276 ~ gilogic[8e9c]::prophecies::{impl#1}::own) ['{erased}, T/#0]
+building predctx DefId(21:266 ~ gilogic[8e9c]::prophecies::Ownable::own) [T/#0]
+building predctx DefId(21:337 ~ gilogic[8e9c]::prophecies::prophecy_auto_update_spec_d37eb1dd_3c0f_4afb_85b9_c7db3bf056fa) [(std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize), LinkedList<T/#0>]
+building predctx DefId(21:346 ~ gilogic[8e9c]::prophecies::prophecy_resolve_spec_c6d30fac_9758_4536_aa32_75ea79fc3bcd) [(std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize), LinkedList<T/#0>]
+building predctx DefId(21:357 ~ gilogic[8e9c]::prophecies::freeze_params_spec_3ba9e251_1e09_4a30_8b08_c2d5e0a78437) [(std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize), LinkedList<T/#0>]
+building predctx DefId(21:272 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [LinkedList<T/#0>, (std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize)]
+building predctx DefId(21:276 ~ gilogic[8e9c]::prophecies::{impl#1}::own) ['{erased}, LinkedList<T/#0>]
+building predctx DefId(21:328 ~ gilogic[8e9c]::prophecies::{impl#3}::own) [&'{erased} mut T/#0]
+building predctx DefId(0:58 ~ list_std_proph[4767]::extract_head_spec_f8c757c3_4588_46a5_904c_9cef14a17eae) [T/#0]
+building predctx DefId(21:328 ~ gilogic[8e9c]::prophecies::{impl#3}::own) [T/#0]
+building predctx DefId(21:337 ~ gilogic[8e9c]::prophecies::prophecy_auto_update_spec_d37eb1dd_3c0f_4afb_85b9_c7db3bf056fa) [(), LinkedList<T/#0>]
+building predctx DefId(21:346 ~ gilogic[8e9c]::prophecies::prophecy_resolve_spec_c6d30fac_9758_4536_aa32_75ea79fc3bcd) [(), LinkedList<T/#0>]
+building predctx DefId(21:331 ~ gilogic[8e9c]::prophecies::{impl#4}::own) []
+building predctx DefId(21:274 ~ gilogic[8e9c]::prophecies::{impl#0}::frozen_own) [T/#0]
+building predctx DefId(21:272 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [T/#0, ()]
+building predctx DefId(21:270 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [LinkedList<T/#0>, (std::option::Option<std::ptr::NonNull<Node<T/#0>>>, std::option::Option<std::ptr::NonNull<Node<T/#0>>>, usize)]
+building predctx DefId(21:272 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [LinkedList<T/#0>, ()]
+building predctx DefId(21:274 ~ gilogic[8e9c]::prophecies::{impl#0}::frozen_own) [LinkedList<T/#0>]
+building predctx DefId(21:270 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [T/#0, ()]
+building predctx DefId(21:270 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [LinkedList<T/#0>, ()]
+warning: unused variable: `list`
+  --> ../tests/proph/list_std_proph.rs:68:33
+   |
+68 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+   |
+   = note: `#[warn(unused_variables)]` on by default
 
-error: the compiler unexpectedly panicked. this is a bug.
+warning: unused variable: `next`
+   --> ../tests/proph/list_std_proph.rs:121:5
+    |
+121 |     next: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
 
-note: we would appreciate a bug report: https://github.com/GillianPlatform/rust-to-gil
+warning: associated function `shallow_model` is never used
+  --> ../tests/proph/list_std_proph.rs:33:8
+   |
+30 | trait ShallowModel: Ownable {
+   |       ------------ associated function in this trait
+...
+33 |     fn shallow_model(self_: Self::RepresentationTy, v: Self::ModelTy) -> gilogic::RustAssertion;
+   |        ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
 
-note: please make sure that you have updated to the latest nightly
+warning: function `extract_head___proof` should have a snake case name
+  --> ../tests/proph/list_std_proph.rs:68:4
+   |
+68 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
 
-note: please attach the file at `/Users/xavier/Code/rust-to-gil/rust_to_gil/rustc-ice-2024-07-12T13_29_04-13470.txt` to your bug report
+warning: variable `THIS` should have a snake case name
+   --> ../tests/proph/list_std_proph.rs:173:12
+    |
+173 |     fn own(self, model: Self::RepresentationTy) {
+    |            ^^^^ help: convert the identifier to snake case: `this`
 
-note: compiler flags: -Z crate-attr=feature(register_tool) -Z crate-attr=register_tool(gillian) -Z crate-attr=feature(rustc_attrs) -Z crate-attr=allow(internal_features) -Z crate-attr=feature(stmt_expr_attributes) --crate-type lib
+warning: 6 warnings emitted
 
-query stack during panic:
-end of query stack
-warning: 1 warning emitted
-
+[TIMESTAMP DEBUG rust_to_gil] Correct!

@@ -1,3 +1,22 @@
+error: custom attribute panicked
+  --> ../tests/noproph/list_std.rs:65:1
+   |
+65 | / #[extract_lemma(
+66 | |     forall head, tail, len, p.
+67 | |     assuming { head == Some(p) }
+68 | |     from { list_ref_mut_htl(list, head, tail, len) }
+69 | |     extract { Ownable::own(&mut (*p.as_ptr()).element) }
+70 | | )]
+   | |__^
+   |
+   = help: message: called `Option::unwrap()` on a `None` value
+
+error[E0432]: unresolved import `gilogic::macros::no_prophecies`
+ --> ../tests/noproph/list_std.rs:5:14
+  |
+5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
+
 warning: unused imports: `assert_bind`, `unfold`
  --> ../tests/noproph/list_std.rs:7:5
   |
@@ -7,106 +26,69 @@ warning: unused imports: `assert_bind`, `unfold`
   = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+building predctx DefId(0:34 ~ list_std[c124]::option_box_node) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+building predctx DefId(0:38 ~ list_std[c124]::dll_seg) [T/#0]
+building predctx DefId(0:42 ~ list_std[c124]::dll_seg_r) [T/#0]
+compiling DefId(0:46 ~ list_std[c124]::dll_seg_r_appened_left)
+building predctx DefId(0:49 ~ list_std[c124]::dll_seg_r_appened_left::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:49 ~ list_std[c124]::dll_seg_r_appened_left::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("x", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Star { left: Star { left: Star { left: Pure(Eq { left: LVar("#x"), right: EList([Lit(Int(1)), EList([LVar("#ptr")])]) }), right: Star { left: Star { left: Types([(LVar("#lvar_8"), ObjectType), (LVar("#lvar_9"), ListType)]), right: Pure(Eq { left: EList([EList([LVar("#lvar_8"), LVar("#lvar_9")])]), right: LVar("#ptr") }) }, right: GA { name: "value", ins: [LVar("#lvar_8"), LVar("#lvar_9"), EList([Lit(String("adt")), Lit(String("Node")), EList([PVar("pty_T0")])])], outs: [EList([LVar("#next"), LVar("#prev"), LVar("#element")])] } } }, right: Pred { name: "<T as gilogic::Ownable>::own", params: [PVar("pty_T0"), LVar("#element")] } }, right: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#next"), LVar("#tail_next"), LVar("#tail"), LVar("#x"), LVar("#len")] } }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#x"), LVar("#tail_next"), LVar("#tail"), LVar("#prev"), BinOp { operator: IPlus, left_operand: LVar("#len"), right_operand: Lit(Int(1)) }] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+compiling DefId(0:51 ~ list_std[c124]::dll_seg_l_to_r)
+building predctx DefId(0:54 ~ list_std[c124]::dll_seg_l_to_r::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:54 ~ list_std[c124]::dll_seg_l_to_r::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] }, post: [([], Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+compiling DefId(0:56 ~ list_std[c124]::dll_seg_r_to_l)
+building predctx DefId(0:59 ~ list_std[c124]::dll_seg_r_to_l::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:59 ~ list_std[c124]::dll_seg_r_to_l::{closure#0}::{closure#0}) [T/#0]
+compiling trusted lemma Signature { args: [Generic("pty_T0"), Program("head", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail_next", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("tail", std::option::Option<std::ptr::NonNull<Node<T/#0>>>), Program("head_prev", std::option::Option<std::ptr::NonNull<Node<T/#0>>>)], contract: Some(Contract { timeless: false, pre: Pred { name: "dll_seg_r::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] }, post: [([], Pred { name: "dll_seg::<T>", params: [PVar("pty_T0"), LVar("#head"), LVar("#tail_next"), LVar("#tail"), LVar("#head_prev"), LVar("#len")] })], trusted: false }), temp_gen: TempGenerator { cur_lvar: 10 } }
+building predctx DefId(0:87 ~ list_std[c124]::{impl#2}::own) [T/#0]
+building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_9f36efd6_e68f_4def_8394_2d10e2355e07) [T/#0]
+building predctx DefId(0:61 ~ list_std[c124]::{impl#1}::new_spec_9f36efd6_e68f_4def_8394_2d10e2355e07) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_a6aa9221_8431_4dfb_b046_92242cfb2b7a) [T/#0]
+building predctx DefId(0:65 ~ list_std[c124]::{impl#1}::pop_front_spec_a6aa9221_8431_4dfb_b046_92242cfb2b7a) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_81258ccc_4015_4250_9e81_a1222e5dbaa7) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+building predctx DefId(0:69 ~ list_std[c124]::{impl#1}::pop_back_spec_81258ccc_4015_4250_9e81_a1222e5dbaa7) [T/#0]
+building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_fbb15bec_c6f5_4b94_847c_4225f460fc35) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:73 ~ list_std[c124]::{impl#1}::push_back_spec_fbb15bec_c6f5_4b94_847c_4225f460fc35) [T/#0]
+building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_35fa6042_63fa_419e_b054_2f5b16ad0495) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `list`
-  --> ../tests/noproph/list_std.rs:71:29
-   |
-71 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
-   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
-   |
-   = note: `#[warn(unused_variables)]` on by default
-
-warning: unused variable: `next`
-   --> ../tests/noproph/list_std.rs:104:5
+building predctx DefId(0:77 ~ list_std[c124]::{impl#1}::push_front_spec_35fa6042_63fa_419e_b054_2f5b16ad0495) [T/#0]
+error[E0425]: cannot find function `freeze_htl` in this scope
+   --> ../tests/noproph/list_std.rs:284:9
     |
-104 |     next: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
+284 |         freeze_htl(self);
+    |         ^^^^^^^^^^------
+    |         |
+    |         help: try calling `freeze_htl` as a method: `self.freeze_htl()`
 
-warning: unused variable: `x`
-   --> ../tests/noproph/list_std.rs:103:5
+error[E0425]: cannot find function `extract_head` in this scope
+   --> ../tests/noproph/list_std.rs:289:17
     |
-103 |     x: Option<NonNull<Node<T>>>,
-    |     ^ help: if this is intentional, prefix it with an underscore: `_x`
+289 |                 extract_head(self);
+    |                 ^^^^^^^^^^^^------
+    |                 |
+    |                 help: try calling `extract_head` as a method: `self.extract_head()`
 
-warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:105:5
-    |
-105 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_c7aa146f_0445_433f_b631_4fa4db4a3bcb) [T/#0]
+building predctx DefId(0:81 ~ list_std[c124]::{impl#1}::front_mut_spec_c7aa146f_0445_433f_b631_4fa4db4a3bcb) [T/#0]
+building predctx DefId(20:189 ~ gilogic[8e9c]::ownable::Ownable::own) [T/#0]
+building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, LinkedList<T/#0>]
+building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [T/#0]
+building predctx DefId(20:237 ~ gilogic[8e9c]::ownable::{impl#4}::own) []
+building predctx DefId(20:232 ~ gilogic[8e9c]::ownable::{impl#2}::own) [&'{erased} mut T/#0]
+building predctx DefId(20:192 ~ gilogic[8e9c]::ownable::{impl#0}::own) ['{erased}, T/#0]
+error: aborting due to 4 previous errors; 1 warning emitted
 
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:106:5
-    |
-106 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:122:5
-    |
-122 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
-
-warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:123:5
-    |
-123 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:124:5
-    |
-124 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:125:5
-    |
-125 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:148:5
-    |
-148 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
-
-warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:149:5
-    |
-149 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:150:5
-    |
-150 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:151:5
-    |
-151 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/noproph/list_std.rs:159:12
-    |
-159 |     fn own(self) {
-    |            ^^^^ help: convert the identifier to snake case: `reference`
-    |
-    = note: `#[warn(non_snake_case)]` on by default
-
-warning: 15 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.

@@ -121,8 +121,7 @@ fn dll_seg_r_appened_left<T: Ownable>(
     next: Option<NonNull<Node<T>>>,
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
-);
-
+) {}
 
 
 #[lemma]
