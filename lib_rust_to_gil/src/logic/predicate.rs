@@ -640,7 +640,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             GExpr::i_mul(left, right)
                         } else {
                             GExpr::f_mul(left, right)
-                        
                         }
                     }
                     BinOp::Rem => {

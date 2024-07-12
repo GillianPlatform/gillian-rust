@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Ident, Span};
 use syn::{
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
-    ImplItemMethod, ReturnType, Token, Type,
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ImplItemFn, ReturnType, Token, TraitItemFn, Type
 };
 
 use quote::{format_ident, quote};
@@ -264,7 +263,7 @@ impl Parse for ExtractLemma {
 }
 
 pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    let mut item = parse_macro_input!(input as ImplItemMethod);
+    let mut item = parse_macro_input!(input as TraitItemFn);
     let item_attrs = std::mem::take(&mut item.attrs);
     let extract_lemma = parse_macro_input!(args as ExtractLemma);
 

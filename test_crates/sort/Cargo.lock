@@ -22,7 +22,7 @@ dependencies = [
  "pearlite-syn",
  "proc-macro2",
  "quote",
- "syn 2.0.68",
+ "syn",
 ]
 
 [[package]]
@@ -54,7 +54,7 @@ dependencies = [
  "pearlite-syn",
  "proc-macro2",
  "quote",
- "syn 2.0.68",
+ "syn",
  "uuid",
 ]
 
@@ -88,7 +88,7 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn",
  "uuid",
 ]
 
@@ -156,7 +156,7 @@ checksum = "15e3083dfa80aedb67b392087bd8027a9bb5435eb4f3703d02ca6a11e1c81209"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.68",
+ "syn",
 ]
 
 [[package]]
@@ -221,17 +221,6 @@ dependencies = [
  "creusot-contracts",
  "gilogic",
  "vec",
-]
-
-[[package]]
-name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
 ]
 
 [[package]]

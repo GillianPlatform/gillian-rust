@@ -6,8 +6,7 @@ use gilogic::Ownable;
 #[predicate]
 pub fn all_own<T: Ownable>(vs: In<Seq<T>>) {
     assertion!((vs == Seq::empty()));
-    assertion!(|x: T, rest: Seq<T>| 
-        (vs == rest.append(x)) * x.own() * all_own(rest))
+    assertion!(|x: T, rest: Seq<T>| (vs == rest.append(x)) * x.own() * all_own(rest))
 }
 
 #[lemma]

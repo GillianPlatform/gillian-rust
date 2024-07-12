@@ -4,7 +4,7 @@ use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, Attribute, Block, Error, FnArg,
-    GenericArgument, Generics, ImplItemMethod, Pat, PatType, PathArguments, Signature, Token, Type,
+    GenericArgument, Generics, ImplItemFn, Pat, PatType, PathArguments, Signature, Token, Type,
     TypePath, Visibility,
 };
 
@@ -22,7 +22,7 @@ pub struct PredParamS {
     pub mode: ParamMode,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PredParam {
     S(PredParamS),
     Receiver(Token![self]),
@@ -204,6 +204,7 @@ impl Predicate {
     fn abstract_of_sig(sig: Signature, attributes: Vec<Attribute>) -> syn::Result<Self> {
         Self::validate_sig(&sig)?;
         let args = Self::convert_args(sig.inputs)?;
+
         Ok(Predicate {
             vis: Visibility::Inherited,
             name: sig.ident,
@@ -214,10 +215,12 @@ impl Predicate {
         })
     }
 
-    pub fn concrete_of_method(item_fn: ImplItemMethod) -> syn::Result<Self> {
+    pub fn concrete_of_method(item_fn: ImplItemFn) -> syn::Result<Self> {
         let attributes = item_fn.attrs;
         let sig = item_fn.sig;
+
         let args = Self::convert_args(sig.inputs)?;
+
         let body = item_fn.block;
         Ok(Predicate {
             vis: item_fn.vis,
@@ -232,10 +235,10 @@ impl Predicate {
 
 impl Parse for Predicate {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let item_fn = input.fork().parse::<ImplItemMethod>();
+        let item_fn = input.fork().parse::<ImplItemFn>();
         match item_fn {
             Ok(_) => {
-                let item_fn = input.parse::<ImplItemMethod>()?;
+                let item_fn = input.parse::<ImplItemFn>()?;
                 Self::concrete_of_method(item_fn)
             }
             Err(_) => {

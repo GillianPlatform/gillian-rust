@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::Span;
+use quote::ToTokens;
 use syn::{
     parse::Parse, spanned::Spanned, visit_mut::VisitMut, Ident, ImplItem, ItemImpl, Path, Token,
     Type,
@@ -36,7 +37,7 @@ impl Parse for FreezeMutRefOwnArgs {
                     let content;
                     syn::bracketed!(content in input);
                     frozen_variables =
-                        Some(content.parse_terminated::<Ident, syn::Token![,]>(Ident::parse)?);
+                        Some(content.parse_terminated::<Ident, _>(Ident::parse, Token![,])?);
                 }
                 _ => {
                     return Err(syn::Error::new(
@@ -57,6 +58,7 @@ impl Parse for FreezeMutRefOwnArgs {
             .ok_or_else(|| syn::Error::new(input.span(), "Missing frozen_variables argument"))?
             .into_iter()
             .collect();
+
         Ok(FreezeMutRefOwnArgs {
             lemma_name,
             predicate_name,
@@ -159,12 +161,15 @@ impl FreezeMutRefOwn {
             frozen_vars_ty: vec![],
             own_impl_ty: &own_impl.self_ty,
         };
+
         let mut mutator = visitors::AssertMutatorImpl::from(mutator);
         mutator.visit_block_mut(block);
-        let frozen_args = args
+
+        let frozen_args : Vec<_>= args
             .frozen_variables
             .iter()
-            .zip(mutator.into_inner().frozen_vars_ty);
+            .zip(mutator.into_inner().frozen_vars_ty).collect();
+
         for (ident, ty) in frozen_args {
             let pred_param = PredParam::S(PredParamS {
                 name: ident.clone(),
@@ -209,7 +214,7 @@ impl FreezeMutRefOwn {
             .items
             .iter()
             .find_map(|item| match item {
-                ImplItem::Method(method) if method.sig.ident == "own" => Some(method.clone()),
+                ImplItem::Fn(method) if method.sig.ident == "own" => Some(method.clone()),
                 _ => None,
             })
             .ok_or_else(|| syn::Error::new(own_impl.span(), "No own method found"))?;

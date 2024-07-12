@@ -68,7 +68,7 @@ fn dll_seg<T: Ownable>(
     from { list_ref_mut_htl(list, head, tail, len) }
     extract { Ownable::own(&mut (*p.as_ptr()).element) }
 )]
-fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
+fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
 
 #[predicate]
 fn dll_seg_r<T: Ownable>(
@@ -124,14 +124,14 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
 )
-// {
-//     if len == 0 {} else {
-//         assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
-//         if (len == 0) {} else {
+{
+    // if len == 0 {} else {
+    //     assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
+    //     if (len == 0) {} else {
 
-//         }
-//     }
-// }
+    //     }
+    // }
+}
 
 #[lemma]
 #[gillian::trusted]

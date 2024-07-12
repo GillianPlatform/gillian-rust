@@ -2,8 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, FnArg, GenericArgument, ImplItemMethod, PatType, PathArguments, Signature,
-    Type, TypePath,
+    parse_macro_input, FnArg, GenericArgument, ImplItemFn, PatType, PathArguments, Signature, Type,
+    TypePath,
 };
 
 // Modifies the signature in place, but returns the list of indexes of the `In` arguments.
@@ -43,7 +43,7 @@ fn strip_ins(sig: &mut Signature) {
 // which corresponds to a lifetime token. This is done at the compiler level,
 // so until then, we really just need to annotate the predicate with some attribute.
 pub fn borrow(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    let item = parse_macro_input!(input as ImplItemMethod);
+    let item = parse_macro_input!(input as ImplItemFn);
     // The name of the borrow predicate
     let name = item.sig.ident.clone();
 

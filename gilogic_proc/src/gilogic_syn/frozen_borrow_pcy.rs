@@ -45,7 +45,7 @@ impl Parse for FreezeMutRefOwnArgs {
                     let content;
                     syn::bracketed!(content in input);
                     frozen_variables =
-                        Some(content.parse_terminated::<Ident, syn::Token![,]>(Ident::parse)?);
+                        Some(content.parse_terminated::<Ident, _>(Ident::parse, Token![,])?);
                 }
                 "inner_predicate_name" => {
                     inner_predicate_name = Some(input.parse::<Ident>()?);
@@ -309,7 +309,7 @@ impl FreezeMutRefOwn {
             .items
             .iter()
             .find_map(|item| match item {
-                ImplItem::Method(method) if method.sig.ident == "own" => Some(method.clone()),
+                ImplItem::Fn(method) if method.sig.ident == "own" => Some(method.clone()),
                 _ => None,
             })
             .ok_or_else(|| syn::Error::new(own_impl.span(), "No own method found"))?;

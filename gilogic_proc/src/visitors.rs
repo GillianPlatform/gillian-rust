@@ -4,9 +4,7 @@
 
 use quote::quote;
 use syn::{
-    visit::{self, Visit},
-    visit_mut::{self, VisitMut},
-    Expr, ExprMacro, Ident, Macro,
+    parse_quote, visit::{self, Visit}, visit_mut::{self, VisitMut}, Expr, ExprMacro, Ident, Macro
 };
 
 use crate::gilogic_syn::Assertion;
@@ -52,6 +50,23 @@ impl<M: AssertMutator> VisitMut for AssertMutatorImpl<M> {
             }
             visit_mut::visit_expr_mut(self, expr);
         }
+    }
+
+    fn visit_stmt_macro_mut(&mut self, i: &mut syn::StmtMacro) {
+        let  Macro { path, tokens, .. } = &mut i.mac;
+
+        match path.segments.iter().last() {
+            Some(segment) => {
+                if segment.ident == "assertion" {
+                    let mut assertion = syn::parse::<Assertion>(tokens.clone().into())
+                        .expect("Failed to expand inner macro");
+                    self.0.mutate_assert(&mut assertion);
+                    i.mac = parse_quote! { assertion!(#assertion) };
+                }
+            }
+            None => panic!("Empty path in macro"),
+        };
+        visit_mut::visit_stmt_macro_mut(self, i);
     }
 }
 

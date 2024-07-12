@@ -10,7 +10,7 @@ authors = ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1.0.47"
-syn = { version = "1.0.103", features = ["full", "visit", "visit-mut", "extra-traits"] }
+proc-macro2 = "1.0.76"
+syn = { version = "2.0.15", features = ["full", "visit", "visit-mut", "extra-traits"] }
 quote = "1.0.21"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }

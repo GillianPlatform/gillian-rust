@@ -2,7 +2,7 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemMethod, Pat,
+    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemFn, Pat,
     PatIdent, PatType, ReturnType, Token,
 };
 use uuid::Uuid;
@@ -36,10 +36,10 @@ fn get_attr<'a>(
     looked_for: &'static [&'static str],
 ) -> Option<&'a Attribute> {
     attrs.iter().find(|attr| {
-        attr.path.leading_colon.is_none()
-            && attr.path.segments.len() == looked_for.len()
+        attr.path().leading_colon.is_none()
+            && attr.path().segments.len() == looked_for.len()
             && attr
-                .path
+                .path()
                 .segments
                 .iter()
                 .zip(looked_for)
@@ -53,7 +53,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
     // However, an `FnItem` is just `ImplItemMethod` that cannot have the `default` keyword,
     // so I'm expecting this to work in any context.
-    let mut item = parse_macro_input!(input as ImplItemMethod);
+    let mut item = parse_macro_input!(input as ImplItemFn);
     let item_attrs = std::mem::take(&mut item.attrs);
     let parsed_spec = parse_macro_input!(args as Specification);
 
@@ -119,7 +119,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
 }
 
 pub(crate) fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    let item = parse_macro_input!(input as ImplItemMethod);
+    let item = parse_macro_input!(input as ImplItemFn);
     let args_own: Punctuated<TokenStream, Token![*]> = item
         .sig
         .inputs

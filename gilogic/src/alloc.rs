@@ -17,8 +17,6 @@ pub fn dealloc_array<T>(_ptr: *mut T, _len: usize) -> *mut T {
     unreachable!()
 }
 
-
-
 #[allow(unused_variables)]
 unsafe impl Allocator for GillianAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {

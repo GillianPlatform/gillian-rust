@@ -1,12 +1,112 @@
-error: expected one of `->`, `where`, or `{`, found `#`
-   --> ../tests/noproph/list_std.rs:136:1
+warning: unused imports: `assert_bind`, `unfold`
+ --> ../tests/noproph/list_std.rs:7:5
+  |
+7 |     assert_bind, unfold,
+  |     ^^^^^^^^^^^  ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _16
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: unused variable: `list`
+  --> ../tests/noproph/list_std.rs:71:29
+   |
+71 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
+   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `next`
+   --> ../tests/noproph/list_std.rs:104:5
     |
-126 | )
-    |  - expected one of `->`, `where`, or `{`
-...
-136 | #[lemma]
-    | ^ unexpected token
+104 |     next: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
 
-error: aborting due to 1 previous error
+warning: unused variable: `x`
+   --> ../tests/noproph/list_std.rs:103:5
+    |
+103 |     x: Option<NonNull<Node<T>>>,
+    |     ^ help: if this is intentional, prefix it with an underscore: `_x`
 
-[TIMESTAMP DEBUG rust_to_gil] Incorrect!
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:105:5
+    |
+105 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:106:5
+    |
+106 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head`
+   --> ../tests/noproph/list_std.rs:122:5
+    |
+122 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:123:5
+    |
+123 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:124:5
+    |
+124 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/noproph/list_std.rs:125:5
+    |
+125 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: unused variable: `head`
+   --> ../tests/noproph/list_std.rs:148:5
+    |
+148 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:149:5
+    |
+149 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:150:5
+    |
+150 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/noproph/list_std.rs:151:5
+    |
+151 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: variable `REFERENCE` should have a snake case name
+   --> ../tests/noproph/list_std.rs:159:12
+    |
+159 |     fn own(self) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: 15 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

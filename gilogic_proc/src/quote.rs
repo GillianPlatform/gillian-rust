@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt, Type};
+use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt, StmtMacro, Type};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -246,13 +246,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         Term::Path(p) => tokens.extend(quote!(
             #p
         )),
-        Term::Struct(TermStruct {
-            path,
-            brace_token,
-            fields,
-            dot2_token,
-            rest,
-        }) => {
+        Term::Struct(TermStruct { path, fields, .. }) => {
             let fields: Vec<_> = fields
                 .iter()
                 .map(|f| {
@@ -279,6 +273,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
                 syn::UnOp::Deref(_) => tokens.extend(quote! { (#expr).0 }),
                 syn::UnOp::Not(_) => tokens.extend(quote! { ! #expr }),
                 syn::UnOp::Neg(_) => tokens.extend(quote! { - #expr }),
+                _ => todo!("non-exhaustive unop"),
             }
         }
         Term::Verbatim(v) => v.to_tokens(&mut tokens),
@@ -539,12 +534,18 @@ impl ToTokens for Predicate {
             Some(body) => {
                 let stmts: Vec<_> = body
                     .stmts
-                    .iter()
+                    .clone()
+                    .into_iter()
                     .map(|stmt| match stmt {
-                        Stmt::Semi(e, _) => Stmt::Expr(e.clone()),
-                        _ => stmt.clone(),
+                        Stmt::Expr(e, Some(_)) => Stmt::Expr(e, None),
+                        Stmt::Macro(mut m) => {
+                            m.semi_token = None;
+                            Stmt::Macro(m)
+                        }
+                        e => e,
                     })
                     .collect();
+
                 let brace_token = body.brace_token;
                 tokens.extend(quote! {
                   #[cfg(gillian)]
@@ -638,6 +639,7 @@ impl ToTokens for frozen_borrow_pcy::FreezeMutRefOwn {
         let inner_predicate = &self.inner_predicate;
 
         let own_impl_ty = &self.own_impl.self_ty;
+
         let additional_args: Vec<_> = predicate
             .args
             .iter()

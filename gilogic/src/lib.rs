@@ -31,8 +31,8 @@ pub use seq::Seq;
 mod ownable;
 pub use ownable::Ownable;
 pub mod alloc;
-mod iterated_pcy;
 mod iterated_no_pcy;
+mod iterated_pcy;
 
 pub mod iterated {
     pub mod with_prophecies {
