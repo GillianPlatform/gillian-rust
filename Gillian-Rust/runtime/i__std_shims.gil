@@ -157,10 +157,6 @@ proc "std::alloc::Layout::size"(lft, layout) {
      return
 };
 
-proc "std::rt::begin_panic"(lft, ty, str) {
-     fail[panicked](str)
-};
-
 proc "core::num::<impl usize>::BITS"() {
      ret := 64i;
      return
@@ -208,6 +204,30 @@ proc "std::alloc::Allocator::grow"(lft, alloc_ty, alloc_ptr, ptr, old_layout, ne
                {{ {{ new_ptr, new_size }} }}
           }} }};
           return
+};
+
+proc "gilogic::alloc::alloc_array"(T, n) {
+     ty := {{ "array", T, n }};
+     ret := [alloc](ty);
+     return
+};
+
+proc "gilogic::alloc::dealloc_array"(T, ptr, n) {
+     ty := {{ "array", T, n }};
+     u := [free](l-nth(ptr, 0i), l-nth(ptr, 1i), ty);
+     ret := {{}};
+     return
+};
+
+proc "std::intrinsics::copy_nonoverlapping"(T, src, dst, count) {
+     u := [copy_nonoverlapping](l-nth(src, 0i), l-nth(src, 1i), l-nth(dst, 0i), l-nth(dst, 1i), T, count);
+     ret := {{}};
+     return
+};
+
+proc "std::ptr::NonNull::<T>::dangling"(T) {
+     ret := {{ {{ $l_dangling, {{ }} }} }};
+     return
 };
 
 proc "std::ptr::NonNull::<T>::cast"(old_ty, new_ty, nn) {
@@ -313,6 +333,13 @@ proc "core::num::<impl i32>::MAX"() {
      return
 };
 
+proc "std::result::Result::<T, E>::unwrap"(T, E, x) {
+     goto [l-nth(x, 0i) = 0i] ok err;
+     ok: ret := l-nth(l-nth(x, 1i), 0i);
+         return;
+     err: u := "core::panicking::panic_explicit"()
+};
+
 (* PREDS *)
 
 pred "std::ptr::NonNull::<T>::as_ptr"(+T, +nn, out):
@@ -325,6 +352,9 @@ pred "std::ptr::mut_ptr::<impl *mut T>::offset"(+T, +ptr, +ofs, out):
      (ptr == {{ #ptr_1, #ptr_2 }}) * (out == {{ #ptr_1, l+ (#ptr_2, {{ {{ "+", false, ofs, T }} }}) }});
 
 pred "std::ptr::mut_ptr::<impl *mut T>::add"(+T, +ptr, +ofs, out):
+     (ptr == {{ #ptr_1, #ptr_2 }}) * (out == {{ #ptr_1, l+ (#ptr_2, {{ {{ "+", false, ofs, T }} }}) }});
+     
+pred "std::ptr::const_ptr::<impl *const T>::add"(+T, +ptr, +ofs, out):
      (ptr == {{ #ptr_1, #ptr_2 }}) * (out == {{ #ptr_1, l+ (#ptr_2, {{ {{ "+", false, ofs, T }} }}) }});
 
 pred "std::mem::size_of"(+T, out):

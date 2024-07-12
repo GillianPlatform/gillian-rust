@@ -1,0 +1,74 @@
+warning: unused imports: `all_own_swap`, `alloc::GillianAllocator`
+ --> ../tests/proph/minivec.rs:6:5
+  |
+6 |     alloc::GillianAllocator,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+7 |     iterated::with_prophecies::{all_own, all_own_swap},
+  |                                          ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused macro definition: `auto_resolve_vec_ref_mut_pcl`
+   --> ../tests/proph/minivec.rs:124:26
+    |
+124 |     resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_macros)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: unused variable: `vec`
+   --> ../tests/proph/minivec.rs:151:32
+    |
+151 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+    |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `ix`
+   --> ../tests/proph/minivec.rs:151:53
+    |
+151 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+    |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
+
+warning: function `dealloc_array` is never used
+  --> ../tests/proph/minivec.rs:73:19
+   |
+73 |     pub unsafe fn dealloc_array<T>(len: usize, ptr: *mut T) {
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: function `mut_offset` is never used
+  --> ../tests/proph/minivec.rs:88:19
+   |
+88 |     pub unsafe fn mut_offset<T>(ptr: *mut T, count: isize) -> *mut T {
+   |                   ^^^^^^^^^^
+
+warning: function `const_offset` is never used
+  --> ../tests/proph/minivec.rs:92:19
+   |
+92 |     pub unsafe fn const_offset<T>(ptr: *const T, count: isize) -> *const T {
+   |                   ^^^^^^^^^^^^
+
+warning: function `const_add` is never used
+  --> ../tests/proph/minivec.rs:99:19
+   |
+99 |     pub unsafe fn const_add<T>(ptr: *const T, count: usize) -> *const T {
+   |                   ^^^^^^^^^
+
+warning: variable `REFERENCE` should have a snake case name
+   --> ../tests/proph/minivec.rs:130:12
+    |
+130 |     fn own(self, model: Self::RepresentationTy) {
+    |            ^^^^ help: convert the identifier to snake case: `reference`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: 9 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

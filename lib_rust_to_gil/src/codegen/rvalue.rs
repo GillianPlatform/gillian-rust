@@ -112,6 +112,23 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 }
             }
             Rvalue::Cast(ckind, op, ty_to) => self.push_encode_cast(ckind, op, *ty_to),
+            Rvalue::UnaryOp(unop, op) => match unop {
+                mir::UnOp::Not => {
+                    let op_ty = self.operand_ty(op);
+                    let op = self.push_encode_operand(op);
+                    if op_ty.is_bool() {
+                        op.e_not()
+                    } else if op_ty.is_integral() {
+                        Expr::UnOp {
+                            operator: gillian::gil::UnOp::BitwiseNot,
+                            operand: Box::new(op),
+                        }
+                    } else {
+                        fatal!(self, "Unhandled UnaryOp Not for ty {:?}", op_ty)
+                    }
+                }
+                _ => fatal!(self, "Unhandled UnaryOp: {:#?}", unop),
+            },
             _ => fatal!(self, "Unhandled rvalue: {:#?}", rvalue),
         }
     }

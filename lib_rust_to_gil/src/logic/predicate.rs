@@ -635,6 +635,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                             GExpr::fplus(left, right)
                         }
                     }
+                    BinOp::Mul => {
+                        if left_ty.is_integral() {
+                            GExpr::i_mul(left, right)
+                        } else {
+                            GExpr::f_mul(left, right)
+                        
+                        }
+                    }
                     BinOp::Rem => {
                         if left_ty.is_integral() {
                             GExpr::BinOp {
