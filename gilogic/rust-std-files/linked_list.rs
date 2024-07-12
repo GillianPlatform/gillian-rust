@@ -1,3 +1,6 @@
+// RUST-LANG/RUST COMMIT HASH: ad2b34d0e37e2f968f226e2401bcb894207ca1c5
+
+
 //! A doubly-linked list with owned nodes.
 //!
 //! The `LinkedList` allows pushing and popping elements at either end
@@ -11,7 +14,6 @@
 //! [`VecDeque`]: super::vec_deque::VecDeque
 //!
 
-// COMMIT HASH: ad2b34d0e37e2f968f226e2401bcb894207ca1c5
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
