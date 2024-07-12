@@ -216,7 +216,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
                     gil_proof.push(LCmd::SL(SLCmd::SepAssert {
                         assertion,
-                        existentials: vars.iter().map(|v| v.to_string()).collect(),
+                        existentials: vars.iter().map(|v| format!("#{v}")).collect(),
                     }))
                 }
             };

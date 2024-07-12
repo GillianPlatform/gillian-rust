@@ -385,14 +385,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 substs,
                 variant,
                 fields,
-            } => todo!(),
+            } => todo!("compiler_pattern: constructor"),
             Pattern::Tuple(pats) => {
                 let fields: Vec<_> = pats.into_iter().map(|f| self.compile_pattern(f)).collect();
                 fields.into()
             }
             Pattern::Wildcard(ty) => self.temp_lvar(ty),
             Pattern::Binder(s) => Expr::LVar(format!("#{s}")),
-            Pattern::Boolean(_) => todo!(),
+            Pattern::Boolean(_) => todo!("compile_pattern: boolean"),
         }
     }
 

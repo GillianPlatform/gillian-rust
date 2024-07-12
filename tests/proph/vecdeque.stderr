@@ -1,8 +1,8 @@
 warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`, `extract_lemma`, `prophecies::with_freeze_lemma_for_mutref`
-  --> ../tests/proph/vecdeque.rs:12:25
+  --> ../tests/proph/vecdeque.rs:12:42
    |
-12 |     iterated::{all_own, all_own_swap},
-   |                         ^^^^^^^^^^^^
+12 |     iterated::with_prophecies::{all_own, all_own_swap},
+   |                                          ^^^^^^^^^^^^
 13 |     macros::{
 14 |         assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
    |                    ^^^^^^^^^^^^^             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

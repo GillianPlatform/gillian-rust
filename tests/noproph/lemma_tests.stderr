@@ -1,10 +1,9 @@
-warning: unused imports: `Ownable`, `assert_bind`, `no_prophecies::with_freeze_lemma_for_mutref`
+warning: unused imports: `Ownable`, `no_prophecies::with_freeze_lemma_for_mutref`
  --> ../tests/noproph/lemma_tests.rs:5:14
   |
 5 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 6 |     assert_bind,
-  |     ^^^^^^^^^^^
 7 |     Ownable,
   |     ^^^^^^^
   |
@@ -25,18 +24,6 @@ warning: unused variable: `b`
 15 | fn test_lemma((a, b) : (i32, i32)) {
    |                   ^ help: if this is intentional, prefix it with an underscore: `_b`
 
-warning: unused variable: `a`
-  --> ../tests/noproph/lemma_tests.rs:28:17
-   |
-28 | fn test_lemma2((a, b) : (i32, i32)) {
-   |                 ^ help: if this is intentional, prefix it with an underscore: `_a`
-
-warning: unused variable: `b`
-  --> ../tests/noproph/lemma_tests.rs:28:20
-   |
-28 | fn test_lemma2((a, b) : (i32, i32)) {
-   |                    ^ help: if this is intentional, prefix it with an underscore: `_b`
-
 warning: function `test_lemma` is never used
   --> ../tests/noproph/lemma_tests.rs:15:4
    |
@@ -51,6 +38,6 @@ warning: function `test_lemma2` is never used
 28 | fn test_lemma2((a, b) : (i32, i32)) {
    |    ^^^^^^^^^^^
 
-warning: 7 warnings emitted
+warning: 5 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

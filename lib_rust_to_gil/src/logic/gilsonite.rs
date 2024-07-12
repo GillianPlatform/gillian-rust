@@ -971,8 +971,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let id = self.peel_scope(id);
         let expr = &self.thir[id];
         if !self.is_formula_ty(expr.ty) {
-            todo!()
-            // fatal!(self, "{:?} is not the formula type", self.subst(expr.ty))
+            fatal2!(self.tcx, "{:?} is not the formula type", expr.ty)
         }
 
         match &expr.kind {
@@ -1189,7 +1188,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     thir::ExprKind::Field { lhs, name, .. } => {
                         let thir::ExprKind::Deref { arg } = &self.thir[self.peel_scope(lhs)].kind
                         else {
-                            todo!()
+                            todo!("Gilsonite field expression that is not deref")
                         };
 
                         let lhs = self.build_expression(*arg);

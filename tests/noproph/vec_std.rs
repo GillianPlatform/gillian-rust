@@ -8,14 +8,12 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    iterated::with_prophecies::{all_own, all_own_swap},
+    iterated::no_prophecies::{all_own, all_own_swap},
     macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
+        assertion, extract_lemma, predicate, no_prophecies::with_freeze_lemma_for_mutref,
+        specification, show_safety, lemma
     },
-    mutref_auto_resolve,
-    prophecies::{Ownable, Prophecised, Prophecy},
-    Seq,
+    Ownable,
 };
 use std::alloc::{Allocator, Layout, LayoutError};
 use std::mem::{self, SizedTypeProperties};
@@ -67,11 +65,9 @@ enum AllocInit {
 }
 
 impl Ownable for AllocInit {
-    type RepresentationTy = Self;
-
     #[predicate]
-    fn own(self, model: Self::RepresentationTy) {
-        assertion!((self == model))
+    fn own(self) {
+        assertion!((1 == 1))
     }
 }
 
@@ -84,6 +80,7 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
         Ok(()) => { /* yay */ }
     }
 }
+
 
 
 pub(crate) struct RawVec<T> {
@@ -282,29 +279,35 @@ pub struct Vec<T> {
     len: usize,
 }
 
+// We don't currently have a way to use proof tactics within the body of a function
+// Because of MIR vs THIR compilation... The engineering behind this is a nightmare.
+// So we use a lemma that asserts the right thing to do the work.
+#[lemma]
+#[specification(
+    forall values.
+    requires { p.points_to_slice(len, values) * all_own(values) }
+    ensures { p.points_to_slice(len, values) * all_own(values) }
+)]
+fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
+
 #[extract_lemma(
     forall ptr: Unique<T>, cap, len.
-    model m.
-    extract model mh.
     assuming { ix < len }
-    from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
-    extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
-    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+    from { vec_ref_mut_pcl(vec, ptr, cap, len) }
+    extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix)))) }
 )]
-fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
 
 #[with_freeze_lemma_for_mutref(
     lemma_name = freeze_pcl,
     predicate_name = vec_ref_mut_pcl,
     frozen_variables = [ptr, cap, len],
-    inner_predicate_name = vec_ref_mut_inner_pcl,
-    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+    // resolve_macro_name = auto_resolve_vec_ref_mut_pcl
 )]
 impl<T: Ownable> Ownable for Vec<T> {
-    type RepresentationTy = Seq<T::RepresentationTy>;
 
     #[predicate]
-    fn own(self, model: Self::RepresentationTy) {
+    fn own(self) {
         // The specification for zsts is quite hard. We need a value like ZST::REPRESENTATIVE or something.
         // assertion!(
         //     |values: Seq<T>, ptr, cap, len| (std::mem::size_of::<T>() == 0)
@@ -321,29 +324,18 @@ impl<T: Ownable> Ownable for Vec<T> {
         //         * (values.len() == model.len())
         // );
         assertion!(
-            |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
-                * (self
-                    == Vec {
-                        buf: RawVec { ptr, cap },
-                        len
-                    })
-                * cap.own(cap)
-                * len.own(len)
-                * (len <= cap)
-                * ptr.as_ptr().points_to_slice(len, values)
-                * (len == values.len())
-                * (values.len() == model.len())
-                * all_own(values, model)
-                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+            |ptr: Unique<T>, cap: usize, len: usize, values, rest|
+              (std::mem::size_of::<T>() > 0) * (self == Vec { buf: RawVec { ptr, cap }, len })
+              * cap.own() * len.own() * (len <= cap)
+              * ptr.as_ptr().points_to_slice(len, values)
+              * (len == values.len()) * all_own(values)
+              * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
         )
     }
 }
 
 impl<T: Ownable> Vec<T> {
-    #[specification(
-        requires { emp }
-        ensures { ret.own(Seq::empty())}
-    )]
+    #[show_safety]
     pub const fn new() -> Self {
         branch!(T::IS_ZST);
         Vec {
@@ -352,10 +344,7 @@ impl<T: Ownable> Vec<T> {
         }
     }
 
-    #[specification(
-        requires { capacity.own(capacity) * (capacity <= isize::MAX as usize)}
-        ensures { ret.own(Seq::empty()) }
-    )]
+    #[show_safety]
     pub fn with_capacity(capacity: usize) -> Self {
         Vec {
             buf: RawVec::with_capacity(capacity),
@@ -381,17 +370,7 @@ impl<T: Ownable> Vec<T> {
         self.buf.capacity()
     }
 
-    #[specification(
-        forall current, future, v_repr.
-        requires {
-            self.own((current, future)) *
-            $current.len() < (isize::MAX as usize)$ *
-            value.own(v_repr)
-        }
-        ensures {
-            $future == current.append(v_repr)$
-        }
-    )]
+    #[show_safety]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
@@ -403,19 +382,8 @@ impl<T: Ownable> Vec<T> {
             std::ptr::write(end, value);
             self.len += 1;
         }
-        mutref_auto_resolve!(self);
     }
 
-    // #[specification(
-    //     forall curr, proph.
-    //     requires {
-    //         self.own((curr, proph)) * a.own(a) * b.own(b) *
-    //         $ a < curr.len() && b < curr.len() $
-    //     }
-    //     ensures {
-    //         emp
-    //     }
-    // )]
     pub fn swap(&mut self, a: usize, b: usize) {
         // Some ghost code to keep track of the model.
         freeze_pcl(self);
@@ -435,49 +403,25 @@ impl<T: Ownable> Vec<T> {
         }
         // We need assert_bind to be able to talk about `curr`
         // all_own_swap(curr, a, b);
-        auto_resolve_vec_ref_mut_pcl!(self);
     }
 
-    #[specification(forall curr, proph.
-        requires { self.own((curr, proph)) }
-        exists ret_repr.
-        ensures {
-            ret.own(ret_repr) *
-            $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
-            $
-         }
-    )]
+    #[show_safety]
     pub fn pop(&mut self) -> Option<T> {
-        let res = if self.len == 0 {
+        if self.len == 0 {
             None
         } else {
             unsafe {
                 self.len -= 1;
                 // This is core::hint::assert_unchecked in the real implementation
                 assert!(self.len < self.capacity());
+                if self.len == 0 {}; // This is because of a very annoying normalisation issue in Gillian...
+                assert_correct_vs(self.as_ptr(), self.len);
                 Some(std::ptr::read(self.as_ptr().add(self.len)))
             }
-        };
-        mutref_auto_resolve!(self);
-        res
+        }
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-            * $ix < curr.len()$
-         }
-        exists curr_ix, proph_ix.
-        ensures {
-              ret.own((curr_ix, proph_ix))
-            * $    (curr.at(ix) == curr_ix)
-                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-              $
-         }
-    )]
+    #[show_safety]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -487,25 +431,11 @@ impl<T: Ownable> Vec<T> {
         // which in turn is called by IndexMut<usize> for Vec<T>
         let ret = &mut slice[ix];
 
-        let proph = extract_ith(self, ix);
-        ret.with_prophecy(proph)
+        extract_ith(self, ix);
+        ret
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-            * $ix < curr.len()$
-         }
-        exists curr_ix, proph_ix.
-        ensures {
-              ret.own((curr_ix, proph_ix))
-            * $    (curr.at(ix) == curr_ix)
-                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-              $
-         }
-    )]
+    #[show_safety]
     pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -517,40 +447,17 @@ impl<T: Ownable> Vec<T> {
         // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
         // which in turn is called by IndexMut<usize> for Vec<T>
         let ret = &mut *slice.as_mut_ptr().add(ix);
-        let proph = extract_ith(self, ix);
-        ret.with_prophecy(proph)
+        extract_ith(self, ix);
+        ret
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-         }
-        exists ret_repr.
-        ensures {
-              ret.own(ret_repr)
-            * $    ((ret_repr == None) && (curr.len() <= ix) && (curr == proph))
-                || (   (ix < curr.len())
-                    && (exists <
-                        curr_ix: T::RepresentationTy,
-                        proph_ix: T::RepresentationTy
-                        >
-                           (ret_repr == Some((curr_ix, proph_ix)))
-                        && (curr.at(ix) == curr_ix)
-                        && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-                        )
-                    )
-              $
-         }
-    )]
+    #[show_safety]
     fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
         // SAFETY: `self` is checked to be in bounds.
         if ix < self.len {
             // Ignore specification to avoid having to manually reborrow
             unsafe { Some(self.get_unchecked_mut(ix)) }
         } else {
-            mutref_auto_resolve!(self);
             None
         }
     }

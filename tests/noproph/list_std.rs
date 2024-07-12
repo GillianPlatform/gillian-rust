@@ -4,6 +4,7 @@ extern crate gilogic;
 use gilogic::{
     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
     Ownable,
+    assert_bind, unfold,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -122,7 +123,15 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-);
+)
+// {
+//     if len == 0 {} else {
+//         assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
+//         if (len == 0) {} else {
+
+//         }
+//     }
+// }
 
 #[lemma]
 #[gillian::trusted]

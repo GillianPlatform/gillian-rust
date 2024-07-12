@@ -31,7 +31,18 @@ pub use seq::Seq;
 mod ownable;
 pub use ownable::Ownable;
 pub mod alloc;
-pub mod iterated;
+mod iterated_pcy;
+mod iterated_no_pcy;
+
+pub mod iterated {
+    pub mod with_prophecies {
+        pub use crate::iterated_pcy::*;
+    }
+    pub mod no_prophecies {
+        pub use crate::iterated_no_pcy::*;
+    }
+}
+
 pub mod lemma;
 pub mod prophecies;
 
