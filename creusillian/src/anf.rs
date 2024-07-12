@@ -20,6 +20,7 @@ pub(crate) enum CoreTerm {
     Model(Box<CoreTerm>),
     Let(Pat, Box<CoreTerm>, Box<CoreTerm>),
     Match(Box<CoreTerm>, Vec<(Pat, Box<CoreTerm>)>),
+    Field(Box<CoreTerm>, Member),
     Constructor(ConstructorKind),
     Var(VarKind),
     Lit(Lit),
@@ -35,6 +36,7 @@ pub(crate) enum PreGil {
     MethodCall(Box<PreGil>, Ident, Vec<PreGil>),
     BinOp(Box<PreGil>, BinOp, Box<PreGil>),
     UnOp(UnOp, Box<PreGil>),
+    Field(Box<PreGil>, Member),
     Constructor(GilCons),
     Var(VarKind),
     Lit(Lit),
@@ -70,6 +72,7 @@ impl ToTokens for PreGil {
                 (forall < #var : _ > #body )
             }),
             PreGil::Final(t) => tokens.extend(quote! { (#t).1 }),
+            PreGil::Field(t, f) => tokens.extend(quote! { (#t).#f }),
             PreGil::Model(_) => todo!("model"),
             PreGil::Path(p) => p.to_tokens(tokens),
         }
@@ -168,6 +171,7 @@ pub(crate) fn print_gilsonite(t: CoreTerm) -> syn::Result<TokenStream> {
         }
         CoreTerm::Let(_, _, _) => Err(syn::Error::new(Span::call_site(), "unsupported")),
         CoreTerm::Match(_, _) => Err(syn::Error::new(Span::call_site(), "unsupported")),
+        CoreTerm::Field(_, _) => Err(syn::Error::new(Span::call_site(), "unsupported")),
         CoreTerm::Constructor(c) => match c {
             ConstructorKind::Tuple(t) => {
                 let t = t
@@ -321,7 +325,15 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
                 vec![index],
             ))
         }
-        t => Err(Error::new(t.span(), &format!("Unsupported term {t:?}"))),
+        Term::Field(TermField {
+            base,
+            dot_token: _,
+            member,
+        }) => {
+            let base = term_to_core(*base)?;
+            Ok(CoreTerm::Field(Box::new(base), member))
+        }
+        t => Err(Error::new(t.span(), format!("Unsupported term {t:?}"))),
     }
 }
 
@@ -401,6 +413,9 @@ impl CoreTerm {
             CoreTerm::Let(_, t, body) => {
                 t.subst(subst);
                 body.subst(subst);
+            }
+            CoreTerm::Field(t, _) => {
+                t.subst(subst);
             }
             CoreTerm::Match(expr, arms) => {
                 expr.subst(subst);
@@ -576,6 +591,7 @@ fn core_conjunct_to_sl(t: CoreTerm) -> PreGil {
         CoreTerm::Model(t) => core_conjunct_to_sl(*t),
         CoreTerm::Let(_, _, _) => unreachable!("let bindings should have been eliminated"),
         CoreTerm::Match(_, _) => unreachable!("match expressions should have been eliminated"),
+        CoreTerm::Field(t, f) => PreGil::Field(Box::new(core_conjunct_to_sl(*t)), f),
         CoreTerm::Constructor(c) => match c {
             ConstructorKind::Tuple(ts) => PreGil::Constructor(GilCons::Tuple(
                 ts.into_iter().map(core_conjunct_to_sl).collect(),
@@ -631,6 +647,7 @@ pub(crate) fn elim_match_form(t: &mut CoreTerm) {
         CoreTerm::UnOp(_, t) => elim_match_form(t),
         CoreTerm::Final(t) => elim_match_form(t),
         CoreTerm::Model(t) => elim_match_form(t),
+        CoreTerm::Field(t, _) => elim_match_form(t),
         CoreTerm::Let(p, e, x) => {
             elim_match_form(e);
             elim_match_form(x);
