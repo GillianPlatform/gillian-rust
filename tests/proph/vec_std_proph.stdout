@@ -35,8 +35,8 @@ axiomatic spec "extract_ith::<T>"(pLft_a, pty_T0, vec, ix)
 normal
 
 axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix) * <observation>(((#ix) i< (l-len #curr)); ) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, {{ #curr_ix, #proph_ix }}) * <observation>(((((l-nth(#curr, #ix)) = (#curr_ix))) and (((#proph) = (l+(l+(l-sub(#curr, 0i, #ix), {{ #proph_ix }}), l-sub(#curr, ((#ix) i+ (1i)), ((((l-len #curr) i- (#ix))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix_repr) * <observation>(((#ix_repr) i< (l-len l-nth(#self_repr, 0i))); ) * <lft>(#pLft_0; true) * types(#ix_repr: Int) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
 normal
 
 pred "<AllocInit as gilogic::prophecies::Ownable>::own"(+self, model):
@@ -150,6 +150,10 @@ pred "gilogic::iterated::with_prophecies::all_own::<T>"(+pty_T0, +vs, reprs):
 
 
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
+
+
+pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
+  (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
 
 
 pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
@@ -1064,7 +1068,7 @@ proc alloc_guard(alloc_size) {
 
 spec "Vec::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
-[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((#ret_repr) = ({{  }})); )]]
 normal
 
 proc "Vec::<T>::new"(pty_T0) {
@@ -1085,8 +1089,8 @@ proc "Vec::<T>::new"(pty_T0) {
 };
 
 spec "Vec::<T>::with_capacity"(pty_T0, capacity)
-[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity) * (#capacity i<=# 9223372036854775807i) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
-[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity_repr) * <observation>(((#capacity_repr) i<= (9223372036854775807i)); ) * types(#capacity_repr: Int) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
+[["<Vec<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((#ret_repr) = ({{  }})); )]]
 normal
 
 proc "Vec::<T>::with_capacity"(pty_T0, capacity) {
@@ -1187,8 +1191,8 @@ proc "Vec::<T>::capacity"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #current, #future }}) * <observation>(((l-len #current) i< (9223372036854775807i)); ) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #v_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((#future) = (l+(#current, {{ #v_repr }}))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #value_repr) * <observation>(((l-len l-nth(#self_repr, 0i)) i< (9223372036854775807i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#self_repr, 1i)) = (l+(l-nth(#self_repr, 0i), {{ #value_repr }}))); ) * <lft>(#pLft_0; true)]]
 normal
 
 proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
@@ -1416,8 +1420,8 @@ proc "Vec::<T>::swap"(pLft_0, pty_T0, self, a, b) {
 };
 
 spec "Vec::<T>::pop"(pLft_0, pty_T0, self)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((((#curr) = ({{  }}))) and (((#proph) = ({{  }}))))) and (((#ret_repr) = ({{ 0i, {{  }} }}))))) or (((((not ((#curr) = ({{  }}))) and (((#proph) = (l-sub(#curr, 0i, ((l-len #curr) i- (1i)))))))) and (((#ret_repr) = ({{ 1i, {{ l-nth(#curr, ((l-len #curr) i- (1i))) }} }})))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((l-len l-nth(#self_repr, 0i)) i- (1i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); ) * <lft>(#pLft_0; true)]]
 normal
 
 proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
@@ -1536,8 +1540,8 @@ proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix) * <observation>(((#ix) i< (l-len #curr)); ) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, {{ #curr_ix, #proph_ix }}) * <observation>(((((l-nth(#curr, #ix)) = (#curr_ix))) and (((#proph) = (l+(l+(l-sub(#curr, 0i, #ix), {{ #proph_ix }}), l-sub(#curr, ((#ix) i+ (1i)), ((((l-len #curr) i- (#ix))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix_repr) * <observation>(((#ix_repr) i< (l-len l-nth(#self_repr, 0i))); ) * <lft>(#pLft_0; true) * types(#ix_repr: Int) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
 normal
 
 proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
@@ -1645,8 +1649,8 @@ proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
 };
 
 spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix) * <observation>(((#ix) i< (l-len #curr)); ) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, {{ #curr_ix, #proph_ix }}) * <observation>(((((l-nth(#curr, #ix)) = (#curr_ix))) and (((#proph) = (l+(l+(l-sub(#curr, 0i, #ix), {{ #proph_ix }}), l-sub(#curr, ((#ix) i+ (1i)), ((((l-len #curr) i- (#ix))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix_repr) * <observation>(((#ix_repr) i< (l-len l-nth(#self_repr, 0i))); ) * <lft>(#pLft_0; true) * types(#ix_repr: Int) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); ) * <lft>(#pLft_0; true)]]
 normal
 
 proc "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix) {
@@ -1779,8 +1783,8 @@ proc "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix) {
 };
 
 spec "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((l-len #curr) i<= (#ix))))) and (((#curr) = (#proph))))) or (((((#ix) i< (l-len #curr))) and (exists #proph_ix. exists #curr_ix. ((((((#ret_repr) = ({{ 1i, {{ {{ #curr_ix, #proph_ix }} }} }}))) and (((l-nth(#curr, #ix)) = (#curr_ix))))) and (((#proph) = (l+(l+(l-sub(#curr, 0i, #ix), {{ #proph_ix }}), l-sub(#curr, ((#ix) i+ (1i)), ((((l-len #curr) i- (#ix))) i- (1i)))))))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<usize as gilogic::prophecies::Ownable>::own"(#ix, #ix_repr) * <lft>(#pLft_0; true) * types(#ix_repr: Int) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
+[["<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-len l-nth(#self_repr, 0i)) i<= (#ix_repr))) and (((l-nth(#self_repr, 0i)) = (l-nth(#self_repr, 1i)))))))) or (exists #r : List. ((((#ret_repr) = ({{ 1i, {{ #r }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#r, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), #ix_repr)) = (l-nth(#r, 1i)))))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#r, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))))))); ) * <lft>(#pLft_0; true)]]
 normal
 
 proc "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix) {

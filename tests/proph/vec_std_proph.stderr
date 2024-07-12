@@ -1,12 +1,13 @@
 warning: unused import: `all_own_swap`
-  --> ../tests/proph/vec_std_proph.rs:11:42
+  --> ../tests/proph/vec_std_proph.rs:12:42
    |
-11 |     iterated::with_prophecies::{all_own, all_own_swap},
+12 |     iterated::with_prophecies::{all_own, all_own_swap},
    |                                          ^^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _12
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
@@ -19,34 +20,34 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: unused variable: `vec`
-   --> ../tests/proph/vec_std_proph.rs:294:32
+   --> ../tests/proph/vec_std_proph.rs:295:32
     |
-294 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
     |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
     |
     = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `ix`
-   --> ../tests/proph/vec_std_proph.rs:294:53
+   --> ../tests/proph/vec_std_proph.rs:295:53
     |
-294 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
     |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
 
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:66:5
+  --> ../tests/proph/vec_std_proph.rs:67:5
    |
-62 | enum AllocInit {
+63 | enum AllocInit {
    |      --------- variant in this enum
 ...
-66 |     Zeroed,
+67 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/proph/vec_std_proph.rs:307:12
+   --> ../tests/proph/vec_std_proph.rs:308:12
     |
-307 |     fn own(self, model: Self::RepresentationTy) {
+308 |     fn own(self, model: Self::RepresentationTy) {
     |            ^^^^ help: convert the identifier to snake case: `reference`
     |
     = note: `#[warn(non_snake_case)]` on by default

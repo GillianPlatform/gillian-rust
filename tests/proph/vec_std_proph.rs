@@ -4,6 +4,7 @@
 #![feature(allocator_api)]
 #![feature(unchecked_math)]
 extern crate gilogic;
+extern crate creusillian;
 
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
@@ -322,28 +323,17 @@ impl<T: Ownable> Ownable for Vec<T> {
         // );
         assertion!(
             |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
-                * (self
-                    == Vec {
-                        buf: RawVec { ptr, cap },
-                        len
-                    })
-                * cap.own(cap)
-                * len.own(len)
-                * (len <= cap)
+                * (self == Vec { buf: RawVec { ptr, cap }, len })
+                * cap.own(cap) * len.own(len) * (len <= cap)
                 * ptr.as_ptr().points_to_slice(len, values)
-                * (len == values.len())
-                * (values.len() == model.len())
-                * all_own(values, model)
-                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+                * (len == values.len()) * (values.len() == model.len())
+                * all_own(values, model) * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
         )
     }
 }
 
 impl<T: Ownable> Vec<T> {
-    #[specification(
-        requires { emp }
-        ensures { ret.own(Seq::empty())}
-    )]
+    #[creusillian::ensures(ret@ == Seq::empty())]
     pub const fn new() -> Self {
         branch!(T::IS_ZST);
         Vec {
@@ -352,10 +342,9 @@ impl<T: Ownable> Vec<T> {
         }
     }
 
-    #[specification(
-        requires { capacity.own(capacity) * (capacity <= isize::MAX as usize)}
-        ensures { ret.own(Seq::empty()) }
-    )]
+    // TODO: support TermCast in creusillian macros.
+    #[creusillian::requires(capacity <= (usize::MAX / 2))]
+    #[creusillian::ensures(ret@ == Seq::empty())]
     pub fn with_capacity(capacity: usize) -> Self {
         Vec {
             buf: RawVec::with_capacity(capacity),
@@ -381,17 +370,8 @@ impl<T: Ownable> Vec<T> {
         self.buf.capacity()
     }
 
-    #[specification(
-        forall current, future, v_repr.
-        requires {
-            self.own((current, future)) *
-            $current.len() < (isize::MAX as usize)$ *
-            value.own(v_repr)
-        }
-        ensures {
-            $future == current.append(v_repr)$
-        }
-    )]
+    #[creusillian::requires((*self@).len() < (usize::MAX / 2))]
+    #[creusillian::ensures((^self@) == (*self@).append(value@))]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
@@ -438,16 +418,10 @@ impl<T: Ownable> Vec<T> {
         auto_resolve_vec_ref_mut_pcl!(self);
     }
 
-    #[specification(forall curr, proph.
-        requires { self.own((curr, proph)) }
-        exists ret_repr.
-        ensures {
-            ret.own(ret_repr) *
-            $    ((curr == Seq::empty()) && (proph == Seq::empty()) && (ret_repr == None))
-              || ((curr != Seq::empty()) && (proph == curr.sub(0, curr.len() - 1)) && (ret_repr == Some(curr.at(curr.len() - 1))))
-            $
-         }
-    )]
+    #[creusillian::ensures(match ret {
+        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+        Some(last) => ((^self@) == (*self@).sub(0, (*self@).len() - 1)) && ((*self@).last() == last@)
+     })]
     pub fn pop(&mut self) -> Option<T> {
         let res = if self.len == 0 {
             None
@@ -463,21 +437,9 @@ impl<T: Ownable> Vec<T> {
         res
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-            * $ix < curr.len()$
-         }
-        exists curr_ix, proph_ix.
-        ensures {
-              ret.own((curr_ix, proph_ix))
-            * $    (curr.at(ix) == curr_ix)
-                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-              $
-         }
-    )]
+
+    #[creusillian::requires(ix < (*self@).len())]
+    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -491,21 +453,8 @@ impl<T: Ownable> Vec<T> {
         ret.with_prophecy(proph)
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-            * $ix < curr.len()$
-         }
-        exists curr_ix, proph_ix.
-        ensures {
-              ret.own((curr_ix, proph_ix))
-            * $    (curr.at(ix) == curr_ix)
-                && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-              $
-         }
-    )]
+    #[creusillian::requires(ix < (*self@).len())]
+    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
     pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -521,29 +470,14 @@ impl<T: Ownable> Vec<T> {
         ret.with_prophecy(proph)
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-              self.own((curr, proph))
-            * ix.own(ix)
-         }
-        exists ret_repr.
-        ensures {
-              ret.own(ret_repr)
-            * $    ((ret_repr == None) && (curr.len() <= ix) && (curr == proph))
-                || (   (ix < curr.len())
-                    && (exists <
-                        curr_ix: T::RepresentationTy,
-                        proph_ix: T::RepresentationTy
-                        >
-                           (ret_repr == Some((curr_ix, proph_ix)))
-                        && (curr.at(ix) == curr_ix)
-                        && (proph == curr.sub(0, ix).append(proph_ix).concat(curr.sub(ix + 1, curr.len() - ix - 1)))
-                        )
-                    )
-              $
-         }
-    )]
+
+    #[creusillian::ensures(match ret@ {
+        None => (((*self@).len() <= ix) && ((*self@) == (^self@))),
+        Some(r) =>
+            ((*self@).at(ix) == (*r@)) &&
+            ((^self@).at(ix) == (^r@)) &&
+            ((^self@) == (*self@).sub(0, ix).append((^r@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))
+    })]
     fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
         // SAFETY: `self` is checked to be in bounds.
         if ix < self.len {

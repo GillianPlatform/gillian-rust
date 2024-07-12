@@ -9,5 +9,6 @@ rustc $1 \
   -Zcrate-attr='feature(rustc_attrs)' \
   -Zcrate-attr='allow(internal_features)' \
   -Zcrate-attr='feature(stmt_expr_attributes)' \
+  -Zmacro-backtrace \
   --cfg=gillian \
   -Zunpretty=expanded \
