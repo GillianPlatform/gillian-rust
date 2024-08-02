@@ -2,9 +2,9 @@
 extern crate gilogic;
 
 use gilogic::{
+    assert_bind,
     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-    Ownable,
-    assert_bind, unfold,
+    unfold, Ownable,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -106,9 +106,7 @@ fn dll_seg_r_appened_left<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
 );
 
-
 #[lemma]
-#[gillian::trusted]
 #[specification(
      forall len.
      requires {
@@ -123,14 +121,10 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-)
-{
-    // if len == 0 {} else {
-    //     assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
-    //     if (len == 0) {} else {
-
-    //     }
-    // }
+) {
+    if (head == None) {
+    } else {
+    }
 }
 
 #[lemma]
@@ -151,16 +145,24 @@ fn dll_seg_r_to_l<T: Ownable>(
     head_prev: Option<NonNull<Node<T>>>,
 );
 
-
-
 #[with_freeze_lemma_for_mutref(lemma_name = freeze_htl, predicate_name = list_ref_mut_htl, frozen_variables = [head, tail, len])]
 impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {
-        assertion!(|head: Option<NonNull<Node<T>>>, tail: Option<NonNull<Node<T>>>, len: usize,
-                    p: Option<NonNull<Node<T>>>, n: Option<NonNull<Node<T>>>|
-            (self == LinkedList { head, tail, len, marker: PhantomData })
-            * dll_seg(head, p, tail, n, len) * (p == None) * (n == None));
+        assertion!(|head: Option<NonNull<Node<T>>>,
+                    tail: Option<NonNull<Node<T>>>,
+                    len: usize,
+                    p: Option<NonNull<Node<T>>>,
+                    n: Option<NonNull<Node<T>>>| (self
+            == LinkedList {
+                head,
+                tail,
+                len,
+                marker: PhantomData
+            })
+            * dll_seg(head, p, tail, n, len)
+            * (p == None)
+            * (n == None));
     }
 }
 
@@ -174,7 +176,7 @@ impl<T: Ownable> LinkedList<T> {
             marker: PhantomData,
         }
     }
-    
+
     fn push_back_node(&mut self, mut node: Box<Node<T>>) {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -193,7 +195,7 @@ impl<T: Ownable> LinkedList<T> {
             self.len += 1;
         }
     }
-    
+
     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
         // This method takes care not to create mutable references to whole nodes,
         // to maintain validity of aliasing pointers into `element`.
@@ -258,7 +260,7 @@ impl<T: Ownable> LinkedList<T> {
             self.len += 1;
         }
     }
-    
+
     #[show_safety]
     pub fn pop_back(&mut self) -> Option<T> {
         dll_seg_l_to_r(self.head, None, self.tail, None);
@@ -291,5 +293,4 @@ impl<T: Ownable> LinkedList<T> {
             },
         }
     }
-
 }

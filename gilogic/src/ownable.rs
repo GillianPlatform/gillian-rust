@@ -97,7 +97,7 @@ impl<T: Ownable> Ownable for Option<T> {
 impl<T: Ownable> Ownable for Box<T> {
     #[predicate]
     fn own(self) {
-        assertion!(|v| (self -> v) * v.own())
+        assertion!(|v| (self -> v) * v.own() * whole_alloc(self))
     }
 
     #[cfg(not(gillian))]
