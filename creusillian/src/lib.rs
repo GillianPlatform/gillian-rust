@@ -6,7 +6,7 @@ use itertools::{Either, Itertools};
 use pearlite_syn::Term;
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{
     parse::Parse, punctuated::Punctuated, token::Comma, Attribute, FnArg, Ident, Pat, PatIdent,
     PatType, ReturnType, Signature, Visibility,
@@ -93,7 +93,7 @@ impl CoreContract {
         self.3.iter_mut().for_each(elim_match_form);
 
         let mut bindings = HashMap::new();
-        let has_inputs = self.0.len() > 0;
+        let has_inputs = !self.0.is_empty();
         let owns: Vec<_> = self
             .0
             .into_iter()
@@ -136,7 +136,7 @@ impl CoreContract {
         subst
             .bindings
             .remove(&VarKind::Source(Ident::new("ret", Span::call_site())));
-        let requires: Vec<_> = self.2.into_iter().map(|t| core_to_sl(t)).collect();
+        let requires: Vec<_> = self.2.into_iter().map(core_to_sl).collect();
 
         assert!(requires.iter().all(|a| a.clauses.len() == 1));
 
@@ -150,7 +150,7 @@ impl CoreContract {
             }
         });
 
-        let ensures: Vec<_> = self.3.into_iter().map(|t| core_to_sl(t)).collect();
+        let ensures: Vec<_> = self.3.into_iter().map(core_to_sl).collect();
 
         let mut pre_tokens = TokenStream::new();
         if has_inputs {

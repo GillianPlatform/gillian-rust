@@ -5,12 +5,12 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
-    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
+    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, Thir},
     ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
+use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::{logic::predicate::fn_args_and_tys, signature::anonymous_param_symbol};
@@ -436,7 +436,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         let expr = this.peel_scope(expr);
                         this.build_expression(expr)
                     });
-                    assert!(prophecise.0.len() == 0 || prophecise.0.len() == 2);
+                    assert!(prophecise.0.is_empty() || prophecise.0.len() == 2);
                     let proph_model = if prophecise.0.len() == 2 {
                         Some((prophecise.0.remove(0), prophecise.0.remove(0)))
                     } else {
@@ -656,7 +656,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             .iter()
             .enumerate()
             .filter_map(|(idx, param)| {
-                Some((idx, param.ty, self.pattern_term(&*param.pat.as_ref()?)))
+                Some((idx, param.ty, self.pattern_term(param.pat.as_ref()?)))
             })
             .fold(pre, |body, (idx, ty, pattern)| match pattern {
                 Pattern::Binder(_) | Pattern::Wildcard(_) => body,

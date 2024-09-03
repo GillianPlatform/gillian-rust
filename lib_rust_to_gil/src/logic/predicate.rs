@@ -282,7 +282,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let ty_params = param_collector::collect_params_on_args(substs)
             .with_consider_arguments(args.iter().map(|id| id.ty));
         let mut params = Vec::new();
-        let has_regions = build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
+        let has_regions = build_signature(self.global_env, def_id, substs, self.sig.temp_gen)
             .lifetimes()
             .count()
             > 0;
@@ -412,7 +412,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .collect();
 
         Pred {
-            name: name,
+            name,
             num_params: params.len(),
             params,
             abstract_: true,

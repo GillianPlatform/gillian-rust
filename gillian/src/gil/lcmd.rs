@@ -49,7 +49,7 @@ where
             LCmd::Assert(f) => docs![alloc, "assert ", f.pretty(alloc).parens()],
             LCmd::Assume(f) => docs![alloc, "assume ", f.pretty(alloc).parens()],
             LCmd::AssumeType { variable, typ } => {
-                docs![alloc, "assume_type ", "(", variable, ",", typ.clone(), ")"]
+                docs![alloc, "assume_type ", "(", variable, ",", *typ, ")"]
             }
             LCmd::FreshSVar(v) => docs![alloc, v, " := ", "fresh_svar", "()"],
             LCmd::SL(sl) => docs![alloc, format!("{sl}")],

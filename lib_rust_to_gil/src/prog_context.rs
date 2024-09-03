@@ -5,13 +5,13 @@ use polonius_engine::{Algorithm, Output};
 use rustc_hir::def::DefKind;
 
 use super::temp_gen::TempGenerator;
-use crate::config::{Config, GillianArgs};
+use crate::config::Config;
 use crate::location_table::LocationTable;
 use crate::logic::{compile_logic, LogicItem};
 use crate::metadata::BinaryMetadata;
 use crate::prelude::*;
 use crate::signature::build_signature;
-use crate::utils::attrs::{is_predicate, is_specification, is_trusted, parent_trusted};
+use crate::utils::attrs::{is_predicate, is_specification, is_trusted};
 
 pub struct ProgCtx<'tcx> {
     tcx: TyCtxt<'tcx>,

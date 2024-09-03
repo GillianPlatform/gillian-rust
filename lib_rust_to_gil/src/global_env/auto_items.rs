@@ -65,7 +65,7 @@ impl<'tcx> InnerPred<'tcx> {
             };
 
             let mut term = EarlyBinder::bind(global_env.predicate(call.def_id).clone())
-                .instantiate(global_env.tcx(), &call.substs);
+                .instantiate(global_env.tcx(), call.substs);
             assert_eq!(term.disjuncts.len(), 1);
             let assert = term.disjuncts[0].1.clone();
 
@@ -138,7 +138,7 @@ impl<'tcx> InnerPred<'tcx> {
         gil_pred.num_params -= 1;
         gil_pred.ins.remove(0);
         gil_pred.ins.iter_mut().for_each(|a| *a -= 1);
-        if let None = std::mem::take(&mut gil_pred.guard) {
+        if std::mem::take(&mut gil_pred.guard).is_none() {
             // fatal!(global_env, "InnerPred for something that is not a borrow {:?}", self.did)
         }
         prog.add_pred(gil_pred);

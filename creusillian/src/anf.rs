@@ -372,9 +372,7 @@ fn remove_bound_vars(p: &Pat, subst: &mut Subst) {
             todo!()
         }
         Pat::Struct(PatStruct { fields, .. }) => {
-            fields
-                .iter()
-                .for_each(|p| remove_bound_vars(&*p.pat, subst));
+            fields.iter().for_each(|p| remove_bound_vars(&p.pat, subst));
         }
         Pat::Tuple(PatTuple { elems, .. }) => {
             elems.iter().for_each(|p| remove_bound_vars(p, subst));
@@ -471,7 +469,7 @@ impl CoreTerm {
 fn build_pat(pat: &Pat, next_free: &mut u32, bound_vars: &mut Vec<VarKind>) -> CoreTerm {
     match pat {
         Pat::Ident(PatIdent { ident, .. }) => {
-            if !ident.to_string().chars().nth(0).unwrap().is_uppercase() {
+            if !ident.to_string().chars().next().unwrap().is_uppercase() {
                 bound_vars.push(VarKind::Source(ident.clone()));
             }
 
@@ -488,7 +486,7 @@ fn build_pat(pat: &Pat, next_free: &mut u32, bound_vars: &mut Vec<VarKind>) -> C
         }) => {
             let fields = fields
                 .iter()
-                .map(|e| (e.member.clone(), build_pat(&*e.pat, next_free, bound_vars)))
+                .map(|e| (e.member.clone(), build_pat(&e.pat, next_free, bound_vars)))
                 .collect();
 
             CoreTerm::Constructor(ConstructorKind::Struct {
@@ -555,13 +553,7 @@ pub(crate) fn core_to_sl(t: CoreTerm) -> Disjuncts {
 
     let mut to_see = vec![t];
     while let Some(t) = to_see.pop() {
-        match t {
-            // CoreTerm::BinOp(l, BinOp::Or(_), r) => {
-            //     to_see.push(*l);
-            //     to_see.push(*r);
-            // }
-            _ => clauses.push((vec![], core_conjunct_to_sl(t))),
-        }
+        clauses.push((vec![], core_conjunct_to_sl(t)))
     }
 
     Disjuncts { clauses }
