@@ -30,8 +30,8 @@ jobs:
       # OCaml setup and build/test
       - name: Setup Z3
         uses: cda-tum/setup-z3@v1
-        # env:
-        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: "ocaml-variants.5.2.0+options"
