@@ -76,7 +76,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn sig(&mut self) -> LemmaSig {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-        let sig = build_signature(self.global_env, self.did(), args, &mut self.temp_gen);
+        let sig = build_signature(self.global_env, self.did(), args, self.temp_gen);
         let params = sig.physical_args().map(|a| a.name().to_string()).collect();
         LemmaSig {
             name: self.lemma_name(),
@@ -106,7 +106,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 existentials: Vec::new(),
             };
             let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-            let sig = build_signature(self.global_env, self.did, args, &mut self.temp_gen);
+            let sig = build_signature(self.global_env, self.did, args, self.temp_gen);
 
             let ss = sig
                 .to_gil_spec(self.global_env, name)

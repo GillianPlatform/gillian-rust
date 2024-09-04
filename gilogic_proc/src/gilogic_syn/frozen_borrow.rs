@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::Span;
-use quote::ToTokens;
 use syn::{
     parse::Parse, spanned::Spanned, visit_mut::VisitMut, Ident, ImplItem, ItemImpl, Path, Token,
     Type,

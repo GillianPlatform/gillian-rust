@@ -1,8 +1,11 @@
 warning: unused imports: `assert_bind`, `unfold`
- --> ../tests/noproph/list_std.rs:7:5
+ --> ../tests/noproph/list_std.rs:5:5
   |
-7 |     assert_bind, unfold,
-  |     ^^^^^^^^^^^  ^^^^^^
+5 |     assert_bind,
+  |     ^^^^^^^^^^^
+6 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+7 |     unfold, Ownable,
+  |     ^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
@@ -52,57 +55,57 @@ warning: unused variable: `tail`
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
 
 warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:122:5
+   --> ../tests/noproph/list_std.rs:121:5
     |
-122 |     head: Option<NonNull<Node<T>>>,
+121 |     head: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
 
 warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:123:5
+   --> ../tests/noproph/list_std.rs:122:5
     |
-123 |     tail_next: Option<NonNull<Node<T>>>,
+122 |     tail_next: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
 
 warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:124:5
+   --> ../tests/noproph/list_std.rs:123:5
     |
-124 |     tail: Option<NonNull<Node<T>>>,
+123 |     tail: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
 
 warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:125:5
+   --> ../tests/noproph/list_std.rs:124:5
     |
-125 |     head_prev: Option<NonNull<Node<T>>>,
+124 |     head_prev: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
 
 warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:148:5
+   --> ../tests/noproph/list_std.rs:139:5
     |
-148 |     head: Option<NonNull<Node<T>>>,
+139 |     head: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
 
 warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:149:5
+   --> ../tests/noproph/list_std.rs:140:5
     |
-149 |     tail_next: Option<NonNull<Node<T>>>,
+140 |     tail_next: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
 
 warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:150:5
+   --> ../tests/noproph/list_std.rs:141:5
     |
-150 |     tail: Option<NonNull<Node<T>>>,
+141 |     tail: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
 
 warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:151:5
+   --> ../tests/noproph/list_std.rs:142:5
     |
-151 |     head_prev: Option<NonNull<Node<T>>>,
+142 |     head_prev: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
 
 warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/noproph/list_std.rs:159:12
+   --> ../tests/noproph/list_std.rs:148:12
     |
-159 |     fn own(self) {
+148 |     fn own(self) {
     |            ^^^^ help: convert the identifier to snake case: `reference`
     |
     = note: `#[warn(non_snake_case)]` on by default

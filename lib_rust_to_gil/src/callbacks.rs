@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, fs::File, io::stdout, path::PathBuf};
+use std::{cell::RefCell, collections::HashMap, io::stdout, path::PathBuf};
 
 use rustc_borrowck::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_driver::{Callbacks, Compilation};
@@ -7,7 +7,6 @@ use rustc_interface::{interface::Compiler, Queries};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OutputType;
 
-use super::config::GillianArgs;
 use crate::{
     config::Config, global_env::GlobalEnv, metadata, prog_context::ProgCtx,
     utils::cleanup_logic::cleanup_logic,
@@ -113,9 +112,9 @@ fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
     let mut directory: PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
     directory.pop();
     directory.pop();
-    let out_path = directory.join(&libname);
+    
 
-    out_path
+    directory.join(libname)
     // Box::new(std::io::BufWriter::new(File::create(out_path)?))
 }
 

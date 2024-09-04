@@ -702,8 +702,8 @@ pub(crate) fn requires_terminator(expr: &Term) -> bool {
 
 pub(crate) mod parsing {
     use super::*;
-    use proc_macro2::Delimiter;
-    use syn::parse::{discouraged::AnyDelimiter, Parse, ParseStream, Result};
+    
+    use syn::parse::{Parse, ParseStream, Result};
     // use syn::path;
     use std::cmp::Ordering;
 

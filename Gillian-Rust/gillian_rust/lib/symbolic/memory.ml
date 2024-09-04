@@ -523,14 +523,16 @@ let get_oks dr =
           Delayed.vanish ())
 
 let substitution_in_place s mem =
-  let lk = Layout_knowledge.substitution s mem.lk in
-  let* heap, lk =
-    Heap.substitution ~tyenv:mem.tyenv ~lk mem.heap s |> get_oks
-  in
-  let+ pcies = Prophecies.substitution mem.pcies s |> get_oks in
-  let lfts = Lft_ctx.substitution s mem.lfts in
-  let obs_ctx = Obs_ctx.substitution s mem.obs_ctx in
-  { heap; pcies; lfts; lk; obs_ctx; tyenv = mem.tyenv }
+  if Subst.is_empty s then Delayed.return mem
+  else
+    let lk = Layout_knowledge.substitution s mem.lk in
+    let* heap, lk =
+      Heap.substitution ~tyenv:mem.tyenv ~lk mem.heap s |> get_oks
+    in
+    let+ pcies = Prophecies.substitution mem.pcies s |> get_oks in
+    let lfts = Lft_ctx.substitution s mem.lfts in
+    let obs_ctx = Obs_ctx.substitution s mem.obs_ctx in
+    { heap; pcies; lfts; lk; obs_ctx; tyenv = mem.tyenv }
 
 let can_fix = function
   | Err.MissingBlock _

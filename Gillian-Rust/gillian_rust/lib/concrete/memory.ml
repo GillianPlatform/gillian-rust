@@ -4,7 +4,7 @@ open Gillian.Gil_syntax
 type init_data = Tyenv.t
 type vt = Values.t
 type st = Subst.t
-type err_t = string [@@deriving show]
+type err_t = string [@@deriving show, yojson]
 type t = { tyenv : Tyenv.t; heap : Heap.t }
 type action_ret = (t * vt list, err_t) result
 

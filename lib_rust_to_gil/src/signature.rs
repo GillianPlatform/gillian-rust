@@ -5,7 +5,7 @@ use gillian::gil::{Assertion, Expr, Flag, Formula, SingleSpec, Spec, Type};
 use indexmap::IndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{def::DefKind, Unsafety};
-use rustc_middle::ty::{GenericArgsRef, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt, TyKind};
 use rustc_span::{symbol, Symbol};
 
 use crate::{
@@ -497,10 +497,10 @@ fn temp_lvar(fresh: &mut TempGenerator) -> Expr {
     Expr::LVar(fresh.fresh_lvar())
 }
 
-pub(crate) fn inputs_and_output<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn inputs_and_output(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> (impl Iterator<Item = (symbol::Ident, Ty<'tcx>)>, Ty<'tcx>) {
+) -> (impl Iterator<Item = (symbol::Ident, Ty<'_>)>, Ty<'_>) {
     let ty = tcx.type_of(def_id).instantiate_identity();
     let (inputs, output): (Box<dyn Iterator<Item = (rustc_span::symbol::Ident, _)>>, _) = match ty
         .kind()

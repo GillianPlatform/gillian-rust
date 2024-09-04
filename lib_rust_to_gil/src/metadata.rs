@@ -92,14 +92,14 @@ impl<'tcx> BinaryMetadata<'tcx> {
             .read_only_view()
             .iter()
             .filter(|(def_id, _)| def_id.is_local())
-            .map(|(id, t)| (*id, (&**t).clone()))
+            .map(|(id, t)| (*id, (**t).clone()))
             .collect();
 
         let contracts = contracts
             .read_only_view()
             .iter()
             .filter(|(def_id, _)| def_id.is_local())
-            .filter_map(|(id, t)| Some((*id, (&**t).as_ref()?.clone())))
+            .filter_map(|(id, t)| Some((*id, (**t).as_ref()?.clone())))
             .collect();
 
         let spec_map = spec_map
@@ -120,8 +120,8 @@ fn export_file(tcx: TyCtxt, out: &Option<String>) -> PathBuf {
         let outputs = tcx.output_filenames(());
         let out = outputs.path(OutputType::Metadata);
         let path = out.as_path().to_owned();
-        let path = path.with_extension("gmeta");
-        path
+        
+        path.with_extension("gmeta")
     })
 }
 

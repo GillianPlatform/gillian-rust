@@ -69,7 +69,7 @@ fn main() {
         .expect("Expected `cargo-gillian` to be built with a valid toolchain file");
     let mut cmd = Command::new(cargo_path);
     cmd.arg(format!("+{toolchain}"))
-        .arg(&cargo_cmd)
+        .arg(cargo_cmd)
         .args(args.rust_flags)
         .env("RUSTC_WRAPPER", gillian_rustc_path)
         .env("CARGO_GILLIAN", "1");

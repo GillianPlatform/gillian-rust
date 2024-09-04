@@ -18,11 +18,3 @@ macro_rules! fold {
 		gilogic :: __stubs :: fold_proof ( $f ($($x:expr),*) )
 	}
 }
-
-#[macro_export]
-macro_rules! assert_bind {
-	($e:expr) => { gilogic :: __stubs :: assert_bind(#[gillian::no_translate] | | { assertion!($e) }) };
-	($($x:ident),* | $e:expr ) => {
-		let ($($x),*) = gilogic :: __stubs :: assert_bind(#[gillian::no_translate] |$($x),*| { assertion!($e) });
-	}
-}

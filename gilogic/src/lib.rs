@@ -12,6 +12,8 @@ mod tys;
 
 pub use tys::RustAssertion;
 
+pub use gilogic_proc::assert_bind;
+
 pub mod macros {
     pub use gilogic_proc::{
         assertion, assertion_test, borrow, close_borrow, extract_lemma, lemma, open_borrow,

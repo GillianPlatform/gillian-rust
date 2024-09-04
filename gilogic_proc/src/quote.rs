@@ -1,6 +1,6 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{parse_quote, spanned::Spanned, BinOp, Error, Lit, LitBool, Stmt, StmtMacro, Type};
+use syn::{parse_quote, spanned::Spanned, BinOp, Error, Stmt, Type};
 
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*};
 
@@ -159,7 +159,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         Term::Call(TermCall { func, args, .. }) => {
             let args: Vec<_> = args
                 .iter()
-                .map(|f| encode_expr(&f))
+                .map(encode_expr)
                 .collect::<syn::Result<_>>()?;
             tokens.extend(quote! { #func ( #(#args),* ) })
         }
@@ -231,10 +231,10 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             args,
             ..
         }) => {
-            let r = encode_expr(&receiver)?;
+            let r = encode_expr(receiver)?;
             let args: Vec<_> = args
                 .iter()
-                .map(|a| encode_expr(a))
+                .map(encode_expr)
                 .collect::<syn::Result<_>>()?;
 
             tokens.extend(quote! { #r #dot_token #method #turbofish ( #(#args),*) })
@@ -262,7 +262,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         Term::Tuple(TermTuple { elems, .. }) => {
             let fields: Vec<_> = elems
                 .iter()
-                .map(|a| encode_expr(a))
+                .map(encode_expr)
                 .collect::<syn::Result<_>>()?;
             tokens.extend(quote! { ( #(#fields),*) })
         }
