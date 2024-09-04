@@ -28,7 +28,7 @@ jobs:
       # Basic setups
       - uses: actions/checkout@v4
       # OCaml setup and build/test
-      - uses: ocaml/setup-ocaml@v2
+      - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: "ocaml-variants.5.2.0+options"
       - name: OCaml cache
@@ -36,6 +36,7 @@ jobs:
         uses: actions/cache@v3
         env:
           cache-name: cache-ocaml
+          dune-cache: true
         with:
           path: _opam
           key: ${{ runner.os }}-${{ env.cache-name }}-ocaml5.2-${{ hashFiles('**/*.opam') }}
