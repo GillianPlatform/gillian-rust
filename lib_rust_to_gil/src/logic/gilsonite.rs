@@ -323,9 +323,7 @@ pub enum ProofStep<'tcx> {
         f_branch: Vec<ProofStep<'tcx>>,
     },
     Call {
-        def_id: DefId,
-        substs: GenericArgsRef<'tcx>,
-        args: Vec<Expr<'tcx>>,
+        pred: AssertPredCall<'tcx>,
     },
     AssertBind {
         vars: Vec<Symbol>,
@@ -506,7 +504,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     };
 
                     let AssertKind::Call(post) = args.remove(0).kind else {
-                        fatal2!(self.tcx, "expected postcondition of package to be a call")
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
                     };
 
                     ProofStep::Package { pre, post }
@@ -530,17 +528,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 }
                 Some(_) => fatal2!(self.tcx, "unsupported proof step"),
                 None => {
-                    let ty::FnDef(def_id, substs) = *ty.kind() else {
-                        unreachable!()
+                    let AssertKind::Call(pred) = self.build_assert(expr).kind else {
+                        fatal2!(self.tcx, "expected precondition of package to be a call")
                     };
-                    let args = args.iter().map(|a| self.build_expression(*a)).collect();
-                    ProofStep::Call {
-                        call: AssertPredCall {
-                            def_id,
-                            substs,
-                            args,
-                        },
-                    }
+
+                    ProofStep::Call { pred }
                 }
             },
             thir::ExprKind::If {
@@ -742,10 +734,9 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     fn build_assert_kind(&self, id: ExprId) -> AssertKind<'tcx> {
         let expr = &self.thir[id];
         if !self.is_assertion_ty(expr.ty) {
-            self.tcx.dcx().fatal(format!(
-                "{:?} is not the assertion type, cannot compile {:?}",
-                expr.ty, expr
-            ))
+            self.tcx
+                .dcx()
+                .fatal(format!("{:?} is not the assertion type", expr.ty))
         }
         match &expr.kind {
             thir::ExprKind::Scope {

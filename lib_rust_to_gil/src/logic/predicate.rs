@@ -94,10 +94,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         Self::new_with_args(global_env, temp_gen, body_id, args)
     }
 
-    pub(crate) fn clear_local_toplevel_assertions_hack(&mut self) {
-        self.local_toplevel_asrts.clear();
-    }
-
     fn prophecies_enabled(&self) -> bool {
         self.global_env.config.prophecies
     }

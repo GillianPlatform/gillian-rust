@@ -122,16 +122,7 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-) {
-    if head == None {
-    } else {
-        assert_bind!(head_next, head_prev, element, ptr |
-            (head == Some(ptr)) *
-            (ptr -> Node { next: head_next, prev: head_prev, element })
-        );
-        dll_seg_l_to_r(head_next, tail_next, tail, head);
-    }
-}
+);
 
 #[lemma]
 #[gillian::trusted]
