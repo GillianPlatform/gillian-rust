@@ -203,8 +203,12 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                         else_branch,
                     });
                 }
-                ProofStep::Call { pred } => {
-                    let (lemma_name, parameters) = pred_ctx.compile_pred_call(pred);
+                ProofStep::Call {
+                    def_id,
+                    args,
+                    substs,
+                } => {
+                    let (lemma_name, parameters) = pred_ctx.compile_pred_call(call);
                     gil_proof.push(LCmd::SL(SLCmd::ApplyLem {
                         lemma_name,
                         parameters,
@@ -212,6 +216,10 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     }))
                 }
                 ProofStep::AssertBind { assertion, vars } => {
+                    // HACK(Sacha): We're cleaning any current toplevel assertions,
+                    //              (that won't be used anyway)
+                    //              to avoid any clash.
+                    pred_ctx.clear_local_toplevel_assertions_hack();
                     let assertion = pred_ctx.compile_assertion(assertion);
 
                     gil_proof.push(LCmd::SL(SLCmd::SepAssert {
