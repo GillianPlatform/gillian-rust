@@ -6,11 +6,13 @@
 
 extern crate proc_macro;
 use ::quote::ToTokens;
+use assert_bind::AssertBind;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
 pub(crate) mod visitors;
 
+mod assert_bind;
 mod borrows;
 mod extract_lemmas;
 mod folding;
@@ -85,6 +87,14 @@ pub fn close_borrow(input: TokenStream_) -> TokenStream_ {
 #[proc_macro]
 pub fn assertion(input: TokenStream_) -> TokenStream_ {
     match parse_macro_input!(input as Assertion).encode() {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn assert_bind(input: TokenStream_) -> TokenStream_ {
+    match parse_macro_input!(input as AssertBind).encode() {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }
