@@ -9,19 +9,6 @@ warning: unused imports: `assert_bind`, `unfold`
   |
   = note: `#[warn(unused_imports)]` on by default
 
-warning: unnecessary parentheses around `if` condition
-   --> ../tests/noproph/list_std.rs:125:8
-    |
-125 |     if (head == None) {
-    |        ^            ^
-    |
-    = note: `#[warn(unused_parens)]` on by default
-help: remove these parentheses
-    |
-125 -     if (head == None) {
-125 +     if head == None {
-    |
-
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
@@ -67,52 +54,58 @@ warning: unused variable: `tail`
 106 |     tail: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
 
-warning: unused variable: `tail_next`
+warning: unused variable: `head`
    --> ../tests/noproph/list_std.rs:121:5
     |
-121 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:122:5
-    |
-122 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:123:5
-    |
-123 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:142:5
-    |
-142 |     head: Option<NonNull<Node<T>>>,
+121 |     head: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
 
 warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:143:5
+   --> ../tests/noproph/list_std.rs:122:5
     |
-143 |     tail_next: Option<NonNull<Node<T>>>,
+122 |     tail_next: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
 
 warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:144:5
+   --> ../tests/noproph/list_std.rs:123:5
     |
-144 |     tail: Option<NonNull<Node<T>>>,
+123 |     tail: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
 
 warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:145:5
+   --> ../tests/noproph/list_std.rs:124:5
     |
-145 |     head_prev: Option<NonNull<Node<T>>>,
+124 |     head_prev: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: unused variable: `head`
+   --> ../tests/noproph/list_std.rs:139:5
+    |
+139 |     head: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+
+warning: unused variable: `tail_next`
+   --> ../tests/noproph/list_std.rs:140:5
+    |
+140 |     tail_next: Option<NonNull<Node<T>>>,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+
+warning: unused variable: `tail`
+   --> ../tests/noproph/list_std.rs:141:5
+    |
+141 |     tail: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+
+warning: unused variable: `head_prev`
+   --> ../tests/noproph/list_std.rs:142:5
+    |
+142 |     head_prev: Option<NonNull<Node<T>>>,
     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
 
 warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/noproph/list_std.rs:151:12
+   --> ../tests/noproph/list_std.rs:148:12
     |
-151 |     fn own(self) {
+148 |     fn own(self) {
     |            ^^^^ help: convert the identifier to snake case: `reference`
     |
     = note: `#[warn(non_snake_case)]` on by default

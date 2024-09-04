@@ -107,6 +107,7 @@ fn dll_seg_r_appened_left<T: Ownable>(
 );
 
 #[lemma]
+#[gillian::trusted]
 #[specification(
      forall len.
      requires {
@@ -121,11 +122,7 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-) {
-    if (head == None) {
-    } else {
-    }
-}
+);
 
 #[lemma]
 #[gillian::trusted]

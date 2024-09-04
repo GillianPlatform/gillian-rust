@@ -123,12 +123,8 @@ lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[ (#x == {
 [["dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i)))]]
 
 
-lemma "dll_seg_l_to_r::<T>"(head, tail_next, tail, head_prev, len)[[ "dll_seg::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
-[["dll_seg_r::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
-
-[*
-if (#lvar_0) then {} else {}
-*]
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
+[["dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
 
 
 lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
