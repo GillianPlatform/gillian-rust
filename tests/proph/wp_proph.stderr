@@ -1,50 +1,119 @@
+warning: unused import: `specification`
+  --> ../tests/proph/wp_proph.rs:10:9
+   |
+10 |         specification,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+building predctx DefId(0:27 ~ wp_proph[6031]::wp) [T/#0]
+building predctx DefId(0:39 ~ wp_proph[6031]::{impl#1}::frozen_own) [DefId(0:31 ~ wp_proph[6031]::{impl#1}::'a)_'a/#0, T/#1]
+building predctx DefId(0:41 ~ wp_proph[6031]::wp_ref_mut_xy) [T/#0]
+building predctx DefId(0:44 ~ wp_proph[6031]::{impl#2}::own) [T/#0]
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:46 ~ wp_proph[6031]::extract_x___proof) [T/#0]
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:50 ~ wp_proph[6031]::extract_x___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:52 ~ wp_proph[6031]::extract_x_spec_05be5ae6_9b57_430d_aff0_5af8ab2e8a17) [T/#0]
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:60 ~ wp_proph[6031]::extract_y___proof) [T/#0]
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:64 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) [T/#0]
+building predctx DefId(0:66 ~ wp_proph[6031]::extract_y_spec_cd760fae_b910_4e72_88f9_b22e30734a54) [T/#0]
+building predctx DefId(0:74 ~ wp_proph[6031]::{impl#0}::new_spec_b88d2523_31cb_4ab9_9e23_13c4e08dc283) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+building predctx DefId(0:74 ~ wp_proph[6031]::{impl#0}::new_spec_b88d2523_31cb_4ab9_9e23_13c4e08dc283) [T/#0]
+building predctx DefId(0:78 ~ wp_proph[6031]::{impl#0}::assign_first_spec_2c17623a_31d5_406e_9ac4_1942029fe9a6) [T/#0]
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+building predctx DefId(0:78 ~ wp_proph[6031]::{impl#0}::assign_first_spec_2c17623a_31d5_406e_9ac4_1942029fe9a6) [T/#0]
+building predctx DefId(0:82 ~ wp_proph[6031]::{impl#0}::first_mut_spec_b3fe7f25_cf67_4324_ba53_7c3818b8e015) [T/#0]
+building predctx DefId(0:82 ~ wp_proph[6031]::{impl#0}::first_mut_spec_b3fe7f25_cf67_4324_ba53_7c3818b8e015) [T/#0]
+building predctx DefId(0:88 ~ wp_proph[6031]::{impl#0}::second_mut_spec_09c6747f_49d6_4349_b727_049ef202bff9) [T/#0]
+building predctx DefId(0:88 ~ wp_proph[6031]::{impl#0}::second_mut_spec_09c6747f_49d6_4349_b727_049ef202bff9) [T/#0]
+building predctx DefId(20:265 ~ gilogic[8e9c]::prophecies::Ownable::own) [T/#0]
+building predctx DefId(20:356 ~ gilogic[8e9c]::prophecies::freeze_params_spec_23254a4d_b8ab_4378_965a_ca95981a5a42) [(*mut N<T/#0>, *mut N<T/#0>), WP<T/#0>]
+building predctx DefId(20:271 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:267 ~ gilogic[8e9c]::prophecies::FrozenOwn::just_ref_mut_points_to) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:267 ~ gilogic[8e9c]::prophecies::FrozenOwn::just_ref_mut_points_to) [T/#0, ()]
+building predctx DefId(20:275 ~ gilogic[8e9c]::prophecies::{impl#1}::own) ['{erased}, T/#0]
+building predctx DefId(20:275 ~ gilogic[8e9c]::prophecies::{impl#1}::own) ['{erased}, WP<T/#0>]
+building predctx DefId(20:330 ~ gilogic[8e9c]::prophecies::{impl#4}::own) []
+building predctx DefId(20:336 ~ gilogic[8e9c]::prophecies::prophecy_auto_update_spec_48e0b4da_ab03_40e7_a29c_58e5336bf9d1) [(), WP<T/#0>]
+building predctx DefId(20:345 ~ gilogic[8e9c]::prophecies::prophecy_resolve_spec_91b0cd55_c9a6_4bd0_b2e9_87ddb7fbeb62) [(), WP<T/#0>]
+building predctx DefId(0:52 ~ wp_proph[6031]::extract_x_spec_05be5ae6_9b57_430d_aff0_5af8ab2e8a17) [T/#0]
+building predctx DefId(0:66 ~ wp_proph[6031]::extract_y_spec_cd760fae_b910_4e72_88f9_b22e30734a54) [T/#0]
+building predctx DefId(20:269 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [WP<T/#0>, (*mut N<T/#0>, *mut N<T/#0>)]
+building predctx DefId(20:273 ~ gilogic[8e9c]::prophecies::{impl#0}::frozen_own) [T/#0]
+building predctx DefId(20:271 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [T/#0, ()]
+building predctx DefId(20:271 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_own_frozen) [WP<T/#0>, ()]
+building predctx DefId(20:273 ~ gilogic[8e9c]::prophecies::{impl#0}::frozen_own) [WP<T/#0>]
+building predctx DefId(20:269 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [T/#0, ()]
+building predctx DefId(20:269 ~ gilogic[8e9c]::prophecies::FrozenOwn::mut_ref_inner_frozen) [WP<T/#0>, ()]
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:65:30
+  --> ../tests/proph/wp_proph.rs:64:30
    |
-65 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+64 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:76:30
+  --> ../tests/proph/wp_proph.rs:75:30
    |
-76 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+75 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
-warning: struct `WP` is never constructed
-  --> ../tests/proph/wp_proph.rs:16:8
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/wp_proph.rs:17:5
    |
 16 | struct WP<T> {
-   |        ^^
+   |        -- fields in this struct
+17 |     x: *mut N<T>,
+   |     ^
+18 |     y: *mut N<T>,
+   |     ^
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: struct `N` is never constructed
-  --> ../tests/proph/wp_proph.rs:21:8
+warning: fields `v` and `o` are never read
+  --> ../tests/proph/wp_proph.rs:22:5
    |
 21 | struct N<T> {
-   |        ^
+   |        - fields in this struct
+22 |     v: T,
+   |     ^
+23 |     o: *mut N<T>,
+   |     ^
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:52:12
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:51:12
    |
-52 |     fn own(self, model: Self::RepresentationTy) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
+51 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `this`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
-warning: 5 warnings emitted
+warning: function `extract_x___proof` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:64:4
+   |
+64 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
+
+warning: function `extract_y___proof` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:75:4
+   |
+75 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
+
+warning: 8 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

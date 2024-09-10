@@ -14,7 +14,7 @@ toml = "0.5.9"
 serde_json = "1.0"
 
 [dev-dependencies]
-ui_test = { version = "*", git = "https://github.com/oli-obk/ui_test.git", ref = "0f2a567" }
+ui_test = { version = "0.26" }
 [package.metadata.rust-analyzer]
 rustc_private = true
 

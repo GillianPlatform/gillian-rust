@@ -6,7 +6,7 @@ extern crate creusillian;
 
 use gilogic::{
     macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
+        assertion, extract_lemma, predicate, with_freeze_lemma,
         specification,
     },
     mutref_auto_resolve,
@@ -39,11 +39,10 @@ fn wp<T: Ownable>(
     )
 }
 
-#[with_freeze_lemma_for_mutref(
+#[with_freeze_lemma(
     lemma_name = freeze_xy,
     predicate_name = wp_ref_mut_xy,
     frozen_variables = [x, y],
-    inner_predicate_name = wp_ref_mut_inner_xy
 )]
 impl<T: Ownable> Ownable for WP<T> {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
@@ -58,7 +57,7 @@ impl<T: Ownable> Ownable for WP<T> {
     forall x: *mut N<T>, y: *mut N<T>.
     model m.
     extract model mx.
-    from { wp_ref_mut_xy(p, m, x, y) }
+    from { wp_ref_mut_xy(p, m, (x, y)) }
     extract { Ownable::own(&mut (*x).v, mx) }
     prophecise { (mx, m.1) }
 )]
@@ -69,7 +68,7 @@ fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
     forall x, y.
     model m.
     extract model mx.
-    from { wp_ref_mut_xy(p, m, x, y) }
+    from { wp_ref_mut_xy(p, m, (x, y)) }
     extract { Ownable::own(&mut (*y).v, mx) }
     prophecise { (m.0, mx) }
 )]

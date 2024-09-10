@@ -12,19 +12,17 @@ mod tys;
 
 pub use tys::RustAssertion;
 
-pub use gilogic_proc::assert_bind;
-
 pub mod macros {
     pub use gilogic_proc::{
         assertion, assertion_test, borrow, close_borrow, extract_lemma, lemma, open_borrow,
-        predicate, show_safety, specification,
+        predicate, show_safety, specification, with_freeze_lemma,
     };
-    pub mod prophecies {
-        pub use gilogic_proc::with_freeze_lemma_for_mutref_pcy as with_freeze_lemma_for_mutref;
-    }
-    pub mod no_prophecies {
-        pub use gilogic_proc::with_freeze_lemma_for_mutref_no_pcy as with_freeze_lemma_for_mutref;
-    }
+    // pub mod prophecies {
+    //     pub use gilogic_proc::with_freeze_lemma_for_mutref_pcy as with_freeze_lemma_for_mutref;
+    // }
+    // pub mod no_prophecies {
+    //     pub use gilogic_proc::with_freeze_lemma_for_mutref_no_pcy as with_freeze_lemma_for_mutref;
+    // }
 }
 
 mod seq;

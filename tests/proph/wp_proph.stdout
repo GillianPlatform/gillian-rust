@@ -4,94 +4,108 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec extract_x(pLft_a, pty_T0, p)
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true)
+axiomatic spec extract_x(pLft_erased, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
+  * <lft>(#pLft_erased; true)
   * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
   * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i))
   * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i))
   * <observation>(((((l-nth(#m, 1i)) = ({{ #__NEW_PROPH_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }}))) and (((l-nth(#m, 0i)) = ({{ #__NEW_PROPH_OLD_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }})))); )
-  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
-  * <lft>(#pLft_a; true) ]]
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-axiomatic spec extract_y(pLft_a, pty_T0, p)
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true)
+axiomatic spec extract_y(pLft_erased, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
+  * <lft>(#pLft_erased; true)
   * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
   * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i))
   * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i))
   * <observation>(((((l-nth(#m, 1i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_VAL }}))) and (((l-nth(#m, 0i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_OLD_VAL }})))); )
-  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
-  * <lft>(#pLft_a; true) ]]
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-axiomatic spec "gilogic::prophecies::prophecy_auto_update::<WP<T>>"(pLft_0, pty_T0, p)
+axiomatic spec "gilogic::prophecies::freeze_params::<(*mut N<T>, *mut N<T>), WP<T>>"(pLft_erased, pty_T0, p)
+[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, #p, #m)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_erased == #pLft_erased) ]]
+[[ "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref_own_frozen"(#pLft_erased, #pty_T0, #p, #m, #frozen) ]]
+normal
+
+axiomatic spec "gilogic::prophecies::prophecy_auto_update::<(), WP<T>>"(pLft_erased, pty_T0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "WP", {{ #pty_T0 }} }}; #v)
-  * "<WP<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#pty_T0, #v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #a)
   * <pcy_controller>(l-nth(#p, 1i); #a)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_0 == #pLft_0) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "WP", {{ #pty_T0 }} }}; #v)
-  * "<WP<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#pty_T0, #v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #r)
   * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
-axiomatic spec "gilogic::prophecies::prophecy_resolve::<WP<T>>"(pLft_0, pty_T0, p)
-[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m)
+axiomatic spec "gilogic::prophecies::prophecy_resolve::<(), WP<T>>"(pLft_erased, pty_T0, p)
+[[ "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(#pLft_erased, #pty_T0, #p, #m, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_0 == #pLft_0) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
-axiomatic spec "extract_x::<T>"(pLft_a, pty_T0, p)
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true)
+axiomatic spec "extract_x::<T>"(pLft_erased, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
+  * <lft>(#pLft_erased; true)
   * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
   * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i))
   * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i))
   * <observation>(((((l-nth(#m, 1i)) = ({{ #__NEW_PROPH_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }}))) and (((l-nth(#m, 0i)) = ({{ #__NEW_PROPH_OLD_VAL, l-nth(#__OLD_PROPH_VAL, 1i) }})))); )
-  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
-  * <lft>(#pLft_a; true) ]]
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-axiomatic spec "extract_y::<T>"(pLft_a, pty_T0, p)
-[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, #x, #y) * <lft>(#pLft_a; true)
+axiomatic spec "extract_y::<T>"(pLft_erased, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
+  * <lft>(#pLft_erased; true)
   * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
   * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i))
   * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i))
   * <observation>(((((l-nth(#m, 1i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_VAL }}))) and (((l-nth(#m, 0i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_OLD_VAL }})))); )
-  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
-  * <lft>(#pLft_a; true) ]]
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
+  * <lft>(#pLft_erased; true) ]]
 normal
 
 pred "wp::<T>"(+pty_T0, +wp, x, y, model):
@@ -109,32 +123,20 @@ pred "wp::<T>"(+pty_T0, +wp, x, y, model):
   * (wp == #wp);
 
 
-pred "wp_ref_mut_inner_xy::<T>"(+pLft_0, +pty_T0, +REFERENCE, x, y):
-  "wp::<T>"(pty_T0, #SELF, #x, #y, #model)
-  * <value>(l-nth(l-nth(#REFERENCE, 0i), 0i), l-nth(l-nth(#REFERENCE, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #SELF)
-  * <pcy_controller>(l-nth(#REFERENCE, 1i); #model)
-  * types(#lvar_7: Obj, #lvar_8: List, #lvar_9: Obj)
-  * (#REFERENCE == {{ {{ #lvar_7, #lvar_8 }}, #lvar_9 }})
-  * types(#lvar_10: Obj, #lvar_11: List) * (#x == {{ #lvar_10, #lvar_11 }})
-  * types(#lvar_12: Obj, #lvar_13: List) * (#y == {{ #lvar_12, #lvar_13 }})
-  * (y == #y)
-  * (x == #x)
-  * (REFERENCE == #REFERENCE);
-guard: <lft>(pLft_0; true);
-
-pred "wp_ref_mut_xy::<T>"(+pLft_gil, +pty_T0, +REFERENCE, model, x, y):
-  (#model == {{ #current, #lvar_14 }})
-  * <value_observer>(l-nth(#REFERENCE, 1i); #current)
-  * "wp_ref_mut_inner_xy::<T>"(pLft_gil, pty_T0, #REFERENCE, #x, #y)
-  * <pcy_value>(l-nth(#REFERENCE, 1i); #lvar_14)
-  * types(#lvar_15: Obj, #lvar_16: List, #lvar_17: Obj)
-  * (#REFERENCE == {{ {{ #lvar_15, #lvar_16 }}, #lvar_17 }})
-  * types(#lvar_18: Obj, #lvar_19: List) * (#x == {{ #lvar_18, #lvar_19 }})
-  * types(#lvar_20: Obj, #lvar_21: List) * (#y == {{ #lvar_20, #lvar_21 }})
-  * (y == #y)
-  * (x == #x)
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::frozen_own"(+pty_T1, +THIS, model, G_3):
+  (#G_3 == {{ #x, #y }}) * "wp::<T>"(pty_T1, #THIS, #x, #y, #model)
+  * (G_3 == #G_3)
   * (model == #model)
-  * (REFERENCE == #REFERENCE);
+  * (THIS == #THIS);
+
+
+pred "wp_ref_mut_xy::<T>"(+pLft_erased, +pty_T0, +this, model, frozen):
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #this, #model, #frozen)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#this == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
 
 
 pred "<WP<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
@@ -145,26 +147,51 @@ pred "<WP<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
 abstract pred "<T as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model);
 
 
-pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref_own_frozen"(+pLft_erased, +pty_T0, +this, model, frozen):
   (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(pLft_erased, pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref_inner_frozen"(pLft_erased, pty_T0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
   * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
   * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(+pLft_erased, +pty_T0, +this, model, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::frozen_own"(pty_T0, #v, #model, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_erased, +pty_T0, +this, model, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #model, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (model == #model)
   * (self == #self);
 
 
-pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<T>"(pLft_erased, pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
-  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (model == #model)
   * (self == #self);
 
@@ -173,37 +200,116 @@ pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
   (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
 
 
-pred "gilogic::prophecies::mut_ref_inner_proph::<WP<T>>"(+pLft_a, +pty_T0, +this):
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref_inner_frozen"(+pLft_erased, +pty_T0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
-  * "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::frozen_own"(pty_T0, #v, #repr, #frozen)
   * <pcy_controller>(l-nth(#this, 1i); #repr)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
   * (this == #this);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_erased; true);
 
-pred "gilogic::prophecies::mut_ref_inner_proph::<T>"(+pLft_a, +pty_T0, +this):
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
+  "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_erased, +pty_T0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_erased, pty_T0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_erased, +pty_T0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_erased, pty_T0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
+  "<WP<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_erased, +pty_T0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
-  * "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #repr, #frozen)
   * <pcy_controller>(l-nth(#this, 1i); #repr)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
   * (this == #this);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_erased; true);
 
-lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[
-  "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL)
-  * <lft>(#pLft_0; true)
-  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
-  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
-  * (REFERENCE == #REFERENCE)
-  * (pty_T0 == #pty_T0)
-  * (pLft_0 == #pLft_0)
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_erased, +pty_T0, +this, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #repr, #frozen)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_erased; true);
+
+lemma "extract_x___proof::<T>"(p)[[
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, #m, {{ #x, #y }})
 ]]
 [[
-  "wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y)
-  * <lft>(#pLft_0; true)
+  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #mx, {{  }})
+  * (#m == {{ #mx, l-nth(#m, 1i) }})
+  * ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #new_new_model, {{  }}) -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, {{ #new_new_model, l-nth(#m, 1i) }}, {{ #x, #y }}))
+]][* package ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#x, 0i), l+(l-nth(#x, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #new_new_model, {{  }}) -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, {{ #new_new_model, l-nth(#m, 1i) }}, {{ #x, #y }})) *]
+
+lemma "extract_y___proof::<T>"(p)[[
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, #m, {{ #x, #y }})
 ]]
+[[
+  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #mx, {{  }})
+  * (#m == {{ l-nth(#m, 0i), #mx }})
+  * ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #new_new_model, {{  }}) -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
+]][* package ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, {{ null, {{  }} }} }}, #new_new_model, {{  }}) -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }})) *]
+
+proc freeze_xy(pLft_erased, pty_T0, x) {
+        m_1x := x;
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_5 := l-nth(g_3, 0i);
+        m_2 := g_1;
+        g_4 := m_2;
+        g_5 := "gilogic::prophecies::freeze_params::<(*mut N<T>, *mut N<T>), WP<T>>"(pLft_a, pty_T0, g_4);
+        m_0 := g_5;
+        goto bb1;
+  bb1:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
+        return
+};
 
 spec "WP::<T>::new"(pty_T0, x, y)
 [[ "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #x, #x_repr)
@@ -307,22 +413,22 @@ proc "WP::<T>::new"(pty_T0, x, y) {
         return
 };
 
-spec "WP::<T>::assign_first"(pLft_0, pty_T0, self, x)
-[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+spec "WP::<T>::assign_first"(pLft_erased, pty_T0, self, x)
+[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, #self, #self_repr)
   * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #x, #x_repr)
-  * <lft>(#pLft_0; true)
+  * <lft>(#pLft_erased; true)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (x == #x)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_0 == #pLft_0) ]]
+  * (pLft_erased == #pLft_erased) ]]
 [[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
   * <observation>(((((l-nth(l-nth(#self_repr, 1i), 0i)) = (#x_repr))) and (((l-nth(l-nth(#self_repr, 0i), 1i)) = (l-nth(l-nth(#self_repr, 1i), 1i))))); )
-  * <lft>(#pLft_0; true) ]]
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-proc "WP::<T>::assign_first"(pLft_0, pty_T0, self, x) {
+proc "WP::<T>::assign_first"(pLft_erased, pty_T0, self, x) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
@@ -347,7 +453,7 @@ proc "WP::<T>::assign_first"(pLft_0, pty_T0, self, x) {
         pLft_6 := l-nth(g_10, 0i);
         m_6 := g_8;
         g_11 := m_6;
-        g_12 := "gilogic::prophecies::prophecy_auto_update::<WP<T>>"(pLft_0, pty_T0, g_11);
+        g_12 := "gilogic::prophecies::prophecy_auto_update::<(), WP<T>>"(pLft_0, pty_T0, g_11);
         m_5 := g_12;
         goto bb5;
   bb5:  g_14 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
@@ -356,7 +462,7 @@ proc "WP::<T>::assign_first"(pLft_0, pty_T0, self, x) {
         pLft_7 := l-nth(g_15, 0i);
         m_8 := g_13;
         g_16 := m_8;
-        g_17 := "gilogic::prophecies::prophecy_resolve::<WP<T>>"(pLft_0, pty_T0, g_16);
+        g_17 := "gilogic::prophecies::prophecy_resolve::<(), WP<T>>"(pLft_0, pty_T0, g_16);
         m_7 := g_17;
         goto bb6;
   bb6:  m_0 := {{}};
@@ -368,20 +474,20 @@ proc "WP::<T>::assign_first"(pLft_0, pty_T0, self, x) {
         return
 };
 
-spec "WP::<T>::first_mut"(pLft_a, pty_T0, self)
-[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, #self, #self_repr)
-  * <lft>(#pLft_a; true)
+spec "WP::<T>::first_mut"(pLft_erased, pty_T0, self)
+[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_erased; true)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
-[[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, ret, #ret_repr)
+  * (pLft_erased == #pLft_erased) ]]
+[[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, ret, #ret_repr)
   * <observation>(((((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), 0i)))) and (((l-nth(#ret_repr, 1i)) = (l-nth(l-nth(#self_repr, 1i), 0i)))))) and (((l-nth(l-nth(#self_repr, 1i), 1i)) = (l-nth(l-nth(#self_repr, 0i), 1i))))); )
-  * <lft>(#pLft_a; true) ]]
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-proc "WP::<T>::first_mut"(pLft_a, pty_T0, self) {
+proc "WP::<T>::first_mut"(pLft_erased, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
@@ -396,54 +502,55 @@ proc "WP::<T>::first_mut"(pLft_a, pty_T0, self) {
         pLft_15 := l-nth(g_3, 0i);
         m_5 := g_1;
         g_4 := m_5;
-        apply "freeze_xy::<T>"(pLft_a,pty_T0,g_4);
+        g_5 := "freeze_xy"(pLft_a, pty_T0, g_4);
+        m_4 := g_5;
         goto bb1;
-  bb1:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
-        g_5 := l-nth(g_6, 0i);
-        g_8 := [load_value](l-nth(l-nth(g_5, 0i), 0i), l+(l-nth(l-nth(g_5, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "WP", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_7 := l-nth(g_8, 0i);
-        g_9 := [pcy_alloc]();
-        g_10 := [new_lft]();
-        pLft_16 := l-nth(g_10, 0i);
-        u := [store_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(g_7, 0i), l+(l-nth(g_7, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, l-nth(g_9, 0i) }});
-        g_12 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
-        g_11 := l-nth(g_12, 0i);
-        g_13 := [new_lft]();
-        pLft_17 := l-nth(g_13, 0i);
-        m_8 := g_11;
-        g_14 := m_8;
-        g_15 := "extract_x::<T>"(pLft_a, pty_T0, g_14);
-        m_7proph := g_15;
+  bb1:  g_7 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
+        g_6 := l-nth(g_7, 0i);
+        g_9 := [load_value](l-nth(l-nth(g_6, 0i), 0i), l+(l-nth(l-nth(g_6, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "WP", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
+        g_8 := l-nth(g_9, 0i);
+        g_10 := [pcy_alloc]();
+        g_11 := [new_lft]();
+        pLft_16 := l-nth(g_11, 0i);
+        u := [store_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(g_8, 0i), l+(l-nth(g_8, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, l-nth(g_10, 0i) }});
+        g_13 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
+        g_12 := l-nth(g_13, 0i);
+        g_14 := [new_lft]();
+        pLft_17 := l-nth(g_14, 0i);
+        m_8 := g_12;
+        g_15 := m_8;
+        g_16 := "extract_x::<T>"(pLft_a, pty_T0, g_15);
+        m_7proph := g_16;
         goto bb2;
-  bb2:  g_17 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_16 := l-nth(g_17, 0i);
-        g_18 := [new_lft]();
-        pLft_19 := l-nth(g_18, 0i);
-        m_10 := g_16;
-        g_19 := m_7proph;
-        m_11 := g_19;
-        g_20 := m_10;
-        g_21 := m_11;
-        g_22 := "gilogic::prophecies::Prophecised::with_prophecy"(pLft_16, {{ "ref", true, pty_T0 }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, g_20, g_21);
-        u := [store_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, g_22);
+  bb2:  g_18 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_17 := l-nth(g_18, 0i);
+        g_19 := [new_lft]();
+        pLft_19 := l-nth(g_19, 0i);
+        m_10 := g_17;
+        g_20 := m_7proph;
+        m_11 := g_20;
+        g_21 := m_10;
+        g_22 := m_11;
+        g_23 := "gilogic::prophecies::Prophecised::with_prophecy"(pLft_16, {{ "ref", true, pty_T0 }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, g_21, g_22);
+        u := [store_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, g_23);
         goto bb3;
-  bb3:  g_24 := [load_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_23 := l-nth(g_24, 0i);
-        g_25 := [new_lft]();
-        pLft_14 := l-nth(g_25, 0i);
-        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, g_23);
-        g_27 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_26 := l-nth(g_27, 0i);
-        g_28 := [new_lft]();
-        pLft_13 := l-nth(g_28, 0i);
-        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, g_26);
-        g_30 := [load_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_29 := l-nth(g_30, 0i);
-        g_31 := [new_lft]();
-        pLft_11 := l-nth(g_31, 0i);
-        m_0 := g_29;
-        g_32 := m_0;
-        ret := g_32;
+  bb3:  g_25 := [load_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_24 := l-nth(g_25, 0i);
+        g_26 := [new_lft]();
+        pLft_14 := l-nth(g_26, 0i);
+        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, g_24);
+        g_28 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_27 := l-nth(g_28, 0i);
+        g_29 := [new_lft]();
+        pLft_13 := l-nth(g_29, 0i);
+        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, g_27);
+        g_31 := [load_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_30 := l-nth(g_31, 0i);
+        g_32 := [new_lft]();
+        pLft_11 := l-nth(g_32, 0i);
+        m_0 := g_30;
+        g_33 := m_0;
+        ret := g_33;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }});
@@ -453,20 +560,20 @@ proc "WP::<T>::first_mut"(pLft_a, pty_T0, self) {
         return
 };
 
-spec "WP::<T>::second_mut"(pLft_a, pty_T0, self)
-[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, #self, #self_repr)
-  * <lft>(#pLft_a; true)
+spec "WP::<T>::second_mut"(pLft_erased, pty_T0, self)
+[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_erased; true)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
-[[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, ret, #ret_repr)
+  * (pLft_erased == #pLft_erased) ]]
+[[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_erased, #pty_T0, ret, #ret_repr)
   * <observation>(((((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), 1i)))) and (((l-nth(#ret_repr, 1i)) = (l-nth(l-nth(#self_repr, 1i), 1i)))))) and (((l-nth(l-nth(#self_repr, 1i), 0i)) = (l-nth(l-nth(#self_repr, 0i), 0i))))); )
-  * <lft>(#pLft_a; true) ]]
+  * <lft>(#pLft_erased; true) ]]
 normal
 
-proc "WP::<T>::second_mut"(pLft_a, pty_T0, self) {
+proc "WP::<T>::second_mut"(pLft_erased, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
@@ -481,54 +588,55 @@ proc "WP::<T>::second_mut"(pLft_a, pty_T0, self) {
         pLft_15 := l-nth(g_3, 0i);
         m_5 := g_1;
         g_4 := m_5;
-        apply "freeze_xy::<T>"(pLft_a,pty_T0,g_4);
+        g_5 := "freeze_xy"(pLft_a, pty_T0, g_4);
+        m_4 := g_5;
         goto bb1;
-  bb1:  g_6 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
-        g_5 := l-nth(g_6, 0i);
-        g_8 := [load_value](l-nth(l-nth(g_5, 0i), 0i), l+(l-nth(l-nth(g_5, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "WP", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
-        g_7 := l-nth(g_8, 0i);
-        g_9 := [pcy_alloc]();
-        g_10 := [new_lft]();
-        pLft_16 := l-nth(g_10, 0i);
-        u := [store_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(g_7, 0i), l+(l-nth(g_7, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, l-nth(g_9, 0i) }});
-        g_12 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
-        g_11 := l-nth(g_12, 0i);
-        g_13 := [new_lft]();
-        pLft_17 := l-nth(g_13, 0i);
-        m_8 := g_11;
-        g_14 := m_8;
-        g_15 := "extract_y::<T>"(pLft_a, pty_T0, g_14);
-        m_7proph := g_15;
+  bb1:  g_7 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
+        g_6 := l-nth(g_7, 0i);
+        g_9 := [load_value](l-nth(l-nth(g_6, 0i), 0i), l+(l-nth(l-nth(g_6, 0i), 1i), {{ {{ "f", 1i, {{ "adt", "WP", {{ pty_T0 }} }} }} }}), {{ "ptr", true, {{ "adt", "N", {{ pty_T0 }} }} }}, true);
+        g_8 := l-nth(g_9, 0i);
+        g_10 := [pcy_alloc]();
+        g_11 := [new_lft]();
+        pLft_16 := l-nth(g_11, 0i);
+        u := [store_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(g_8, 0i), l+(l-nth(g_8, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, l-nth(g_10, 0i) }});
+        g_13 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }}, true);
+        g_12 := l-nth(g_13, 0i);
+        g_14 := [new_lft]();
+        pLft_17 := l-nth(g_14, 0i);
+        m_8 := g_12;
+        g_15 := m_8;
+        g_16 := "extract_y::<T>"(pLft_a, pty_T0, g_15);
+        m_7proph := g_16;
         goto bb2;
-  bb2:  g_17 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_16 := l-nth(g_17, 0i);
-        g_18 := [new_lft]();
-        pLft_19 := l-nth(g_18, 0i);
-        m_10 := g_16;
-        g_19 := m_7proph;
-        m_11 := g_19;
-        g_20 := m_10;
-        g_21 := m_11;
-        g_22 := "gilogic::prophecies::Prophecised::with_prophecy"(pLft_16, {{ "ref", true, pty_T0 }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, g_20, g_21);
-        u := [store_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, g_22);
+  bb2:  g_18 := [load_value](l-nth(m_6ret, 0i), l-nth(m_6ret, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_17 := l-nth(g_18, 0i);
+        g_19 := [new_lft]();
+        pLft_19 := l-nth(g_19, 0i);
+        m_10 := g_17;
+        g_20 := m_7proph;
+        m_11 := g_20;
+        g_21 := m_10;
+        g_22 := m_11;
+        g_23 := "gilogic::prophecies::Prophecised::with_prophecy"(pLft_16, {{ "ref", true, pty_T0 }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, g_21, g_22);
+        u := [store_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, g_23);
         goto bb3;
-  bb3:  g_24 := [load_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_23 := l-nth(g_24, 0i);
-        g_25 := [new_lft]();
-        pLft_14 := l-nth(g_25, 0i);
-        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, g_23);
-        g_27 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_26 := l-nth(g_27, 0i);
-        g_28 := [new_lft]();
-        pLft_13 := l-nth(g_28, 0i);
-        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, g_26);
-        g_30 := [load_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, true);
-        g_29 := l-nth(g_30, 0i);
-        g_31 := [new_lft]();
-        pLft_11 := l-nth(g_31, 0i);
-        m_0 := g_29;
-        g_32 := m_0;
-        ret := g_32;
+  bb3:  g_25 := [load_value](l-nth(m_9, 0i), l-nth(m_9, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_24 := l-nth(g_25, 0i);
+        g_26 := [new_lft]();
+        pLft_14 := l-nth(g_26, 0i);
+        u := [store_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, g_24);
+        g_28 := [load_value](l-nth(m_3, 0i), l-nth(m_3, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_27 := l-nth(g_28, 0i);
+        g_29 := [new_lft]();
+        pLft_13 := l-nth(g_29, 0i);
+        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, g_27);
+        g_31 := [load_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_30 := l-nth(g_31, 0i);
+        g_32 := [new_lft]();
+        pLft_11 := l-nth(g_32, 0i);
+        m_0 := g_30;
+        g_33 := m_0;
+        ret := g_33;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "WP", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "ref", true, pty_T0 }});

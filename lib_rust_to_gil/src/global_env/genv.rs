@@ -1,15 +1,18 @@
 use super::auto_items::*;
-use crate::config::Config;
+use crate::config::{Config, GillianArgs};
 use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::{get_gillian_extract_lemma_name, get_gillian_spec_name};
+use crate::utils::attrs::{
+    get_attr, get_gillian_extract_lemma_name, get_gillian_spec_name, is_trusted,
+};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
 use rustc_borrowck::consumers::BodyWithBorrowckFacts;
 use rustc_hir::def_id::LocalDefId;
+use rustc_macros::{TyDecodable, TyEncodable};
 use rustc_middle::ty::{
     AdtDef, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef, ParamEnv, ReprOptions,
 };
@@ -84,8 +87,7 @@ pub struct GlobalEnv<'tcx> {
     // Mapping from item -> specification
     spec_map: HashMap<DefId, DefId>,
 
-    // Maps Extract Lemma items (containing the proof body) to the actual lemma DefId
-    extract_lemma_map: HashMap<DefId, DefId>,
+    gillian_items: GillianItems,
 
     /// Assertions & specifications from external dependencies
     metadata: Metadata<'tcx>,
@@ -125,7 +127,8 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, config: Config) -> Self {
         // A few things are already implemented in GIL directly.
         let item_queue = QueueOnce::default();
-        let (mut spec_map, extract_lemma_map) = Self::build_gillian_maps(tcx);
+        let gillian_items = local_gillian_items(tcx);
+        let mut spec_map = Self::build_gillian_maps(tcx, &gillian_items);
 
         let metadata = Metadata::load(tcx, &config.extern_paths);
 
@@ -142,8 +145,8 @@ impl<'tcx> GlobalEnv<'tcx> {
             adt_queue: Default::default(),
             item_queue,
             spec_map,
-            extract_lemma_map,
             metadata,
+            gillian_items,
             inner_preds: Default::default(),
             bodies: Default::default(),
             assertions: Default::default(),
@@ -151,36 +154,26 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    fn build_gillian_maps(tcx: TyCtxt<'tcx>) -> (HashMap<DefId, DefId>, HashMap<DefId, DefId>) {
+    fn build_gillian_maps(tcx: TyCtxt<'tcx>, gillian_items: &GillianItems) -> HashMap<DefId, DefId> {
         let mut spec_map = HashMap::new();
-        let mut extract_lemma_map = HashMap::new();
+        // panic!();
+        // eprintln!("{:?}", gillian_items.symbol_to_id);
         for item in tcx.hir().body_owners() {
             if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
                 let spec = tcx
                     .get_diagnostic_item(nm)
+                    .or_else(|| {
+                        gillian_items.symbol_to_id.get(&nm).cloned()
+                    })
                     .expect("Cannot find specification while building spec map");
                 spec_map.insert(item.to_def_id(), spec);
             }
-            if let Some(nm) = get_gillian_extract_lemma_name(item.into(), tcx) {
-                let extract_lemma = tcx
-                    .get_diagnostic_item(nm)
-                    .expect("Cannot find extract lemma while building extract lemma map");
-                extract_lemma_map.insert(extract_lemma, item.to_def_id());
-            }
         }
-        (spec_map, extract_lemma_map)
+        spec_map
     }
 
     pub fn prophecies_enabled(&self) -> bool {
         self.config.prophecies
-    }
-
-    pub fn extract_lemma_name(&self, did: DefId) -> String {
-        let item = self
-            .extract_lemma_map
-            .get(&did)
-            .unwrap_or_else(|| fatal!(self, "Extract lemma not found in genv: {:?}", did));
-        self.tcx.def_path_str(*item)
     }
 
     pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -405,4 +398,26 @@ impl<'tcx> GlobalEnv<'tcx> {
     pub(crate) fn metadata(&self) -> crate::metadata::BinaryMetadata<'tcx> {
         BinaryMetadata::from_parts(&self.assertions, &self.spec_terms, &self.spec_map)
     }
+}
+
+#[derive(Debug, Default, Clone, TyDecodable, TyEncodable)]
+pub struct GillianItems {
+    pub symbol_to_id: HashMap<Symbol, DefId>,
+}
+
+pub(crate) fn local_gillian_items(tcx: TyCtxt) -> GillianItems {
+    let mut items: GillianItems = Default::default();
+
+    for owner in tcx.hir().body_owners() {
+        if let Some(attr) = get_attr(
+            tcx.get_attrs_unchecked(owner.to_def_id()),
+            &["gillian", "item"],
+        ) {
+            let def_id = owner.to_def_id();
+
+            items.symbol_to_id.insert(attr.value_str().unwrap(), def_id);
+        }
+    }
+
+    items
 }

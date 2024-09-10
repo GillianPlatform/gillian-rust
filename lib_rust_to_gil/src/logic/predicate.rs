@@ -63,6 +63,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
+        eprintln!("building predctx {body_id:?} {args:?}");
         PredCtx {
             sig: build_signature(global_env, body_id, args, temp_gen),
             global_env,
@@ -81,7 +82,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         args: GenericArgsRef<'tcx>,
     ) -> Self {
         let param_env = global_env.tcx().param_env(body_id);
-        let param_env = EarlyBinder::bind(param_env).instantiate(global_env.tcx(), args);
+        // TODO I THINK THIS IS A PROBLEM
+        // let param_env = EarlyBinder::bind(param_env).instantiate(global_env.tcx(), args);
         Self::new(global_env, temp_gen, param_env, body_id, args)
     }
 
@@ -275,6 +277,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             args,
         } = call;
         let param_env = self.param_env;
+
         let (name, def_id, substs) = self
             .global_env_mut()
             .resolve_predicate_param_env(param_env, def_id, substs);
@@ -282,16 +285,17 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let ty_params = param_collector::collect_params_on_args(substs)
             .with_consider_arguments(args.iter().map(|id| id.ty));
         let mut params = Vec::new();
-        let has_regions = build_signature(self.global_env, def_id, substs, self.sig.temp_gen)
+        let has_regions = build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
             .lifetimes()
             .count()
             > 0;
 
         if has_regions {
             if self.sig.lifetimes().next().is_none() {
+                eprintln!("{:?}", self.sig);
                 fatal!(
                             self,
-                            "predicate calling ({:?}) another one ({:?}), it has a lifetime param but not self?", self.body_id, def_id
+                            "predicate calling ({:?}, {:?}) another one ({:?}, {:?}), it has a lifetime param but not self?", self.body_id, self.args, def_id, substs
                         )
             };
             let lft = self.sig.lifetimes().next().unwrap();
@@ -370,6 +374,19 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
                 arg.eq_f(pat).into_asrt().star(body)
             }
+            AssertKind::Wand { lhs, rhs } => {
+                let AssertKind::Call(call) = lhs.kind else {
+                    fatal2!(self.global_env().tcx(), "lhs of wand needs to be call")
+                };
+                let AssertKind::Call(call2) = rhs.kind else {
+                    fatal2!(self.global_env().tcx(), "rhs of wand needs to be call")
+                };
+
+                let lhs = self.compile_pred_call(call);
+                let rhs = self.compile_pred_call(call2);
+
+                Assertion::wand(lhs, rhs)
+            }
             AssertKind::ManyMaybeUninits {
                 pointer,
                 pointees,
@@ -412,7 +429,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             .collect();
 
         Pred {
-            name,
+            name: name,
             num_params: params.len(),
             params,
             abstract_: true,
@@ -513,7 +530,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         let pre = self.compile_assertion(pre);
 
-        let posts = posts
+        let posts: Vec<_> = posts
             .into_iter()
             .map(|(exi, post)| (exi, self.compile_assertion(post)))
             .collect();

@@ -154,6 +154,13 @@ pub fn implication(_: RustFormula, _: RustFormula) -> RustFormula {
     unreachable!()
 }
 
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::asrt::wand"]
+pub fn wand(_: RustAssertion, _: RustAssertion) -> RustAssertion {
+    unreachable!()
+}
+
 pub trait PointsTo<T>: Sized {
     #[gillian::no_translate]
     #[gillian::builtin]
