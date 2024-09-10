@@ -350,9 +350,9 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
             None
         };
 
-        let (_, term) = &extract_lemma.prophecise.as_ref().expect("foo");
+        let (_, term) = &extract_lemma.prophecise.as_ref().expect("need prophecise to be set");
 
-        let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().expect("foo2");
+        let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().expect("need models to be set");
         let prophecise_check = Some(quote! { * (#model == #term) });
 
         let mut subst = HashMap::new();

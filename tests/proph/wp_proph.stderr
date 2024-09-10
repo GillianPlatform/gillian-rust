@@ -1,10 +1,66 @@
 warning: unused import: `specification`
-  --> ../tests/proph/wp_proph.rs:10:9
+ --> ../tests/proph/wp_proph.rs:8:51
+  |
+8 |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
+  |                                                   ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unnecessary parentheses around assigned value
+  --> ../tests/proph/wp_proph.rs:63:29
    |
-10 |         specification,
-   |         ^^^^^^^^^^^^^
+63 |                       let _ = (#[gillian::no_translate]
+   |  _____________________________^
+64 | |                     #[gillian::item = "extract_x___proof_spec_e340188d_4a2d_4df3_ba58_82d06e40814b"]
+65 | |                     #[gillian::decl::specification]
+66 | |                     #[gillian::decl::pred_ins = "1"]
+67 | |                     || -> gilogic::RustAssertion {
+   | |____________________^
+...
+92 |                       });
+   |                        ^
    |
-   = note: `#[warn(unused_imports)]` on by default
+   = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+   |
+63 ~                     let _ = || -> gilogic::RustAssertion {
+64 |                         unsafe {
+ ...
+87 |                         }
+88 ~                     };
+   |
+
+warning: unnecessary parentheses around function argument
+   --> ../tests/proph/wp_proph.rs:150:49
+    |
+150 | ...                   ((__NEW_PROPH_VAL, __OLD_PROPH_VAL.1)),
+    |                       ^                                    ^
+    |
+help: remove these parentheses
+    |
+150 -                                                 ((__NEW_PROPH_VAL, __OLD_PROPH_VAL.1)),
+150 +                                                 (__NEW_PROPH_VAL, __OLD_PROPH_VAL.1),
+    |
+
+warning: unnecessary parentheses around function argument
+   --> ../tests/proph/wp_proph.rs:153:49
+    |
+153 | ...                   ((__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1)),
+    |                       ^                                        ^
+    |
+help: remove these parentheses
+    |
+153 -                                                 ((__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1)),
+153 +                                                 (__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1),
+    |
+
+warning: unknown lint: `unsused_variables`
+   --> ../tests/proph/wp_proph.rs:174:9
+    |
+174 | #[allow(unsused_variables)]
+    |         ^^^^^^^^^^^^^^^^^ help: did you mean: `unused_variables`
+    |
+    = note: `#[warn(unknown_lints)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
@@ -18,61 +74,129 @@ warning: unused import: `specification`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:64:30
+  --> ../tests/proph/wp_proph.rs:55:38
    |
-64 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+55 | fn extract_x___proof<'a, T: Ownable>(p: &'a mut WP<T>) {
+   |                                      ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:75:30
+warning: unnecessary `unsafe` block
+  --> ../tests/proph/wp_proph.rs:68:25
    |
-75 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+56 |     unsafe {
+   |     ------ because it's nested under this `unsafe` block
+...
+68 |                         unsafe {
+   |                         ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` on by default
+
+warning: unused variable: `p`
+   --> ../tests/proph/wp_proph.rs:176:30
+    |
+176 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {
+    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: unused variable: `p`
+   --> ../tests/proph/wp_proph.rs:188:30
+    |
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
 warning: fields `x` and `y` are never read
-  --> ../tests/proph/wp_proph.rs:17:5
+  --> ../tests/proph/wp_proph.rs:14:5
    |
-16 | struct WP<T> {
+13 | struct WP<T> {
    |        -- fields in this struct
-17 |     x: *mut N<T>,
+14 |     x: *mut N<T>,
    |     ^
-18 |     y: *mut N<T>,
+15 |     y: *mut N<T>,
    |     ^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: fields `v` and `o` are never read
-  --> ../tests/proph/wp_proph.rs:22:5
+  --> ../tests/proph/wp_proph.rs:19:5
    |
-21 | struct N<T> {
+18 | struct N<T> {
    |        - fields in this struct
-22 |     v: T,
+19 |     v: T,
    |     ^
-23 |     o: *mut N<T>,
+20 |     o: *mut N<T>,
    |     ^
 
-warning: variable `THIS` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:51:12
+warning: function `extract_x___proof` is never used
+  --> ../tests/proph/wp_proph.rs:55:4
    |
-51 |     fn own(self, model: Self::RepresentationTy) {
+55 | fn extract_x___proof<'a, T: Ownable>(p: &'a mut WP<T>) {
+   |    ^^^^^^^^^^^^^^^^^
+
+warning: function `extract_x_spec_0eb6d6cf_b515_4792_934a_ac01a89865b8` is never used
+   --> ../tests/proph/wp_proph.rs:112:4
+    |
+112 | fn extract_x_spec_0eb6d6cf_b515_4792_934a_ac01a89865b8<'a, T: Ownable>(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_x` is never used
+   --> ../tests/proph/wp_proph.rs:176:4
+    |
+176 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {
+    |    ^^^^^^^^^
+
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:48:12
+   |
+48 |     fn own(self, model: Self::RepresentationTy) {
    |            ^^^^ help: convert the identifier to snake case: `this`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
 warning: function `extract_x___proof` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:64:4
+  --> ../tests/proph/wp_proph.rs:55:4
    |
-64 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
+55 | fn extract_x___proof<'a, T: Ownable>(p: &'a mut WP<T>) {
+   |    ^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
+
+warning: unused closure that must be used
+   --> ../tests/proph/wp_proph.rs:62:9
+    |
+62  | /         |p: &'a mut WP<T>, x: *mut N<T>, y: *mut N<T>, m, mx, new_new_model| {
+63  | |                     let _ = (#[gillian::no_translate]
+64  | |                     #[gillian::item = "extract_x___proof_spec_e340188d_4a2d_4df3_ba58_82d06e40814b"]
+65  | |                     #[gillian::decl::specification]
+...   |
+104 | |                     );
+105 | |         }
+    | |_________^
+    |
+    = note: closures are lazy and do nothing unless called
+    = note: `#[warn(unused_must_use)]` on by default
+
+warning: variable `__OLD_PROPH_VAL` should have a snake case name
+   --> ../tests/proph/wp_proph.rs:126:30
+    |
+126 | ...                   __OLD_PROPH_VAL,
+    |                       ^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `__old_proph_val`
+
+warning: variable `__NEW_PROPH_VAL` should have a snake case name
+   --> ../tests/proph/wp_proph.rs:127:30
+    |
+127 | ...                   __NEW_PROPH_VAL,
+    |                       ^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `__new_proph_val`
+
+warning: variable `__NEW_PROPH_OLD_VAL` should have a snake case name
+   --> ../tests/proph/wp_proph.rs:128:30
+    |
+128 | ...                   __NEW_PROPH_OLD_VAL| {
+    |                       ^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `__new_proph_old_val`
 
 warning: function `extract_y___proof` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:75:4
-   |
-75 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
+   --> ../tests/proph/wp_proph.rs:188:4
+    |
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
 
-warning: 8 warnings emitted
+warning: 21 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

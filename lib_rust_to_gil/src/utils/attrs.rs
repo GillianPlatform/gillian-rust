@@ -123,6 +123,10 @@ pub(crate) fn is_unfold(def_id: DefId, tcx: TyCtxt) -> bool {
     .is_some()
 }
 
+pub(crate) fn is_magic_closure(def_id: DefId, tcx: TyCtxt) -> bool {
+    get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "magic_closure"]).is_some()
+}
+
 pub(crate) fn get_gillian_spec_name(def_id: DefId, tcx: TyCtxt) -> Option<Symbol> {
     get_attr(tcx.get_attrs_unchecked(def_id), &["gillian", "spec"])
         .and_then(|attr| attr.value_str())

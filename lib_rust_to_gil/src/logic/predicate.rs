@@ -16,6 +16,11 @@ use rustc_middle::ty::ParamEnv;
 use rustc_middle::ty::{AdtKind, EarlyBinder};
 use rustc_type_ir::fold::TypeFoldable;
 
+const NULL_PROPHECY_NAME: &str = "$l__null_prophecy";
+fn null_prophecy() -> Expr {
+    Expr::Lit(Literal::Loc(NULL_PROPHECY_NAME.to_owned()))
+}
+
 /// Vestigial signature type
 pub(crate) struct PredSig {
     name: String,
@@ -747,7 +752,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                         self.encode_type_with_args(ty),
                     ));
                     if self.prophecies_enabled() {
-                        [place.into_expr_ptr(), [Expr::null(), vec![].into()].into()].into()
+                        [place.into_expr_ptr(), null_prophecy()].into()
                     } else {
                         place.into_expr_ptr()
                     }
@@ -849,7 +854,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
             }
             ExprKind::PtrToMutRef { ptr } => {
                 if self.prophecies_enabled() {
-                    GExpr::EList(vec![self.compile_expression(*ptr), Expr::null()])
+                    GExpr::EList(vec![self.compile_expression(*ptr), null_prophecy()])
                 } else {
                     self.compile_expression(*ptr)
                 }

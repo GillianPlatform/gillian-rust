@@ -87,13 +87,13 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub(crate) fn compile(mut self) -> Vec<LogicItem> {
         let mut res = Vec::with_capacity(1 + 3 * (self.is_extract_lemma as usize));
 
-        let sig = self.sig();
 
         if self.is_extract_lemma {
             // let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
             // res.extend(defs);
         } else if self.trusted {
-            let name = sig.name.clone();
+            let sig = self.sig();
+            let name = self.lemma_name();
 
             // We set temporary hyp and conclusion, which we be replaced later by the specs
             let mut lemma = Lemma {
@@ -142,8 +142,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
-
-        let params = sig.all_vars().map(|a| a.0.to_string()).collect();
+        // eprintln!("{sig:?}");
+        let params = sig.physical_args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
             name,

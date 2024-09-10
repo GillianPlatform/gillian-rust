@@ -79,6 +79,7 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
     #[gillian::decl::pred_ins = "0"]
     fn frozen_own(this: Self, repr: Self::RepresentationTy, frozen: T) -> RustAssertion;
 
+    /// The body of a mutable borrow
     #[predicate]
     fn just_ref_mut_points_to(
         this: In<&mut Self>,
