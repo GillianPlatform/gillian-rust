@@ -49,8 +49,7 @@ impl<'tcx> ProgCtx<'tcx> {
         if is_trusted(did, self.tcx()) {
             let mut temp_gen = TempGenerator::new();
             let sig = build_signature(global_env, did, args, &mut temp_gen);
-            let proc_name =
-                rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
+            let proc_name = self.tcx().def_path_str_with_args(did, args);
             return self
                 .prog
                 .add_only_spec(sig.to_gil_spec(global_env, proc_name).unwrap());

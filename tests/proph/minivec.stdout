@@ -4,7 +4,7 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "__auto_resolve_vec_ref_mut_pcl_just_resolve"(pLft_0, pty_T0, p)
+axiomatic spec "__auto_resolve_vec_ref_mut_pcl_just_resolve::<T>"(pLft_0, pty_T0, p)
 [[ "vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #p, #m, #ptr, #cap, #len)
   * types(#len: Int)
   * types(#cap: Int)
@@ -17,7 +17,7 @@ axiomatic spec "__auto_resolve_vec_ref_mut_pcl_just_resolve"(pLft_0, pty_T0, p)
 [[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
-axiomatic spec extract_ith(pLft_a, pty_T0, vec, ix)
+axiomatic spec "extract_ith::<T>"(pLft_a, pty_T0, vec, ix)
 [[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #m, #ptr, #cap, #len)
   * (#ix i<# #len)
   * <lft>(#pLft_a; true)
@@ -63,28 +63,6 @@ axiomatic spec "gilogic::prophecies::prophecy_resolve::<Vec<T>>"(pLft_0, pty_T0,
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
-normal
-
-axiomatic spec "extract_ith::<T>"(pLft_a, pty_T0, vec, ix)
-[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #m, #ptr, #cap, #len)
-  * (#ix i<# #len)
-  * <lft>(#pLft_a; true)
-  * types(#len: Int)
-  * types(#cap: Int)
-  * types(#lvar_4: Obj, #lvar_5: List) * (#ptr == {{ #lvar_4, #lvar_5 }})
-  * types(#ix: Int)
-  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#vec == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
-  * (ix == #ix)
-  * (vec == #vec)
-  * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
-[[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i))
-  * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i))
-  * <observation>(((((l-nth(#m, 1i)) = (l+(l+(l-sub(#__OLD_PROPH_VAL, 0i, #ix), {{ #__NEW_PROPH_VAL }}), l-sub(#__OLD_PROPH_VAL, ((#ix) i+ (1i)), ((((#len) i- (#ix))) i- (1i))))))) and (((l-nth(#m, 0i)) = (l+(l+(l-sub(#__OLD_PROPH_VAL, 0i, #ix), {{ #__NEW_PROPH_OLD_VAL }}), l-sub(#__OLD_PROPH_VAL, ((#ix) i+ (1i)), ((((#len) i- (#ix))) i- (1i)))))))); )
-  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ #lvar_0, ret }}, #mh)
-  * "std::ptr::const_ptr::<impl *const T>::add"(#pty_T0, #ptr, #ix, #lvar_0)
-  * <lft>(#pLft_a; true) ]]
 normal
 
 axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, index)

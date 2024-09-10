@@ -1,3 +1,11 @@
+warning: unknown lint: `unsused_variables`
+  --> ../tests/noproph/wp.rs:73:9
+   |
+73 | #[allow(unsused_variables)]
+   |         ^^^^^^^^^^^^^^^^^ help: did you mean: `unused_variables`
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
@@ -8,18 +16,24 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:34:30
+warning: unused variable: `ret`
+  --> ../tests/noproph/wp.rs:58:35
    |
-34 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+58 |     T: Ownable>(p: &'a mut WP<T>, ret: ()) -> gilogic::RustAssertion {
+   |                                   ^^^ help: if this is intentional, prefix it with an underscore: `_ret`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:41:30
+  --> ../tests/noproph/wp.rs:75:30
    |
-41 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
+75 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) {
+   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: unused variable: `p`
+  --> ../tests/noproph/wp.rs:85:30
+   |
+85 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
 warning: struct `WP` is never constructed
@@ -36,14 +50,32 @@ warning: struct `N` is never constructed
 14 | struct N<T> {
    |        ^
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/noproph/wp.rs:50:12
+warning: function `extract_x_extract_lemma_182a34a1_599c_49be_91bf_0490844500cf` is never used
+  --> ../tests/noproph/wp.rs:41:4
    |
-50 |     fn own(self) {
+41 | fn extract_x_extract_lemma_182a34a1_599c_49be_91bf_0490844500cf<'a,
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_x_spec_f2e11467_fff9_4f11_8f3a_125336caf22e` is never used
+  --> ../tests/noproph/wp.rs:57:4
+   |
+57 | fn extract_x_spec_f2e11467_fff9_4f11_8f3a_125336caf22e<'a,
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_x` is never used
+  --> ../tests/noproph/wp.rs:75:4
+   |
+75 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) {
+   |    ^^^^^^^^^
+
+warning: variable `REFERENCE` should have a snake case name
+  --> ../tests/noproph/wp.rs:94:12
+   |
+94 |     fn own(self) {
    |            ^^^^ help: convert the identifier to snake case: `reference`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
-warning: 5 warnings emitted
+warning: 10 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

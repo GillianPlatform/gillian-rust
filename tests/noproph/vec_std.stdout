@@ -4,26 +4,6 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
-axiomatic spec extract_ith(pLft_a, pty_T0, vec, ix)
-[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len)
-  * (#ix i<# #len)
-  * <lft>(#pLft_a; true)
-  * types(#len: Int)
-  * types(#cap: Int)
-  * types(#lvar_4: Obj, #lvar_5: List)
-  * (#ptr == {{ {{ {{ #lvar_4, #lvar_5 }} }}, {{  }} }})
-  * types(#ix: Int)
-  * types(#lvar_2: Obj, #lvar_3: List) * (#vec == {{ #lvar_2, #lvar_3 }})
-  * (ix == #ix)
-  * (vec == #vec)
-  * (pty_T0 == #pty_T0)
-  * (pLft_a == #pLft_a) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #lvar_1)
-  * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_0)
-  * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_0, #ix, #lvar_1)
-  * <lft>(#pLft_a; true) ]]
-normal
-
 axiomatic spec "extract_ith::<T>"(pLft_a, pty_T0, vec, ix)
 [[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len)
   * (#ix i<# #len)

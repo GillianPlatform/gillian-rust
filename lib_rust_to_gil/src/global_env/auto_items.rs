@@ -6,6 +6,7 @@ use crate::signature::build_signature;
 use crate::temp_gen::TempGenerator;
 use crate::{prelude::*, temp_gen};
 
+#[derive(Debug)]
 pub(super) struct MonoSpec<'tcx> {
     name: String,
     did: DefId,
