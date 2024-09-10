@@ -5,33 +5,89 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
 axiomatic spec extract_head(pLft_a, pty_T0, list)
-[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj) * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i)) * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_a; true)]]
+[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, #head, #tail, #len)
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_a; true)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i))
+  * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i))
+  * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); )
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh)
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 axiomatic spec "__auto_resolve_list_ref_mut_htl_just_resolve"(pLft_0, pty_T0, p)
-[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #p, #m, #head, #tail, #len) * types(#len: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #p, #m, #head, #tail, #len)
+  * types(#len: Int)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
 axiomatic spec "gilogic::prophecies::prophecy_auto_update::<LinkedList<T>>"(pLft_0, pty_T0, p)
-[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "LinkedList", {{ #pty_T0 }} }}; #v) * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #a) * <pcy_controller>(l-nth(#p, 1i); #a) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "LinkedList", {{ #pty_T0 }} }}; #v) * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #r) * <pcy_controller>(l-nth(#p, 1i); #r)]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "LinkedList", {{ #pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * <value_observer>(l-nth(#p, 1i); #a)
+  * <pcy_controller>(l-nth(#p, 1i); #a)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "LinkedList", {{ #pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * <value_observer>(l-nth(#p, 1i); #r)
+  * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
 axiomatic spec "__auto_resolve_list_ref_mut_htl_just_resolve::<T>"(pLft_0, pty_T0, p)
-[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #p, #m, #head, #tail, #len) * types(#len: Int) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #p, #m, #head, #tail, #len)
+  * types(#len: Int)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
 axiomatic spec "extract_head::<T>"(pLft_a, pty_T0, list)
-[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_a; true) * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj) * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[[(#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i)) * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i)) * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); ) * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_a; true)]]
+[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, #head, #tail, #len)
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_a; true)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i))
+  * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i))
+  * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); )
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh)
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 axiomatic spec "gilogic::prophecies::prophecy_resolve::<LinkedList<T>>"(pLft_0, pty_T0, p)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
 pred "<usize as ShallowModel>::shallow_model"(+self_, v):
@@ -238,7 +294,8 @@ proc "Node::<T>::into_element"(pty_T0, self) {
 
 spec "LinkedList::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
-[["<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((#ret_repr) = ({{  }})); )]]
+[[ "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
+  * <observation>(((#ret_repr) = ({{  }})); ) ]]
 normal
 
 proc "LinkedList::<T>::new"(pty_T0) {
@@ -708,8 +765,16 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr) * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head : List. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), 0i)) = (l-nth(#head, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), 0i)) = (l-nth(#head, 1i)))))) and (forall #i : Int. ((not ((((0i) i< (#i))) and (((#i) i< (l-len l-nth(#self_repr, 0i)))))) or (((l-nth(l-nth(#self_repr, 0i), #i)) = (l-nth(l-nth(#self_repr, 1i), #i))))))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head : List. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), 0i)) = (l-nth(#head, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), 0i)) = (l-nth(#head, 1i)))))) and (forall #i : Int. ((not ((((0i) i< (#i))) and (((#i) i< (l-len l-nth(#self_repr, 0i)))))) or (((l-nth(l-nth(#self_repr, 0i), #i)) = (l-nth(l-nth(#self_repr, 1i), #i))))))))))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
@@ -836,8 +901,16 @@ proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((l-nth(#self_repr, 1i)) = (cdr l-nth(#self_repr, 0i)))) and (((l-nth(l-nth(#self_repr, 0i), 0i)) = (#head)))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((l-nth(#self_repr, 1i)) = (cdr l-nth(#self_repr, 0i)))) and (((l-nth(l-nth(#self_repr, 0i), 0i)) = (#head)))))))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
@@ -914,8 +987,19 @@ proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #elt, #elt_repr) * <observation>(((l-len l-nth(#self_repr, 0i)) i< (18446744073709551615i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (elt == #elt) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#self_repr, 1i)) = (l+({{ #elt_repr }}, l-nth(#self_repr, 0i)))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #elt, #elt_repr)
+  * <observation>(((l-len l-nth(#self_repr, 0i)) i< (18446744073709551615i)); )
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (elt == #elt)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((l-nth(#self_repr, 1i)) = (l+({{ #elt_repr }}, l-nth(#self_repr, 0i)))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt) {
@@ -975,8 +1059,16 @@ proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt) {
 };
 
 spec "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((l-len l-nth(#self_repr, 0i)) i- (1i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((l-len l-nth(#self_repr, 0i)) i- (1i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self) {
@@ -1065,8 +1157,19 @@ proc "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #elt, #elt_repr) * <observation>(((l-len l-nth(#self_repr, 0i)) i< (18446744073709551615i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (elt == #elt) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#self_repr, 1i)) = (l+(l-nth(#self_repr, 0i), {{ #elt_repr }}))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #elt, #elt_repr)
+  * <observation>(((l-len l-nth(#self_repr, 0i)) i< (18446744073709551615i)); )
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (elt == #elt)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((l-nth(#self_repr, 1i)) = (l+(l-nth(#self_repr, 0i), {{ #elt_repr }}))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt) {

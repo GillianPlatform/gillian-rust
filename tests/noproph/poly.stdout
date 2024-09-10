@@ -6,7 +6,7 @@ import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "
 
 axiomatic spec "test::<i32>"(x)
 [[ "<std::boxed::Box<i32> as gilogic::Ownable>::own"(#x) * (x == #x) ]]
-[["<i32 as gilogic::Ownable>::own"(ret)]]
+[[ "<i32 as gilogic::Ownable>::own"(ret) ]]
 normal
 
 pred "<std::boxed::Box<T> as gilogic::Ownable>::own"(+pty_T0, +self):
@@ -34,8 +34,9 @@ pred "<std::boxed::Box<i32> as gilogic::Ownable>::own"(+self):
 
 
 spec test(pty_T0, x)
-[[ "<std::boxed::Box<T> as gilogic::Ownable>::own"(#pty_T0, #x) * (x == #x) * (pty_T0 == #pty_T0) ]]
-[["<T as gilogic::Ownable>::own"(#pty_T0, ret)]]
+[[ "<std::boxed::Box<T> as gilogic::Ownable>::own"(#pty_T0, #x) * (x == #x)
+  * (pty_T0 == #pty_T0) ]]
+[[ "<T as gilogic::Ownable>::own"(#pty_T0, ret) ]]
 normal
 
 proc test(pty_T0, x) {
@@ -58,7 +59,7 @@ proc test(pty_T0, x) {
 
 spec test2()
 [[ emp ]]
-[["<i32 as gilogic::Ownable>::own"(ret)]]
+[[ "<i32 as gilogic::Ownable>::own"(ret) ]]
 normal
 
 proc test2() {

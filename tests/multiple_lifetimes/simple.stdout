@@ -47,8 +47,18 @@ proc swap_borrows(pLft_a, pLft_b, x, y) {
 };
 
 spec fst(pLft_a, pLft_b, x, y)
-[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
-[["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x)
+  * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y)
+  * <lft>(#pLft_b; true)
+  * <lft>(#pLft_a; true)
+  * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }})
+  * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }})
+  * (y == #y)
+  * (x == #x)
+  * (pLft_b == #pLft_b)
+  * (pLft_a == #pLft_a) ]]
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 proc fst(pLft_a, pLft_b, x, y) {
@@ -77,8 +87,18 @@ proc fst(pLft_a, pLft_b, x, y) {
 };
 
 spec snd(pLft_a, pLft_b, x, y)
-[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x) * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true) * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }}) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (y == #y) * (x == #x) * (pLft_b == #pLft_b) * (pLft_a == #pLft_a) ]]
-[["<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true) * <lft>(#pLft_a; true)]]
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #x)
+  * "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, #y)
+  * <lft>(#pLft_b; true)
+  * <lft>(#pLft_a; true)
+  * types(#lvar_2: Obj, #lvar_3: List) * (#y == {{ #lvar_2, #lvar_3 }})
+  * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }})
+  * (y == #y)
+  * (x == #x)
+  * (pLft_b == #pLft_b)
+  * (pLft_a == #pLft_a) ]]
+[[ "<&mut i32 as gilogic::Ownable>::own"(#pLft_a, ret) * <lft>(#pLft_b; true)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 proc snd(pLft_a, pLft_b, x, y) {

@@ -25,8 +25,12 @@ pred "<() as gilogic::Ownable>::own"(+self):
 
 
 spec "MyBox::<T>::write"(pty_T0, self, v)
-[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #v) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) ]]
-[["<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
+[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, #self)
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #v)
+  * (v == #v)
+  * (self == #self)
+  * (pty_T0 == #pty_T0) ]]
+[[ "<MyBox<T> as gilogic::Ownable>::own"(#pty_T0, ret) ]]
 normal
 
 proc "MyBox::<T>::write"(pty_T0, self, v) {
@@ -56,8 +60,15 @@ proc "MyBox::<T>::write"(pty_T0, self, v) {
 };
 
 spec "MyBox::<T>::update"(pLft_0, pty_T0, self, v)
-[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #v) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (v == #v) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #v)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (v == #v)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
 proc "MyBox::<T>::update"(pLft_0, pty_T0, self, v) {
