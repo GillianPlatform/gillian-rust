@@ -26,56 +26,12 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-// #[extract_lemma(
-//     forall x, y.
-//     from { wp_ref_mut_xy(p, x, y) }
-//     extract { <&mut T as Ownable>::own(&mut (*x).v) }
-// )]
-// fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
-
-
-#[cfg(gillian)]
-#[rustc_diagnostic_item =
-"extract_x_extract_lemma_182a34a1_599c_49be_91bf_0490844500cf"]
-#[gillian::decl::extract_lemma]
-fn extract_x_extract_lemma_182a34a1_599c_49be_91bf_0490844500cf<'a,
-    T: Ownable>(p: &'a mut WP<T>) -> gilogic::RustAssertion {
-    unsafe {
-        gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |x, y|
-                {
-                    gilogic::__stubs::extract_lemma::<()>(gilogic::__stubs::equal(true,
-                            true), wp_ref_mut_xy(p, x, y),
-                        <&mut T as Ownable>::own(&mut (*x).v), ())
-                })
-    }
-}
-#[cfg(gillian)]
-#[rustc_diagnostic_item =
-"extract_x_spec_f2e11467_fff9_4f11_8f3a_125336caf22e"]
-#[gillian::decl::specification]
-#[gillian::decl::pred_ins = "1"]
-fn extract_x_spec_f2e11467_fff9_4f11_8f3a_125336caf22e<'a,
-    T: Ownable>(p: &'a mut WP<T>, ret: ()) -> gilogic::RustAssertion {
-    unsafe {
-        gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] |x, y|
-                {
-                    gilogic::__stubs::spec(wp_ref_mut_xy(p, x, y),
-                        [{
-                                    gilogic::__stubs::instantiate_lvars(#[gillian::no_translate] ||
-                                            { <&mut T as Ownable>::own(&mut (*x).v) })
-                                }])
-                })
-    }
-}
-#[gillian::extract_lemma =
-"extract_x_extract_lemma_182a34a1_599c_49be_91bf_0490844500cf"]
-#[gillian::spec = "extract_x_spec_f2e11467_fff9_4f11_8f3a_125336caf22e"]
-#[allow(unsused_variables)]
-#[gillian::trusted]
-fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>) {
-    unreachable!()
-}
-
+#[extract_lemma(
+    forall x, y.
+    from { wp_ref_mut_xy(p, x, y) }
+    extract { <&mut T as Ownable>::own(&mut (*x).v) }
+)]
+fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
 
 #[extract_lemma(
     forall x, y.
