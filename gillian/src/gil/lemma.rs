@@ -39,7 +39,6 @@ where
             .group()
             .nest(2)
             .enclose("[[", "]]")
-            .append(";")
             .append(alloc.hardline());
         let concs = docs![
             alloc,

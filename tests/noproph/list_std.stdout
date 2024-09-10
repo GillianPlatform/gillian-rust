@@ -153,7 +153,7 @@ lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
   * (next == #next)
   * (x == #x)
   * (pty_T0 == #pty_T0)
-]];
+]]
 [[ "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) ]]
 
 lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
@@ -164,7 +164,7 @@ lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
   * (tail_next == #tail_next)
   * (head == #head)
   * (pty_T0 == #pty_T0)
-]];
+]]
 [[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
 lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
@@ -175,7 +175,7 @@ lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
   * (tail_next == #tail_next)
   * (head == #head)
   * (pty_T0 == #pty_T0)
-]];
+]]
 [[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
 lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[
@@ -186,7 +186,7 @@ lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[
   * (REFERENCE == #REFERENCE)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0)
-]];
+]]
 [[
   "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #head, #tail, #len)
   * <lft>(#pLft_0; true)

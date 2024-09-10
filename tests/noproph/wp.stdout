@@ -108,7 +108,7 @@ lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[
   * (REFERENCE == #REFERENCE)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0)
-]];
+]]
 [[
   "wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #x, #y)
   * <lft>(#pLft_0; true)

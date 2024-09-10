@@ -252,7 +252,7 @@ lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[
   * (REFERENCE == #REFERENCE)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0)
-]];
+]]
 [[
   "vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #ptr, #cap, #len)
   * <lft>(#pLft_0; true)
