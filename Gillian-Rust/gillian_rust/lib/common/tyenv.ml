@@ -1,5 +1,9 @@
 type t = (string, Ty.Adt_def.t) Hashtbl.t
 
+let current_tyenv = ref (Hashtbl.create 0)
+let set_current tyenv = current_tyenv := tyenv
+let get_current () = !current_tyenv
+
 let of_yojson : Yojson.Safe.t -> (t, string) result = function
   | `Assoc xs ->
       let tbl = Hashtbl.create (List.length xs) in
@@ -20,13 +24,13 @@ let to_yojson : t -> Yojson.Safe.t =
        (fun name def acc -> (name, Ty.Adt_def.to_yojson def) :: acc)
        tbl [])
 
-let adt_def ~tyenv name = Hashtbl.find tyenv name
+let adt_def name = Hashtbl.find !current_tyenv name
 
-let is_struct ~tyenv ty =
+let is_struct ty =
   let res =
     match ty with
     | Ty.Adt (name, _) -> (
-        match adt_def ~tyenv name with
+        match adt_def name with
         | Ty.Adt_def.Struct _ -> true
         | _ -> false)
     | _ -> false

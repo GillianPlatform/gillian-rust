@@ -240,20 +240,20 @@ let slice_elements = function
   | Slice t -> t
   | _ -> failwith "not a slice type"
 
-let fields ~tyenv ty =
+let fields ty =
   match ty with
   | Adt (name, subst) -> (
-      match Common.Tyenv.adt_def ~tyenv name with
+      match Common.Tyenv.adt_def name with
       | Struct (_, fields) ->
           List.map (fun (_, cty) -> subst_params ~subst cty) fields
       | _ -> Fmt.failwith "Not a structure: %a" pp ty)
   | Tuple tys -> tys
   | _ -> Fmt.failwith "Not a structure or tuple %a" pp ty
 
-let variant_fields ~tyenv ~idx ty =
+let variant_fields ~idx ty =
   match ty with
   | Adt (name, subst) -> (
-      match Common.Tyenv.adt_def ~tyenv name with
+      match Common.Tyenv.adt_def name with
       | Enum variants ->
           let _, fields = List.nth variants idx in
           List.map (subst_params ~subst) fields
@@ -270,28 +270,28 @@ let array_components ty =
   | Array { ty; length } -> (ty, length)
   | _ -> Fmt.failwith "array_components: %a is not an array" pp ty
 
-(* let rec value_of_zst ~tyenv ty =
+(* let rec value_of_zst ty =
    match ty with
    | Tuple l ->
-       let values = List.map (value_of_zst ~tyenv) l in
+       let values = List.map (value_of_zst) l in
        Expr.EList values
    | Array { ty; length } ->
-       let value = value_of_zst ~tyenv ty in
+       let value = value_of_zst ty in
        Expr.list_repeat value length
    | Unresolved _ -> Expr.string "ZST::VALUE"
    | Adt (name, subst) -> (
-       match Common.Tyenv.adt_def ~tyenv name with
+       match Common.Tyenv.adt_def name with
        | Struct (_, fields) ->
            let values =
              List.map
-               (fun (_, cty) -> value_of_zst ~tyenv (subst_params ~subst cty))
+               (fun (_, cty) -> value_of_zst (subst_params ~subst cty))
                fields
            in
            Expr.EList values
        | Enum [ (_, fields) ] ->
            let values =
              List.map
-               (fun cty -> value_of_zst ~tyenv (subst_params ~subst cty))
+               (fun cty -> value_of_zst (subst_params ~subst cty))
                fields
            in
            Expr.EList [ Expr.zero_i; Expr.EList values ]
