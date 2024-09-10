@@ -33,9 +33,7 @@ let execute_load_value mem args =
   | [ Literal.Loc loc; Literal.LList proj; ty; Literal.Bool copy ] ->
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
-      let ret, new_heap =
-        Heap.load mem.heap loc proj rust_ty copy
-      in
+      let ret, new_heap = Heap.load mem.heap loc proj rust_ty copy in
       Ok ({ mem with heap = new_heap }, [ ret ])
   | _ -> wrong_args "load_value" args
 
@@ -44,9 +42,7 @@ let execute_store_value mem args =
   | [ Literal.Loc loc; LList proj; ty; value ] ->
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
-      let new_heap =
-        Heap.store mem.heap loc proj rust_ty value
-      in
+      let new_heap = Heap.store mem.heap loc proj rust_ty value in
       Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_value" args
 

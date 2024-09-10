@@ -229,7 +229,7 @@ module TreeBlock = struct
         its indexing type to [to_ty]. *)
   let rec reinterpret_lc_ranges ~lk ~to_ty lc =
     let* range, lk =
-      Range.reinterpret  ~lk ~from_ty:lc.index_ty ~to_ty lc.range
+      Range.reinterpret ~lk ~from_ty:lc.index_ty ~to_ty lc.range
     in
     let+ children, lk =
       match lc.children with
@@ -435,9 +435,7 @@ module TreeBlock = struct
               (Expr.EList elements, lk)
           | Enum { discr; fields } ->
               let ptvs =
-                let tys =
-                  List.to_seq (Ty.variant_fields ~idx:discr ty)
-                in
+                let tys = List.to_seq (Ty.variant_fields ~idx:discr ty) in
                 let vs = List.to_seq fields in
                 let zipped = Seq.zip tys vs in
                 Seq.mapi
@@ -576,8 +574,7 @@ module TreeBlock = struct
           let++ l, lk =
             all ~lk
               (fun ~lk x ->
-                to_rust_maybe_uninit ~loc ~proj ~ty:expected_inner_ty ~lk
-                  x)
+                to_rust_maybe_uninit ~loc ~proj ~ty:expected_inner_ty ~lk x)
               [] l
           in
           (Expr.EList l, lk)
@@ -680,11 +677,7 @@ module TreeBlock = struct
 
   let uninitialized ty = Structural { ty; content = Uninit }
 
-  let rec of_rust_struct_value
-      ~ty
-      ~subst
-      ~fields_tys
-      (fields : Expr.t list) =
+  let rec of_rust_struct_value ~ty ~subst ~fields_tys (fields : Expr.t list) =
     let++ content =
       DR_list.map2
         (fun (_, t) v -> of_rust_value ~ty:(Ty.subst_params ~subst t) v)
@@ -734,8 +727,7 @@ module TreeBlock = struct
         match Tyenv.adt_def name with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~ty ~subst ~fields_tys data
-        | Enum variants_tys ->
-            of_rust_enum_value ~ty ~subst ~variants_tys data)
+        | Enum variants_tys -> of_rust_enum_value ~ty ~subst ~variants_tys data)
     | Array { length = Expr.Lit (Int length); ty = ty' }, EList l
       when Z.equal (Z.of_int (List.length l)) length ->
         let++ mem_array = DR_list.map (of_rust_value ~ty:ty') l in
@@ -753,18 +745,16 @@ module TreeBlock = struct
     let* e = Delayed.reduce e in
     match (e, ty) with
     | Expr.EList l, Ty.Array { ty = inner_ty; _ } ->
-        let++ elements =
-          DR_list.map (of_rust_maybe_uninit ~ty:inner_ty) l
-        in
+        let++ elements = DR_list.map (of_rust_maybe_uninit ~ty:inner_ty) l in
         Structural { content = Array elements; ty }
     | _ -> DR.ok (Structural { content = ManySymbolicMaybeUninit e; ty })
 
-  let outer_missing ~offset  ty =
+  let outer_missing ~offset ty =
     let+ ty = Ty.reduce ty in
     let root = missing ty in
     { offset; root }
 
-  let outer_symbolic ~offset  ty e =
+  let outer_symbolic ~offset ty e =
     let root = symbolic ~ty e in
     { offset; root }
 
@@ -1292,8 +1282,7 @@ module TreeBlock = struct
         index_ty:Ty.t ->
         laid_out ->
         (('a * laid_out) * LK.t, Err.t) DR.t =
-   fun ~lk
-       ~(return_and_update : t -> lk:LK.t -> (('a * t) * LK.t, Err.t) DR.t)
+   fun ~lk ~(return_and_update : t -> lk:LK.t -> (('a * t) * LK.t, Err.t) DR.t)
        ~range ~index_ty lc ->
     let* range, lk =
       Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
@@ -1334,12 +1323,12 @@ module TreeBlock = struct
           let* new_node, lk =
             Logging.verbose (fun m ->
                 m "extract_range_structural within extract_laid_out_and_apply");
-            extract_range_structural ~lk ~index_ty:lc.index_ty
-              ~range:rel_range structural
+            extract_range_structural ~lk ~index_ty:lc.index_ty ~range:rel_range
+              structural
           in
           let** (value, new_tree), lk =
-            extract_and_apply ~lk ~return_and_update ~index_ty
-              ~range:rel_range new_node
+            extract_and_apply ~lk ~return_and_update ~index_ty ~range:rel_range
+              new_node
           in
           let+ lc, lk =
             as_laid_out_child ~lk ~range:lc.range ~index_ty new_tree
@@ -1360,8 +1349,8 @@ module TreeBlock = struct
           if%sat Range.is_inside range left.range then (
             Logging.verbose (fun m -> m "Inside of left");
             let** (value, left), lk =
-              extract_laid_out_and_apply ~lk ~return_and_update ~index_ty
-                ~range left
+              extract_laid_out_and_apply ~lk ~return_and_update ~index_ty ~range
+                left
             in
             let+ new_lc, lk = laid_out_of_children ~lk left right in
             Ok ((value, new_lc), lk))
@@ -1389,9 +1378,8 @@ module TreeBlock = struct
                 (* Rearrange left*)
                 let low_range = (low, mid) in
                 let** ((), left), lk =
-                  extract_laid_out_and_apply ~lk
-                    ~return_and_update:dont_update ~range:low_range ~index_ty
-                    left
+                  extract_laid_out_and_apply ~lk ~return_and_update:dont_update
+                    ~range:low_range ~index_ty left
                 in
                 let* (extracted, left_opt), lk =
                   extract ~lk left ~index_ty ~range:low_range
@@ -1413,9 +1401,8 @@ module TreeBlock = struct
                 (* Rearrange right *)
                 let upper_range = (mid, high) in
                 let** (_, right), lk =
-                  extract_laid_out_and_apply ~lk
-                    ~return_and_update:dont_update ~range:upper_range ~index_ty
-                    right
+                  extract_laid_out_and_apply ~lk ~return_and_update:dont_update
+                    ~range:upper_range ~index_ty right
                 in
                 let* (extracted, right_opt), lk =
                   extract ~lk ~range:upper_range ~index_ty right
@@ -1453,8 +1440,7 @@ module TreeBlock = struct
             extract_range_structural ~lk ~index_ty ~range s
           in
           Logging.verbose (fun m -> m "OBTAINED A NEW NODE: %a" pp new_node);
-          extract_and_apply ~lk ~return_and_update ~range ~index_ty
-            new_node
+          extract_and_apply ~lk ~return_and_update ~range ~index_ty new_node
       | Laid_out_root lc ->
           let* range_as_in_lc, lk =
             Range.reinterpret ~lk ~from_ty:index_ty ~to_ty:lc.index_ty range
@@ -1598,8 +1584,7 @@ module TreeBlock = struct
           return_and_update ~lk
             (Structural { ty = expected_ty; content = Array [] })
         else
-          frame_slice ~can_extend:true ~lk ~return_and_update ~ty t path
-            length
+          frame_slice ~can_extend:true ~lk ~return_and_update ~ty t path length
     | _ ->
         let rec aux t (path : Projections.path) ~lk =
           match (path, t) with
@@ -1716,19 +1701,10 @@ module TreeBlock = struct
     let path = Projections.Reduction.reduce_op_list proj.from_base in
     Logging.verbose (fun m ->
         m "After path reduction: %a" Projections.pp_path path);
-    let++ (ret, root), lk =
-      frame_path ~lk ~return_and_update ~ty t path
-    in
+    let++ (ret, root), lk = frame_path ~lk ~return_and_update ~ty t path in
     ((ret, { outer with root }), lk)
 
-  let copy_nonoverlapping
-      from_block
-      from_proj
-      to_block
-      to_proj
-      ty
-      size
-      ~lk =
+  let copy_nonoverlapping from_block from_proj to_block to_proj ty size ~lk =
     if%sat Formula.Infix.(size #== Expr.zero_i) then DR.ok (to_block, lk)
     else
       let () =
@@ -1744,8 +1720,7 @@ module TreeBlock = struct
           m "copy_nonoverlapping: about to write copy to the 'to' block");
       let return_and_update _t ~lk = DR.ok (((), copy), lk) in
       let++ ((), mem), lk =
-        frame_slice_outer ~lk ~return_and_update ~ty to_block to_proj
-          size
+        frame_slice_outer ~lk ~return_and_update ~ty to_block to_proj size
       in
       (mem, lk)
 
@@ -1787,9 +1762,7 @@ module TreeBlock = struct
         | _ -> Delayed.vanish ()
         (* Duplicated resources *)
       in
-      let++ (_, new_block), lk =
-        frame_proj ~ty ~lk ~return_and_update t proj
-      in
+      let++ (_, new_block), lk = frame_proj ~ty ~lk ~return_and_update t proj in
       (new_block, lk)
     in
     match new_block with
@@ -1835,9 +1808,7 @@ module TreeBlock = struct
         | _ -> Delayed.vanish ()
         (* Duplicated resource *)
       in
-      let++ (_, new_block), lk =
-        frame_proj ~ty ~return_and_update ~lk t proj
-      in
+      let++ (_, new_block), lk = frame_proj ~ty ~return_and_update ~lk t proj in
       (new_block, lk)
     in
     match result with
@@ -1875,9 +1846,7 @@ module TreeBlock = struct
         | _ -> Delayed.vanish ()
         (* Duplicated resource *)
       in
-      let++ (_, new_block), lk =
-        frame_proj ~lk ~ty ~return_and_update t proj
-      in
+      let++ (_, new_block), lk = frame_proj ~lk ~ty ~return_and_update t proj in
       (new_block, lk)
     in
     match result with
@@ -1924,9 +1893,7 @@ module TreeBlock = struct
           let++ block = of_rust_value ~ty value in
           (((), block), lk)
     in
-    let++ (_, new_block), lk =
-      frame_proj ~lk ~ty ~return_and_update t proj
-    in
+    let++ (_, new_block), lk = frame_proj ~lk ~ty ~return_and_update t proj in
     (new_block, lk)
 
   let get_discr ~lk t proj enum_typ =
@@ -1951,12 +1918,8 @@ module TreeBlock = struct
     (discr, lk)
 
   let deinit ~lk t proj ty =
-    let return_and_update _block ~lk =
-      DR.ok (((), uninitialized ty), lk)
-    in
-    let++ (_, new_block), lk =
-      frame_proj ~lk ~ty ~return_and_update t proj
-    in
+    let return_and_update _block ~lk = DR.ok (((), uninitialized ty), lk) in
+    let++ (_, new_block), lk = frame_proj ~lk ~ty ~return_and_update t proj in
     (new_block, lk)
 
   let rec substitution ~subst_expr (t : t) =
@@ -2115,9 +2078,7 @@ let store ~lk (mem : t) loc proj ty value =
        if%sat is_zst then DR.ok (mem, lk)
        else *)
     let** block = find_not_freed loc mem in
-    let++ new_block, lk =
-      TreeBlock.store_proj ~loc ~lk block proj ty value
-    in
+    let++ new_block, lk = TreeBlock.store_proj ~loc ~lk block proj ty value in
     (MemMap.add loc (T new_block) mem, lk)
 
 let copy_nonoverlapping
@@ -2137,8 +2098,8 @@ let copy_nonoverlapping
       let** from_block = find_not_freed from_loc mem in
       let** to_block = find_not_freed to_loc mem in
       let++ new_to_block, lk =
-        TreeBlock.copy_nonoverlapping ~lk from_block from_proj to_block
-          to_proj ty size
+        TreeBlock.copy_nonoverlapping ~lk from_block from_proj to_block to_proj
+          ty size
       in
       (MemMap.add to_loc (T new_to_block) mem, lk)
 
@@ -2153,9 +2114,7 @@ let cons_value ~lk (mem : t) loc proj ty =
          DR.ok ((value, mem), lk)
        else *)
     let** block = find_not_freed loc mem in
-    let++ (value, outer), lk =
-      TreeBlock.cons_proj ~loc ~lk block proj ty
-    in
+    let++ (value, outer), lk = TreeBlock.cons_proj ~loc ~lk block proj ty in
     let new_heap =
       if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
       else MemMap.add loc (T outer) mem
@@ -2196,9 +2155,7 @@ let cons_uninit ~lk (mem : t) loc proj ty =
   if%sat TypePreds.empty_array ty then DR.ok (mem, lk)
   else
     let** block = find_not_freed loc mem in
-    let++ ((), outer), lk =
-      TreeBlock.cons_uninit ~loc ~lk block proj ty
-    in
+    let++ ((), outer), lk = TreeBlock.cons_uninit ~loc ~lk block proj ty in
     let new_heap =
       if TreeBlock.outer_is_empty outer then MemMap.remove loc mem
       else MemMap.add loc (T outer) mem
@@ -2243,13 +2200,7 @@ let cons_maybe_uninit ~lk (mem : t) loc proj ty =
     in
     (value, new_heap, lk)
 
-let prod_maybe_uninit
-    ~lk
-    (mem : t)
-    loc
-    (proj : Projections.t)
-    ty
-    maybe_value =
+let prod_maybe_uninit ~lk (mem : t) loc (proj : Projections.t) ty maybe_value =
   (* let* is_zst, lk = LK.is_zst ~lk ty in
      if%sat is_zst then
        Delayed.return
@@ -2324,8 +2275,7 @@ let prod_many_maybe_uninits
             (Projections.base_ty ~leaf_ty:(Ty.array ty size) proj.from_base)
     in
     let+ new_block, lk =
-      TreeBlock.prod_many_maybe_uninits ~loc ~lk root proj ty size
-        maybe_values
+      TreeBlock.prod_many_maybe_uninits ~loc ~lk root proj ty size maybe_values
     in
     (MemMap.add loc (T new_block) mem, lk)
 

@@ -2,7 +2,6 @@ type t [@@deriving yojson]
 
 val set_current : t -> unit
 val get_current : unit -> t
-
 val adt_def : string -> Ty.Adt_def.t
 val is_struct : Ty.t -> bool
 val pp : t Fmt.t

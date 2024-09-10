@@ -79,9 +79,7 @@ let execute_load mem args =
       let ty = Ty.of_expr ty in
       let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
-      let++ (value, new_heap), lk =
-        Heap.load ~lk heap loc proj ty copy
-      in
+      let++ (value, new_heap), lk = Heap.load ~lk heap loc proj ty copy in
       make_branch ~mem:{ mem with heap = new_heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for load"
 
@@ -107,9 +105,7 @@ let execute_load_discr mem args =
       let enum_typ = Ty.of_expr enum_typ in
       let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
-      let++ discr, lk =
-        Heap.load_discr ~lk:mem.lk mem.heap loc proj enum_typ
-      in
+      let++ discr, lk = Heap.load_discr ~lk:mem.lk mem.heap loc proj enum_typ in
       make_branch ~mem:{ mem with lk } ~rets:[ discr ] ()
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
 
@@ -155,9 +151,7 @@ let execute_cons_value mem args =
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
-      let++ (value, heap), lk =
-        Heap.cons_value ~lk heap loc_name proj ty
-      in
+      let++ (value, heap), lk = Heap.cons_value ~lk heap loc_name proj ty in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
@@ -189,9 +183,7 @@ let execute_cons_maybe_uninit mem args =
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
-      let++ v, heap, lk =
-        Heap.cons_maybe_uninit ~lk heap loc_name proj ty
-      in
+      let++ v, heap, lk = Heap.cons_maybe_uninit ~lk heap loc_name proj ty in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ v ] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_maybe_uninit"
 
@@ -266,13 +258,12 @@ let lvars t =
 
 let alocs _ = failwith "alocs: Not yet implemented"
 
-let assertions ?to_keep:_ { heap; lfts; pcies; obs_ctx; lk; tyenv= _ } =
+let assertions ?to_keep:_ { heap; lfts; pcies; obs_ctx; lk; tyenv = _ } =
   (* At worst this is over-approximating *)
   Layout_knowledge.assertions lk
   @ Obs_ctx.assertions obs_ctx
   @ Prophecies.assertions pcies
-  @ Lft_ctx.assertions lfts
-  @ Heap.assertions heap
+  @ Lft_ctx.assertions lfts @ Heap.assertions heap
 
 let mem_constraints _ =
   Logging.normal (fun m -> m "WARNING: MEM_CONSTRAINTS\n@?");
@@ -528,9 +519,7 @@ let substitution_in_place s mem =
   if Subst.is_empty s then Delayed.return mem
   else
     let lk = Layout_knowledge.substitution s mem.lk in
-    let* heap, lk =
-      Heap.substitution ~lk mem.heap s |> get_oks
-    in
+    let* heap, lk = Heap.substitution ~lk mem.heap s |> get_oks in
     let+ pcies = Prophecies.substitution mem.pcies s |> get_oks in
     let lfts = Lft_ctx.substitution s mem.lfts in
     let obs_ctx = Obs_ctx.substitution s mem.obs_ctx in
@@ -585,9 +574,7 @@ let split_further mem core_pred ins (err : Err.t) =
   | Value, Missing_proj (loc, missing_proj, Partially) ->
       (* We tried consuming a tree when we had some of it but not all,
          this is precisely what we are trying to signal. *)
-      let res =
-        split_partially_missing_value  ins loc missing_proj
-      in
+      let res = split_partially_missing_value ins loc missing_proj in
       Logging.verbose (fun m ->
           m "SUCCESSFULY SPLIT:@\nNEW INS: %a@\nNEW OUTs: %a"
             Fmt.(Dump.list @@ Dump.list Expr.pp)

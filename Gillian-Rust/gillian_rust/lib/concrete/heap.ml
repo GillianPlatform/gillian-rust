@@ -40,10 +40,10 @@ module TreeBlock = struct
         | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
-        let tuple = Array.map (to_rust_value ) v |> Array.to_list in
+        let tuple = Array.map to_rust_value v |> Array.to_list in
         LList tuple
     | Enum { discr; fields } ->
-        let fields = Array.map (to_rust_value ) fields |> Array.to_list in
+        let fields = Array.map to_rust_value fields |> Array.to_list in
         Literal.LList [ Int (Z.of_int discr); LList fields ]
     | ThinPtr (loc, proj) ->
         LList [ Loc loc; LList (Projections.to_lit_list proj) ]
@@ -84,17 +84,14 @@ module TreeBlock = struct
     | Ty.Scalar (Uint _ | Int _), Literal.Int _ -> { ty; content = Scalar v }
     | Scalar Bool, Literal.Bool b -> { ty; content = Scalar (Bool b) }
     | Tuple ts, LList tup ->
-        let content =
-          List.map2 (fun t v -> of_rust_value ~ty:t v) ts tup
-        in
+        let content = List.map2 (fun t v -> of_rust_value ~ty:t v) ts tup in
         let content = Fields (Array.of_list content) in
         { ty; content }
     | Adt (name, subst), LList data -> (
         match Tyenv.adt_def name with
         | Struct (_repr, fields_tys) ->
             of_rust_struct_value ~ty ~subst ~fields_tys data
-        | Enum variants_tys ->
-            of_rust_enum_value ~ty ~subst ~variants_tys data)
+        | Enum variants_tys -> of_rust_enum_value ~ty ~subst ~variants_tys data)
     | Ptr { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -103,16 +100,14 @@ module TreeBlock = struct
         { ty; content }
     | Array { length; ty = ty' }, LList l
       when List.compare_length_with l length == 0 ->
-        let mem_array =
-          List.map (of_rust_value ~ty:ty') l |> Array.of_list
-        in
+        let mem_array = List.map (of_rust_value ~ty:ty') l |> Array.of_list in
         { ty; content = Array mem_array }
     | _ -> Fmt.failwith "Type error: %a is not of type %a" Literal.pp v Ty.pp ty
 
   let rec uninitialized ty =
     match ty with
     | Ty.Tuple v ->
-        let tuple = List.map (uninitialized) v |> Array.of_list in
+        let tuple = List.map uninitialized v |> Array.of_list in
         { ty; content = Fields tuple }
     | Adt (name, subst) -> (
         match Tyenv.adt_def name with
@@ -135,8 +130,7 @@ module TreeBlock = struct
         failwith
           "param should have been resolved before getting `uninitialized`"
 
-  let rec find_path ~update ~return t (path : Partial_layout.access list)
-      =
+  let rec find_path ~update ~return t (path : Partial_layout.access list) =
     let rec_call = find_path ~update ~return in
     let replace_vec c v =
       match c with
@@ -196,8 +190,7 @@ module TreeBlock = struct
     in
     let return block =
       match block.content with
-      | Array vec ->
-          Array_utils.sublist_map ~start ~size ~f:(to_rust_value ) vec
+      | Array vec -> Array_utils.sublist_map ~start ~size ~f:to_rust_value vec
       | _ -> failwith "Not an array"
     in
     find_path ~update ~return t array_accesses
