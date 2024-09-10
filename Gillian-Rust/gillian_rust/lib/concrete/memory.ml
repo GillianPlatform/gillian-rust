@@ -23,7 +23,7 @@ let execute_alloc mem args =
   match args with
   | [ ty ] ->
       let rust_ty = Ty.of_lit ty in
-      let new_loc, new_heap = Heap.alloc ~tyenv:mem.tyenv mem.heap rust_ty in
+      let new_loc, new_heap = Heap.alloc mem.heap rust_ty in
       let ret = [ Literal.Loc new_loc; Literal.LList [] ] in
       Ok ({ mem with heap = new_heap }, ret)
   | _ -> wrong_args "alloc" args
@@ -34,7 +34,7 @@ let execute_load_value mem args =
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
       let ret, new_heap =
-        Heap.load ~tyenv:mem.tyenv mem.heap loc proj rust_ty copy
+        Heap.load mem.heap loc proj rust_ty copy
       in
       Ok ({ mem with heap = new_heap }, [ ret ])
   | _ -> wrong_args "load_value" args
@@ -45,7 +45,7 @@ let execute_store_value mem args =
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
       let new_heap =
-        Heap.store ~tyenv:mem.tyenv mem.heap loc proj rust_ty value
+        Heap.store mem.heap loc proj rust_ty value
       in
       Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "store_value" args
@@ -55,7 +55,7 @@ let execute_deinit mem args =
   | [ Literal.Loc loc; LList proj; ty ] ->
       let rust_ty = Ty.of_lit ty in
       let proj = Projections.of_lit_list proj in
-      let new_heap = Heap.deinit ~tyenv:mem.tyenv mem.heap loc proj rust_ty in
+      let new_heap = Heap.deinit mem.heap loc proj rust_ty in
       Ok ({ mem with heap = new_heap }, [])
   | _ -> wrong_args "execute_deinit" args
 
@@ -77,7 +77,7 @@ let execute_load_discr mem args =
   | [ Literal.Loc loc; Literal.LList proj; enum_typ ] ->
       let enum_typ = Ty.of_lit enum_typ in
       let proj = Projections.of_lit_list proj in
-      let discr = Heap.load_discr ~tyenv:mem.tyenv mem.heap loc proj enum_typ in
+      let discr = Heap.load_discr mem.heap loc proj enum_typ in
       Ok (mem, [ Literal.Int (Z.of_int discr) ])
   | _ -> wrong_args "execute_load_discr" args
 

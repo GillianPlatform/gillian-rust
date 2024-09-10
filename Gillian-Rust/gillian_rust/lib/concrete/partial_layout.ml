@@ -241,13 +241,13 @@ let mod' (n : int) (m : int) =
 let signum (n : int) = if n < 0 then -1 else if n = 0 then 0 else 1
 
 let rec resolve
-    ~tyenv
+    
     ~(context : context)
     (accesses : access list)
     (ty : Ty.t)
     (rs : op list)
     (index : int option) : access list =
-  let resolve = resolve ~tyenv ~context in
+  let resolve = resolve  ~context in
   (* let dump_state () =
           (* FOR DEBUG PURPOSES, TODO REMOVE *)
           Format.printf "\nDUMP\n\tty=%a\n\tindex=%s\n\trs=[" Ty.pp ty
@@ -337,7 +337,7 @@ let rec resolve
             up_tree_cast UpTreeDirection.Fwd accesses
               (modify_plus_eliminating_zero @@ (i' - n))
       | Adt (name, _args) -> (
-          match Tyenv.adt_def ~tyenv name with
+          match Tyenv.adt_def  name with
           | Struct _ -> (
               let moving_over_field, next_i, next_ix =
                 if i < 0 then (ix - 1, ( + ) i, ix - 1)
@@ -389,7 +389,7 @@ let rec resolve
                 @@ (i - ((n - ix) * size))
           | _ -> down_tree_cast (DownTreeDirection.from_int i))
       | Adt (name, _args) -> (
-          match Tyenv.adt_def ~tyenv name with
+          match Tyenv.adt_def  name with
           | Struct _ -> (
               let moving_over_field, next_ix =
                 if i < 0 then (ix - 1, ix - 1) else (ix, ix + 1)
@@ -431,10 +431,10 @@ let rec zero_offset_types (context : context) (ty : Ty.t) : Ty.t list =
   | Array (_, _) -> sub_tree_types ()
   | _ -> [ ty ]
 
-let resolve_address ~tyenv ~(context : context) (address : address) :
+let resolve_address ~(context : context) (address : address) :
     access list =
   let reduced = reduce context address.route in
-  let accesses = resolve ~tyenv ~context [] address.block_type reduced None in
+  let accesses = resolve  ~context [] address.block_type reduced None in
   let result_type = function
     | a :: _ -> a.index_type
     | _ -> address.block_type
@@ -470,10 +470,10 @@ let resolve_address ~tyenv ~(context : context) (address : address) :
              Format.sprintf "Could not resolve to correct address type" ))
 
 let resolve_address_debug_access_error
-    ~tyenv
+    
     ~(context : context)
     (address : address) : access list =
-  try resolve_address ~tyenv ~context address
+  try resolve_address  ~context address
   with AccessError (accesses, rs, ty, ix, message) ->
     Format.eprintf "%s: \n" message;
     Format.eprintf "\tty=%a\n\tix=%s\n\trs=[" Ty.pp ty
@@ -617,7 +617,7 @@ let rec partial_layout_of
       | Some layout -> layout
       | None ->
           let partial_layout =
-            match Tyenv.adt_def ~tyenv name with
+            match Tyenv.adt_def  name with
             | Ty.Adt_def.Struct (ReprC, fs) ->
                 let ts =
                   Seq.map (fun (_, t) -> Ty.subst_params ~subst t)
@@ -704,10 +704,10 @@ let partial_layouts_from_env (tyenv : Tyenv.t) : Ty.t -> partial_layout =
   let partial_layouts = Hashtbl.create 1024 in
   partial_layout_of tyenv partial_layouts
 
-let enum_variant_members_from_env (tyenv : Tyenv.t) (ty : Ty.t) (vidx : int) =
+let enum_variant_members_from_env (ty : Ty.t) (vidx : int) =
   match ty with
   | Adt (name, subst) -> (
-      match Tyenv.adt_def ~tyenv name with
+      match Tyenv.adt_def  name with
       | Enum variants ->
           List.nth variants vidx |> snd
           |> List.map (Ty.subst_params ~subst)
@@ -715,12 +715,12 @@ let enum_variant_members_from_env (tyenv : Tyenv.t) (ty : Ty.t) (vidx : int) =
       | _ -> failwith "enum_variant_members for non-enum")
   | _ -> failwith "enum_variant_members for non-enum"
 
-let members_from_env (tyenv : Tyenv.t) (ty : Ty.t) : Ty.t array =
+let members_from_env (ty : Ty.t) : Ty.t array =
   match ty with
   | Array { ty; length } -> Array.make length ty
   | Tuple tys -> Array.of_list tys
   | Adt (name, subst) -> (
-      match Tyenv.adt_def ~tyenv name with
+      match Tyenv.adt_def  name with
       | Struct (_, fs) ->
           List.to_seq fs
           |> Seq.map (fun (_, t) -> Ty.subst_params ~subst t)
@@ -732,6 +732,6 @@ let members_from_env (tyenv : Tyenv.t) (ty : Ty.t) : Ty.t array =
 let context_from_env (tyenv : Tyenv.t) : context =
   {
     partial_layouts = partial_layouts_from_env tyenv;
-    members = members_from_env tyenv;
-    variant_members = enum_variant_members_from_env tyenv;
+    members = members_from_env;
+    variant_members = enum_variant_members_from_env;
   }

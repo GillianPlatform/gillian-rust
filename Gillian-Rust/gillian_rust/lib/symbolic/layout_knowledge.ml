@@ -2,6 +2,7 @@ open Gillian.Utils.Prelude
 open Gillian.Gil_syntax
 module DR = Gillian.Monadic.Delayed_result
 module Delayed = Gillian.Monadic.Delayed
+module Tyenv = Common.Tyenv
 open Delayed.Syntax
 
 type knowledge = { size : Expr.t (* align: Expr.t; *) } [@@deriving yojson]
@@ -25,7 +26,7 @@ let assertions t =
   in
   Map.to_seq t |> Seq.concat_map asrts |> List.of_seq
 
-let rec size_of ~lk ty =
+let rec size_of ~lk  ty =
   match ty with
   | Ty.Scalar ty -> Delayed.return (Expr.int (Ty.size_of_scalar ty), lk)
   | Ref { ty = Slice _ | Str; _ } | Ptr { ty = Slice _ | Str; _ } ->
@@ -47,32 +48,45 @@ let rec size_of ~lk ty =
           in
           Delayed.return ~learned (size, Map.add ty { size } lk))
   | Array { length; ty } ->
-      let+ size_ty, lk = size_of ~lk ty in
+      let+ size_ty, lk = size_of  ~lk ty in
       (Expr.Infix.(size_ty * length), lk)
+  | Adt (name, subst) -> (
+    match Tyenv.adt_def name with
+    | Enum _ ->
+      let size = Expr.LVar (LVar.alloc ()) in
+      let learned = let open Formula.Infix in [ Expr.zero_i #<= size ] in
+      Delayed.return ~learned (size, Map.add ty { size } lk)
+    | Struct (_, fields) ->
+      let+ total_size, lk = Delayed_utils.Delayed_list.fold_with_lk ~lk (fun ~lk acc (_, ty) ->
+        let+ size_ty, lk = size_of  ~lk (Ty.subst_params ~subst ty) in
+        Expr.Infix.(size_ty + acc), lk
+      ) Expr.zero_i fields in
+     total_size, Map.add ty { size = total_size } lk
+  )
   | _ -> Fmt.failwith "size_of: not implemented for %a yet" Ty.pp ty
 
-let reinterpret_offset ~lk ~from_ty ~to_ty ofs =
+let reinterpret_offset  ~lk ~from_ty ~to_ty ofs =
   if Ty.equal from_ty to_ty then Delayed.return (ofs, lk)
   else
-    let* size_from, lk = size_of ~lk from_ty in
-    let+ size_to, lk = size_of ~lk to_ty in
+    let* size_from, lk = size_of  ~lk from_ty in
+    let+ size_to, lk = size_of  ~lk to_ty in
     (Expr.Infix.(ofs * size_from / size_to), lk)
 
 (** Return the length of an array of [of_ty] that covers exactly the size of [ty] *)
-let length_as_array_of ~lk ~of_ty ty =
+let length_as_array_of  ~lk ~of_ty ty =
   match ty with
   | Ty.Array { length; ty } when Ty.equal ty of_ty -> Delayed.return (length, lk)
   | ty ->
-      let* size_array, lk = size_of ~lk ty in
-      let+ size_conv, lk = size_of ~lk of_ty in
+      let* size_array, lk = size_of  ~lk ty in
+      let+ size_conv, lk = size_of  ~lk of_ty in
       (Expr.Infix.(size_array / size_conv), lk)
 
-let compare_sizes ~lk comp ty_a ty_b =
-  let* size_a, lk = size_of ~lk ty_a in
-  let+ size_b, lk = size_of ~lk ty_b in
+let compare_sizes  ~lk comp ty_a ty_b =
+  let* size_a, lk = size_of  ~lk ty_a in
+  let+ size_b, lk = size_of  ~lk ty_b in
   (comp size_a size_b, lk)
 
-let size_equal ~lk ty_a ty_b =
+let size_equal  ~lk ty_a ty_b =
   if Ty.equal ty_a ty_b then Delayed.return (Formula.True, lk)
   else if Ty.is_array_of ~array_ty:ty_a ~inner_ty:ty_b then
     let _, length = Ty.array_components ty_a in
@@ -80,7 +94,7 @@ let size_equal ~lk ty_a ty_b =
   else if Ty.is_array_of ~array_ty:ty_b ~inner_ty:ty_a then
     let _, length = Ty.array_components ty_b in
     Delayed.return (Formula.Infix.(length #== Expr.one_i), lk)
-  else compare_sizes ~lk Formula.Infix.( #== ) ty_a ty_b
+  else compare_sizes  ~lk Formula.Infix.( #== ) ty_a ty_b
 
 let produce_ty_size ~lk ty new_size =
   let open Formula.Infix in

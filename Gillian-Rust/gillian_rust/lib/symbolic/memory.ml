@@ -29,6 +29,7 @@ let resolve_loc_result loc =
   Delayed_result.of_do ~none:(Err.Invalid_loc loc) (Delayed.resolve_loc loc)
 
 let init tyenv =
+  Common.Tyenv.set_current tyenv;
   {
     tyenv;
     heap = Heap.empty;
@@ -48,11 +49,11 @@ let clear t = { t with heap = Heap.empty; lfts = Lft_ctx.empty }
 let make_branch ~mem ?(rets = []) () = (mem, rets)
 
 let execute_alloc mem args =
-  let { heap; tyenv; _ } = mem in
+  let { heap; _ } = mem in
   match args with
   | [ ty ] ->
       let ty = Ty.of_expr ty in
-      let loc, new_heap = Heap.alloc ~tyenv heap ty in
+      let loc, new_heap = Heap.alloc heap ty in
       DR.ok
         (make_branch
            ~mem:{ mem with heap = new_heap }
@@ -61,31 +62,31 @@ let execute_alloc mem args =
   | _ -> Fmt.failwith "Invalid arguments for alloc"
 
 let execute_store mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj; ty; value ] ->
       let ty = Ty.of_expr ty in
       let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
-      let++ new_heap, lk = Heap.store ~tyenv ~lk heap loc proj ty value in
+      let++ new_heap, lk = Heap.store ~lk heap loc proj ty value in
       make_branch ~mem:{ mem with heap = new_heap; lk } ()
   | _ -> Fmt.failwith "Invalid arguments for store"
 
 let execute_load mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj; ty; Expr.Lit (Bool copy) ] ->
       let ty = Ty.of_expr ty in
       let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
       let++ (value, new_heap), lk =
-        Heap.load ~tyenv ~lk heap loc proj ty copy
+        Heap.load ~lk heap loc proj ty copy
       in
       make_branch ~mem:{ mem with heap = new_heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for load"
 
 let execute_copy_nonoverlapping mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ from_loc; from_proj; to_loc; to_proj; ty; size ] ->
       let ty = Ty.of_expr ty in
@@ -94,7 +95,7 @@ let execute_copy_nonoverlapping mem args =
       let** to_loc = resolve_loc_result to_loc in
       let* to_proj = Projections.of_expr_reduce to_proj in
       let++ new_heap, lk =
-        Heap.copy_nonoverlapping ~tyenv ~lk heap ~from:(old_loc, old_proj)
+        Heap.copy_nonoverlapping ~lk heap ~from:(old_loc, old_proj)
           ~to_:(to_loc, to_proj) ty size
       in
       make_branch ~mem:{ mem with heap = new_heap; lk } ()
@@ -107,7 +108,7 @@ let execute_load_discr mem args =
       let* proj = Projections.of_expr_reduce proj in
       let** loc = resolve_loc_result loc in
       let++ discr, lk =
-        Heap.load_discr ~tyenv:mem.tyenv ~lk:mem.lk mem.heap loc proj enum_typ
+        Heap.load_discr ~lk:mem.lk mem.heap loc proj enum_typ
       in
       make_branch ~mem:{ mem with lk } ~rets:[ discr ] ()
   | _ -> Fmt.failwith "Invalid arguments for load_discr"
@@ -148,73 +149,73 @@ let execute_kill_lft mem args =
   | _ -> Fmt.failwith "Invalid arguments for kill_lft"
 
 let execute_cons_value mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
       let++ (value, heap), lk =
-        Heap.cons_value ~tyenv ~lk heap loc_name proj ty
+        Heap.cons_value ~lk heap loc_name proj ty
       in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ value ] ()
   | _ -> Fmt.failwith "Invalid arguments for get_value"
 
 let execute_prod_value mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  let+ heap, lk = Heap.execute_prod_value ~tyenv ~lk heap args in
+  let { heap; lk; _ } = mem in
+  let+ heap, lk = Heap.execute_prod_value ~lk heap args in
   { mem with heap; lk }
 
 let execute_cons_uninit mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
-      let++ heap, lk = Heap.cons_uninit ~tyenv ~lk heap loc_name proj ty in
+      let++ heap, lk = Heap.cons_uninit ~lk heap loc_name proj ty in
       make_branch ~mem:{ mem with heap; lk } ~rets:[] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_uninit"
 
 let execute_prod_uninit mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  let+ heap, lk = Heap.execute_prod_uninit ~tyenv ~lk heap args in
+  let { heap; lk; _ } = mem in
+  let+ heap, lk = Heap.execute_prod_uninit ~lk heap args in
   { mem with heap; lk }
 
 let execute_cons_maybe_uninit mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
       let++ v, heap, lk =
-        Heap.cons_maybe_uninit ~tyenv ~lk heap loc_name proj ty
+        Heap.cons_maybe_uninit ~lk heap loc_name proj ty
       in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ v ] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_maybe_uninit"
 
 let execute_prod_maybe_uninit mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  let+ heap, lk = Heap.execute_prod_maybe_uninit ~tyenv ~lk heap args in
+  let { heap; lk; _ } = mem in
+  let+ heap, lk = Heap.execute_prod_maybe_uninit ~lk heap args in
   { mem with heap; lk }
 
 let execute_cons_many_maybe_uninits mem args =
-  let { heap; tyenv; lk; _ } = mem in
+  let { heap; lk; _ } = mem in
   match args with
   | [ loc; proj_exp; ty_exp; size ] ->
       let ty = Ty.of_expr ty_exp in
       let** loc_name = resolve_loc_result loc in
       let* proj = Projections.of_expr_reduce proj_exp in
       let++ v, heap, lk =
-        Heap.cons_many_maybe_uninits ~tyenv ~lk heap loc_name proj ty size
+        Heap.cons_many_maybe_uninits ~lk heap loc_name proj ty size
       in
       make_branch ~mem:{ mem with heap; lk } ~rets:[ v ] ()
   | _ -> Fmt.failwith "Invalid arguments for cons_many_maybe_uninits"
 
 let execute_prod_many_maybe_uninits mem args =
-  let { heap; tyenv; lk; _ } = mem in
-  let+ heap, lk = Heap.execute_prod_many_maybe_uninits ~tyenv ~lk heap args in
+  let { heap; lk; _ } = mem in
+  let+ heap, lk = Heap.execute_prod_many_maybe_uninits ~lk heap args in
   { mem with heap; lk }
 
 let formula_of_expr_exn expr =
@@ -265,13 +266,13 @@ let lvars t =
 
 let alocs _ = failwith "alocs: Not yet implemented"
 
-let assertions ?to_keep:_ { heap; tyenv; lfts; pcies; obs_ctx; lk } =
+let assertions ?to_keep:_ { heap; lfts; pcies; obs_ctx; lk; tyenv= _ } =
   (* At worst this is over-approximating *)
   Layout_knowledge.assertions lk
   @ Obs_ctx.assertions obs_ctx
   @ Prophecies.assertions pcies
   @ Lft_ctx.assertions lfts
-  @ Heap.assertions ~tyenv heap
+  @ Heap.assertions heap
 
 let mem_constraints _ =
   Logging.normal (fun m -> m "WARNING: MEM_CONSTRAINTS\n@?");
@@ -398,7 +399,7 @@ let execute_size_of mem args =
    | [ ty ] ->
        let ty = Ty.of_expr ty in
        let+ formula, new_lk =
-         Layout_knowledge.is_zst ~lk:mem.lk ~tyenv:mem.tyenv ty
+         Layout_knowledge.is_zst ~lk:mem.lk:mem.tyenv ty
        in
        let expr = Formula.to_expr formula |> Option.get in
        Ok (make_branch ~mem:{ mem with lk = new_lk } ~rets:[ expr ] ())
@@ -490,6 +491,7 @@ let execute_action ~action_name mem args =
         (Fmt.Dump.list Expr.pp) args);
   Logging.tmi (fun fmt -> fmt "Current heap : %a" pp mem);
   let action = Actions.of_name action_name in
+  Common.Tyenv.set_current mem.tyenv;
   let+ res =
     match action with
     | Alloc -> execute_alloc mem args
@@ -527,7 +529,7 @@ let substitution_in_place s mem =
   else
     let lk = Layout_knowledge.substitution s mem.lk in
     let* heap, lk =
-      Heap.substitution ~tyenv:mem.tyenv ~lk mem.heap s |> get_oks
+      Heap.substitution ~lk mem.heap s |> get_oks
     in
     let+ pcies = Prophecies.substitution mem.pcies s |> get_oks in
     let lfts = Lft_ctx.substitution s mem.lfts in
@@ -543,7 +545,7 @@ let can_fix = function
   | Invalid_loc _ -> true
   | _ -> false
 
-let split_partially_missing_value ~tyenv ins _loc missing_proj =
+let split_partially_missing_value ins _loc missing_proj =
   let iloc, iproj, _ity =
     match ins with
     | [ iloc; iproj; ity ] -> (iloc, iproj, ity)
@@ -560,7 +562,7 @@ let split_partially_missing_value ~tyenv ins _loc missing_proj =
     | _ ->
         failwith "Unhandled (yet): more than one op or not a field in splitting"
   in
-  let fields = Ty.fields ~tyenv op_on_ty in
+  let fields = Ty.fields op_on_ty in
   let new_ins =
     List.mapi
       (fun i field ->
@@ -578,12 +580,13 @@ let split_partially_missing_value ~tyenv ins _loc missing_proj =
   (new_ins, [ learn_out ])
 
 let split_further mem core_pred ins (err : Err.t) =
+  Common.Tyenv.set_current mem.tyenv;
   match (Actions.cp_of_name core_pred, err) with
   | Value, Missing_proj (loc, missing_proj, Partially) ->
       (* We tried consuming a tree when we had some of it but not all,
          this is precisely what we are trying to signal. *)
       let res =
-        split_partially_missing_value ~tyenv:mem.tyenv ins loc missing_proj
+        split_partially_missing_value  ins loc missing_proj
       in
       Logging.verbose (fun m ->
           m "SUCCESSFULY SPLIT:@\nNEW INS: %a@\nNEW OUTs: %a"
@@ -591,5 +594,5 @@ let split_further mem core_pred ins (err : Err.t) =
             (fst res)
             Fmt.(Dump.list Expr.pp)
             (snd res));
-      Some (split_partially_missing_value ~tyenv:mem.tyenv ins loc missing_proj)
+      Some (split_partially_missing_value ins loc missing_proj)
   | _ -> None

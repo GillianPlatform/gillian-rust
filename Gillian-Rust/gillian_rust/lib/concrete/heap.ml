@@ -33,17 +33,17 @@ module TreeBlock = struct
     | Array v -> (brackets (Fmt.array ~sep:comma pp)) ft v
     | Uninit -> Fmt.string ft "UNINIT"
 
-  let rec to_rust_value ~tyenv ({ content; ty } as t) =
+  let rec to_rust_value ({ content; ty } as t) =
     match content with
     | Scalar s -> (
         match (ty, s) with
         | Scalar (Uint _ | Int _ | Char | Bool), _ -> s
         | _ -> Fmt.failwith "Malformed tree: %a" pp t)
     | Fields v | Array v ->
-        let tuple = Array.map (to_rust_value ~tyenv) v |> Array.to_list in
+        let tuple = Array.map (to_rust_value ) v |> Array.to_list in
         LList tuple
     | Enum { discr; fields } ->
-        let fields = Array.map (to_rust_value ~tyenv) fields |> Array.to_list in
+        let fields = Array.map (to_rust_value ) fields |> Array.to_list in
         Literal.LList [ Int (Z.of_int discr); LList fields ]
     | ThinPtr (loc, proj) ->
         LList [ Loc loc; LList (Projections.to_lit_list proj) ]
@@ -55,23 +55,23 @@ module TreeBlock = struct
           ]
     | Uninit -> mem_error "Attempting to read uninitialized value"
 
-  let rec of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys fields =
+  let rec of_rust_struct_value ~ty ~subst ~fields_tys fields =
     let content =
       List.map2
-        (fun (_, t) v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+        (fun (_, t) v -> of_rust_value ~ty:(Ty.subst_params ~subst t) v)
         fields_tys fields
     in
     let content = Fields (Array.of_list content) in
     { ty; content }
 
-  and of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data =
+  and of_rust_enum_value ~ty ~subst ~variants_tys data =
     match data with
     | [ Literal.Int variant_idx; LList fields ] ->
         let vidx = Z.to_int variant_idx in
         let _, tys = List.nth variants_tys vidx in
         let fields =
           List.map2
-            (fun t v -> of_rust_value ~tyenv ~ty:(Ty.subst_params ~subst t) v)
+            (fun t v -> of_rust_value ~ty:(Ty.subst_params ~subst t) v)
             tys fields
           |> Array.of_list
         in
@@ -79,22 +79,22 @@ module TreeBlock = struct
         { ty; content }
     | _ -> failwith "Invalid enum value!"
 
-  and of_rust_value ~tyenv ~ty v =
+  and of_rust_value ~ty v =
     match (ty, v) with
     | Ty.Scalar (Uint _ | Int _), Literal.Int _ -> { ty; content = Scalar v }
     | Scalar Bool, Literal.Bool b -> { ty; content = Scalar (Bool b) }
     | Tuple ts, LList tup ->
         let content =
-          List.map2 (fun t v -> of_rust_value ~tyenv ~ty:t v) ts tup
+          List.map2 (fun t v -> of_rust_value ~ty:t v) ts tup
         in
         let content = Fields (Array.of_list content) in
         { ty; content }
     | Adt (name, subst), LList data -> (
-        match Tyenv.adt_def ~tyenv name with
+        match Tyenv.adt_def name with
         | Struct (_repr, fields_tys) ->
-            of_rust_struct_value ~tyenv ~ty ~subst ~fields_tys data
+            of_rust_struct_value ~ty ~subst ~fields_tys data
         | Enum variants_tys ->
-            of_rust_enum_value ~tyenv ~ty ~subst ~variants_tys data)
+            of_rust_enum_value ~ty ~subst ~variants_tys data)
     | Ptr { ty = Slice _; _ }, LList [ LList [ Loc loc; LList proj ]; Int i ] ->
         let content = FatPtr (loc, Projections.of_lit_list proj, Z.to_int i) in
         { ty; content }
@@ -104,29 +104,29 @@ module TreeBlock = struct
     | Array { length; ty = ty' }, LList l
       when List.compare_length_with l length == 0 ->
         let mem_array =
-          List.map (of_rust_value ~tyenv ~ty:ty') l |> Array.of_list
+          List.map (of_rust_value ~ty:ty') l |> Array.of_list
         in
         { ty; content = Array mem_array }
     | _ -> Fmt.failwith "Type error: %a is not of type %a" Literal.pp v Ty.pp ty
 
-  let rec uninitialized ~tyenv ty =
+  let rec uninitialized ty =
     match ty with
     | Ty.Tuple v ->
-        let tuple = List.map (uninitialized ~tyenv) v |> Array.of_list in
+        let tuple = List.map (uninitialized) v |> Array.of_list in
         { ty; content = Fields tuple }
     | Adt (name, subst) -> (
-        match Tyenv.adt_def ~tyenv name with
+        match Tyenv.adt_def name with
         | Struct (_repr, fields) ->
             let tuple =
               List.map
-                (fun (_, t) -> uninitialized ~tyenv (Ty.subst_params ~subst t))
+                (fun (_, t) -> uninitialized (Ty.subst_params ~subst t))
                 fields
               |> Array.of_list
             in
             { ty; content = Fields tuple }
         | Enum _ -> { ty; content = Uninit })
     | Array { length; ty = ty' } ->
-        let uninit_field _ = uninitialized ~tyenv ty' in
+        let uninit_field _ = uninitialized ty' in
         let content = Array.init length uninit_field in
         { ty; content = Array content }
     | Scalar _ | Ref _ | Ptr _ -> { ty; content = Uninit }
@@ -135,9 +135,9 @@ module TreeBlock = struct
         failwith
           "param should have been resolved before getting `uninitialized`"
 
-  let rec find_path ~tyenv ~update ~return t (path : Partial_layout.access list)
+  let rec find_path ~update ~return t (path : Partial_layout.access list)
       =
-    let rec_call = find_path ~tyenv ~update ~return in
+    let rec_call = find_path ~update ~return in
     let replace_vec c v =
       match c with
       | Fields _ -> Fields v
@@ -166,13 +166,13 @@ module TreeBlock = struct
         | _ -> failwith "Invalid node")
     | _ -> failwith "Type mismatch"
 
-  let get_forest ~tyenv t proj size ty copy =
+  let get_forest t proj size ty copy =
     let open Partial_layout in
     let start_address =
       { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
     in
-    let context = context_from_env tyenv in
-    let start_accesses = resolve_address ~tyenv ~context start_address in
+    let context = context_from_env (Tyenv.get_current ()) in
+    let start_accesses = resolve_address ~context start_address in
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
@@ -188,7 +188,7 @@ module TreeBlock = struct
                 Array
                   (Result.ok_or
                      (Array_utils.override_range vec ~start ~size (fun _ ->
-                          uninitialized ~tyenv ty))
+                          uninitialized ty))
                      ~msg:"Invalid slice range");
               ty;
             }
@@ -197,19 +197,19 @@ module TreeBlock = struct
     let return block =
       match block.content with
       | Array vec ->
-          Array_utils.sublist_map ~start ~size ~f:(to_rust_value ~tyenv) vec
+          Array_utils.sublist_map ~start ~size ~f:(to_rust_value ) vec
       | _ -> failwith "Not an array"
     in
-    find_path ~tyenv ~update ~return t array_accesses
+    find_path ~update ~return t array_accesses
 
-  let set_forest ~tyenv t proj size ty values =
+  let set_forest t proj size ty values =
     assert (List.length values = size);
     let open Partial_layout in
     let start_address =
       { block_type = t.ty; route = proj; address_type = Ty.slice_elements ty }
     in
-    let context = context_from_env tyenv in
-    let start_accesses = resolve_address ~tyenv ~context start_address in
+    let context = context_from_env (Tyenv.get_current ()) in
+    let start_accesses = resolve_address ~context start_address in
     let start, array_accesses =
       match start_accesses with
       | { index; _ } :: r -> (index, List.rev r)
@@ -225,80 +225,80 @@ module TreeBlock = struct
               Array
                 (Result.ok_or
                    (Array_utils.override_range_with_list vec ~start
-                      ~f:(of_rust_value ~tyenv ~ty) values)
+                      ~f:(of_rust_value ~ty) values)
                    ~msg:"Invalid slice range");
             ty;
           }
       | _ -> failwith "Not an array"
     in
-    let _, new_block = find_path ~tyenv ~return ~update t array_accesses in
+    let _, new_block = find_path ~return ~update t array_accesses in
     new_block
 
-  let find_proj ~tyenv ~update ~return ~ty t proj =
+  let find_proj ~update ~return ~ty t proj =
     let open Partial_layout in
     let address = { block_type = t.ty; route = proj; address_type = ty } in
-    let context = context_from_env tyenv in
+    let context = context_from_env (Tyenv.get_current ()) in
     Logging.normal (fun m ->
         m "Finding address: %a" (Fmt.Dump.list Projections.pp_elem) proj);
     Logging.normal (fun m ->
         m "PL for %a: %a" Ty.pp t.ty pp_partial_layout
           (context.partial_layouts t.ty));
-    let accesses = resolve_address ~tyenv ~context address |> List.rev in
+    let accesses = resolve_address ~context address |> List.rev in
     Logging.normal (fun m ->
         m "Accessess: %a" (Fmt.Dump.list pp_access) accesses);
-    find_path ~tyenv ~update ~return t accesses
+    find_path ~update ~return t accesses
 
-  let get_proj ~tyenv t proj ty copy =
-    let update block = if copy then block else uninitialized ~tyenv ty in
-    let return = to_rust_value ~tyenv in
-    find_proj ~tyenv ~update ~return ~ty t proj
+  let get_proj t proj ty copy =
+    let update block = if copy then block else uninitialized ty in
+    let return = to_rust_value in
+    find_proj ~update ~return ~ty t proj
 
-  let set_proj ~tyenv t proj ty value =
+  let set_proj t proj ty value =
     let return _ = () in
-    let update _block = of_rust_value ~tyenv ~ty value in
-    let _, new_block = find_proj ~tyenv ~ty ~return ~update t proj in
+    let update _block = of_rust_value ~ty value in
+    let _, new_block = find_proj ~ty ~return ~update t proj in
     new_block
 
-  let get_discr ~tyenv t proj enum_typ =
+  let get_discr t proj enum_typ =
     let return { content; _ } =
       match content with
       | Enum t -> t.discr
       | _ -> Fmt.failwith "Cannot get the discriminant of %a" pp_content content
     in
     let update block = block in
-    let discr, _ = find_proj ~tyenv ~return ~update ~ty:enum_typ t proj in
+    let discr, _ = find_proj ~return ~update ~ty:enum_typ t proj in
     discr
 
-  let deinit ~tyenv t proj ty =
+  let deinit t proj ty =
     let return _ = () in
-    let update _block = uninitialized ~tyenv ty in
-    let _, new_block = find_proj ~tyenv ~ty ~return ~update t proj in
+    let update _block = uninitialized ty in
+    let _, new_block = find_proj ~ty ~return ~update t proj in
     new_block
 end
 
 type t = (string, TreeBlock.t) Hashtbl.t
 
-let alloc ~tyenv (heap : t) ty =
+let alloc (heap : t) ty =
   let loc = Gillian.Utils.Generators.fresh_loc () in
-  let new_block = TreeBlock.uninitialized ~tyenv ty in
+  let new_block = TreeBlock.uninitialized ty in
   Hashtbl.replace heap loc new_block;
   (loc, heap)
 
-let load ~tyenv (mem : t) loc proj ty copy =
+let load (mem : t) loc proj ty copy =
   let block = Hashtbl.find mem loc in
-  let v, new_block = TreeBlock.get_proj ~tyenv block proj ty copy in
+  let v, new_block = TreeBlock.get_proj block proj ty copy in
   Hashtbl.replace mem loc new_block;
   (v, mem)
 
-let store ~tyenv (mem : t) loc proj ty value =
+let store (mem : t) loc proj ty value =
   let block = Hashtbl.find mem loc in
-  let new_block = TreeBlock.set_proj ~tyenv block proj ty value in
+  let new_block = TreeBlock.set_proj block proj ty value in
   Hashtbl.replace mem loc new_block;
   mem
 
-let deinit ~tyenv (mem : t) loc proj ty =
+let deinit (mem : t) loc proj ty =
   let block = Hashtbl.find mem loc in
-  let new_block = TreeBlock.deinit ~tyenv block proj ty in
+  let new_block = TreeBlock.deinit block proj ty in
   Hashtbl.replace mem loc new_block;
   mem
 
