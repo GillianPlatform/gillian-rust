@@ -244,9 +244,19 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<T>"(+pLft_a, +pty_T0, +this):
   * (this == #this);
 guard: <lft>(pLft_a; true);
 
-lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #ptr, #cap, #len) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut Vec<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#REFERENCE == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #ptr, #cap, #len)
+  * <lft>(#pLft_0; true)
+]]
 
 proc "rralloc::alloc_array"(pty_T0, len) {
         m_1len := len;

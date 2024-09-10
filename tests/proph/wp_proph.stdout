@@ -191,9 +191,19 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<T>"(+pLft_a, +pty_T0, +this):
   * (this == #this);
 guard: <lft>(pLft_a; true);
 
-lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj) * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_4: Obj, #lvar_5: List, #lvar_6: Obj)
+  * (#REFERENCE == {{ {{ #lvar_4, #lvar_5 }}, #lvar_6 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #x, #y)
+  * <lft>(#pLft_0; true)
+]]
 
 spec "WP::<T>::new"(pty_T0, x, y)
 [[ "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #x, #x_repr)

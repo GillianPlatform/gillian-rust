@@ -240,21 +240,56 @@ pred "gilogic::prophecies::mut_ref_inner_proph::<LinkedList<T>>"(+pLft_a, +pty_T
   * (this == #this);
 guard: <lft>(pLft_a; true);
 
-lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[ (#x == {{ 1i, {{ #ptr }} }}) * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr) * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }}) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #element, #repr) * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #data) * types(#lvar_8: Obj, #lvar_9: List) * (#ptr == {{ {{ #lvar_8, #lvar_9 }} }}) * (tail == #tail) * (tail_next == #tail_next) * (next == #next) * (x == #x) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, l+({{ #repr }}, #data))]]
+lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
+  (#x == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr)
+  * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }})
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #element, #repr)
+  * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #data)
+  * types(#lvar_8: Obj, #lvar_9: List) * (#ptr == {{ {{ #lvar_8, #lvar_9 }} }})
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (next == #next)
+  * (x == #x)
+  * (pty_T0 == #pty_T0)
+]];
+[[
+  "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, l+({{ #repr }}, #data))
+]]
 
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) ]]
 
-lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)]]
+lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) ]]
 
-
-lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)]]
-
-
-lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL) * <lft>(#pLft_0; true) * types(#lvar_10: Obj, #lvar_11: List, #lvar_12: Obj) * (#REFERENCE == {{ {{ #lvar_10, #lvar_11 }}, #lvar_12 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #head, #tail, #len) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE, #MODEL)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_10: Obj, #lvar_11: List, #lvar_12: Obj)
+  * (#REFERENCE == {{ {{ #lvar_10, #lvar_11 }}, #lvar_12 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #MODEL, #head, #tail, #len)
+  * <lft>(#pLft_0; true)
+]]
 
 proc "Node::<T>::new"(pty_T0, element) {
         m_1element := element;

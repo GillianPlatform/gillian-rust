@@ -101,9 +101,18 @@ pred "<() as gilogic::Ownable>::own"(+self):
   (#self == {{  }}) * (self == #self);
 
 
-lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #x, #y) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_xy::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut WP<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#REFERENCE == {{ #lvar_4, #lvar_5 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "wp_ref_mut_xy::<T>"(#pLft_0, #pty_T0, #REFERENCE, #x, #y)
+  * <lft>(#pLft_0; true)
+]]
 
 spec "WP::<T>::new"(pty_T0, x, y)
 [[ "<T as gilogic::Ownable>::own"(#pty_T0, #x)

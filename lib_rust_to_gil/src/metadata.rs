@@ -120,7 +120,7 @@ fn export_file(tcx: TyCtxt, out: &Option<String>) -> PathBuf {
         let outputs = tcx.output_filenames(());
         let out = outputs.path(OutputType::Metadata);
         let path = out.as_path().to_owned();
-        
+
         path.with_extension("gmeta")
     })
 }

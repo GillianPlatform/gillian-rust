@@ -139,21 +139,58 @@ pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty
   * (self == #self);
 
 
-lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[ (#x == {{ 1i, {{ #ptr }} }}) * types(#lvar_8: Obj, #lvar_9: List) * ({{ {{ #lvar_8, #lvar_9 }} }} == #ptr) * <value>(#lvar_8, #lvar_9, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }}) * "<T as gilogic::Ownable>::own"(#pty_T0, #element) * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len) * types(#len: Int) * types(#lvar_10: Obj, #lvar_11: List) * (#ptr == {{ {{ #lvar_10, #lvar_11 }} }}) * (tail == #tail) * (tail_next == #tail_next) * (next == #next) * (x == #x) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i)))]]
+lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
+  (#x == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_8: Obj, #lvar_9: List) * ({{ {{ #lvar_8, #lvar_9 }} }} == #ptr)
+  * <value>(#lvar_8, #lvar_9, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }})
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #element)
+  * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len)
+  * types(#len: Int)
+  * types(#lvar_10: Obj, #lvar_11: List)
+  * (#ptr == {{ {{ #lvar_10, #lvar_11 }} }})
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (next == #next)
+  * (x == #x)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) ]]
 
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+  * types(#len: Int)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
-lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
+lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+  * types(#len: Int)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
-
-lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
-
-
-lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_12: Obj, #lvar_13: List) * (#REFERENCE == {{ #lvar_12, #lvar_13 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #head, #tail, #len) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_12: Obj, #lvar_13: List)
+  * (#REFERENCE == {{ #lvar_12, #lvar_13 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #head, #tail, #len)
+  * <lft>(#pLft_0; true)
+]]
 
 proc "Node::<T>::new"(pty_T0, element) {
         m_1element := element;

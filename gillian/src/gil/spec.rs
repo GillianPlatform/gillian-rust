@@ -37,7 +37,9 @@ where
             doc = doc.append(alloc.text("trusted").append(alloc.hardline()));
         }
 
-        doc = doc.append(self.pre.pretty(alloc).nest(2).enclose("[[ ", " ]]")).append(alloc.hardline());
+        doc = doc
+            .append(self.pre.pretty(alloc).nest(2).enclose("[[ ", " ]]"))
+            .append(alloc.hardline());
 
         let posts_doc = alloc.intersperse(
             self.posts.iter().map(|p| p.pretty(alloc)),
