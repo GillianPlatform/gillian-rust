@@ -377,33 +377,35 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         };
 
         quote! {
-
-            #[gilogic::macros::lemma]
-            #[gilogic::macros::specification(
-                    #forall
-                    requires {
-                        #assuming
-                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
-                    }
-                    ensures {
-                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
-                        #prophecise_check
-                        * gilogic::__stubs::wand(
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
-                            // Ici dans from_args, il faut remplacer model par
-                            // prophecise[new_model / NEW_new_model]
-                            // Ownable::own(p, m, frozen)
-                            // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
-                        )
-                    }
-            )]
-            #[gillian::timeless]
+            #[gillian::no_translate]
             fn #proof_name #generics (#inputs) {
-                ::gilogic :: package!(
-                  gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
-                , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
-                );
+                #[gilogic::macros::lemma]
+                #[gilogic::macros::specification(
+                        #forall
+                        requires {
+                            #assuming
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                        }
+                        ensures {
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
+                            #prophecise_check
+                            * gilogic::__stubs::wand(
+                                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
+                                // Ici dans from_args, il faut remplacer model par
+                                // prophecise[new_model / NEW_new_model]
+                                // Ownable::own(p, m, frozen)
+                                // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
+                                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                            )
+                        }
+                )]
+                #[gillian::timeless]
+                |#inputs| {
+                    ::gilogic :: package!(
+                      gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
+                    , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                    )
+                };
             }
         }
     };
