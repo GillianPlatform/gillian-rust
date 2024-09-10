@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Ident, Span};
-use syn::{ExprPath,
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type
+use syn::{
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
+    ExprPath, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type,
 };
 
 use quote::{format_ident, quote};

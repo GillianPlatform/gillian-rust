@@ -258,7 +258,7 @@ pub fn build_signature<'tcx, 'genv>(
 
     let mut args = Vec::new();
     let (inputs, output) = inputs_and_output(tcx, id);
-    let inputs : Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
+    let inputs: Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
     // let sig = tcx.fn_sig(id).instantiate(tcx, subst);
     let substsref = subst;
 

@@ -484,15 +484,18 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         for stmt in &*self.thir[block].stmts {
             match &self.thir[*stmt].kind {
                 thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(*expr)),
-                thir::StmtKind::Let { pattern, initializer, .. } => {
+                thir::StmtKind::Let {
+                    pattern,
+                    initializer,
+                    ..
+                } => {
                     if pattern.ty.is_closure() {
-                    continue;
-                }
+                        continue;
+                    }
                     steps.push(self.proof_step(initializer.unwrap()));
                     // fatal2!(self.tcx, "assert bindings are currently unsupported")
                 }
             };
-
         }
 
         if let Some(e) = self.thir[block].expr {

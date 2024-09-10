@@ -52,7 +52,7 @@ where
                 docs![alloc, "assume_type ", "(", variable, ",", *typ, ")"]
             }
             LCmd::FreshSVar(v) => docs![alloc, v, " := ", "fresh_svar", "()"],
-            LCmd::SL(sl) => docs![alloc, format!("{sl}")],
+            LCmd::SL(sl) => docs![alloc, sl],
         }
     }
 }

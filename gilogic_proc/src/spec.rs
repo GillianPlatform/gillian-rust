@@ -2,7 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemFn, Pat, PatIdent, PatType, ReturnType, Signature, Token
+    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemFn, Pat,
+    PatIdent, PatType, ReturnType, Signature, Token,
 };
 use uuid::Uuid;
 
@@ -56,8 +57,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     let item_attrs = std::mem::take(&mut item.attrs);
     let parsed_spec = parse_macro_input!(args as Specification);
 
-
-     let (toks, name_string) = match compile_spec(&parsed_spec, &item_attrs, &item.sig) {
+    let (toks, name_string) = match compile_spec(&parsed_spec, &item_attrs, &item.sig) {
         Ok(s) => s,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -73,7 +73,11 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     result.into()
 }
 
-pub(crate) fn compile_spec(spec: &Specification, attrs: &[Attribute], sig: &Signature) -> syn::Result<(TokenStream, String)> {
+pub(crate) fn compile_spec(
+    spec: &Specification,
+    attrs: &[Attribute],
+    sig: &Signature,
+) -> syn::Result<(TokenStream, String)> {
     let id = Uuid::new_v4().to_string();
     let name = {
         let ident = sig.ident.to_string();
@@ -96,7 +100,6 @@ pub(crate) fn compile_spec(spec: &Specification, attrs: &[Attribute], sig: &Sign
 
     let spec: TokenStream = spec.encode()?;
 
-
     let for_lemma = if get_attr(&attrs, &["gillian", "decl", "lemma"]).is_some() {
         Some(quote!(#[gillian::for_lemma]))
     } else {
@@ -114,8 +117,6 @@ pub(crate) fn compile_spec(spec: &Specification, attrs: &[Attribute], sig: &Sign
     } else {
         None
     };
-
-
 
     let result = quote! {
         #[cfg(gillian)]

@@ -154,7 +154,10 @@ impl<'tcx> GlobalEnv<'tcx> {
         }
     }
 
-    fn build_gillian_maps(tcx: TyCtxt<'tcx>, gillian_items: &GillianItems) -> HashMap<DefId, DefId> {
+    fn build_gillian_maps(
+        tcx: TyCtxt<'tcx>,
+        gillian_items: &GillianItems,
+    ) -> HashMap<DefId, DefId> {
         let mut spec_map = HashMap::new();
         // panic!();
         // eprintln!("{:?}", gillian_items.symbol_to_id);
@@ -162,9 +165,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             if let Some(nm) = get_gillian_spec_name(item.into(), tcx) {
                 let spec = tcx
                     .get_diagnostic_item(nm)
-                    .or_else(|| {
-                        gillian_items.symbol_to_id.get(&nm).cloned()
-                    })
+                    .or_else(|| gillian_items.symbol_to_id.get(&nm).cloned())
                     .expect("Cannot find specification while building spec map");
                 spec_map.insert(item.to_def_id(), spec);
             }

@@ -63,7 +63,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         body_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Self {
-        eprintln!("building predctx {body_id:?} {args:?}");
+        // eprintln!("building predctx {body_id:?} {args:?}");
         PredCtx {
             sig: build_signature(global_env, body_id, args, temp_gen),
             global_env,
