@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use pretty::{docs, DocAllocator, Pretty};
 
 use super::print_utils::separated_display;
 use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
@@ -62,30 +63,60 @@ impl Prog {
 }
 
 impl Display for Prog {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let alloc = pretty::Arena::new();
+        self.pretty(&alloc).render_fmt(80, f)
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a Prog
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        let mut doc = alloc.nil();
         let (reg_imports, ver_imports) = self.partition_imports();
-        f.write_str("import ")?;
-        separated_display(&reg_imports, ", ", f)?;
+
+        let imports = docs![
+            alloc,
+            "import ",
+            alloc.intersperse(reg_imports, ", "),
+            ";",
+            alloc.line(),
+            alloc.line()
+        ];
+
+        doc = doc.append(imports);
+
         assert!(ver_imports.is_empty(), "So far, imports cannot work");
-        // f.write_str(";\nimport verify ")?;
-        f.write_str(";\n\n")?;
+
         for spec in self.only_specs.values() {
-            f.write_str("axiomatic ")?;
-            spec.fmt(f)?;
-            f.write_str("\n\n")?;
+            let sdoc = docs![
+                alloc,
+                "axiomatic ",
+                format!("{spec}"),
+                alloc.line(),
+                alloc.line()
+            ];
+
+            doc = doc.append(sdoc);
         }
+
         for pred in self.preds.values() {
-            pred.fmt(f)?;
-            f.write_str("\n\n")?;
+            let sdoc = docs![alloc, pred, alloc.line(), alloc.line()];
+
+            doc = doc.append(sdoc);
         }
         for lemma in self.lemmas.values() {
-            lemma.fmt(f)?;
-            f.write_str("\n\n")?;
+            let sdoc = docs![alloc, format!("{lemma}"), alloc.line(), alloc.line()];
+
+            doc = doc.append(sdoc);
         }
         for proc in self.procs.values() {
-            proc.fmt(f)?;
-            f.write_str("\n\n")?;
+            let sdoc = docs![alloc, format!("{proc}"), alloc.line(), alloc.line()];
+
+            doc = doc.append(sdoc);
         }
-        Ok(())
+        doc
     }
 }

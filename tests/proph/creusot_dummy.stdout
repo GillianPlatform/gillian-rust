@@ -5,13 +5,27 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
 axiomatic spec "gilogic::prophecies::prophecy_auto_update::<u32>"(pLft_0, p)
-[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v) * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r) * <value_observer>(l-nth(#p, 1i); #a) * <pcy_controller>(l-nth(#p, 1i); #a) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pLft_0 == #pLft_0) ]]
-[[<value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v) * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r) * <value_observer>(l-nth(#p, 1i); #r) * <pcy_controller>(l-nth(#p, 1i); #r)]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v)
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * <value_observer>(l-nth(#p, 1i); #a)
+  * <pcy_controller>(l-nth(#p, 1i); #a)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pLft_0 == #pLft_0) ]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v)
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * <value_observer>(l-nth(#p, 1i); #r)
+  * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
 axiomatic spec "gilogic::prophecies::prophecy_resolve::<u32>"(pLft_0, p)
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #p, #m) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #p, #m)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pLft_0 == #pLft_0) ]]
+[[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
 pred "<u32 as gilogic::prophecies::Ownable>::own"(+self, model):
@@ -58,7 +72,8 @@ guard: <lft>(pLft_a; true);
 
 spec test()
 [[ emp ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((#ret_repr) = (4i)); )]]
+[[ "<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((#ret_repr) = (4i)); ) ]]
 normal
 
 proc test() {
@@ -71,7 +86,8 @@ proc test() {
 
 spec test2()
 [[ emp ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(exists #x : Bool. ((((((#ret_repr) = (4i))) = (#x))) and (#x)); )]]
+[[ "<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(exists #x : Bool. ((((((#ret_repr) = (4i))) = (#x))) and (#x)); ) ]]
 normal
 
 proc test2() {
@@ -83,8 +99,10 @@ proc test2() {
 };
 
 spec test3(x)
-[[ "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(#x, #x_repr) * (x == #x) ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((exists #a : Int. ((((#x_repr) = ({{ 1i, {{ #a }} }}))) and (((#ret_repr) = (#a))))) or (((((#x_repr) = ({{ 0i, {{  }} }}))) and (((#ret_repr) = (0i)))))); )]]
+[[ "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(#x, #x_repr)
+  * (x == #x) ]]
+[[ "<u32 as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((exists #a : Int. ((((#x_repr) = ({{ 1i, {{ #a }} }}))) and (((#ret_repr) = (#a))))) or (((((#x_repr) = ({{ 0i, {{  }} }}))) and (((#ret_repr) = (0i)))))); ) ]]
 normal
 
 proc test3(x) {
@@ -116,8 +134,16 @@ proc test3(x) {
 };
 
 spec write(pLft_0, x)
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr) * <observation>(((l-nth(#x_repr, 0i)) = (0i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (x == #x) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#x_repr, 1i)) = (1i)); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr)
+  * <observation>(((l-nth(#x_repr, 0i)) = (0i)); )
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (x == #x)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((l-nth(#x_repr, 1i)) = (1i)); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc write(pLft_0, x) {
@@ -158,8 +184,16 @@ proc write(pLft_0, x) {
 };
 
 spec write2(pLft_0, x)
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr) * <observation>(((l-nth(#x_repr, 0i)) = (0i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (x == #x) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#x_repr, 1i)) = (1i)); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #x, #x_repr)
+  * <observation>(((l-nth(#x_repr, 0i)) = (0i)); )
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#x == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (x == #x)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((l-nth(#x_repr, 1i)) = (1i)); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc write2(pLft_0, x) {

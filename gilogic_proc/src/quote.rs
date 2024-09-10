@@ -157,10 +157,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
         }
         // Term::Block(_) => todo!(),
         Term::Call(TermCall { func, args, .. }) => {
-            let args: Vec<_> = args
-                .iter()
-                .map(encode_expr)
-                .collect::<syn::Result<_>>()?;
+            let args: Vec<_> = args.iter().map(encode_expr).collect::<syn::Result<_>>()?;
             tokens.extend(quote! { #func ( #(#args),* ) })
         }
         Term::Field(TermField {
@@ -232,10 +229,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             ..
         }) => {
             let r = encode_expr(receiver)?;
-            let args: Vec<_> = args
-                .iter()
-                .map(encode_expr)
-                .collect::<syn::Result<_>>()?;
+            let args: Vec<_> = args.iter().map(encode_expr).collect::<syn::Result<_>>()?;
 
             tokens.extend(quote! { #r #dot_token #method #turbofish ( #(#args),*) })
         }
@@ -260,10 +254,7 @@ fn encode_expr(inner: &Term) -> syn::Result<TokenStream> {
             tokens.extend(quote! { #path { #(#fields),* } })
         }
         Term::Tuple(TermTuple { elems, .. }) => {
-            let fields: Vec<_> = elems
-                .iter()
-                .map(encode_expr)
-                .collect::<syn::Result<_>>()?;
+            let fields: Vec<_> = elems.iter().map(encode_expr).collect::<syn::Result<_>>()?;
             tokens.extend(quote! { ( #(#fields),*) })
         }
         Term::Unary(TermUnary { op, expr }) => {

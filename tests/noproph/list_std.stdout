@@ -5,13 +5,33 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 axiomatic spec extract_head(pLft_0, pty_T0, list)
-[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len)
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_0; true)
+  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 axiomatic spec "extract_head::<T>"(pLft_0, pty_T0, list)
-[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len) * (#head == {{ 1i, {{ #p }} }}) * <lft>(#pLft_0; true) * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }}) * types(#len: Int) * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }}) * (list == #list) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}) * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0) * <lft>(#pLft_0; true)]]
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, #head, #tail, #len)
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_0; true)
+  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 pred "option_box_node::<T>"(+pty_T0, +x):
@@ -119,21 +139,58 @@ pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty
   * (self == #self);
 
 
-lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[ (#x == {{ 1i, {{ #ptr }} }}) * types(#lvar_8: Obj, #lvar_9: List) * ({{ {{ #lvar_8, #lvar_9 }} }} == #ptr) * <value>(#lvar_8, #lvar_9, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }}) * "<T as gilogic::Ownable>::own"(#pty_T0, #element) * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len) * types(#len: Int) * types(#lvar_10: Obj, #lvar_11: List) * (#ptr == {{ {{ #lvar_10, #lvar_11 }} }}) * (tail == #tail) * (tail_next == #tail_next) * (next == #next) * (x == #x) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i)))]]
+lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
+  (#x == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_8: Obj, #lvar_9: List) * ({{ {{ #lvar_8, #lvar_9 }} }} == #ptr)
+  * <value>(#lvar_8, #lvar_9, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }})
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #element)
+  * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len)
+  * types(#len: Int)
+  * types(#lvar_10: Obj, #lvar_11: List)
+  * (#ptr == {{ {{ #lvar_10, #lvar_11 }} }})
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (next == #next)
+  * (x == #x)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) ]]
 
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+  * types(#len: Int)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
-lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
+lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+  * types(#len: Int)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head)
+  * (pty_T0 == #pty_T0)
+]];
+[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
 
-
-lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) * types(#len: Int) * (head_prev == #head_prev) * (tail == #tail) * (tail_next == #tail_next) * (head == #head) * (pty_T0 == #pty_T0) ]]
-[["dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
-
-
-lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_12: Obj, #lvar_13: List) * (#REFERENCE == {{ #lvar_12, #lvar_13 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #head, #tail, #len) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_htl::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_12: Obj, #lvar_13: List)
+  * (#REFERENCE == {{ #lvar_12, #lvar_13 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #head, #tail, #len)
+  * <lft>(#pLft_0; true)
+]]
 
 proc "Node::<T>::new"(pty_T0, element) {
         m_1element := element;
@@ -173,7 +230,7 @@ proc "Node::<T>::into_element"(pty_T0, self) {
 
 spec "LinkedList::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
-[["<LinkedList<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
+[[ "<LinkedList<T> as gilogic::Ownable>::own"(#pty_T0, ret) ]]
 normal
 
 proc "LinkedList::<T>::new"(pty_T0) {
@@ -529,8 +586,14 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
@@ -673,8 +736,14 @@ proc "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, self, node) {
 };
 
 spec "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self) {
@@ -742,8 +811,15 @@ proc "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self) {
 };
 
 spec "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #elt) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (elt == #elt) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #elt)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (elt == #elt)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt) {
@@ -818,8 +894,15 @@ proc "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt) {
 };
 
 spec "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #elt) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (elt == #elt) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #elt)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (elt == #elt)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt) {
@@ -858,8 +941,14 @@ proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt) {
 };
 
 spec "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {

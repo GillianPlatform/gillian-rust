@@ -164,10 +164,11 @@ impl FreezeMutRefOwn {
         let mut mutator = visitors::AssertMutatorImpl::from(mutator);
         mutator.visit_block_mut(block);
 
-        let frozen_args : Vec<_>= args
+        let frozen_args: Vec<_> = args
             .frozen_variables
             .iter()
-            .zip(mutator.into_inner().frozen_vars_ty).collect();
+            .zip(mutator.into_inner().frozen_vars_ty)
+            .collect();
 
         for (ident, ty) in frozen_args {
             let pred_param = PredParam::S(PredParamS {

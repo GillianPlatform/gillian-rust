@@ -4,7 +4,10 @@
 
 use quote::quote;
 use syn::{
-    parse_quote, visit::{self, Visit}, visit_mut::{self, VisitMut}, Expr, ExprMacro, Ident, Macro
+    parse_quote,
+    visit::{self, Visit},
+    visit_mut::{self, VisitMut},
+    Expr, ExprMacro, Ident, Macro,
 };
 
 use crate::gilogic_syn::Assertion;
@@ -53,7 +56,7 @@ impl<M: AssertMutator> VisitMut for AssertMutatorImpl<M> {
     }
 
     fn visit_stmt_macro_mut(&mut self, i: &mut syn::StmtMacro) {
-        let  Macro { path, tokens, .. } = &mut i.mac;
+        let Macro { path, tokens, .. } = &mut i.mac;
 
         match path.segments.iter().last() {
             Some(segment) => {

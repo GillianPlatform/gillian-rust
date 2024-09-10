@@ -5,13 +5,29 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
 axiomatic spec "gilogic::prophecies::prophecy_auto_update::<VecDeque<T>>"(pLft_0, pty_T0, p)
-[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v) * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #a) * <pcy_controller>(l-nth(#p, 1i); #a) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v) * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r) * <value_observer>(l-nth(#p, 1i); #r) * <pcy_controller>(l-nth(#p, 1i); #r)]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v)
+  * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * <value_observer>(l-nth(#p, 1i); #a)
+  * <pcy_controller>(l-nth(#p, 1i); #a)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v)
+  * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * <value_observer>(l-nth(#p, 1i); #r)
+  * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
 axiomatic spec "gilogic::prophecies::prophecy_resolve::<VecDeque<T>>"(pLft_0, pty_T0, p)
-[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (p == #p) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[[<observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); )]]
+[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ <observation>(((l-nth(#m, 0i)) = (l-nth(#m, 1i))); ) ]]
 normal
 
 pred "<AllocInit as gilogic::prophecies::Ownable>::own"(+self, model):
@@ -989,7 +1005,7 @@ proc alloc_guard(alloc_size) {
 
 spec "VecDeque::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
-[["<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+[[ "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }}) ]]
 normal
 
 proc "VecDeque::<T>::new"(pty_T0) {
@@ -1010,8 +1026,12 @@ proc "VecDeque::<T>::new"(pty_T0) {
 };
 
 spec "VecDeque::<T>::with_capacity"(pty_T0, capacity)
-[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity) * (#capacity i<=# 9223372036854775807i) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
-[["<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }})]]
+[[ "<usize as gilogic::prophecies::Ownable>::own"(#capacity, #capacity)
+  * (#capacity i<=# 9223372036854775807i)
+  * types(#capacity: Int)
+  * (capacity == #capacity)
+  * (pty_T0 == #pty_T0) ]]
+[[ "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, {{  }}) ]]
 normal
 
 proc "VecDeque::<T>::with_capacity"(pty_T0, capacity) {
@@ -1097,8 +1117,19 @@ proc "VecDeque::<T>::is_full"(pLft_0, pty_T0, self) {
 };
 
 spec "VecDeque::<T>::push_back"(pLft_0, pty_T0, self, value)
-[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr) * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #value_repr) * <observation>(((l-len l-nth(#self_repr, 0i)) i< (1000i)); ) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr) * <observation>(((l-nth(#self_repr, 1i)) = (l+(l-nth(#self_repr, 0i), {{ #value_repr }}))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #value, #value_repr)
+  * <observation>(((l-len l-nth(#self_repr, 0i)) i< (1000i)); )
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (value == #value)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::prophecies::Ownable>::own"(ret, #ret_repr)
+  * <observation>(((l-nth(#self_repr, 1i)) = (l+(l-nth(#self_repr, 0i), {{ #value_repr }}))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "VecDeque::<T>::push_back"(pLft_0, pty_T0, self, value) {
@@ -1690,8 +1721,17 @@ proc "VecDeque::<T>::buffer_read"(pLft_0, pty_T0, self, off) {
 };
 
 spec "VecDeque::<T>::pop_back"(pLft_0, pty_T0, self)
-[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }}) * (l-len #curr i<# 100i) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj) * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr) * <observation>(((((((((#curr) = ({{  }}))) and (((#proph) = ({{  }}))))) and (((#ret_repr) = ({{ 0i, {{  }} }}))))) or (((((not ((#curr) = ({{  }}))) and (((#proph) = (l-sub(#curr, 0i, ((l-len #curr) i- (1i)))))))) and (((#ret_repr) = ({{ 1i, {{ l-nth(#curr, ((l-len #curr) i- (1i))) }} }})))))); ) * <lft>(#pLft_0; true)]]
+[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, {{ #curr, #proph }})
+  * (l-len #curr i<# 100i)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
+  * <observation>(((((((((#curr) = ({{  }}))) and (((#proph) = ({{  }}))))) and (((#ret_repr) = ({{ 0i, {{  }} }}))))) or (((((not ((#curr) = ({{  }}))) and (((#proph) = (l-sub(#curr, 0i, ((l-len #curr) i- (1i)))))))) and (((#ret_repr) = ({{ 1i, {{ l-nth(#curr, ((l-len #curr) i- (1i))) }} }})))))); )
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "VecDeque::<T>::pop_back"(pLft_0, pty_T0, self) {

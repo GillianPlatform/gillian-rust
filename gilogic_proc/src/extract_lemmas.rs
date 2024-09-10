@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Ident, Span};
 use syn::{
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ReturnType, Token, TraitItemFn, Type
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
+    ReturnType, Token, TraitItemFn, Type,
 };
 
 use quote::{format_ident, quote};

@@ -21,7 +21,7 @@ pred "<std::option::Option<MyInt> as gilogic::Ownable>::own"(+self):
 
 spec "MyInt::new"(x)
 [[ "<u32 as gilogic::Ownable>::own"(#x) * types(#x: Int) * (x == #x) ]]
-[["<std::option::Option<MyInt> as gilogic::Ownable>::own"(ret)]]
+[[ "<std::option::Option<MyInt> as gilogic::Ownable>::own"(ret) ]]
 normal
 
 proc "MyInt::new"(x) {

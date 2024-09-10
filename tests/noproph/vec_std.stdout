@@ -5,18 +5,57 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 axiomatic spec extract_ith(pLft_a, pty_T0, vec, ix)
-[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len) * (#ix i<# #len) * <lft>(#pLft_a; true) * types(#len: Int) * types(#cap: Int) * types(#lvar_4: Obj, #lvar_5: List) * (#ptr == {{ {{ {{ #lvar_4, #lvar_5 }} }}, {{  }} }}) * types(#ix: Int) * types(#lvar_2: Obj, #lvar_3: List) * (#vec == {{ #lvar_2, #lvar_3 }}) * (ix == #ix) * (vec == #vec) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #lvar_1) * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_0) * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_0, #ix, #lvar_1) * <lft>(#pLft_a; true)]]
+[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len)
+  * (#ix i<# #len)
+  * <lft>(#pLft_a; true)
+  * types(#len: Int)
+  * types(#cap: Int)
+  * types(#lvar_4: Obj, #lvar_5: List)
+  * (#ptr == {{ {{ {{ #lvar_4, #lvar_5 }} }}, {{  }} }})
+  * types(#ix: Int)
+  * types(#lvar_2: Obj, #lvar_3: List) * (#vec == {{ #lvar_2, #lvar_3 }})
+  * (ix == #ix)
+  * (vec == #vec)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #lvar_1)
+  * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_0)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_0, #ix, #lvar_1)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 axiomatic spec "extract_ith::<T>"(pLft_a, pty_T0, vec, ix)
-[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len) * (#ix i<# #len) * <lft>(#pLft_a; true) * types(#len: Int) * types(#cap: Int) * types(#lvar_4: Obj, #lvar_5: List) * (#ptr == {{ {{ {{ #lvar_4, #lvar_5 }} }}, {{  }} }}) * types(#ix: Int) * types(#lvar_2: Obj, #lvar_3: List) * (#vec == {{ #lvar_2, #lvar_3 }}) * (ix == #ix) * (vec == #vec) * (pty_T0 == #pty_T0) * (pLft_a == #pLft_a) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #lvar_1) * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_0) * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_0, #ix, #lvar_1) * <lft>(#pLft_a; true)]]
+[[ "vec_ref_mut_pcl::<T>"(#pLft_a, #pty_T0, #vec, #ptr, #cap, #len)
+  * (#ix i<# #len)
+  * <lft>(#pLft_a; true)
+  * types(#len: Int)
+  * types(#cap: Int)
+  * types(#lvar_4: Obj, #lvar_5: List)
+  * (#ptr == {{ {{ {{ #lvar_4, #lvar_5 }} }}, {{  }} }})
+  * types(#ix: Int)
+  * types(#lvar_2: Obj, #lvar_3: List) * (#vec == {{ #lvar_2, #lvar_3 }})
+  * (ix == #ix)
+  * (vec == #vec)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_a, #pty_T0, #lvar_1)
+  * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_0)
+  * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_0, #ix, #lvar_1)
+  * <lft>(#pLft_a; true) ]]
 normal
 
 axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<usize as gilogic::Ownable>::own"(#ix) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<usize as gilogic::Ownable>::own"(#ix)
+  * <lft>(#pLft_0; true)
+  * types(#ix: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (ix == #ix)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 pred "<AllocInit as gilogic::Ownable>::own"(+self):
@@ -109,13 +148,32 @@ pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty
   * (self == #self);
 
 
-lemma "assert_correct_vs::<T>"(pty_T0, p, len)[[ <value>(l-nth(#p, 0i), l-nth(#p, 1i), {{ "array", #pty_T0, #len }}; #values) * "gilogic::iterated::no_prophecies::all_own::<T>"(#pty_T0, #values) * types(#len: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }}) * (len == #len) * (p == #p) * (pty_T0 == #pty_T0) ]]
-[[<value>(l-nth(#p, 0i), l-nth(#p, 1i), {{ "array", #pty_T0, #len }}; #values) * "gilogic::iterated::no_prophecies::all_own::<T>"(#pty_T0, #values)]]
+lemma "assert_correct_vs::<T>"(pty_T0, p, len)[[
+  <value>(l-nth(#p, 0i), l-nth(#p, 1i), {{ "array", #pty_T0, #len }}; #values)
+  * "gilogic::iterated::no_prophecies::all_own::<T>"(#pty_T0, #values)
+  * types(#len: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }})
+  * (len == #len)
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+]];
+[[
+  <value>(l-nth(#p, 0i), l-nth(#p, 1i), {{ "array", #pty_T0, #len }}; #values)
+  * "gilogic::iterated::no_prophecies::all_own::<T>"(#pty_T0, #values)
+]]
 
-
-lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE) * <lft>(#pLft_0; true) * types(#lvar_2: Obj, #lvar_3: List) * (#REFERENCE == {{ #lvar_2, #lvar_3 }}) * (REFERENCE == #REFERENCE) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #ptr, #cap, #len) * <lft>(#pLft_0; true)]]
-
+lemma "freeze_pcl::<T>"(pLft_0, pty_T0, REFERENCE)[[
+  "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #REFERENCE)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_2: Obj, #lvar_3: List) * (#REFERENCE == {{ #lvar_2, #lvar_3 }})
+  * (REFERENCE == #REFERENCE)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0)
+]];
+[[
+  "vec_ref_mut_pcl::<T>"(#pLft_0, #pty_T0, #REFERENCE, #ptr, #cap, #len)
+  * <lft>(#pLft_0; true)
+]]
 
 proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) {
         m_1kind := kind;
@@ -989,7 +1047,7 @@ proc alloc_guard(alloc_size) {
 
 spec "Vec::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
-[["<Vec<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
+[[ "<Vec<T> as gilogic::Ownable>::own"(#pty_T0, ret) ]]
 normal
 
 proc "Vec::<T>::new"(pty_T0) {
@@ -1010,8 +1068,10 @@ proc "Vec::<T>::new"(pty_T0) {
 };
 
 spec "Vec::<T>::with_capacity"(pty_T0, capacity)
-[[ "<usize as gilogic::Ownable>::own"(#capacity) * types(#capacity: Int) * (capacity == #capacity) * (pty_T0 == #pty_T0) ]]
-[["<Vec<T> as gilogic::Ownable>::own"(#pty_T0, ret)]]
+[[ "<usize as gilogic::Ownable>::own"(#capacity) * types(#capacity: Int)
+  * (capacity == #capacity)
+  * (pty_T0 == #pty_T0) ]]
+[[ "<Vec<T> as gilogic::Ownable>::own"(#pty_T0, ret) ]]
 normal
 
 proc "Vec::<T>::with_capacity"(pty_T0, capacity) {
@@ -1112,8 +1172,15 @@ proc "Vec::<T>::capacity"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<T as gilogic::Ownable>::own"(#pty_T0, #value) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (value == #value) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #value)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (value == #value)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
 proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
@@ -1296,8 +1363,14 @@ proc "Vec::<T>::swap"(pLft_0, pty_T0, self, a, b) {
 };
 
 spec "Vec::<T>::pop"(pLft_0, pty_T0, self)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * <lft>(#pLft_0; true) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
@@ -1423,8 +1496,17 @@ proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
 };
 
 spec "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<usize as gilogic::Ownable>::own"(#ix) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<usize as gilogic::Ownable>::own"(#ix)
+  * <lft>(#pLft_0; true)
+  * types(#ix: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (ix == #ix)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
@@ -1517,8 +1599,17 @@ proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
 };
 
 spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<usize as gilogic::Ownable>::own"(#ix) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<usize as gilogic::Ownable>::own"(#ix)
+  * <lft>(#pLft_0; true)
+  * types(#ix: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (ix == #ix)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix) {
@@ -1636,8 +1727,17 @@ proc "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix) {
 };
 
 spec "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self) * "<usize as gilogic::Ownable>::own"(#ix) * <lft>(#pLft_0; true) * types(#ix: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }}) * (ix == #ix) * (self == #self) * (pty_T0 == #pty_T0) * (pLft_0 == #pLft_0) ]]
-[["<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret) * <lft>(#pLft_0; true)]]
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * "<usize as gilogic::Ownable>::own"(#ix)
+  * <lft>(#pLft_0; true)
+  * types(#ix: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (ix == #ix)
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 proc "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix) {
