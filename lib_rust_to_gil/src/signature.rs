@@ -358,13 +358,12 @@ pub fn build_signature<'tcx, 'genv>(
     if tcx.def_path_str(id).to_string().contains("extract_y__") {
         eprintln!("{id:?} -[]-> {:?}", uni_vars);
     }
-    
+
     args.extend(
         uni_vars
             .into_iter()
             .map(|(nm, ty)| ParamKind::Logic(nm, ty)),
     );
-
 
     Signature {
         args,

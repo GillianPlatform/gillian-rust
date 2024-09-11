@@ -87,7 +87,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub(crate) fn compile(mut self) -> Vec<LogicItem> {
         let mut res = Vec::with_capacity(1 + 3 * (self.is_extract_lemma as usize));
 
-
         if self.is_extract_lemma {
             // let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
             // res.extend(defs);
@@ -142,8 +141,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
-        
-        let params : Vec<_> = sig.args().map(|a| a.name().to_string()).collect();
+
+        let params: Vec<_> = sig.args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
             name,

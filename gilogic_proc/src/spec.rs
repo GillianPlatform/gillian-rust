@@ -2,7 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, ExprClosure, FnArg, ImplItemFn, Pat, PatIdent, PatType, ReturnType, Signature, Token
+    parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, ExprClosure,
+    FnArg, ImplItemFn, Pat, PatIdent, PatType, ReturnType, Signature, Token,
 };
 use uuid::Uuid;
 
@@ -99,7 +100,7 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
 pub(crate) fn compile_spec(
     spec: &Specification,
     attrs: &[Attribute],
-    sig: &Signature
+    sig: &Signature,
 ) -> syn::Result<(TokenStream, String)> {
     // let attrs = subject.attrs();
 
@@ -110,7 +111,6 @@ pub(crate) fn compile_spec(
         format_ident!("{}", name_with_uuid, span = Span::call_site())
     };
     let name_string = name.to_string();
-
 
     let mut inputs = sig.inputs.clone();
     let ins = format!("{}", inputs.len());

@@ -12,11 +12,60 @@ warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-Expr { scope: Node(215), expr: e10 }
+DefId(0:50 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) -[]-> {}
+DefId(0:46 ~ wp_proph[6031]::extract_y___proof) -[]-> {"x": *mut N<T/#0>, "y": *mut N<T/#0>, "m": (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), "mx": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), "new_new_model": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })}
+DefId(0:50 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) -[]-> {}
+DefId(0:46 ~ wp_proph[6031]::extract_y___proof) -[]-> {"x": *mut N<T/#0>, "y": *mut N<T/#0>, "m": (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), "mx": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), "new_new_model": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })}
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+warning: unused variable: `p`
+   --> ../tests/proph/wp_proph.rs:188:30
+    |
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+    |
+    = note: `#[warn(unused_variables)]` on by default
 
-Call { ty: FnDef(DefId(21:432 ~ gilogic[8e9c]::__stubs::instantiate_lvars), [(*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), (), Closure(DefId(0:49 ~ wp_proph[6031]::extract_y___proof::{closure#0}), [T/#0, i32, Binder(extern "RustCall" fn((*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }))), []), (&'{erased} mut WP<T/#0>,)])]), fun: e1, args: [e6], from_hir_call: true, fn_span: ../tests/proph/wp_proph.rs:180:1: 187:3 (#34) }
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/wp_proph.rs:14:5
+   |
+13 | struct WP<T> {
+   |        -- fields in this struct
+14 |     x: *mut N<T>,
+   |     ^
+15 |     y: *mut N<T>,
+   |     ^
+   |
+   = note: `#[warn(dead_code)]` on by default
 
-error: unsupported proof step InstantiateLVars Call { ty: FnDef(DefId(21:432 ~ gilogic[8e9c]::__stubs::instantiate_lvars), [(*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), (), Closure(DefId(0:49 ~ wp_proph[6031]::extract_y___proof::{closure#0}), [T/#0, i32, Binder(extern "RustCall" fn((*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }))), []), (&'{erased} mut WP<T/#0>,)])]), fun: e1, args: [e6], from_hir_call: true, fn_span: ../tests/proph/wp_proph.rs:180:1: 187:3 (#34) }
+warning: fields `v` and `o` are never read
+  --> ../tests/proph/wp_proph.rs:19:5
+   |
+18 | struct N<T> {
+   |        - fields in this struct
+19 |     v: T,
+   |     ^
+20 |     o: *mut N<T>,
+   |     ^
 
-error: aborting due to 1 previous error; 1 warning emitted
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:48:12
+   |
+48 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `this`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
 
+warning: function `extract_y___proof` should have a snake case name
+   --> ../tests/proph/wp_proph.rs:188:4
+    |
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
+
+warning: 6 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

@@ -13,7 +13,10 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-use crate::{logic::predicate::fn_args_and_tys, signature::{anonymous_param_symbol, inputs_and_output}};
+use crate::{
+    logic::predicate::fn_args_and_tys,
+    signature::{anonymous_param_symbol, inputs_and_output},
+};
 
 use super::{builtins::LogicStubs, fatal2};
 
@@ -466,6 +469,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let expr = self.peel_scope(expr);
         let (_, steps) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
+
             let thir::ExprKind::Block { block } = this.thir[expr].kind else {
                 return vec![this.proof_step(expr)];
             };
@@ -482,7 +486,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let mut steps = Vec::new();
 
         for stmt in &*self.thir[block].stmts {
-            eprintln!("{:?}\n", self.thir[*stmt].kind);
             match &self.thir[*stmt].kind {
                 thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(*expr)),
                 thir::StmtKind::Let {
@@ -509,7 +512,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
     pub(crate) fn proof_step(&self, expr: ExprId) -> ProofStep<'tcx> {
         let expr = self.peel_scope(expr);
-        eprintln!("{:?}\n", self.thir[expr].kind);
 
         match &self.thir[expr].kind {
             thir::ExprKind::Call { ty, args, .. } => match self.get_stub(*ty) {
@@ -542,7 +544,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     let (vars, assertion) = self.build_assert_bind(args[0]);
                     ProofStep::AssertBind { assertion, vars }
                 }
-                Some(stub) => fatal2!(self.tcx, "unsupported proof step {stub:?} {:?}", &self.thir[expr].kind),
+                Some(stub) => fatal2!(
+                    self.tcx,
+                    "unsupported proof step {stub:?} {:?}",
+                    &self.thir[expr].kind
+                ),
                 None => {
                     let AssertKind::Call(pred) = self.build_assert(expr).kind else {
                         fatal2!(self.tcx, "expected precondition of package to be a call")
@@ -726,11 +732,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         // Lemmas encode their specifications using closures and do weird things with lvar scopes so we can
         // use them in the body of the proof.
         // As a result, we also store the lvars in the closure signature and need to read them out from here rather than
-        // a call to `instantiate_lvars`. 
+        // a call to `instantiate_lvars`.
         if self.tcx.is_closure_like(spec_id) {
             let (inputs, _) = inputs_and_output(self.tcx, spec_id);
 
-            let inputs : Vec<_> = inputs.skip(1).map(|(i, ty)| (i.name, ty)).collect();
+            let inputs: Vec<_> = inputs.skip(1).map(|(i, ty)| (i.name, ty)).collect();
 
             uni.extend(inputs);
         }

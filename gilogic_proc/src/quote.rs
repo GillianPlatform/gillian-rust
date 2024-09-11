@@ -634,7 +634,7 @@ impl ToTokens for Lemma {
         let trusted = if body.is_none() {
             quote! { #[gillian::trusted] }
         } else {
-            quote! { }
+            quote! {}
         };
 
         tokens.extend(quote! {
@@ -644,13 +644,12 @@ impl ToTokens for Lemma {
             #[gillian::spec=#name]
             #trusted
             #pub_token #sig {
-                unsafe {
-                    gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
-                        |#uni| {
-                            #spec;
-                            #body_toks
-                        }
-                    )};
+                gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
+                    |#uni| unsafe {
+                        #spec;
+                        #body_toks
+                    }
+                )
             }
         });
     }
