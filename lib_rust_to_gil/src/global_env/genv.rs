@@ -297,7 +297,7 @@ impl<'tcx> GlobalEnv<'tcx> {
             .insert(def_id, |_| {
                 let (thir, e) = get_thir!(self, def_id);
                 let g = GilsoniteBuilder::new(thir.clone(), self.tcx());
-                let spec = g.build_spec(e);
+                let spec = g.build_spec(def_id, e);
                 Box::new(Some(spec))
             })
             .as_ref()

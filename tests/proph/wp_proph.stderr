@@ -1,92 +1,22 @@
-error: expected `fn`
-   --> ../tests/proph/wp_proph.rs:180:1
-    |
-180 | / #[extract_lemma(
-181 | |     forall x, y.
-182 | |     model m.
-183 | |     extract model mx.
-...   |
-186 | |     prophecise { (m.0, mx) }
-187 | | )]
-    | |__^
-    |
-    = note: this error originates in the attribute macro `extract_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-warning: unused import: `specification`
- --> ../tests/proph/wp_proph.rs:8:51
-  |
-8 |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
-  |                                                   ^^^^^^^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` on by default
-
-warning: unnecessary parentheses around assigned value
-  --> ../tests/proph/wp_proph.rs:63:29
+warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
+  --> ../tests/proph/wp_proph.rs:8:51
    |
-63 |                       let _ = (#[gillian::no_translate]
-   |  _____________________________^
-64 | |                     #[gillian::item = "extract_x___proof_spec_e340188d_4a2d_4df3_ba58_82d06e40814b"]
-65 | |                     #[gillian::decl::specification]
-66 | |                     #[gillian::decl::pred_ins = "1"]
-67 | |                     || -> gilogic::RustAssertion {
-   | |____________________^
-...
-92 |                       });
-   |                        ^
+8  |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
+   |                                                   ^^^^^^^^^^^^^
+9  |     mutref_auto_resolve,
+   |     ^^^^^^^^^^^^^^^^^^^
+10 |     prophecies::{Ownable, Prophecised, Prophecy},
+   |                           ^^^^^^^^^^^
    |
-   = note: `#[warn(unused_parens)]` on by default
-help: remove these parentheses
-   |
-63 ~                     let _ = || -> gilogic::RustAssertion {
-64 |                         unsafe {
- ...
-87 |                         }
-88 ~                     };
-   |
-
-warning: unnecessary parentheses around function argument
-   --> ../tests/proph/wp_proph.rs:150:49
-    |
-150 | ...                   ((__NEW_PROPH_VAL, __OLD_PROPH_VAL.1)),
-    |                       ^                                    ^
-    |
-help: remove these parentheses
-    |
-150 -                                                 ((__NEW_PROPH_VAL, __OLD_PROPH_VAL.1)),
-150 +                                                 (__NEW_PROPH_VAL, __OLD_PROPH_VAL.1),
-    |
-
-warning: unnecessary parentheses around function argument
-   --> ../tests/proph/wp_proph.rs:153:49
-    |
-153 | ...                   ((__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1)),
-    |                       ^                                        ^
-    |
-help: remove these parentheses
-    |
-153 -                                                 ((__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1)),
-153 +                                                 (__NEW_PROPH_OLD_VAL, __OLD_PROPH_VAL.1),
-    |
-
-warning: unknown lint: `unsused_variables`
-   --> ../tests/proph/wp_proph.rs:174:9
-    |
-174 | #[allow(unsused_variables)]
-    |         ^^^^^^^^^^^^^^^^^ help: did you mean: `unused_variables`
-    |
-    = note: `#[warn(unknown_lints)]` on by default
+   = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"core"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-error: aborting due to 1 previous error; 5 warnings emitted
+Expr { scope: Node(215), expr: e10 }
+
+Call { ty: FnDef(DefId(21:432 ~ gilogic[8e9c]::__stubs::instantiate_lvars), [(*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), (), Closure(DefId(0:49 ~ wp_proph[6031]::extract_y___proof::{closure#0}), [T/#0, i32, Binder(extern "RustCall" fn((*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }))), []), (&'{erased} mut WP<T/#0>,)])]), fun: e1, args: [e6], from_hir_call: true, fn_span: ../tests/proph/wp_proph.rs:180:1: 187:3 (#34) }
+
+error: unsupported proof step InstantiateLVars Call { ty: FnDef(DefId(21:432 ~ gilogic[8e9c]::__stubs::instantiate_lvars), [(*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), (), Closure(DefId(0:49 ~ wp_proph[6031]::extract_y___proof::{closure#0}), [T/#0, i32, Binder(extern "RustCall" fn((*mut N<T/#0>, *mut N<T/#0>, (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }))), []), (&'{erased} mut WP<T/#0>,)])]), fun: e1, args: [e6], from_hir_call: true, fn_span: ../tests/proph/wp_proph.rs:180:1: 187:3 (#34) }
+
+error: aborting due to 1 previous error; 1 warning emitted
 

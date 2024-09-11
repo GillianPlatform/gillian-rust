@@ -599,82 +599,60 @@ impl ToTokens for Lemma {
             sig,
             body,
         } = self;
-        match body {
+
+        let id = Uuid::new_v4().to_string();
+        let name = {
+            let ident = sig.ident.to_string();
+            let name_with_uuid = format!("{}_spec_{}", ident, id).replace('-', "_");
+            format_ident!("{}", name_with_uuid, span = Span::call_site())
+        };
+        let name = name.to_string();
+        let spec = specification.encode_lemma().unwrap();
+        let ins = format!("{}", sig.inputs.len());
+        let uni = specification.lvars.clone();
+
+        let uniargs = uni.iter().map(|lvar| &lvar.ident);
+        let spec = quote! {
+            let omgomg  =
+                (   #[gillian::no_translate]
+                    #[gillian::item=#name]
+                    #[gillian::decl::specification]
+                    #[gillian::decl::pred_ins=#ins]
+                |#uni| -> gilogic::RustAssertion { #spec })(#(#uniargs),*);
+        };
+
+        let body_toks = match body {
             None => {
-                let uni = specification.lvars.clone();
-
-                let id = Uuid::new_v4().to_string();
-                let name = {
-                    let ident = sig.ident.to_string();
-                    let name_with_uuid = format!("{}_spec_{}", ident, id).replace('-', "_");
-                    format_ident!("{}", name_with_uuid, span = Span::call_site())
-                };
-                let spec = specification.encode_lemma().unwrap();
-                let ins = format!("{}", sig.inputs.len());
-
-                let name = name.to_string();
-                tokens.extend(quote! {
-                    #[cfg(gillian)]
-                    #(#attributes)*
-                    #[gillian::decl::lemma]
-                    #[gillian::spec=#name]
-                    #[gillian::trusted]
-                    #pub_token #sig {
-                        unsafe {
-                            gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
-                                |#uni| {
-                                    let _  =
-                                        (   #[gillian::no_translate]
-                                            #[gillian::item=#name]
-                                            #[gillian::decl::specification]
-                                            #[gillian::decl::pred_ins=#ins]
-                                        || -> gilogic::RustAssertion { #spec });
-                                }
-                            )};
-
-                        unreachable!()
-                    }
-                })
+                quote! { unreachable!() }
             }
             Some(body) => {
-                let uni = specification.lvars.clone();
-
-                let id = Uuid::new_v4().to_string();
-                let name = {
-                    let ident = sig.ident.to_string();
-                    let name_with_uuid = format!("{}_spec_{}", ident, id).replace('-', "_");
-                    format_ident!("{}", name_with_uuid, span = Span::call_site())
-                };
-
-                let name = name.to_string();
                 let stmts = &body.stmts;
-                // TODO(xavier): Remove this.
-                let ins = format!("{}", sig.inputs.len());
-
-                // panic!("here");
-                let spec = specification.encode_lemma().unwrap();
-                tokens.extend(quote! {
-                    #[cfg(gillian)]
-                    #[gillian::decl::lemma]
-                    #(#attributes)*
-                    #[gillian::spec=#name]
-                    #pub_token #sig {
-                        unsafe {
-                        gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
-                            |#uni| {
-                                let _  =
-                                    (   #[gillian::no_translate]
-                                        #[gillian::item=#name]
-                                        #[gillian::decl::specification]
-                                        #[gillian::decl::pred_ins=#ins]
-                                    || -> gilogic::RustAssertion { #spec });
-                                #(#stmts);*
-                            }
-                        )}
-                    }
-                })
+                quote! { #(#stmts);* }
             }
-        }
+        };
+
+        let trusted = if body.is_none() {
+            quote! { #[gillian::trusted] }
+        } else {
+            quote! { }
+        };
+
+        tokens.extend(quote! {
+            #[cfg(gillian)]
+            #(#attributes)*
+            #[gillian::decl::lemma]
+            #[gillian::spec=#name]
+            #trusted
+            #pub_token #sig {
+                unsafe {
+                    gilogic::__stubs::instantiate_lvars(#[gillian::no_translate]
+                        |#uni| {
+                            #spec;
+                            #body_toks
+                        }
+                    )};
+            }
+        });
     }
 }
 

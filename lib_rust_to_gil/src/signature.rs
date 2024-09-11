@@ -92,6 +92,11 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
             .cloned()
     }
 
+    /// Return the "physical arguments" of a symbol, ak everything except the lvars.
+    pub fn args(&self) -> impl Iterator<Item = ParamKind<'tcx>> + '_ {
+        self.args.iter().cloned()
+    }
+
     /// Returns the set of type well-formedness assertions for the input parameters of a predicate
     pub fn type_wf_pres(&mut self, ctx: &mut GlobalEnv<'tcx>) -> Vec<Assertion> {
         let mut wfs = Vec::new();
@@ -350,11 +355,16 @@ pub fn build_signature<'tcx, 'genv>(
         (Default::default(), None)
     };
 
+    if tcx.def_path_str(id).to_string().contains("extract_y__") {
+        eprintln!("{id:?} -[]-> {:?}", uni_vars);
+    }
+    
     args.extend(
         uni_vars
             .into_iter()
             .map(|(nm, ty)| ParamKind::Logic(nm, ty)),
     );
+
 
     Signature {
         args,

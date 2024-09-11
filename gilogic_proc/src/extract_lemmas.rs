@@ -350,9 +350,15 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
             None
         };
 
-        let (_, term) = &extract_lemma.prophecise.as_ref().expect("need prophecise to be set");
+        let (_, term) = &extract_lemma
+            .prophecise
+            .as_ref()
+            .expect("need prophecise to be set");
 
-        let (_, model, _, _, _, _new_model, _) = extract_lemma.models.as_ref().expect("need models to be set");
+        let (_, model, _, _, _, _new_model, _) = extract_lemma
+            .models
+            .as_ref()
+            .expect("need models to be set");
         let prophecise_check = Some(quote! { * (#model == #term) });
 
         let mut subst = HashMap::new();
@@ -377,35 +383,34 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         };
 
         quote! {
-            #[gillian::no_translate]
+            #[gilogic::macros::lemma]
+            #[gilogic::macros::specification(
+                    #forall
+                    requires {
+                        #assuming
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                    }
+                    ensures {
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
+                        #prophecise_check
+                        * gilogic::__stubs::wand(
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
+                            // Ici dans from_args, il faut remplacer model par
+                            // prophecise[new_model / NEW_new_model]
+                            // Ownable::own(p, m, frozen)
+                            // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                        )
+                    }
+            )]
+            #[gillian::timeless]
             fn #proof_name #generics (#inputs) {
-                #[gilogic::macros::lemma]
-                #[gilogic::macros::specification(
-                        #forall
-                        requires {
-                            #assuming
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
-                        }
-                        ensures {
-                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
-                            #prophecise_check
-                            * gilogic::__stubs::wand(
-                                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
-                                // Ici dans from_args, il faut remplacer model par
-                                // prophecise[new_model / NEW_new_model]
-                                // Ownable::own(p, m, frozen)
-                                // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
-                                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
-                            )
-                        }
-                )]
-                #[gillian::timeless]
-                |#inputs| {
+                // |#inputs| {
                     ::gilogic :: package!(
                       gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
                     , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
-                    )
-                };
+                    );
+                // };
             }
         }
     };

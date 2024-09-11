@@ -142,8 +142,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
-        // eprintln!("{sig:?}");
-        let params = sig.physical_args().map(|a| a.name().to_string()).collect();
+        
+        let params : Vec<_> = sig.args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
             name,

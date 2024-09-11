@@ -2,8 +2,7 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, FnArg, ImplItemFn, Pat,
-    PatIdent, PatType, ReturnType, Signature, Token,
+    parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, Attribute, ExprClosure, FnArg, ImplItemFn, Pat, PatIdent, PatType, ReturnType, Signature, Token
 };
 use uuid::Uuid;
 
@@ -47,17 +46,42 @@ fn get_attr<'a>(
     })
 }
 
+enum Specifiable {
+    Fn(ImplItemFn),
+    Closure(ExprClosure),
+}
+
+impl Parse for Specifiable {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        todo!()
+    }
+}
+
+impl Specifiable {
+    fn attrs(&self) -> &[Attribute] {
+        match self {
+            Specifiable::Fn(f) => &f.attrs,
+            Specifiable::Closure(c) => &c.attrs,
+        }
+    }
+}
+
+impl ToTokens for Specifiable {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        todo!()
+    }
+}
+
 use crate::Specification;
 
 pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     // I'm using `ImplItemMethod` here, but it could be an `FnItem`.
     // However, an `FnItem` is just `ImplItemMethod` that cannot have the `default` keyword,
     // so I'm expecting this to work in any context.
-    let mut item = parse_macro_input!(input as ImplItemFn);
-    let item_attrs = std::mem::take(&mut item.attrs);
+    let item = parse_macro_input!(input as ImplItemFn);
     let parsed_spec = parse_macro_input!(args as Specification);
 
-    let (toks, name_string) = match compile_spec(&parsed_spec, &item_attrs, &item.sig) {
+    let (toks, name_string) = match compile_spec(&parsed_spec, &item.attrs, &item.sig) {
         Ok(s) => s,
         Err(error) => return error.to_compile_error().into(),
     };
@@ -65,7 +89,6 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
     let result = quote! {
         #toks
 
-        #(#item_attrs)*
         #[gillian::spec=#name_string]
         #item
     };
@@ -76,8 +99,10 @@ pub(crate) fn specification(args: TokenStream_, input: TokenStream_) -> TokenStr
 pub(crate) fn compile_spec(
     spec: &Specification,
     attrs: &[Attribute],
-    sig: &Signature,
+    sig: &Signature
 ) -> syn::Result<(TokenStream, String)> {
+    // let attrs = subject.attrs();
+
     let id = Uuid::new_v4().to_string();
     let name = {
         let ident = sig.ident.to_string();
@@ -86,8 +111,8 @@ pub(crate) fn compile_spec(
     };
     let name_string = name.to_string();
 
+
     let mut inputs = sig.inputs.clone();
-    // TODO(xavier): Remove this.
     let ins = format!("{}", inputs.len());
     let generics = &sig.generics;
 
