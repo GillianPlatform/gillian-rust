@@ -88,7 +88,7 @@ pub fn assertion_test(input: TokenStream_) -> TokenStream_ {
 
 #[proc_macro]
 pub fn assert_bind(input: TokenStream_) -> TokenStream_ {
-    match parse_macro_input!(input as AssertBind).encode() {
+    match parse_macro_input!(input as assert_bind::AssertBind).encode() {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }
