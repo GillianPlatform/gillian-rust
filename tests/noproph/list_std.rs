@@ -23,14 +23,6 @@ struct Node<T> {
     element: T,
 }
 
-#[predicate]
-fn option_box_node<T: Ownable>(x: In<Option<Box<Node<T>>>>) {
-    assertion!((x == None));
-    assertion!(|next, prev, element, p|
-        (x == Some(p)) * (p -> Node { next, prev, element }) * element.own()
-    )
-}
-
 impl<T> Node<T> {
     fn new(element: T) -> Self {
         Node {
