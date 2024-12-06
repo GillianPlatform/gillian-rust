@@ -2,7 +2,7 @@ use std::marker::{self, Tuple};
 
 use crate as gilogic;
 use crate::tys::RustAssertion;
-use gilogic::macros::{assertion, borrow, lemma, predicate, specification};
+use gilogic::macros::{predicate, specification};
 
 macro_rules! unreachable {
     ($x:expr) => {

@@ -1,6 +1,9 @@
 use pretty::{docs, DocAllocator, Pretty};
 
-use super::{print_utils::separated_display, visitors::GilVisitorMut};
+use super::{
+    print_utils::separated_display,
+    visitors::{GilVisitorMut, PVartoLVar},
+};
 use std::{collections::HashMap, fmt::Display};
 
 use super::{Expr, Formula, Type};
@@ -72,6 +75,11 @@ impl Assertion {
     pub fn subst_lvar(&mut self, subst: &HashMap<String, Expr>) {
         let mut visitor = super::visitors::SubstLVar::new(subst);
         visitor.visit_assertion(self);
+    }
+
+    pub fn pvar_to_lvar(mut self) -> Self {
+        PVartoLVar.visit_assertion(&mut self);
+        self
     }
 }
 

@@ -56,6 +56,15 @@ impl<'tcx> ParamKind<'tcx> {
             ParamKind::Logic(n, _) => *n,
         }
     }
+
+    pub fn as_lvar(&self) -> String {
+        match self {
+            ParamKind::Program(n, _) => format!("#{n}"),
+            ParamKind::Lifetime(n) => format!("#{n}"),
+            ParamKind::Generic(n) => format!("#{n}"),
+            ParamKind::Logic(n, _) => format!("{n}"),
+        }
+    }
 }
 
 impl<'tcx, 'genv> Signature<'tcx, 'genv> {
@@ -92,7 +101,6 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
             .cloned()
     }
 
-    /// Return the "physical arguments" of a symbol, ak everything except the lvars.
     pub fn args(&self) -> impl Iterator<Item = ParamKind<'tcx>> + '_ {
         self.args.iter().cloned()
     }

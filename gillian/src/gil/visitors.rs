@@ -309,6 +309,17 @@ macro_rules! make_gil_visitor {
     };
 }
 
+pub struct PVartoLVar;
+
+impl GilVisitorMut for PVartoLVar {
+    fn visit_expr(&mut self, expr: &mut Expr) {
+        match expr {
+            Expr::PVar(s) => *expr = Expr::LVar(s.clone()),
+            _ => self.super_expr(expr),
+        }
+    }
+}
+
 pub struct SubstPVar<'a>(&'a HashMap<String, Expr>);
 
 impl<'a> SubstPVar<'a> {
