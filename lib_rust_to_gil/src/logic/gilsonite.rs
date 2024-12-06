@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
+    query::Key,
     thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
     ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
@@ -313,6 +314,7 @@ pub enum Pattern<'tcx> {
     Boolean(bool),
 }
 
+#[derive(Debug)]
 pub enum ProofStep<'tcx> {
     Package {
         pre: AssertPredCall<'tcx>,
@@ -485,18 +487,29 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     pub(crate) fn proof_sequence(&self, block: BlockId) -> Vec<ProofStep<'tcx>> {
         let mut steps = Vec::new();
 
-        for stmt in &*self.thir[block].stmts {
+        for stmt in self.thir[block].stmts.iter() {
             match &self.thir[*stmt].kind {
                 thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(*expr)),
-                thir::StmtKind::Let {
-                    pattern,
-                    initializer,
-                    ..
-                } => {
-                    if pattern.ty.is_closure() {
+                thir::StmtKind::Let { initializer, .. } => {
+                    let is_useless_binder_for_pre_types =
+                        initializer.map_or(false, |e| match &self.thir[self.peel_scope(e)].kind {
+                            thir::ExprKind::Call { ty, .. } => {
+                                // TODO: fix this nightmare
+                                match ty.kind() {
+                                    TyKind::FnDef(_, subst) => {
+                                        (!subst.is_empty()) && subst.type_at(0).is_closure()
+                                    }
+                                    _ => false,
+                                }
+                            }
+                            _ => false,
+                        });
+
+                    if is_useless_binder_for_pre_types {
                         continue;
                     }
-                    continue;
+
+                    // continue;
                     steps.push(self.proof_step(initializer.unwrap()));
                     // fatal2!(self.tcx, "assert bindings are currently unsupported")
                 }
@@ -529,13 +542,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     ProofStep::Package { pre, post }
                 }
                 Some(LogicStubs::Unfold) => {
-                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                    let AssertKind::Call(pre) = self.build_assert(args[0]).kind else {
                         fatal2!(self.tcx, "unfold expects a call")
                     };
                     ProofStep::Unfold { pred: pre }
                 }
                 Some(LogicStubs::Fold) => {
-                    let AssertKind::Call(pre) = self.build_assert(expr).kind else {
+                    let AssertKind::Call(pre) = self.build_assert(args[0]).kind else {
                         fatal2!(self.tcx, "fold expects a call")
                     };
                     ProofStep::Fold { pred: pre }

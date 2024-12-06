@@ -1,4 +1,4 @@
-use super::visitors::GilVisitorMut;
+use super::visitors::{self, GilVisitorMut};
 use super::{Literal, Type};
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -882,6 +882,12 @@ impl Expr {
     pub fn subst_pvar(&mut self, mapping: &HashMap<String, Expr>) {
         let mut visitor = super::visitors::SubstPVar::new(mapping);
         visitor.visit_expr(self);
+    }
+
+    pub fn pvar_to_lvar(mut self) -> Self {
+        let mut visitors = super::visitors::PVartoLVar;
+        visitors.visit_expr(&mut self);
+        self
     }
 }
 

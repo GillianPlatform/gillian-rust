@@ -175,7 +175,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     let (pred_name, parameters) = pred_ctx.compile_pred_call(pred);
                     gil_proof.push(LCmd::SL(SLCmd::Unfold {
                         pred_name,
-                        parameters,
+                        parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
                         bindings: None,
                         rec: false,
                     }))
@@ -184,7 +184,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     let (pred_name, parameters) = pred_ctx.compile_pred_call(pred);
                     gil_proof.push(LCmd::SL(SLCmd::Fold {
                         pred_name,
-                        parameters,
+                        parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
                         bindings: None,
                     }))
                 }
@@ -211,8 +211,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     }))
                 }
                 ProofStep::AssertBind { assertion, vars } => {
-                    eprintln!("About to compile assertbind: {:?}", assertion);
-                    let assertion = pred_ctx.compile_assertion(assertion);
+                    let assertion = pred_ctx.compile_assertion(assertion).pvar_to_lvar();
                     gil_proof.push(LCmd::SL(SLCmd::SepAssert {
                         assertion,
                         existentials: vars.iter().map(|v| format!("#{v}")).collect(),

@@ -8,13 +8,13 @@ macro_rules! package {
 #[macro_export]
 macro_rules! unfold {
 	($f:ident ($($x:expr),*)) => {
-		gilogic :: __stubs :: unfold_proof ( $f ($($x:expr),*) )
+		gilogic :: __stubs :: unfold_proof ( $f ($($x),*) )
 	}
 }
 
 #[macro_export]
 macro_rules! fold {
 	($f:ident ($($x:expr),*)) => {
-		gilogic :: __stubs :: fold_proof ( $f ($($x:expr),*) )
+		gilogic :: __stubs :: fold_proof ( $f ($($x),*) )
 	}
 }

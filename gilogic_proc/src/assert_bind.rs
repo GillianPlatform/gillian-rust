@@ -38,7 +38,7 @@ impl AssertBind {
         } else {
             let lvar_names = lvars.iter().map(|ld| ld.ident.clone());
             parse_quote!(
-                let (#(#lvar_names),*) =
+                let (#(#lvar_names,)*) =
             )
         };
         let result: TokenStream = parse_quote! {

@@ -1,11 +1,7 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{
-    assert_bind,
-    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-    unfold, Ownable,
-};
+use gilogic::{macros::*, unfold, Ownable};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -73,6 +69,6 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
 ) {
-    assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
-    // unfold!(dll_seg(head, tail_next, tail, head_prev, len));
+    // assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
+    unfold!(dll_seg(head, tail_next, tail, head_prev, len));
 }

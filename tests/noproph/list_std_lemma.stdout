@@ -47,11 +47,10 @@ pred "dll_seg_r::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
 abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
-lemma "dll_seg_l_to_r::<T>"(head, tail_next, tail, head_prev, len)[[ "dll_seg::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
-[["dll_seg_r::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
-
-[*
-sep_assert ("dll_seg::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len))[bind: #len]
-*]
-
+lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev, len)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+]]
+[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+]][* unfold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) *]
 

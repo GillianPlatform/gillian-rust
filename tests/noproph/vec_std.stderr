@@ -1,67 +1,77 @@
-warning: unused import: `all_own_swap`
+error: custom attribute panicked
+   --> ../tests/noproph/vec_std.rs:293:1
+    |
+293 | / #[extract_lemma(
+294 | |     forall ptr: Unique<T>, cap, len.
+295 | |     assuming { ix < len }
+296 | |     from { vec_ref_mut_pcl(vec, ptr, cap, len) }
+297 | |     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix)))) }
+298 | | )]
+    | |__^
+    |
+    = help: message: need prophecise to be set
+
+error[E0432]: unresolved import `gilogic::macros::no_prophecies`
+  --> ../tests/noproph/vec_std.rs:13:46
+   |
+13 |         assertion, extract_lemma, predicate, no_prophecies::with_freeze_lemma_for_mutref,
+   |                                              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
+
+warning: unused imports: `all_own_swap`, `specification`
   --> ../tests/noproph/vec_std.rs:11:40
    |
 11 |     iterated::no_prophecies::{all_own, all_own_swap},
    |                                        ^^^^^^^^^^^^
+...
+14 |         specification, show_safety, lemma
+   |         ^^^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+error[E0425]: cannot find function `freeze_pcl` in this scope
+   --> ../tests/noproph/vec_std.rs:389:9
+    |
+389 |         freeze_pcl(self);
+    |         ^^^^^^^^^^------
+    |         |
+    |         help: try calling `freeze_pcl` as a method: `self.freeze_pcl()`
+
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _18
-warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
- --> ../tests/noproph/vec_std.rs:5:12
-  |
-5 | #![feature(unchecked_math)]
-  |            ^^^^^^^^^^^^^^
-  |
-  = note: `#[warn(stable_features)]` on by default
-
-warning: unused variable: `p`
-   --> ../tests/noproph/vec_std.rs:291:34
+error[E0425]: cannot find function `freeze_pcl` in this scope
+   --> ../tests/noproph/vec_std.rs:426:9
     |
-291 | fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
-    |                                  ^ help: if this is intentional, prefix it with an underscore: `_p`
+426 |         freeze_pcl(self);
+    |         ^^^^^^^^^^------
+    |         |
+    |         help: try calling `freeze_pcl` as a method: `self.freeze_pcl()`
+
+error[E0425]: cannot find function `extract_ith` in this scope
+   --> ../tests/noproph/vec_std.rs:434:9
     |
-    = note: `#[warn(unused_variables)]` on by default
+434 |         extract_ith(self, ix);
+    |         ^^^^^^^^^^^----------
+    |         |
+    |         help: try calling `extract_ith` as a method: `self.extract_ith(ix)`
 
-warning: unused variable: `len`
-   --> ../tests/noproph/vec_std.rs:291:47
+error[E0425]: cannot find function `freeze_pcl` in this scope
+   --> ../tests/noproph/vec_std.rs:440:9
     |
-291 | fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
-    |                                               ^^^ help: if this is intentional, prefix it with an underscore: `_len`
+440 |         freeze_pcl(self);
+    |         ^^^^^^^^^^------
+    |         |
+    |         help: try calling `freeze_pcl` as a method: `self.freeze_pcl()`
 
-warning: unused variable: `vec`
-   --> ../tests/noproph/vec_std.rs:299:32
+error[E0425]: cannot find function `extract_ith` in this scope
+   --> ../tests/noproph/vec_std.rs:450:9
     |
-299 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
-    |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
+450 |         extract_ith(self, ix);
+    |         ^^^^^^^^^^^----------
+    |         |
+    |         help: try calling `extract_ith` as a method: `self.extract_ith(ix)`
 
-warning: unused variable: `ix`
-   --> ../tests/noproph/vec_std.rs:299:53
-    |
-299 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
-    |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
+error: aborting due to 7 previous errors; 1 warning emitted
 
-warning: variant `Zeroed` is never constructed
-  --> ../tests/noproph/vec_std.rs:64:5
-   |
-60 | enum AllocInit {
-   |      --------- variant in this enum
-...
-64 |     Zeroed,
-   |     ^^^^^^
-   |
-   = note: `#[warn(dead_code)]` on by default
-
-warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/noproph/vec_std.rs:310:12
-    |
-310 |     fn own(self) {
-    |            ^^^^ help: convert the identifier to snake case: `reference`
-    |
-    = note: `#[warn(non_snake_case)]` on by default
-
-warning: 8 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.

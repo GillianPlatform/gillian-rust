@@ -1,10 +1,7 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{
-    macros::{with_freeze_lemma, *},
-    Ownable,
-};
+use gilogic::{macros::*, Ownable};
 
 struct WP<T> {
     x: *mut N<T>,

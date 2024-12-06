@@ -1,49 +1,78 @@
+error: custom attribute panicked
+  --> ../tests/noproph/wp.rs:26:1
+   |
+26 | / #[extract_lemma(
+27 | |     forall x, y.
+28 | |     from { wp_ref_mut_xy(p, x, y) }
+29 | |     extract { <&mut T as Ownable>::own(&mut (*x).v) }
+30 | | )]
+   | |__^
+   |
+   = help: message: need prophecise to be set
+
+error: custom attribute panicked
+  --> ../tests/noproph/wp.rs:33:1
+   |
+33 | / #[extract_lemma(
+34 | |     forall x, y.
+35 | |     from { wp_ref_mut_xy(p, x, y) }
+36 | |     extract { <&mut T as Ownable>::own(&mut (*y).v) }
+37 | | )]
+   | |__^
+   |
+   = help: message: need prophecise to be set
+
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _5
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _9
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:34:30
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+  --> ../tests/noproph/wp.rs:40:1
    |
-34 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+40 | / #[with_freeze_lemma(
+41 | |     lemma_name = freeze_xy,
+42 | |     predicate_name = wp_ref_mut_xy,
+43 | |     frozen_variables = [x, y],
+44 | | )]
+   | |__^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`, which is required by `&'a mut WP<T>: gilogic::prophecies::Ownable`
    |
-   = note: `#[warn(unused_variables)]` on by default
+   = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+             &mut T
+             ()
+             (T, U)
+             i128
+             i16
+             i32
+             i64
+             i8
+           and 8 others
+   = note: required for `&'a mut WP<T>` to implement `gilogic::prophecies::Ownable`
+   = note: this error originates in the attribute macro `with_freeze_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:41:30
-   |
-41 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
-   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
+   --> ../tests/noproph/wp.rs:45:30
+    |
+45  | impl<T: Ownable> Ownable for WP<T> {
+    |                              ^^^^^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
+    |
+    = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+              &mut T
+              ()
+              (T, U)
+              i128
+              i16
+              i32
+              i64
+              i8
+            and 8 others
+note: required by a bound in `gilogic::prophecies::FrozenOwn::mut_ref_own_frozen`
+   --> /Users/sacha/Prog/work/rust-to-gil/gilogic/src/prophecies.rs:78:61
+    |
+78  | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
+    |                                                             ^^^^^^^ required by this bound in `FrozenOwn::mut_ref_own_frozen`
+...
+116 |     fn mut_ref_own_frozen(
+    |        ------------------ required by a bound in this associated function
 
-warning: struct `WP` is never constructed
- --> ../tests/noproph/wp.rs:9:8
-  |
-9 | struct WP<T> {
-  |        ^^
-  |
-  = note: `#[warn(dead_code)]` on by default
+error: Predicate body failed to typecheck for DefId(0:28 ~ wp[e568]::wp_ref_mut_xy) ErrorGuaranteed(())
 
-warning: struct `N` is never constructed
-  --> ../tests/noproph/wp.rs:14:8
-   |
-14 | struct N<T> {
-   |        ^
+error: aborting due to 5 previous errors
 
-warning: variable `REFERENCE` should have a snake case name
-  --> ../tests/noproph/wp.rs:50:12
-   |
-50 |     fn own(self) {
-   |            ^^^^ help: convert the identifier to snake case: `reference`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
-
-warning: 5 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+For more information about this error, try `rustc --explain E0277`.

@@ -1,9 +1,27 @@
-warning: unused imports: `assert_bind`, `unfold`
+error: custom attribute panicked
+  --> ../tests/noproph/list_std.rs:57:1
+   |
+57 | / #[extract_lemma(
+58 | |     forall head, tail, len, p.
+59 | |     assuming { head == Some(p) }
+60 | |     from { list_ref_mut_htl(list, head, tail, len) }
+61 | |     extract { Ownable::own(&mut (*p.as_ptr()).element) }
+62 | | )]
+   | |__^
+   |
+   = help: message: need prophecise to be set
+
+error[E0432]: unresolved imports `gilogic::assert_bind`, `gilogic::macros::no_prophecies`
  --> ../tests/noproph/list_std.rs:5:5
   |
 5 |     assert_bind,
-  |     ^^^^^^^^^^^
+  |     ^^^^^^^^^^^ no `assert_bind` in the root
 6 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
+  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
+
+warning: unused import: `unfold`
+ --> ../tests/noproph/list_std.rs:7:5
+  |
 7 |     unfold, Ownable,
   |     ^^^^^^
   |
@@ -22,94 +40,23 @@ warning: unused imports: `assert_bind`, `unfold`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-warning: unused variable: `list`
-  --> ../tests/noproph/list_std.rs:63:29
-   |
-63 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
-   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
-   |
-   = note: `#[warn(unused_variables)]` on by default
-
-warning: unused variable: `next`
-  --> ../tests/noproph/list_std.rs:96:5
-   |
-96 |     next: Option<NonNull<Node<T>>>,
-   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
-
-warning: unused variable: `x`
-  --> ../tests/noproph/list_std.rs:95:5
-   |
-95 |     x: Option<NonNull<Node<T>>>,
-   |     ^ help: if this is intentional, prefix it with an underscore: `_x`
-
-warning: unused variable: `tail_next`
-  --> ../tests/noproph/list_std.rs:97:5
-   |
-97 |     tail_next: Option<NonNull<Node<T>>>,
-   |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-  --> ../tests/noproph/list_std.rs:98:5
-   |
-98 |     tail: Option<NonNull<Node<T>>>,
-   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:113:5
+error[E0425]: cannot find function `freeze_htl` in this scope
+   --> ../tests/noproph/list_std.rs:275:9
     |
-113 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
+275 |         freeze_htl(self);
+    |         ^^^^^^^^^^------
+    |         |
+    |         help: try calling `freeze_htl` as a method: `self.freeze_htl()`
 
-warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:114:5
+error[E0425]: cannot find function `extract_head` in this scope
+   --> ../tests/noproph/list_std.rs:280:17
     |
-114 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
+280 |                 extract_head(self);
+    |                 ^^^^^^^^^^^^------
+    |                 |
+    |                 help: try calling `extract_head` as a method: `self.extract_head()`
 
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:115:5
-    |
-115 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
+error: aborting due to 4 previous errors; 1 warning emitted
 
-warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:116:5
-    |
-116 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: unused variable: `head`
-   --> ../tests/noproph/list_std.rs:131:5
-    |
-131 |     head: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_head`
-
-warning: unused variable: `tail_next`
-   --> ../tests/noproph/list_std.rs:132:5
-    |
-132 |     tail_next: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tail_next`
-
-warning: unused variable: `tail`
-   --> ../tests/noproph/list_std.rs:133:5
-    |
-133 |     tail: Option<NonNull<Node<T>>>,
-    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_tail`
-
-warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:134:5
-    |
-134 |     head_prev: Option<NonNull<Node<T>>>,
-    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
-
-warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/noproph/list_std.rs:140:12
-    |
-140 |     fn own(self) {
-    |            ^^^^ help: convert the identifier to snake case: `reference`
-    |
-    = note: `#[warn(non_snake_case)]` on by default
-
-warning: 15 warnings emitted
-
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
