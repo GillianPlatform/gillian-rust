@@ -1,5 +1,5 @@
 use num_bigint::BigInt;
-use rustc_middle::ty::{ParamEnv};
+use rustc_middle::ty::ParamEnv;
 use rustc_type_ir::TyKind;
 
 use crate::prelude::*;

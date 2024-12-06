@@ -974,9 +974,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "spanned"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed14ba8b4b82241bd5daba2c49185d4a0581a0058355fe96537338f002b8605d"
+checksum = "86af297923fbcfd107c20a189a6e9c872160df71a7190ae4a7a6c5dce4b2feb6"
 dependencies = [
  "bstr",
  "color-eyre",
@@ -1148,8 +1148,9 @@ checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "ui_test"
-version = "0.24.0"
-source = "git+https://github.com/oli-obk/ui_test.git#0f2a5678125ec3c80ebd07d1c985a489a6266ac7"
+version = "0.26.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a61bc652d8da4ead45c0e94517f4379ef5bb011425e3f686fdc86ddc1614328"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1161,7 +1162,6 @@ dependencies = [
  "comma",
  "crossbeam-channel",
  "indicatif",
- "lazy_static",
  "levenshtein",
  "prettydiff",
  "regex",

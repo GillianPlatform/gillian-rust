@@ -1,6 +1,6 @@
 proc "std::boxed::Box::<T, A>::leak"(pLft_a, T, A, b) {
      ptr := l-nth(l-nth(l-nth(b, 0i), 0i), 0i);
-     ret := {{ ptr, {{ null, {{ }} }} }};
+     ret := {{ ptr, $l__null_prophecy }};
      return
 };
 
@@ -10,7 +10,7 @@ proc "<&mut T std::convert::Into<U>>::into"(pLft_a, mutT, U, ref) {
 };
 
 proc "std::slice::from_raw_parts_mut"(lft, T, ptr, len) {
-        ret := {{ {{ ptr, len }}, null }};
+        ret := {{ {{ ptr, len }}, $l__null_prophecy }};
         return
 };
 

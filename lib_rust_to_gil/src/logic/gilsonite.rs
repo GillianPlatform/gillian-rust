@@ -5,15 +5,18 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
-    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, Thir},
-    ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
+    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
+    ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::Symbol;
+use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-use crate::{logic::predicate::fn_args_and_tys, signature::anonymous_param_symbol};
+use crate::{
+    logic::predicate::fn_args_and_tys,
+    signature::{anonymous_param_symbol, inputs_and_output},
+};
 
 use super::{builtins::LogicStubs, fatal2};
 
@@ -284,6 +287,10 @@ pub enum AssertKind<'tcx> {
         pointees: Expr<'tcx>,
         size: Expr<'tcx>,
     },
+    Wand {
+        lhs: Box<Assert<'tcx>>,
+        rhs: Box<Assert<'tcx>>,
+    },
     Let {
         pattern: Pattern<'tcx>,
         arg: Expr<'tcx>,
@@ -436,7 +443,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         let expr = this.peel_scope(expr);
                         this.build_expression(expr)
                     });
-                    assert!(prophecise.0.is_empty() || prophecise.0.len() == 2);
+                    assert!(prophecise.0.len() == 0 || prophecise.0.len() == 2);
                     let proph_model = if prophecise.0.len() == 2 {
                         Some((prophecise.0.remove(0), prophecise.0.remove(0)))
                     } else {
@@ -459,16 +466,18 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
     }
 
     pub(crate) fn build_lemma_proof(&self, expr: ExprId) -> Vec<ProofStep<'tcx>> {
-        let (unis, steps) = self.peel_lvar_bindings(expr, |this, expr| {
+        let expr = self.peel_scope(expr);
+        let (_, steps) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
-            let thir::ExprKind::Block { block } = self.thir[expr].kind else {
-                return vec![self.proof_step(expr)];
+
+            let thir::ExprKind::Block { block } = this.thir[expr].kind else {
+                return vec![this.proof_step(expr)];
             };
             //  else {
             //
             // };
 
-            self.proof_sequence(block)
+            this.proof_sequence(block)
         });
         steps
     }
@@ -477,16 +486,26 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         let mut steps = Vec::new();
 
         for stmt in &*self.thir[block].stmts {
-            match self.thir[*stmt].kind {
-                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(expr)),
-                thir::StmtKind::Let { initializer, .. } => {
+            match &self.thir[*stmt].kind {
+                thir::StmtKind::Expr { expr, .. } => steps.push(self.proof_step(*expr)),
+                thir::StmtKind::Let {
+                    pattern,
+                    initializer,
+                    ..
+                } => {
+                    if pattern.ty.is_closure() {
+                        continue;
+                    }
+                    continue;
                     steps.push(self.proof_step(initializer.unwrap()));
                     // fatal2!(self.tcx, "assert bindings are currently unsupported")
                 }
             };
         }
 
-        assert_eq!(self.thir[block].expr, None);
+        if let Some(e) = self.thir[block].expr {
+            steps.push(self.proof_step(e))
+        }
 
         steps
     }
@@ -509,7 +528,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
                     ProofStep::Package { pre, post }
                 }
-
                 Some(LogicStubs::Unfold) => {
                     let AssertKind::Call(pre) = self.build_assert(expr).kind else {
                         fatal2!(self.tcx, "unfold expects a call")
@@ -526,7 +544,11 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     let (vars, assertion) = self.build_assert_bind(args[0]);
                     ProofStep::AssertBind { assertion, vars }
                 }
-                Some(_) => fatal2!(self.tcx, "unsupported proof step"),
+                Some(stub) => fatal2!(
+                    self.tcx,
+                    "unsupported proof step {stub:?} {:?}",
+                    &self.thir[expr].kind
+                ),
                 None => {
                     let AssertKind::Call(pred) = self.build_assert(expr).kind else {
                         fatal2!(self.tcx, "expected precondition of package to be a call")
@@ -565,7 +587,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     f_branch,
                 }
             }
-            _ => fatal2!(self.tcx, "unsupported proof step"),
+            s => fatal2!(self.tcx, "unsupported proof step {s:?}"),
         }
     }
 
@@ -607,17 +629,47 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
 
     pub fn build_predicate(&self, expr: ExprId) -> Predicate<'tcx> {
         let defs = self.resolve_definitions(expr);
-        let aserts = defs
+        let asserts = defs
             .into_iter()
-            .map(|eid| self.build_quantified_assert(eid));
+            .map(|eid| self.build_quantified_assert(eid))
+            .map(|(vars, asrt)| {
+                let asrt = self
+                    .thir
+                    .params
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, param)| {
+                        Some((idx, param.ty, self.pattern_term(param.pat.as_ref()?)))
+                    })
+                    .fold(asrt, |body, (idx, ty, pattern)| match pattern {
+                        Pattern::Binder(_) | Pattern::Wildcard(_) => body,
+                        _ => {
+                            let arg = Expr {
+                                ty,
+                                kind: ExprKind::Var {
+                                    id: anonymous_param_symbol(idx),
+                                },
+                            };
+                            Assert {
+                                kind: AssertKind::Let {
+                                    pattern,
+                                    arg,
+                                    body: Box::new(body),
+                                },
+                            }
+                        }
+                    });
+
+                (vars, asrt)
+            });
 
         Predicate {
-            disjuncts: aserts.collect(),
+            disjuncts: asserts.collect(),
         }
     }
 
-    pub fn build_spec(&self, expr: ExprId) -> SpecTerm<'tcx> {
-        let (uni, (pre, posts)) = self.peel_lvar_bindings(expr, |this, expr| {
+    pub fn build_spec(&self, spec_id: DefId, expr: ExprId) -> SpecTerm<'tcx> {
+        let (mut uni, (pre, posts)) = self.peel_lvar_bindings(expr, |this, expr| {
             let expr = this.peel_scope(expr);
             let thir::ExprKind::Call {
                 ty, fun: _, args, ..
@@ -650,13 +702,13 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         });
 
         // eprintln!("params: {:?}", self.thir.params);
-        let res = self
+        let pre = self
             .thir
             .params
             .iter()
             .enumerate()
             .filter_map(|(idx, param)| {
-                Some((idx, param.ty, self.pattern_term(param.pat.as_ref()?)))
+                Some((idx, param.ty, self.pattern_term(&*param.pat.as_ref()?)))
             })
             .fold(pre, |body, (idx, ty, pattern)| match pattern {
                 Pattern::Binder(_) | Pattern::Wildcard(_) => body,
@@ -676,7 +728,18 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                     }
                 }
             });
-        let pre = res;
+
+        // Lemmas encode their specifications using closures and do weird things with lvar scopes so we can
+        // use them in the body of the proof.
+        // As a result, we also store the lvars in the closure signature and need to read them out from here rather than
+        // a call to `instantiate_lvars`.
+        if self.tcx.is_closure_like(spec_id) {
+            let (inputs, _) = inputs_and_output(self.tcx, spec_id);
+
+            let inputs: Vec<_> = inputs.skip(1).map(|(i, ty)| (i.name, ty)).collect();
+
+            uni.extend(inputs);
+        }
 
         SpecTerm {
             uni,
@@ -765,6 +828,15 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         }
                     }
                     Some(LogicStubs::AssertEmp) => AssertKind::Emp,
+                    Some(LogicStubs::AssertWand) => {
+                        let lhs = self.build_assert(args[0]);
+                        let rhs = self.build_assert(args[1]);
+
+                        AssertKind::Wand {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }
+                    }
                     Some(LogicStubs::AssertPointsTo) => {
                         let src = self.build_expression(args[0]);
                         let tgt = self.build_expression(args[1]);

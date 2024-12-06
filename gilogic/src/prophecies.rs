@@ -1,3 +1,5 @@
+use std::marker::{self, Tuple};
+
 use crate as gilogic;
 use crate::tys::RustAssertion;
 use gilogic::macros::{assertion, borrow, lemma, predicate, specification};
@@ -71,20 +73,97 @@ macro_rules! own_int {
     };
 }
 
-#[borrow]
-fn mut_ref_inner_proph<'a, U: Ownable>(this: In<&'a mut U>) -> RustAssertion {
-    assertion!(|v, repr| (this -> v) * v.own(repr) * controller(this.prophecy(), repr))
+/// # Safety
+/// Must only be derived by the Gillian-Rust provided macros!!
+pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
+    #[gillian::decl::pred_ins = "0"]
+    fn frozen_own(this: Self, repr: Self::RepresentationTy, frozen: T) -> RustAssertion;
+
+    /// The body of a mutable borrow
+    #[predicate]
+    fn just_ref_mut_points_to(
+        this: In<&mut Self>,
+        model: Self::RepresentationTy,
+        frozen: T,
+    ) -> RustAssertion {
+        assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
+    }
+
+    #[cfg(not(gillian))]
+    fn just_ref_mut_points_to(
+        _this: &mut Self,
+        _model: Self::RepresentationTy,
+        _frozen: T,
+    ) -> RustAssertion {
+        unreachable!()
+    }
+
+    #[predicate]
+    #[gillian::borrow]
+    fn mut_ref_inner_frozen(this: In<&mut Self>, frozen: T) -> RustAssertion {
+        assertion!(
+            |v, repr| (this -> v) * Self::frozen_own(v, repr, frozen) * controller(this.prophecy(), repr)
+        )
+    }
+
+    #[cfg(not(gillian))]
+    fn mut_ref_inner_frozen(_this: &mut Self, _frozen: T) -> RustAssertion {
+        unreachable!();
+    }
+
+    #[predicate]
+    fn mut_ref_own_frozen(
+        this: In<&mut Self>,
+        model: (Self::RepresentationTy, Self::RepresentationTy),
+        frozen: T,
+    ) -> RustAssertion {
+        assertion!(|a, b| (model == (a, b))
+            * Self::mut_ref_inner_frozen(this, frozen)
+            * observer(this.prophecy(), a)
+            * (this.prophecy().value() == b))
+    }
+
+    #[cfg(not(gillian))]
+    fn mut_ref_own_frozen(
+        _this: &mut Self,
+        _model: (Self::RepresentationTy, Self::RepresentationTy),
+        _frozen: T,
+    ) -> RustAssertion {
+        unreachable!()
+    }
 }
+
+unsafe impl<T> FrozenOwn<()> for T
+where
+    T: Ownable,
+{
+    #[predicate]
+    fn frozen_own(
+        this: In<Self>,
+        repr: <Self as Ownable>::RepresentationTy,
+        frozen: (),
+    ) -> RustAssertion {
+        assertion!(this.own(repr) * (frozen == ()))
+    }
+
+    #[cfg(not(gillian))]
+    fn frozen_own(
+        _this: Self,
+        _repr: <Self as Ownable>::RepresentationTy,
+        _frozen: (),
+    ) -> RustAssertion {
+        unreachable!()
+    }
+}
+
+// fn mut_ref_inner_proph<'a, U: Ownable>(this: &'a mut U) -> RustAssertion;
 
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
     #[cfg(gillian)]
     #[predicate]
     fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) {
-        assertion!(|a, b| (model == (a, b))
-            * mut_ref_inner_proph(self)
-            * observer(self.prophecy(), a)
-            * (self.prophecy().value() == b))
+        assertion!(<T as FrozenOwn<()>>::mut_ref_own_frozen(self, model, ()))
     }
 
     #[cfg(not(gillian))]
@@ -168,38 +247,50 @@ where
     }
 }
 
-#[specification(forall v, a, r.
+#[specification(forall v, a, r, frozen.
     requires {
-        (p -> v) * v.own(r) *
+        (p -> v) * <T as FrozenOwn<A>>::frozen_own(v, r, frozen) *
         observer(p.prophecy(), a) *
         controller(p.prophecy(), a)
     }
     ensures {
-        (p -> v) * v.own(r) *
+        (p -> v) * <T as FrozenOwn<A>>::frozen_own(v, r, frozen) *
         observer(p.prophecy(), r) *
         controller(p.prophecy(), r)
 }
 )]
 #[gillian::timeless]
-pub fn prophecy_auto_update<T: Ownable>(p: &mut T) {
+pub fn prophecy_auto_update<A: Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     let _ = p;
     unreachable!();
 }
 
-#[specification(forall m.
-    requires { p.own(m) }
+#[specification(forall m, frozen.
+    requires { T::mut_ref_own_frozen(p, m, frozen) }
     ensures { $(m.0 == m.1)$ }
 )]
 #[gillian::timeless]
-pub fn prophecy_resolve<T: Ownable>(p: &mut T) {
+pub fn prophecy_resolve<A: Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     let _ = p;
-    unreachable!();
+    unreachable!()
 }
 
 #[gillian::builtin]
 #[rustc_diagnostic_item = "gillian::prophecy::check_obs_sat"]
 pub fn check_obs_sat() {
     unreachable!();
+}
+
+#[specification(
+    forall m.
+    requires { p.own(m) }
+    exists frozen.
+    ensures { T::mut_ref_own_frozen(p, m, frozen) }
+)]
+#[gillian::timeless]
+pub fn freeze_params<A: marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
+    let _ = p;
+    unreachable!()
 }
 
 #[derive(Clone, Copy)]
@@ -252,8 +343,11 @@ pub fn observer<T>(_x: Prophecy<T>, _v: T) -> RustAssertion {
 #[macro_export]
 macro_rules! mutref_auto_resolve {
     ($x: expr) => {
+        mutref_auto_resolve!($x, ());
+    };
+    ($x: expr, $t: ty) => {
         gilogic::prophecies::check_obs_sat();
-        gilogic::prophecies::prophecy_auto_update($x);
-        gilogic::prophecies::prophecy_resolve($x);
+        gilogic::prophecies::prophecy_auto_update::<$t, _>($x);
+        gilogic::prophecies::prophecy_resolve::<$t, _>($x);
     };
 }

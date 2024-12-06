@@ -68,6 +68,9 @@ fn build_config(path: PathBuf, prophecies: bool) -> Config {
     program
         .args
         .push("-Zcrate-attr=feature(stmt_expr_attributes)".into());
+    program
+        .args
+        .push("-Zcrate-attr=feature(proc_macro_hygiene)".into());
     program.envs.push(("IN_UI_TEST".into(), Some("1".into())));
 
     if prophecies {

@@ -1,0 +1,18 @@
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+warning: struct `Test` is never constructed
+ --> ../tests/noproph/size_test.rs:6:8
+  |
+6 | struct Test {
+  |        ^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: function `test` is never used
+  --> ../tests/noproph/size_test.rs:12:4
+   |
+12 | fn test() {
+   |    ^^^^
+
+warning: 2 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

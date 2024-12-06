@@ -112,7 +112,6 @@ fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
     let mut directory: PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
     directory.pop();
     directory.pop();
-    
 
     directory.join(libname)
     // Box::new(std::io::BufWriter::new(File::create(out_path)?))

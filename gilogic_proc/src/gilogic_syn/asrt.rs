@@ -702,8 +702,8 @@ pub(crate) fn requires_terminator(expr: &Term) -> bool {
 
 pub(crate) mod parsing {
     use super::*;
-    
-    use syn::parse::{Parse, ParseStream, Result};
+    use proc_macro2::Delimiter;
+    use syn::parse::{discouraged::AnyDelimiter, Parse, ParseStream, Result};
     // use syn::path;
     use std::cmp::Ordering;
 
@@ -783,13 +783,24 @@ pub(crate) mod parsing {
 
     impl Parse for Assertion {
         fn parse(input: ParseStream) -> Result<Self> {
-            let (pipe1, lvars, pipe2) = if input.peek(Token![|]) {
+            let mut lvars = Punctuated::new();
+            let (pipe1, pipe2) = if input.peek(Token![|]) {
                 let pipe1 = input.parse()?;
-                let lvars = Punctuated::parse_separated_nonempty(input)?;
-                let pipe2 = input.parse()?;
-                (Some(pipe1), lvars, Some(pipe2))
+                loop {
+                    if input.peek(Token![|]) {
+                        break;
+                    }
+                    let value = input.parse()?;
+                    lvars.push_value(value);
+                    if input.peek(Token![|]) {
+                        break;
+                    }
+                    let punct: Token![,] = input.parse()?;
+                    lvars.push_punct(punct);
+                }
+                (Some(pipe1), Some(input.parse()?))
             } else {
-                (None, Punctuated::new(), None)
+                (None, None)
             };
             let def = Punctuated::parse_separated_nonempty(input)?;
             Ok(Self {
@@ -952,7 +963,7 @@ pub(crate) mod parsing {
                 if input.is_empty() {
                     break;
                 } else if requires_semicolon {
-                    return Err(input.error("unexpected token"));
+                    return Err(input.error("unexpected token hello"));
                 }
             }
             Ok(stmts)

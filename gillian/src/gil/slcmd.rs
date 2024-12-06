@@ -1,5 +1,9 @@
 use std::fmt::Display;
 
+use pretty::{docs, DocAllocator, Pretty};
+
+use crate::gil::print_utils;
+
 use super::{
     print_utils::{separated_display, write_maybe_quoted},
     Assertion, Expr,
@@ -46,14 +50,16 @@ pub enum SLCmd {
 
 impl Display for SLCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let display_binders = |f: &mut std::fmt::Formatter<'_>, b: &[String]| {
-            if b.is_empty() {
-                return Ok(());
-            }
-            write!(f, "[bind: ")?;
-            super::print_utils::separated_display(b, ",", f)?;
-            write!(f, "]")
-        };
+        let alloc = pretty::Arena::new();
+        self.pretty(&alloc).render_fmt(80, f)
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for &'a SLCmd
+where
+    D::Doc: Clone,
+{
+    fn pretty(self, alloc: &'a D) -> pretty::DocBuilder<'a, D> {
         use SLCmd::*;
         match self {
             ApplyLem {
@@ -61,12 +67,23 @@ impl Display for SLCmd {
                 parameters,
                 existentials,
             } => {
-                write!(f, "apply ")?;
-                super::print_utils::write_maybe_quoted(lemma_name, f)?;
-                write!(f, "(")?;
-                super::print_utils::separated_display(parameters, ",", f)?;
-                write!(f, ")")?;
-                display_binders(f, existentials)
+                let apply_doc = docs![
+                    alloc,
+                    "apply ",
+                    print_utils::maybe_quoted(lemma_name),
+                    alloc.intersperse(parameters, ", ").parens()
+                ];
+
+                if !existentials.is_empty() {
+                    apply_doc
+                        .append(alloc.space())
+                        .append(alloc.text("[bind:"))
+                        .append(alloc.space())
+                        .append(alloc.intersperse(existentials.iter().map(|e| alloc.text(e)), ", "))
+                        .append(alloc.text("]"))
+                } else {
+                    apply_doc
+                }
             }
             Unfold {
                 pred_name,
@@ -74,54 +91,97 @@ impl Display for SLCmd {
                 bindings,
                 rec,
             } => {
-                write!(f, "unfold")?;
+                let mut unfold_doc = alloc.text("unfold");
                 if *rec {
-                    write!(f, "*")?;
+                    unfold_doc = unfold_doc.append(alloc.text("*"));
                 }
-                write!(f, " \"{}\"(", pred_name)?;
-                super::print_utils::separated_display(parameters, ", ", f)?;
-                write!(f, ")")?;
+                unfold_doc = unfold_doc
+                    .append(alloc.space())
+                    .append(print_utils::maybe_quoted(pred_name))
+                    .append(alloc.intersperse(parameters, ", ").parens());
                 if bindings.is_some() {
-                    panic!("Can't write unfold with bindings for now: {:#?}", self);
+                    unfold_doc.append(alloc.text(" // Bindings not implemented"))
+                } else {
+                    unfold_doc
                 }
-                Ok(())
             }
             Fold {
                 pred_name,
                 parameters,
                 bindings,
             } => {
-                write!(f, "fold")?;
-                write!(f, " \"{}\"(", pred_name)?;
-                super::print_utils::separated_display(parameters, ", ", f)?;
-                write!(f, ")")?;
+                let fold_doc = alloc
+                    .text("fold")
+                    .append(alloc.space())
+                    .append(print_utils::maybe_quoted(pred_name))
+                    .append(alloc.intersperse(parameters, ", ").parens());
+
                 if bindings.is_some() {
-                    panic!("Can't write fold with bindings for now: {:#?}", self);
+                    fold_doc.append(alloc.text(" // Bindings not implemented"))
+                } else {
+                    fold_doc
                 }
-                Ok(())
             }
             Package {
                 lhs: (lname, largs),
                 rhs: (rname, rargs),
-            } => {
-                write!(f, "package (")?;
-                write_maybe_quoted(lname, f)?;
-                write!(f, "(")?;
-                separated_display(largs, ", ", f)?;
-                write!(f, ") -* ")?;
-                write_maybe_quoted(rname, f)?;
-                write!(f, "(")?;
-                separated_display(rargs, ", ", f)?;
-                write!(f, "))")
-            }
+            } => alloc
+                .text("package")
+                .append(alloc.space())
+                .append(alloc.text("("))
+                .append(alloc.line_())
+                .append(print_utils::maybe_quoted(lname))
+                .append(alloc.intersperse(largs, ", ").parens())
+                .append(alloc.line())
+                .append(alloc.text("-*"))
+                .append(alloc.line())
+                .append(print_utils::maybe_quoted(rname))
+                .append(alloc.intersperse(rargs, ", ").parens())
+                .append(alloc.text(")")),
             SepAssert {
                 assertion,
                 existentials,
             } => {
-                write!(f, "sep_assert ({})", assertion)?;
-                display_binders(f, existentials)
+                let assert_doc = alloc
+                    .text("sep_assert")
+                    .append(alloc.space())
+                    .append(assertion.pretty(alloc).parens());
+
+                if !existentials.is_empty() {
+                    assert_doc
+                        .append(alloc.space())
+                        .append(alloc.text("[bind:"))
+                        .append(alloc.space())
+                        .append(alloc.intersperse(existentials, ", "))
+                        .append(alloc.text("]"))
+                } else {
+                    assert_doc
+                }
             }
-            _ => panic!("Can't write slcmd yet: {:#?}", self),
+            GUnfold(pred_name) => alloc
+                .text("gunfold")
+                .append(alloc.space())
+                .append(alloc.text(pred_name)),
+            Invariant {
+                assertion,
+                existentials,
+            } => {
+                let invariant_doc = alloc
+                    .text("invariant")
+                    .append(alloc.space())
+                    .append(assertion.pretty(alloc).parens());
+
+                if !existentials.is_empty() {
+                    invariant_doc
+                        .append(alloc.space())
+                        .append(alloc.text("[bind:"))
+                        .append(alloc.space())
+                        .append(alloc.intersperse(existentials, ", "))
+                        .append(alloc.text("]"))
+                } else {
+                    invariant_doc
+                }
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use proc_macro::Punct;
 use proc_macro2::Ident;
 use quote::ToTokens;
 use syn::{
@@ -16,9 +17,7 @@ pub enum ParamMode {
 
 #[derive(Clone)]
 pub struct PredParamS {
-    pub name: Ident,
-    pub colon_token: Token![:],
-    pub ty: Type,
+    pub pat_ty: PatType,
     pub mode: ParamMode,
 }
 
@@ -30,11 +29,10 @@ pub enum PredParam {
 
 impl Debug for PredParamS {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#}: ", self.name)?;
         if let ParamMode::In = self.mode {
             write!(f, "+")?;
         }
-        write!(f, "{}", self.ty.to_token_stream())?;
+        write!(f, "{:#?}: ", &self.pat_ty)?;
         Ok(())
     }
 }
@@ -143,19 +141,21 @@ impl TryFrom<FnArg> for PredParam {
                     }
                     _ => ((*ty).clone(), ParamMode::Out),
                 };
-                let name = Self::ident_pat(&pat)?;
                 Ok(PredParam::S(PredParamS {
-                    name,
-                    ty,
+                    pat_ty: PatType {
+                        attrs,
+                        pat,
+                        ty: Box::new(ty),
+                        colon_token,
+                    },
                     mode,
-                    colon_token,
                 }))
             }
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Predicate {
     pub(crate) vis: Visibility,
     pub(crate) attributes: Vec<Attribute>,
@@ -166,6 +166,18 @@ pub struct Predicate {
 }
 
 impl Predicate {
+    pub fn take_generics(&mut self) -> Generics {
+        let mut to_swap = Generics {
+            lt_token: None,
+            params: Punctuated::new(),
+            gt_token: None,
+            where_clause: None,
+        };
+
+        std::mem::swap(&mut self.generics, &mut to_swap);
+        to_swap
+    }
+
     fn validate_sig(sig: &Signature) -> syn::Result<()> {
         if let Some(token) = &sig.constness {
             return Err(Error::new(token.span, "const on predicate"));

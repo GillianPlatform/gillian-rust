@@ -5,20 +5,12 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 lemma test_lemma(t_1)[[ (#t_1 == {{ #a, #b }}) * (#b i<# #a) ]]
-[[emp]]
-
-[*
-if (true) then {} else {}
-*]
-
+[[ emp ]][* if (true) then {} else {} *]
 
 lemma test_lemma2(t_1)[[ (#t_1 == {{ #a, #b }}) * (#b i<# #a) ]]
-[[emp]]
-
-[*
-sep_assert ((#x == #a) * (#y == #b))[bind: #x,#y];
+[[
+  emp
+]][* sep_assert ((#x == #a) * (#y == #b))[bind: #x,#y];
 sep_assert ((#y i<# #x));
-if (not ((#x) i<= (0i))) then {} else {}
-*]
-
+if (not ((#x) i<= (0i))) then {} else {} *]
 

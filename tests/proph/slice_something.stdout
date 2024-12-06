@@ -38,8 +38,12 @@ proc test(pLft_0, x) {
 };
 
 spec test2(x)
-[[ <value>(l-nth(#x, 0i), l-nth(#x, 1i), "u32"; #m) * "<u32 as gilogic::prophecies::Ownable>::own"(#m, #m) * types(#m: Int) * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }}) * (x == #x) ]]
-[["<u32 as gilogic::prophecies::Ownable>::own"(ret, #m)]]
+[[ <value>(l-nth(#x, 0i), l-nth(#x, 1i), "u32"; #m)
+  * "<u32 as gilogic::prophecies::Ownable>::own"(#m, #m)
+  * types(#m: Int)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#x == {{ #lvar_0, #lvar_1 }})
+  * (x == #x) ]]
+[[ "<u32 as gilogic::prophecies::Ownable>::own"(ret, #m) ]]
 normal
 
 proc test2(x) {

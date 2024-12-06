@@ -3,15 +3,39 @@ use std::collections::HashMap;
 use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Ident, Span};
 use syn::{
-    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, ReturnType, Token, TraitItemFn, Type
+    braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
+    ExprPath, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type,
 };
 
 use quote::{format_ident, quote};
 
 use crate::{
-    kw, subst::VarSubst, AsrtFragment, AsrtPredCall, Formula, LvarDecl, Observation, SpecEnsures,
-    Specification, Term,
+    kw, subst::VarSubst, utils::peel_mut_ref, AsrtFragment, AsrtPredCall, Formula, LvarDecl,
+    Observation, SpecEnsures, Specification, Term, TermPath,
 };
+
+fn term_ident(term: &Term) -> syn::Result<Ident> {
+    if let Term::Path(TermPath {
+        inner: ExprPath {
+            attrs,
+            qself: None,
+            path,
+        },
+    }) = term
+    {
+        if !attrs.is_empty()
+            || path.leading_colon.is_some()
+            || path.segments.len() != 1
+            || !path.segments[0].arguments.is_none()
+        {
+            return Err(syn::Error::new(term.span(), "Expected a path term"));
+        }
+
+        Ok(path.segments[0].ident.clone())
+    } else {
+        Err(syn::Error::new(term.span(), "Expected a path term"))
+    }
+}
 
 pub struct ExtractLemma {
     // forall x, y.
@@ -20,11 +44,11 @@ pub struct ExtractLemma {
     // new model mp.
     pub models: Option<(
         kw::model,
-        Ident, // Identifier of `m`
+        LvarDecl, // Identifier of `m`
         Token![.],
         kw::extract,
         kw::model,
-        Ident, // Identifier of `mp`
+        LvarDecl, // Identifier of `mp`
         Token![.],
     )>,
     // assuming { F }
@@ -77,8 +101,9 @@ impl ExtractLemma {
                 "extract_lemma must return Prophecy<K> for some K when used with prophecies",
             )?;
             let new_model_ty: Type = parse_quote! { (#prophecy_ty, #prophecy_ty) };
+            // panic!("{new_model:?}");
 
-            rvars.push(LvarDecl::from((new_model.clone(), new_model_ty)));
+            rvars.push(LvarDecl::from((new_model.ident.clone(), new_model_ty)));
             let fresh_prophecy = format_ident!("ret");
             let extract_span = extract.span();
             let ptr_arg_extracted_mut = extract.args_mut().first_mut().ok_or_else(|| {
@@ -131,16 +156,16 @@ impl ExtractLemma {
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model.to_string(), old_proph_val_var.clone());
-                tbl.insert(new_model.to_string(), new_proph_val_var);
+                tbl.insert(model.ident.to_string(), old_proph_val_var.clone());
+                tbl.insert(new_model.ident.to_string(), new_proph_val_var);
                 tbl
             };
             prophecise.subst(&subst);
 
             let subst = {
                 let mut tbl = HashMap::new();
-                tbl.insert(model.to_string(), old_proph_val_var);
-                tbl.insert(new_model.to_string(), new_proph_old_val_var);
+                tbl.insert(model.ident.to_string(), old_proph_val_var);
+                tbl.insert(new_model.ident.to_string(), new_proph_old_val_var);
                 tbl
             };
             prophecise_past.subst(&subst);
@@ -288,18 +313,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         }
     };
 
-    let encoded_el = match extract_lemma.encode(ref_ty, ret_ty.clone()) {
-        Ok(stream) => stream,
-        Err(error) => return error.to_compile_error().into(),
-    };
-
-    let id = uuid::Uuid::new_v4().to_string();
-    let name = {
-        let ident = item.sig.ident.to_string();
-        let name_with_uuid = format!("{}_extract_lemma_{}", ident, id).replace('-', "_");
-        format_ident!("{}", name_with_uuid, span = Span::call_site())
-    };
-    let name_string = name.to_string();
+    let name = item.sig.ident.clone();
 
     let spec_id = uuid::Uuid::new_v4().to_string();
     let spec_name = {
@@ -314,13 +328,90 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let generics = &item.sig.generics;
 
     // We need to build the extract lemma term before we add ret to the inputs.
-    let extract_lemma_term = quote! {
-        #[cfg(gillian)]
-        #[rustc_diagnostic_item=#name_string]
-        #[gillian::decl::extract_lemma]
-        fn #name #generics (#inputs) -> gilogic::RustAssertion {
-            // gilogic::__stubs::emp()
-            #encoded_el
+    let extract_lemma_term = {
+        let proof_name = format_ident!("{}___proof", name);
+        let from_args = extract_lemma.from.1.args().clone();
+
+        let mut extract_args = extract_lemma.extract.1.args().clone();
+        if extract_args.len() < 3 {
+            // It's an own predicate and not a frozen own predicate, we add the unit parameter.
+            extract_args.push(parse_quote!(()));
+        }
+
+        let new_new_model = format_ident!("new_new_model");
+        let new_model = extract_args[1].clone();
+
+        let mut wand_pre_args = extract_args.clone();
+        wand_pre_args[1] = parse_quote! { #new_new_model };
+
+        let assuming = if let Some((_, term)) = &extract_lemma.assuming {
+            Some(quote! { (#term) * })
+        } else {
+            None
+        };
+
+        let (_, term) = &extract_lemma
+            .prophecise
+            .as_ref()
+            .expect("need prophecise to be set");
+
+        let (_, model, _, _, _, _new_model, _) = extract_lemma
+            .models
+            .as_ref()
+            .expect("need models to be set");
+        let prophecise_check = Some(quote! { * (#model == #term) });
+
+        let mut subst = HashMap::new();
+        subst.insert(_new_model.ident.to_string(), new_new_model.clone());
+        let mut wand_proph = term.clone();
+        wand_proph.subst(&subst);
+        let mut wand_post_args = from_args.clone();
+        wand_post_args[1] = wand_proph;
+
+        let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
+            let mut lvars = lvars.clone();
+            if let Some((_, model, _, _, _, new_model, _)) = &extract_lemma.models {
+                lvars.push(LvarDecl::from(model.clone()));
+                lvars.push(LvarDecl::from(new_model.clone()));
+            }
+            lvars.push(parse_quote! { #new_new_model});
+
+            let forall = quote! { #forall #lvars #dot };
+            Some(forall)
+        } else {
+            Some(quote! { forall #new_new_model .})
+        };
+
+        quote! {
+            #[gilogic::macros::lemma]
+            #[gilogic::macros::specification(
+                    #forall
+                    requires {
+                        #assuming
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
+                    }
+                    ensures {
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
+                        #prophecise_check
+                        * gilogic::__stubs::wand(
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
+                            // Ici dans from_args, il faut remplacer model par
+                            // prophecise[new_model / NEW_new_model]
+                            // Ownable::own(p, m, frozen)
+                            // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
+                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                        )
+                    }
+            )]
+            #[gillian::timeless]
+            fn #proof_name #generics (#inputs) {
+                // |#inputs| {
+                    ::gilogic :: package!(
+                      gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
+                    , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                    );
+                // };
+            }
         }
     };
 
@@ -348,7 +439,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         }
 
         #(#item_attrs)*
-        #[gillian::extract_lemma=#name_string]
         #[gillian::spec=#spec_name_string]
         #[allow(unsused_variables)]
         #[gillian::trusted]

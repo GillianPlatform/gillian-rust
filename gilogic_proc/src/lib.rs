@@ -6,13 +6,11 @@
 
 extern crate proc_macro;
 use ::quote::ToTokens;
-use assert_bind::AssertBind;
 use proc_macro::TokenStream as TokenStream_;
 use syn::parse_macro_input;
 
 pub(crate) mod visitors;
 
-mod assert_bind;
 mod borrows;
 mod extract_lemmas;
 mod folding;
@@ -46,20 +44,9 @@ pub fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro_attribute]
-pub fn with_freeze_lemma_for_mutref_no_pcy(
-    args: TokenStream_,
-    input: TokenStream_,
-) -> TokenStream_ {
-    match frozen_borrow::FreezeMutRefOwn::parse(args, input) {
-        Ok(freeze_mut_own_ref) => freeze_mut_own_ref.to_token_stream().into(),
-        Err(err) => err.to_compile_error().into(),
-    }
-}
-
-#[proc_macro_attribute]
-pub fn with_freeze_lemma_for_mutref_pcy(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
-    match frozen_borrow_pcy::FreezeMutRefOwn::parse(args, input) {
-        Ok(freeze_mut_own_ref) => freeze_mut_own_ref.to_token_stream().into(),
+pub fn with_freeze_lemma(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    match frozen_borrow::FreezeOwn::parse(args, input) {
+        Ok(freeze_own) => freeze_own.to_token_stream().into(),
         Err(err) => err.to_compile_error().into(),
     }
 }
@@ -87,14 +74,6 @@ pub fn close_borrow(input: TokenStream_) -> TokenStream_ {
 #[proc_macro]
 pub fn assertion(input: TokenStream_) -> TokenStream_ {
     match parse_macro_input!(input as Assertion).encode() {
-        Ok(stream) => stream.into(),
-        Err(error) => error.to_compile_error().into(),
-    }
-}
-
-#[proc_macro]
-pub fn assert_bind(input: TokenStream_) -> TokenStream_ {
-    match parse_macro_input!(input as AssertBind).encode() {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }

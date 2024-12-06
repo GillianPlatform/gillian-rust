@@ -2,6 +2,7 @@ open Gillian.Utils.Prelude
 open Gillian.Gil_syntax
 module DR = Gillian.Monadic.Delayed_result
 module Delayed = Gillian.Monadic.Delayed
+module Tyenv = Common.Tyenv
 open Delayed.Syntax
 
 type knowledge = { size : Expr.t (* align: Expr.t; *) } [@@deriving yojson]
@@ -49,6 +50,24 @@ let rec size_of ~lk ty =
   | Array { length; ty } ->
       let+ size_ty, lk = size_of ~lk ty in
       (Expr.Infix.(size_ty * length), lk)
+  | Adt (name, subst) -> (
+      match Tyenv.adt_def name with
+      | Enum _ ->
+          let size = Expr.LVar (LVar.alloc ()) in
+          let learned =
+            let open Formula.Infix in
+            [ Expr.zero_i #<= size ]
+          in
+          Delayed.return ~learned (size, Map.add ty { size } lk)
+      | Struct (_, fields) ->
+          let+ total_size, lk =
+            Delayed_utils.Delayed_list.fold_with_lk ~lk
+              (fun ~lk acc (_, ty) ->
+                let+ size_ty, lk = size_of ~lk (Ty.subst_params ~subst ty) in
+                (Expr.Infix.(size_ty + acc), lk))
+              Expr.zero_i fields
+          in
+          (total_size, Map.add ty { size = total_size } lk))
   | _ -> Fmt.failwith "size_of: not implemented for %a yet" Ty.pp ty
 
 let reinterpret_offset ~lk ~from_ty ~to_ty ofs =
