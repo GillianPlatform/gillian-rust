@@ -11,6 +11,7 @@ use syn::parse_macro_input;
 
 pub(crate) mod visitors;
 
+mod assert_bind;
 mod borrows;
 mod extract_lemmas;
 mod folding;
@@ -83,4 +84,12 @@ pub fn assertion(input: TokenStream_) -> TokenStream_ {
 pub fn assertion_test(input: TokenStream_) -> TokenStream_ {
     dbg!(parse_macro_input!(input as Assertion));
     panic!("stop");
+}
+
+#[proc_macro]
+pub fn assert_bind(input: TokenStream_) -> TokenStream_ {
+    match parse_macro_input!(input as AssertBind).encode() {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
