@@ -314,7 +314,7 @@ pub struct PVartoLVar;
 impl GilVisitorMut for PVartoLVar {
     fn visit_expr(&mut self, expr: &mut Expr) {
         match expr {
-            Expr::PVar(s) => *expr = Expr::LVar(s.clone()),
+            Expr::PVar(s) => *expr = Expr::LVar(format!("#{s}")),
             _ => self.super_expr(expr),
         }
     }

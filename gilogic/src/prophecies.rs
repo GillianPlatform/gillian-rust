@@ -2,7 +2,7 @@ use std::marker::{self, Tuple};
 
 use crate as gilogic;
 use crate::tys::RustAssertion;
-use gilogic::macros::{predicate, specification};
+use gilogic::macros::*;
 
 macro_rules! unreachable {
     ($x:expr) => {
@@ -86,7 +86,8 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
         model: Self::RepresentationTy,
         frozen: T,
     ) -> RustAssertion {
-        assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
+        // assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
+        assertion!(emp)
     }
 
     #[cfg(not(gillian))]

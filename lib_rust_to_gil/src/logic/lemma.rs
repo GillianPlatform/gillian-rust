@@ -142,7 +142,6 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
 
-        // eprintln!("{:?}", sig.args().collect::<Vec<_>>());
         let params: Vec<_> = sig.args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
@@ -212,8 +211,8 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     }))
                 }
                 ProofStep::AssertBind { assertion, vars } => {
+                    eprintln!("About to compile assertbind: {:?}", assertion);
                     let assertion = pred_ctx.compile_assertion(assertion);
-
                     gil_proof.push(LCmd::SL(SLCmd::SepAssert {
                         assertion,
                         existentials: vars.iter().map(|v| format!("#{v}")).collect(),
