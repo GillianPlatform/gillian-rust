@@ -1,0 +1,57 @@
+#begin_init_data
+{"Node":["Struct","ReprRust",[["next",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["prev",["Adt",["Option",[["Adt",["NonNull",[["Adt",["Node",[["Param",0]]]]]]]]]]],["element",["Param",0]]]],"NonNull":["Struct","ReprRust",[["pointer",["Ptr",{"mut":false,"ty":["Param",0]}]]]],"Option":["Enum",[["None",[]],["Some",[["Param",0]]]]]}
+#end_init_data
+
+import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
+
+pred "dll_seg::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
+  (#head == #tail_next) * (#tail == #head_prev) * (#len == 0i)
+  * types(#len: Int)
+  * (len == #len)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head), (#head == {{ 1i, {{ #hptr }} }})
+  * types(#lvar_0: Obj, #lvar_1: List) * ({{ {{ #lvar_0, #lvar_1 }} }} == #hptr)
+  * <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ pty_T0 }} }}; {{ #head_next, #head_prev, #element }})
+  * "<T as gilogic::Ownable>::own"(pty_T0, #element)
+  * "dll_seg::<T>"(pty_T0, #head_next, #tail_next, #tail, #head, ((#len) i- (1i)))
+  * types(#len: Int)
+  * (len == #len)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head);
+
+
+pred "dll_seg_r::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
+  (#head == #tail_next) * (#tail == #head_prev) * (#len == 0i)
+  * types(#len: Int)
+  * (len == #len)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head), (#tail == {{ 1i, {{ #tptr }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * ({{ {{ #lvar_2, #lvar_3 }} }} == #tptr)
+  * <value>(#lvar_2, #lvar_3, {{ "adt", "Node", {{ pty_T0 }} }}; {{ #tail_next, #tail_prev, #element }})
+  * "<T as gilogic::Ownable>::own"(pty_T0, #element)
+  * "dll_seg_r::<T>"(pty_T0, #head, #tail, #tail_prev, #head_prev, ((#len) i- (1i)))
+  * types(#len: Int)
+  * (len == #len)
+  * (head_prev == #head_prev)
+  * (tail == #tail)
+  * (tail_next == #tail_next)
+  * (head == #head);
+
+
+abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
+
+
+lemma "dll_seg_l_to_r::<T>"(head, tail_next, tail, head_prev, len)[[ "dll_seg::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len) ]]
+[["dll_seg_r::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len)]]
+
+[*
+sep_assert ("dll_seg::<T>"(pty_T0, #head, #tail_next, #tail, #head_prev, #len))[bind: #len]
+*]
+
+
