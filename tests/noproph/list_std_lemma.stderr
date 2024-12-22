@@ -1,4 +1,30 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+warning: unused variable: `next`
+  --> ../tests/noproph/list_std_lemma.rs:72:5
+   |
+72 |     next: Option<NonNull<Node<T>>>,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `hptr`
+  --> ../tests/noproph/list_std_lemma.rs:97:22
+   |
+97 |         assert_bind!(hptr, head_next, head_prev, element |
+   |                      ^^^^ help: if this is intentional, prefix it with an underscore: `_hptr`
+
+warning: unused variable: `head_prev`
+  --> ../tests/noproph/list_std_lemma.rs:97:39
+   |
+97 |         assert_bind!(hptr, head_next, head_prev, element |
+   |                                       ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
+
+warning: unused variable: `element`
+  --> ../tests/noproph/list_std_lemma.rs:97:50
+   |
+97 |         assert_bind!(hptr, head_next, head_prev, element |
+   |                                                  ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_element`
+
 warning: fields `head`, `tail`, and `len` are never read
   --> ../tests/noproph/list_std_lemma.rs:10:5
    |
@@ -25,6 +51,6 @@ warning: fields `next`, `prev`, and `element` are never read
 19 |     element: T,
    |     ^^^^^^^
 
-warning: 2 warnings emitted
+warning: 6 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

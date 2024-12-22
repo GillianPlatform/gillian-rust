@@ -1,7 +1,7 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{macros::*, unfold, Ownable};
+use gilogic::{fold, macros::*, unfold, Ownable};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -30,6 +30,7 @@ fn dll_seg<T: Ownable>(
     assertion!((head == tail_next) * (tail == head_prev) * (len == 0));
     assertion!(|hptr, head_next, head_prev, element|
         (head == Some(hptr)) *
+        (len > 0) *
         (hptr -> Node { next: head_next, prev: head_prev, element }) *
         element.own() *
         dll_seg(head_next, tail_next, tail, head, len - 1)
@@ -46,12 +47,32 @@ fn dll_seg_r<T: Ownable>(
 ) {
     assertion!((head == tail_next) * (tail == head_prev) * (len == 0));
     assertion!(|tptr, tail_next, tail_prev, element|
+        (len > 0) *
         (tail == Some(tptr)) *
         (tptr -> Node { next: tail_next, prev: tail_prev, element }) *
         element.own() *
         dll_seg_r(head, tail, tail_prev, head_prev, len - 1)
     )
 }
+
+#[lemma]
+#[gillian::trusted]
+#[specification(
+    forall ptr, next, prev, element, len.
+    requires {
+        (x == Some(ptr)) * (ptr -> Node { next, prev, element }) * element.own() *
+        dll_seg_r(next, tail_next, tail, x, len)
+    }
+    ensures {
+        dll_seg_r(x, tail_next, tail, prev, len + 1)
+    }
+)]
+fn dll_seg_r_appened_left<T: Ownable>(
+    x: Option<NonNull<Node<T>>>,
+    next: Option<NonNull<Node<T>>>,
+    tail_next: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
+);
 
 #[lemma]
 #[specification(
@@ -69,6 +90,15 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
 ) {
-    // assert_bind!(len | dll_seg(head, tail_next, tail, head_prev, len));
     unfold!(dll_seg(head, tail_next, tail, head_prev, len));
+    if len == 0 {
+        fold!(dll_seg_r(head, tail_next, tail, head_prev, len));
+    } else {
+        assert_bind!(hptr, head_next, head_prev, element |
+            (head == Some(hptr)) *
+            (hptr -> Node { next: head_next, prev: head_prev, element})
+        );
+        dll_seg_l_to_r(head_next, tail_next, tail, head);
+        dll_seg_r_appened_left(head, head_next, tail_next, tail);
+    }
 }

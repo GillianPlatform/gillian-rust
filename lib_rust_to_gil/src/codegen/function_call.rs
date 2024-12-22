@@ -53,7 +53,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                 CallKind::Unfold(name)
             }
             None if crate::utils::attrs::is_lemma(did, self.tcx()) => {
-                let lemma_name = self.global_env.just_pred_name_with_args(did, substs);
+                let lemma_name = self.global_env.just_def_name_with_args(did, substs);
                 CallKind::Lemma(lemma_name)
             }
             None if self.tcx().is_constructor(did) => {

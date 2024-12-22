@@ -1,4 +1,5 @@
 use super::gilsonite::{GilsoniteBuilder, ProofStep};
+use super::predicate::CallKind;
 use super::utils::get_thir;
 use super::LogicItem;
 use crate::logic::gilsonite::{self, Assert};
@@ -71,7 +72,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
 
     fn lemma_name(&self) -> String {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
-        self.global_env.just_pred_name_with_args(self.did, args)
+        self.global_env.just_def_name_with_args(self.did, args)
     }
 
     fn sig(&mut self) -> LemmaSig {
@@ -84,15 +85,13 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         }
     }
 
-    pub(crate) fn compile(mut self) -> Vec<LogicItem> {
-        let mut res = Vec::with_capacity(1 + 3 * (self.is_extract_lemma as usize));
-
-        if self.is_extract_lemma {
-            // let defs = self.compile_extract_lemma(sig.name.clone(), self.did);
-            // res.extend(defs);
+    pub(crate) fn compile(mut self) -> Lemma {
+        let name = self.lemma_name();
+        self.global_env_mut().mark_as_compiled(name.clone());
+        let lemma = if self.is_extract_lemma {
+            fatal!(self, "Extract lemma needs to be properly handled")
         } else if self.trusted {
             let sig = self.sig();
-            let name = self.lemma_name();
 
             // We set temporary hyp and conclusion, which we be replaced later by the specs
             let mut lemma = Lemma {
@@ -116,25 +115,24 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             lemma.hyp = ss.pre;
             lemma.concs = ss.posts;
 
-            res.push(LogicItem::Lemma(lemma));
+            lemma
         } else {
             let (thir, expr) = get_thir!(self, self.did);
             let ctx = GilsoniteBuilder::new(thir.clone(), self.tcx());
 
             let proof = ctx.build_lemma_proof(expr);
 
-            res.push(self.compile_proof(proof));
-            // fatal!(self, "Can't compile untrusted lemmas yet")
-        }
-        res
+            self.compile_proof(proof)
+        };
+        lemma
     }
 
-    fn compile_proof(&mut self, proof: Vec<ProofStep<'tcx>>) -> LogicItem {
+    fn compile_proof(&mut self, proof: Vec<ProofStep<'tcx>>) -> Lemma {
         let args = GenericArgs::identity_for_item(self.tcx(), self.did());
 
         let mut temp_gen = TempGenerator::new();
 
-        let name = self.global_env.just_pred_name(self.did);
+        let name = self.global_env.just_def_name(self.did);
 
         let mut pred_ctx =
             PredCtx::new_with_identity_args(self.global_env, &mut temp_gen, self.did);
@@ -142,7 +140,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         let gil_proof = Self::compile_proof_steps(&mut pred_ctx, proof);
         let mut sig = build_signature(self.global_env, self.did, args, &mut temp_gen);
 
-        let params: Vec<_> = sig.args().map(|a| a.name().to_string()).collect();
+        let params: Vec<_> = sig.physical_args().map(|a| a.name().to_string()).collect();
 
         let proof_lemma = Lemma {
             name,
@@ -154,7 +152,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             existentials: vec![],
         };
 
-        LogicItem::Lemma(proof_lemma)
+        proof_lemma
     }
 
     fn compile_proof_steps(
@@ -166,13 +164,13 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             match s {
                 ProofStep::Package { pre, post } => {
                     gil_proof.push(LCmd::SL(SLCmd::Package {
-                        lhs: pred_ctx.compile_pred_call(pre),
+                        lhs: pred_ctx.compile_call(pre, CallKind::Pred),
 
-                        rhs: pred_ctx.compile_pred_call(post),
+                        rhs: pred_ctx.compile_call(post, CallKind::Pred),
                     }));
                 }
                 ProofStep::Unfold { pred } => {
-                    let (pred_name, parameters) = pred_ctx.compile_pred_call(pred);
+                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallKind::Pred);
                     gil_proof.push(LCmd::SL(SLCmd::Unfold {
                         pred_name,
                         parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
@@ -181,7 +179,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     }))
                 }
                 ProofStep::Fold { pred } => {
-                    let (pred_name, parameters) = pred_ctx.compile_pred_call(pred);
+                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallKind::Pred);
                     gil_proof.push(LCmd::SL(SLCmd::Fold {
                         pred_name,
                         parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
@@ -202,8 +200,10 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                         else_branch,
                     });
                 }
-                ProofStep::Call { pred } => {
-                    let (lemma_name, parameters) = pred_ctx.compile_pred_call(pred);
+                ProofStep::Call { lemma_call } => {
+                    let (lemma_name, parameters) =
+                        pred_ctx.compile_call(lemma_call, CallKind::Lemma);
+                    let parameters = parameters.into_iter().map(|p| p.pvar_to_lvar()).collect();
                     gil_proof.push(LCmd::SL(SLCmd::ApplyLem {
                         lemma_name,
                         parameters,

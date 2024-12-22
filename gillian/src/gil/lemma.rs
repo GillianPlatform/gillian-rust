@@ -55,7 +55,7 @@ where
                 .intersperse(p, ";\n")
                 .group()
                 .nest(2)
-                .enclose("[* ", " *]"),
+                .enclose("[*\n", "\n*]"),
             None => alloc.nil(),
         };
 

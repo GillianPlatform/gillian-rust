@@ -26,6 +26,11 @@ pub(crate) struct PredSig {
     name: String,
 }
 
+pub enum CallKind {
+    Pred,
+    Lemma,
+}
+
 pub(crate) struct PredCtx<'tcx, 'genv> {
     param_env: ParamEnv<'tcx>,
     global_env: &'genv mut GlobalEnv<'tcx>,
@@ -134,7 +139,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub fn pred_name(&self) -> String {
         self.global_env
-            .just_pred_name_with_args(self.body_id, self.args)
+            .just_def_name_with_args(self.body_id, self.args)
     }
 
     fn guard(&self) -> Option<Assertion> {
@@ -272,9 +277,10 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         assert
     }
 
-    pub fn compile_pred_call(
+    pub fn compile_call(
         &mut self,
         call: gilsonite::AssertPredCall<'tcx>,
+        kind: CallKind,
     ) -> (String, Vec<Expr>) {
         let AssertPredCall {
             def_id,
@@ -283,9 +289,14 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         } = call;
         let param_env = self.param_env;
 
-        let (name, def_id, substs) = self
-            .global_env_mut()
-            .resolve_predicate_param_env(param_env, def_id, substs);
+        let (name, def_id, substs) = match kind {
+            CallKind::Pred => self
+                .global_env_mut()
+                .resolve_predicate_param_env(param_env, def_id, substs),
+            CallKind::Lemma => self
+                .global_env_mut()
+                .resolve_lemma_param_env(param_env, def_id, substs),
+        };
 
         let ty_params = param_collector::collect_params_on_args(substs)
             .with_consider_arguments(args.iter().map(|id| id.ty));
@@ -326,7 +337,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .star(self.compile_assertion_inner(*right)),
             AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula(formula)),
             AssertKind::Call(call) => {
-                let (name, params) = self.compile_pred_call(call);
+                let (name, params) = self.compile_call(call, CallKind::Pred);
                 Assertion::Pred { name, params }
             }
             AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
@@ -387,8 +398,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     fatal2!(self.global_env().tcx(), "rhs of wand needs to be call")
                 };
 
-                let lhs = self.compile_pred_call(call);
-                let rhs = self.compile_pred_call(call2);
+                let lhs = self.compile_call(call, CallKind::Pred);
+                let rhs = self.compile_call(call2, CallKind::Pred);
 
                 Assertion::wand(lhs, rhs)
             }
@@ -420,7 +431,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
     pub(crate) fn compile_abstract(mut self) -> Pred {
         let name = self.pred_name();
-        self.global_env_mut().mark_pred_as_compiled(name.clone());
+        self.global_env_mut().mark_as_compiled(name.clone());
         let params: Vec<_> = self
             .sig
             .args
@@ -508,7 +519,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let pred = self.global_env.predicate(self.body_id).clone();
         let definitions = self.compile_predicate_body(pred);
 
-        self.global_env_mut().mark_pred_as_compiled(name.clone());
+        self.global_env_mut().mark_as_compiled(name.clone());
 
         self.finalize_pred(name, definitions)
     }

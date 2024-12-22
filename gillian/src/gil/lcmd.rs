@@ -38,9 +38,15 @@ where
                     "if ",
                     guard.pretty(alloc).parens(),
                     " then ",
-                    alloc.intersperse(then_branch, alloc.line()).braces(),
+                    alloc
+                        .intersperse(then_branch, ";\n")
+                        .enclose(" ", " ")
+                        .braces(),
                     " else ",
-                    alloc.intersperse(else_branch, alloc.line()).braces(),
+                    alloc
+                        .intersperse(else_branch, ";\n")
+                        .enclose(" ", " ")
+                        .braces(),
                 ]
             }
             LCmd::Branch(f) => {

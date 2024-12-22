@@ -1,7 +1,7 @@
 use rustc_middle::ty::{EarlyBinder, ParamEnv};
 
 use crate::logic::gilsonite::Assert;
-use crate::logic::{gilsonite, PredCtx};
+use crate::logic::{gilsonite, LemmaCtx, PredCtx};
 use crate::signature::build_signature;
 use crate::temp_gen::TempGenerator;
 use crate::{prelude::*, temp_gen};
@@ -78,7 +78,7 @@ impl<'tcx> InnerPred<'tcx> {
 
             term.disjuncts[0].1 = inner_asserts;
 
-            let ref_mut = global_env.just_pred_name_with_args(call.def_id, call.substs);
+            let ref_mut = global_env.just_def_name_with_args(call.def_id, call.substs);
             let ref_mut_inner = format!("{}$$inner", ref_mut);
             let mut ctx =
                 PredCtx::new_with_args(global_env, &mut temp_gen, call.def_id, call.substs);
@@ -92,7 +92,7 @@ impl<'tcx> InnerPred<'tcx> {
             pred.guard = None;
             prog.add_pred(pred);
 
-            let base_name = global_env.just_pred_name_with_args(self.did, self.args);
+            let base_name = global_env.just_def_name_with_args(self.did, self.args);
             let body_term = global_env.predicate(self.did).clone();
             let mut ctx = PredCtx::new_with_args(global_env, &mut temp_gen, self.did, self.args);
             let body = ctx.compile_predicate_body(body_term);
@@ -149,6 +149,7 @@ pub(super) enum AutoItem<'tcx> {
     MonoSpec(MonoSpec<'tcx>),
     ParamPred(ParamEnv<'tcx>, Instance<'tcx>),
     MonoPred(ParamEnv<'tcx>, Instance<'tcx>),
+    MonoLemma(ParamEnv<'tcx>, Instance<'tcx>),
     InnerPred(InnerPred<'tcx>),
 }
 
@@ -157,6 +158,13 @@ impl<'tcx> AutoItem<'tcx> {
         match self {
             Self::MonoSpec(mono_spec) => mono_spec.add_to_prog(prog, global_env),
             Self::InnerPred(inner_pred) => inner_pred.add_to_prog(prog, global_env),
+            Self::MonoLemma(param_env, instance) => {
+                let temp_gen = &mut temp_gen::TempGenerator::new();
+                let lemma =
+                    LemmaCtx::new(global_env, instance.def_id(), temp_gen, true, false).compile();
+                prog.add_lemma(lemma);
+            }
+
             Self::ParamPred(param_env, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
                 let pred = PredCtx::new(
@@ -170,10 +178,9 @@ impl<'tcx> AutoItem<'tcx> {
                 prog.add_pred(pred);
             }
             Self::MonoPred(param_env, instance) => {
-                // Otherwise, we just compile the predicate
                 log::trace!(
                     "About to monomorphize predicate : {:?}",
-                    global_env.just_pred_name_instance(instance)
+                    global_env.just_def_name_instance(instance)
                 );
                 if crate::utils::attrs::is_abstract_predicate(instance.def_id(), global_env.tcx()) {
                     let pred = PredCtx::new(
@@ -204,7 +211,7 @@ impl<'tcx> AutoItem<'tcx> {
                         global_env,
                         "MonoPred but I don't know what it is? {:?}, {:?}",
                         instance.def_id(),
-                        global_env.just_pred_name_instance(instance)
+                        global_env.just_def_name_instance(instance)
                     )
                 }
             }

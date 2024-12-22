@@ -177,7 +177,7 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.config.prophecies
     }
 
-    pub fn just_pred_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
+    pub fn just_def_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
         let args: Vec<GenericArg> = args
             .iter()
             .map(|k| match k.unpack() {
@@ -189,16 +189,16 @@ impl<'tcx> GlobalEnv<'tcx> {
         self.tcx.def_path_str_with_args(did, args)
     }
 
-    pub fn just_pred_name(&self, did: DefId) -> String {
+    pub fn just_def_name(&self, did: DefId) -> String {
         let args = GenericArgs::identity_for_item(self.tcx, did);
-        self.just_pred_name_with_args(did, args)
+        self.just_def_name_with_args(did, args)
     }
 
-    pub fn just_pred_name_instance(&self, instance: Instance<'tcx>) -> String {
-        self.just_pred_name_with_args(instance.def_id(), instance.args)
+    pub fn just_def_name_instance(&self, instance: Instance<'tcx>) -> String {
+        self.just_def_name_with_args(instance.def_id(), instance.args)
     }
 
-    pub fn mark_pred_as_compiled(&mut self, pred_name: String) {
+    pub fn mark_as_compiled(&mut self, pred_name: String) {
         self.item_queue.mark_as_done(pred_name);
     }
 
@@ -219,7 +219,29 @@ impl<'tcx> GlobalEnv<'tcx> {
                 (instance, item)
             }
         };
-        let name = self.just_pred_name_instance(instance);
+        let name = self.just_def_name_instance(instance);
+        self.item_queue.push(name.clone(), item);
+        (name, instance.def_id(), instance.args)
+    }
+
+    pub fn resolve_lemma_param_env(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        did: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> (String, DefId, GenericArgsRef<'tcx>) {
+        let (instance, item) = match resolve_candidate(self.tcx, param_env, did, args) {
+            ResolvedImpl::Param => {
+                let instance = Instance::new(did, args);
+                let item = AutoItem::MonoLemma(param_env, instance);
+                (instance, item)
+            }
+            ResolvedImpl::Impl(instance) => {
+                let item = AutoItem::MonoLemma(param_env, instance);
+                (instance, item)
+            }
+        };
+        let name = self.just_def_name_instance(instance);
         self.item_queue.push(name.clone(), item);
         (name, instance.def_id(), instance.args)
     }

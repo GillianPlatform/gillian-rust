@@ -8,7 +8,7 @@ macro_rules! get_thir {
             crate::prelude::fatal!(
                 $s,
                 "non-local predicate {:?}",
-                $s.global_env().just_pred_name($did)
+                $s.global_env().just_def_name($did)
             )
         }));
         match ___thir {

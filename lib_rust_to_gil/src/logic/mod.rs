@@ -13,6 +13,7 @@ mod predicate;
 pub(crate) mod traits;
 pub mod utils;
 
+pub(crate) use lemma::LemmaCtx;
 pub(crate) use predicate::PredCtx;
 
 #[derive(Debug)]
@@ -37,14 +38,15 @@ pub fn compile_logic<'tcx, 'genv>(
 
         vec![LogicItem::Pred(pred)]
     } else if is_lemma(did, tcx) || is_extract_lemma(did, tcx) {
-        lemma::LemmaCtx::new(
+        let lemma = lemma::LemmaCtx::new(
             global_env,
             did,
             temp_gen,
             is_trusted(did, tcx),
             is_extract_lemma(did, tcx),
         )
-        .compile()
+        .compile();
+        vec![LogicItem::Lemma(lemma)]
         // Has to b safe, because we know there is exactly one definition
     } else if is_extract_lemma(did, tcx) {
         log::debug!("Extract lemma needs to be properly handled");
