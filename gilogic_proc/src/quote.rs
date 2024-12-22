@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{extract_lemmas::ExtractLemma, gilogic_syn::*, spec::compile_spec};
 
 impl Formula {
-    fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
+    pub(crate) fn encode_inner(inner: &Term) -> syn::Result<TokenStream> {
         let mut tokens = TokenStream::new();
         match inner {
             Term::Binary(TermBinary { left, op, right }) => match op {
@@ -130,6 +130,11 @@ impl Formula {
             Term::Path(p) => tokens.extend(quote!(
               gilogic::__stubs::equal(#p, true)
             )),
+            Term::Lit(TermLit { lit: Lit::Bool(lb) }) => {
+                let span = lb.span();
+                let val = lb.value;
+                tokens.extend(quote_spanned!(span=> gilogic::__stubs::equal(true, #val)));
+            }
             Term::Lit(l) => tokens.extend(quote! { #l }),
             e => {
                 return Err(Error::new(

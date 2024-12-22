@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use pretty::{DocAllocator, Pretty};
 
-use super::{Assertion, Expr, Literal, Type};
+use super::{
+    visitors::{GilVisitorMut, PVartoLVar},
+    Assertion, Expr, Literal, Type,
+};
 
 #[derive(Debug, Clone)]
 pub enum Formula {
@@ -151,6 +154,11 @@ impl Formula {
 
     pub fn into_asrt(self) -> Assertion {
         self.into()
+    }
+
+    pub fn pvar_to_lvar(mut self) -> Self {
+        PVartoLVar.visit_formula(&mut self);
+        self
     }
 
     pub fn into_expr(self) -> Expr {

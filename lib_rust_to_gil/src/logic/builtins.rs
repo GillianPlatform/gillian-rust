@@ -77,6 +77,7 @@ pub(crate) enum LogicStubs {
     Unfold,
     Fold,
     AssertBind,
+    Assume,
 }
 
 impl LogicStubs {
@@ -140,6 +141,7 @@ impl LogicStubs {
                 "gillian::proof::unfold" => Some(Self::Unfold),
                 "gillian::proof::fold" => Some(Self::Fold),
                 "gillian::proof::assert_bind" => Some(Self::AssertBind),
+                "gillian::proof::assume" => Some(Self::Assume),
                 _ => None,
             }
         })

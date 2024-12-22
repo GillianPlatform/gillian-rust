@@ -217,6 +217,10 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                         existentials: vars.iter().map(|v| format!("#{v}")).collect(),
                     }))
                 }
+                ProofStep::Assume { formula } => {
+                    let formula = pred_ctx.compile_formula(formula).pvar_to_lvar();
+                    gil_proof.push(LCmd::Assume(formula))
+                }
             };
         }
         gil_proof

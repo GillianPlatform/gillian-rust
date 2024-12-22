@@ -47,21 +47,41 @@ pred "dll_seg_r::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
 abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
-lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
+lemma "dll_seg_r_append_left::<T>"(pty_T0, x, next, tail_next, tail)[[
   (#x == {{ 1i, {{ #ptr }} }})
   * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr)
   * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }})
   * "<T as gilogic::Ownable>::own"(#pty_T0, #element)
   * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len)
-  * types(#len: Int)
-  * types(#lvar_8: Obj, #lvar_9: List) * (#ptr == {{ {{ #lvar_8, #lvar_9 }} }})
-  * (tail == #tail)
-  * (tail_next == #tail_next)
-  * (next == #next)
-  * (x == #x)
-  * (pty_T0 == #pty_T0)
 ]]
-[[ "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) ]]
+[[
+  "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i)))
+]][*
+unfold "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #len);
+if (((#len) = (0i))) then { fold "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) } else { sep_assert ((#tail == {{ 1i, {{ #tptr }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * ({{ {{ #lvar_2, #lvar_3 }} }} == #tptr)
+  * <value>(#lvar_2, #lvar_3, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #tail_next, #tail_prev, #ep }})) [bind: #tptr, #tail_prev, #ep];
+apply "dll_seg_r_append_left::<T>"(#pty_T0, #x, #next, #tail, #tail_prev);
+fold "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, ((#len) i+ (1i))) }
+*]
+
+lemma "dll_seg_append_right::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+  * (#tail_next == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr)
+  * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #tail, #element }})
+  * "<T as gilogic::Ownable>::own"(#pty_T0, #element)
+]]
+[[
+  "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, ((#len) i+ (1i)))
+]][*
+unfold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len);
+if (((#len) = (0i))) then { fold "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, ((#len) i+ (1i))) } else { sep_assert ((#head == {{ 1i, {{ #hptr }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * ({{ {{ #lvar_2, #lvar_3 }} }} == #hptr)
+  * <value>(#lvar_2, #lvar_3, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #head_next, #head_prev, #ep }})) [bind: #hptr, #head_next, #ep];
+apply "dll_seg_append_right::<T>"(#pty_T0, #head_next, #tail_next, #tail, #head);
+fold "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, ((#len) i+ (1i))) }
+*]
 
 lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
   "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
@@ -74,6 +94,20 @@ if (((#len) = (0i))) then { fold "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #t
   * types(#lvar_0: Obj, #lvar_1: List) * ({{ {{ #lvar_0, #lvar_1 }} }} == #hptr)
   * <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #head_next, #head_prev, #element }})) [bind: #hptr, #head_next, #head_prev, #element];
 apply "dll_seg_l_to_r::<T>"(#pty_T0, #head_next, #tail_next, #tail, #head);
-apply "dll_seg_r_appened_left::<T>"(#pty_T0, #head, #head_next, #tail_next, #tail) }
+apply "dll_seg_r_append_left::<T>"(#pty_T0, #head, #head_next, #tail_next, #tail) }
+*]
+
+lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+]]
+[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len)
+]][*
+unfold "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len);
+if (((#len) = (0i))) then { fold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #len) } else { sep_assert ((#tail == {{ 1i, {{ #tptr }} }})
+  * types(#lvar_0: Obj, #lvar_1: List) * ({{ {{ #lvar_0, #lvar_1 }} }} == #tptr)
+  * <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #tail_next, #tail_prev, #ep }})) [bind: #tptr, #tail_prev, #ep];
+apply "dll_seg_r_to_l::<T>"(#pty_T0, #head, #tail, #tail_prev, #head_prev);
+apply "dll_seg_append_right::<T>"(#pty_T0, #head, #tail, #tail_prev, #head_prev) }
 *]
 

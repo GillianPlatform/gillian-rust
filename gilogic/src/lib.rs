@@ -14,8 +14,8 @@ pub use tys::RustAssertion;
 
 pub mod macros {
     pub use gilogic_proc::{
-        assert_bind, assertion, assertion_test, borrow, close_borrow, extract_lemma, lemma,
-        open_borrow, predicate, show_safety, specification, with_freeze_lemma,
+        assert_bind, assertion, assertion_test, borrow, close_borrow, extract_lemma, formula,
+        lemma, open_borrow, predicate, show_safety, specification, with_freeze_lemma,
     };
     // pub mod prophecies {
     //     pub use gilogic_proc::with_freeze_lemma_for_mutref_pcy as with_freeze_lemma_for_mutref;

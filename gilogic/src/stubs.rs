@@ -274,3 +274,10 @@ pub fn fold_proof(pre: RustAssertion) -> RustProof {
 pub fn assert_bind<A: Tuple, F: FnOnce<A, Output = RustAssertion>>(f: F) -> A {
     unreachable!()
 }
+
+#[gillian::no_translate]
+#[gillian::builtin]
+#[rustc_diagnostic_item = "gillian::proof::lemma"]
+pub fn assume(_: RustFormula) -> RustProof {
+    unreachable!()
+}

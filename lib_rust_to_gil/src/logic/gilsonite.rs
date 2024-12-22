@@ -338,6 +338,9 @@ pub enum ProofStep<'tcx> {
         vars: Vec<Symbol>,
         assertion: Assert<'tcx>,
     },
+    Assume {
+        formula: Formula<'tcx>,
+    },
 }
 
 #[derive(Debug, Clone, TyDecodable, TyEncodable)]
@@ -556,6 +559,10 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                 Some(LogicStubs::AssertBind) => {
                     let (vars, assertion) = self.build_assert_bind(args[0]);
                     ProofStep::AssertBind { assertion, vars }
+                }
+                Some(LogicStubs::Assume) => {
+                    let formula = self.build_formula(args[0]);
+                    ProofStep::Assume { formula }
                 }
                 Some(stub) => fatal2!(
                     self.tcx,

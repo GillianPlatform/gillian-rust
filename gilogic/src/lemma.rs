@@ -6,6 +6,13 @@ macro_rules! package {
 }
 
 #[macro_export]
+macro_rules! assume {
+    ($t:tt) => {
+        gilogic::__stubs::assume(gilogic::macros::formula!($t))
+    };
+}
+
+#[macro_export]
 macro_rules! unfold {
 	($f:ident ($($x:expr),*)) => {
 		gilogic :: __stubs :: unfold_proof ( $f ($($x),*) )

@@ -81,6 +81,14 @@ pub fn assertion(input: TokenStream_) -> TokenStream_ {
 }
 
 #[proc_macro]
+pub fn formula(input: TokenStream_) -> TokenStream_ {
+    match Formula::encode_inner(&parse_macro_input!(input as Term)) {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
 pub fn assertion_test(input: TokenStream_) -> TokenStream_ {
     dbg!(parse_macro_input!(input as Assertion));
     panic!("stop");
