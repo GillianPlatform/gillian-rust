@@ -1,4 +1,5 @@
 use crate::location_table::LocationTable;
+use crate::signature::anonymous_param_symbol;
 use indexmap::IndexMap;
 use rustc_borrowck::borrow_set::BorrowSet;
 use rustc_borrowck::consumers::PoloniusOutput;
@@ -35,6 +36,7 @@ pub struct GilCtxt<'tcx, 'body> {
     pub location_table: LocationTable,
     pub(crate) global_env: &'body mut GlobalEnv<'tcx>,
     pub(super) activated_borrows: HashSet<RegionVid>,
+    anon_map: HashMap<Local, String>,
 }
 
 impl<'tcx, 'body> HasTyCtxt<'tcx> for GilCtxt<'tcx, 'body> {
@@ -213,6 +215,24 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             &body.local_decls,
             global_env.tcx(),
         );
+
+        let anon_map: HashMap<Local, String> = global_env
+            .tcx()
+            .fn_arg_names(mir.source.def_id())
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, ident)| {
+                if ident.name.as_str().is_empty() {
+                    Some((
+                        Local::from_u32((idx as u32) + 1),
+                        anonymous_param_symbol(idx).to_string(),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         GilCtxt {
             locals_in_memory: locals_in_memory_for_mir(mir),
             gil_temp_counter: 0,
@@ -224,6 +244,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             global_env,
             polonius,
             location_table,
+            anon_map,
             activated_borrows: HashSet::default(),
         }
     }
@@ -252,18 +273,26 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let _source = self.mir().source_scopes.get(*scope);
     }
 
+    // Retrieves the "original" name of a local.
+    // We support two cases: if the input was a single variable defined by the user, then the
+    // `var_debug_info` should contain the variable name.
+    // Otherwise, there is the case where the input was a user pattern (e.g. `fn f((a, b): (i32, i32)) {...}`)
+    // in which case the compiler assigns a single identifier, to which we give a name through `anonymous_param_symbol`.
+    // At creation of the GilCtxt, we initialize an `anon_map` which keeps track of anonymous names, and we retrieve the proper name there.
     pub fn original_name_from_local(&self, local: Local) -> Option<String> {
-        self.mir()
-            .var_debug_info
-            .iter()
-            .find_map(|debug_info| match debug_info.value {
-                VarDebugInfoContents::Place(place)
-                    if place.local == local && place.projection.is_empty() =>
-                {
-                    Some(debug_info.name.to_string())
-                }
-                _ => None,
-            })
+        self.anon_map.get(&local).cloned().or_else(|| {
+            self.mir()
+                .var_debug_info
+                .iter()
+                .find_map(|debug_info| match debug_info.value {
+                    VarDebugInfoContents::Place(place)
+                        if place.local == local && place.projection.is_empty() =>
+                    {
+                        Some(debug_info.name.to_string())
+                    }
+                    _ => None,
+                })
+        })
     }
 
     pub fn name_from_local(&self, local: Local) -> String {

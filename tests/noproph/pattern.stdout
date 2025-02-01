@@ -4,25 +4,12 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
-lemma test_lemma(G_1)[[ (#b i<# #a) ]]
-[[ emp ]][*
-if (true) then {  } else {  }
-*]
-
-lemma test_lemma2(G_1)[[ (#b i<# #a) ]]
-[[ emp ]][*
-sep_assert ((#x == #a)
-  * (#y == #b)) [bind: #x, #y];
-sep_assert ((#y i<# #x));
-if (not ((#x) i<= (0i))) then {  } else {  }
-*]
-
-spec test_fn(G_1)
-[[ (#G_1 == {{ #a, #b }}) * (#b i<# #a) * (G_1 == #G_1) ]]
+spec test(G_1)
+[[ (#G_1 == {{ #a, #b }}) * (G_1 == #G_1) ]]
 [[ emp ]]
 normal
 
-proc test_fn(G_1) {
+proc test(G_1) {
         m_1G_1 := G_1;
         g_0 := m_1G_1;
         m_1G_1 := [alloc]({{ "tuple", {{ "i32", "i32" }} }});
@@ -33,7 +20,7 @@ proc test_fn(G_1) {
         g_4 := [load_value](l-nth(m_1G_1, 0i), l+(l-nth(m_1G_1, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "i32", "i32" }} }} }} }}), "i32", true);
         g_3 := l-nth(g_4, 0i);
         m_3b := g_3;
-        m_0 := {{}};
+        m_0 := 0i;
         g_5 := m_0;
         ret := g_5;
         goto rlab;

@@ -1,5 +1,5 @@
 warning: unused import: `Ownable`
- --> ../tests/noproph/lemma_tests.rs:4:26
+ --> ../tests/noproph/pattern.rs:4:26
   |
 4 | use gilogic::{macros::*, Ownable};
   |                          ^^^^^^^
@@ -8,24 +8,24 @@ warning: unused import: `Ownable`
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 warning: unused variable: `a`
-  --> ../tests/noproph/lemma_tests.rs:34:13
+  --> ../tests/noproph/pattern.rs:10:10
    |
-34 | fn test_fn((a, b): (i32, i32)) {}
-   |             ^ help: if this is intentional, prefix it with an underscore: `_a`
+10 | fn test((a, b): (i32, i32)) -> i32 {
+   |          ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `b`
-  --> ../tests/noproph/lemma_tests.rs:34:16
+  --> ../tests/noproph/pattern.rs:10:13
    |
-34 | fn test_fn((a, b): (i32, i32)) {}
-   |                ^ help: if this is intentional, prefix it with an underscore: `_b`
+10 | fn test((a, b): (i32, i32)) -> i32 {
+   |             ^ help: if this is intentional, prefix it with an underscore: `_b`
 
-warning: function `test_fn` is never used
-  --> ../tests/noproph/lemma_tests.rs:34:4
+warning: function `test` is never used
+  --> ../tests/noproph/pattern.rs:10:4
    |
-34 | fn test_fn((a, b): (i32, i32)) {}
-   |    ^^^^^^^
+10 | fn test((a, b): (i32, i32)) -> i32 {
+   |    ^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 

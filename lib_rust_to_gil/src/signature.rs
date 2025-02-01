@@ -233,7 +233,7 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
     }
 
     /// Return a gil spec for a procedure corresponding to this signature
-    pub fn to_gil_spec(mut self, ctx: &mut GlobalEnv<'tcx>, name: String) -> Option<Spec> {
+    pub fn into_gil_spec(mut self, ctx: &mut GlobalEnv<'tcx>, name: String) -> Option<Spec> {
         let (pre, trusted) = self.full_pre(ctx)?;
 
         let sspec = SingleSpec {

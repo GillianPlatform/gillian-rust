@@ -26,7 +26,7 @@ impl<'tcx> MonoSpec<'tcx> {
     fn add_to_prog(self, prog: &mut Prog, global_env: &mut GlobalEnv<'tcx>) {
         let mut temp_gen = TempGenerator::new();
         let sig = build_signature(global_env, self.did, self.args, &mut temp_gen);
-        let spec = sig.to_gil_spec(global_env, self.name).unwrap();
+        let spec = sig.into_gil_spec(global_env, self.name).unwrap();
         prog.add_only_spec(spec)
     }
 }

@@ -53,7 +53,7 @@ impl<'tcx> ProgCtx<'tcx> {
                 rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx().def_path_str(did));
             return self
                 .prog
-                .add_only_spec(sig.to_gil_spec(global_env, proc_name).unwrap());
+                .add_only_spec(sig.into_gil_spec(global_env, proc_name).unwrap());
         };
 
         let with_facts = global_env.body_with_facts(did.expect_local());
@@ -83,7 +83,7 @@ impl<'tcx> ProgCtx<'tcx> {
             let mut temp_gen = TempGenerator::new();
             let sig = build_signature(global_env, did, args, &mut temp_gen);
 
-            proc.spec = sig.to_gil_spec(global_env, proc.name.clone());
+            proc.spec = sig.into_gil_spec(global_env, proc.name.clone());
         };
         self.prog.add_proc(proc);
     }

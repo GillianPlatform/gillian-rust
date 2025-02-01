@@ -107,7 +107,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             let sig = build_signature(self.global_env, self.did, args, self.temp_gen);
 
             let ss = sig
-                .to_gil_spec(self.global_env, name)
+                .into_gil_spec(self.global_env, name)
                 .expect("Expected lemma to have contract")
                 .sspecs
                 .remove(0);

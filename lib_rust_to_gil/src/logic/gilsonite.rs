@@ -736,7 +736,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             .iter()
             .enumerate()
             .filter_map(|(idx, param)| {
-                Some((idx, param.ty, self.pattern_term(&*param.pat.as_ref()?)))
+                Some((idx, param.ty, self.pattern_term(param.pat.as_ref()?)))
             })
             .fold(pre, |body, (idx, ty, pattern)| match pattern {
                 Pattern::Binder(_) | Pattern::Wildcard(_) => body,

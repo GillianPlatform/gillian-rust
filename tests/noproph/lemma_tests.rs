@@ -26,3 +26,9 @@ fn test_lemma2((a, b): (i32, i32)) {
     } else {
     };
 }
+
+#[specification(
+    requires { (a > b) }
+    ensures { emp }
+)]
+fn test_fn((a, b): (i32, i32)) {}
