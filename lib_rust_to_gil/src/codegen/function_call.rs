@@ -94,8 +94,7 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
         let mut args =
             Vec::with_capacity((callee_has_regions as usize) + substs.len() + operands.len());
 
-        let sig = self.tcx().fn_sig(def_id);
-        let ssig = sig.instantiate(self.tcx(), substs);
+        let ssig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), substs);
         let regions = self.lifetimes_for_call(ssig, operands, ret_ty);
 
         regions.iter().cloned().for_each(|r| self.create_region(r));

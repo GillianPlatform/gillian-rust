@@ -86,8 +86,7 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
         model: Self::RepresentationTy,
         frozen: T,
     ) -> RustAssertion {
-        // assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
-        assertion!(emp)
+        assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
     }
 
     #[cfg(not(gillian))]
@@ -103,7 +102,7 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
     #[gillian::borrow]
     fn mut_ref_inner_frozen(this: In<&mut Self>, frozen: T) -> RustAssertion {
         assertion!(
-            |v, repr| (this -> v) * Self::frozen_own(v, repr, frozen) * controller(this.prophecy(), repr)
+            |v, repr| (this -> v) * controller(this.prophecy(), repr) * Self::frozen_own(v, repr, frozen)
         )
     }
 
