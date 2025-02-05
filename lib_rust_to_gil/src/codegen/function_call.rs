@@ -176,7 +176,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
             poor_man_unification(&mut tbl, *sig_in, arg_ty).unwrap_or_else(|e| panic!("{e:?}"));
         }
 
-        poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty).unwrap();
+        poor_man_unification(&mut tbl, sig.output().skip_binder(), ret_ty)
+            .unwrap_or_else(|e| panic!("{e:?}"));
         tbl.values().filter_map(|a| a.first()).copied().collect()
     }
 

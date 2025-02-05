@@ -16,10 +16,11 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::{
     logic::predicate::fn_args_and_tys,
+    prelude::HasTyCtxt,
     signature::{anonymous_param_symbol, inputs_and_output},
 };
 
-use super::{builtins::LogicStubs, fatal2};
+use super::{builtins::LogicStubs, fatal2, utils::get_thir};
 
 #[derive(Debug, Clone)]
 pub struct EncDeBigInt(pub BigInt);
@@ -410,6 +411,12 @@ pub struct GilsoniteBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> HasTyCtxt<'tcx> for GilsoniteBuilder<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
 impl<'tcx> GilsoniteBuilder<'tcx> {
     pub fn new(thir: Thir<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         Self { thir, tcx }
@@ -729,10 +736,21 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
             (pre, posts)
         });
 
+        let params = if self.tcx.is_closure_like(spec_id) {
+            // This is a lemma specification, it's encoded as a closure within a closure inside of the lemma body itself!
+            let lemma_did = self.tcx.parent(self.tcx.parent(spec_id));
+            let thir = self
+                .tcx()
+                .thir_body(lemma_did.as_local().expect("Lemma did is not local"))
+                .expect("Couldn't find thir body of lemma")
+                .0
+                .borrow();
+            thir.params.clone()
+        } else {
+            self.thir.params.clone()
+        };
         // eprintln!("params: {:?}", self.thir.params);
-        let pre = self
-            .thir
-            .params
+        let pre = params
             .iter()
             .enumerate()
             .filter_map(|(idx, param)| {

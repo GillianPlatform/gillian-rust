@@ -312,7 +312,6 @@ pub fn build_signature<'tcx, 'genv>(
             rustc_type_ir::RegionKind::ReStatic => todo!("ReStatic"),
             rustc_type_ir::RegionKind::RePlaceholder(_) => todo!("RePlaceHolder"),
             rustc_type_ir::RegionKind::ReError(_) => todo!("ReError"),
-            // k => unreachable!("ILLEGAL REGION {k:?} {args:?}")
         }
     }
 
