@@ -53,16 +53,16 @@ impl<T> Node<T> {
     }
 }
 
-// #[extract_lemma(
-//     forall head, tail, len, p.
-//     model m.
-//     extract model mh.
-//     assuming { head == Some(p) }
-//     from { list_ref_mut_htl(list, m, head, tail, len) }
-//     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
-//     prophecise { m.tail().prepend(mh) }
-// )]
-// fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+#[extract_lemma(
+    forall head, tail, len, p.
+    model m.
+    extract model mh.
+    assuming { head == Some(p) }
+    from { list_ref_mut_htl(list, m, (head, tail, len)) }
+    extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
+    prophecise { m.tail().prepend(mh) }
+)]
+fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
 
 #[predicate]
 fn dll_seg<T: Ownable>(
@@ -155,13 +155,12 @@ fn dll_seg_r_to_l<T: Ownable>(
     head_prev: Option<NonNull<Node<T>>>,
 );
 
-// #[with_freeze_lemma_for_mutref(
-//     lemma_name = freeze_htl,
-//     predicate_name = list_ref_mut_htl,
-//     frozen_variables = [head, tail, len],
-//     inner_predicate_name = list_ref_mut_inner_htl,
-//     resolve_macro_name = auto_resolve_list_ref_mut_htl
-// )]
+#[with_freeze_lemma(
+    lemma_name = freeze_htl,
+    predicate_name = list_ref_mut_htl,
+    frozen_variables = [head, tail, len],
+    resolve_macro_name = auto_resolve_list_ref_mut_htl
+)]
 impl<T: Ownable> Ownable for LinkedList<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 

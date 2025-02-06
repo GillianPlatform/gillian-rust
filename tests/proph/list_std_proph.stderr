@@ -1,8 +1,8 @@
-warning: unused imports: `Prophecised`, `Prophecy`
+warning: unused import: `Prophecised`
  --> ../tests/proph/list_std_proph.rs:8:27
   |
 8 |     prophecies::{Ownable, Prophecised, Prophecy},
-  |                           ^^^^^^^^^^^  ^^^^^^^^
+  |                           ^^^^^^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
@@ -24,13 +24,19 @@ warning: unused imports: `Prophecised`, `Prophecy`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
+warning: unused variable: `list`
+  --> ../tests/proph/list_std_proph.rs:65:33
+   |
+65 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
 warning: unused variable: `next`
    --> ../tests/proph/list_std_proph.rs:117:5
     |
 117 |     next: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
-    |
-    = note: `#[warn(unused_variables)]` on by default
 
 warning: associated function `shallow_model` is never used
   --> ../tests/proph/list_std_proph.rs:30:8
@@ -43,6 +49,20 @@ warning: associated function `shallow_model` is never used
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: 3 warnings emitted
+warning: function `extract_head___proof` should have a snake case name
+  --> ../tests/proph/list_std_proph.rs:65:4
+   |
+65 | fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: variable `THIS` should have a snake case name
+   --> ../tests/proph/list_std_proph.rs:168:12
+    |
+168 |     fn own(self, model: Self::RepresentationTy) {
+    |            ^^^^ help: convert the identifier to snake case: `this`
+
+warning: 6 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!
