@@ -4,6 +4,23 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
+axiomatic spec extract_y(pLft_a, pty_T0, p)
+[[ "wp_ref_mut_xy::<T>"(#pLft_a, #pty_T0, #p, #m, {{ #x, #y }})
+  * <lft>(#pLft_a; true)
+  * types(#lvar_5: Obj, #lvar_6: List) * (#y == {{ #lvar_5, #lvar_6 }})
+  * types(#lvar_3: Obj, #lvar_4: List) * (#x == {{ #lvar_3, #lvar_4 }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mx, 1i))
+  * (#__NEW_PROPH_OLD_VAL == l-nth(#mx, 0i))
+  * <observation>(((((l-nth(#m, 1i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_VAL }}))) and (((l-nth(#m, 0i)) = ({{ l-nth(#__OLD_PROPH_VAL, 0i), #__NEW_PROPH_OLD_VAL }})))); )
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mx)
+  * <lft>(#pLft_a; true) ]]
+normal
+
 axiomatic spec "gilogic::prophecies::freeze_params::<(*mut N<T>, *mut N<T>), WP<T>>"(pLft_0, pty_T0, p)
 [[ "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -66,6 +83,34 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref
   * (this == #this);
 
 
+pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, model, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
+  * "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::frozen_own"(pty_T0, #v, #model, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, model, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #model, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (model == #model)
+  * (self == #self);
+
+
 pred "<&mut WP<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
   "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -84,6 +129,27 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::mut_ref
   * (this == #this);
 guard: <lft>(pLft_0; true);
 
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
+  "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_0, pty_T0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
 pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, model, frozen):
   (#model == {{ #a, #b }})
   * "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_0, pty_T0, #this, #frozen)
@@ -96,6 +162,16 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0
   * (model == #model)
   * (this == #this);
 
+
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
+  * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #repr, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
 
 pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_0, +pty_T0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "WP", {{ pty_T0 }} }}; #v)
@@ -114,6 +190,21 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this,
   * (repr == #repr)
   * (this == #this);
 
+
+lemma "extract_y___proof::<T>"(pLft_erased, pty_T0, p, new_new_model)[[
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
+]]
+[[
+  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, $l__null_prophecy }}, #mx, {{  }})
+  * (#m == {{ l-nth(#m, 0i), #mx }})
+  * ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, $l__null_prophecy }}, #new_new_model, {{  }})
+    -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
+]][*
+package (
+  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, $l__null_prophecy }}, #new_new_model, {{  }})
+  -*
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
+*]
 
 proc freeze_xy(pLft_a, pty_T0, x) {
         m_1x := x;

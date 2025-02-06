@@ -177,15 +177,15 @@ impl<T: Ownable> Ownable for WP<T> {
 //     unreachable!()
 // }
 
-// #[extract_lemma(
-//     forall x, y.
-//     model m.
-//     extract model mx.
-//     from { wp_ref_mut_xy(p, m, (x, y)) }
-//     extract { Ownable::own(&mut (*y).v, mx) }
-//     prophecise { (m.0, mx) }
-// )]
-// fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+#[extract_lemma(
+    forall x, y.
+    model m.
+    extract model mx.
+    from { wp_ref_mut_xy(p, m, (x, y)) }
+    extract { Ownable::own(&mut (*y).v, mx) }
+    prophecise { (m.0, mx) }
+)]
+fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
 
 impl<T: Ownable> WP<T> {
     #[creusillian::ensures(((ret@).0 == x@) && ((ret@).1 == y@))]
