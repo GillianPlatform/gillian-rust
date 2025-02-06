@@ -26,7 +26,6 @@ pub(crate) struct LemmaCtx<'tcx, 'genv> {
     did: DefId,
     temp_gen: &'genv mut TempGenerator,
     trusted: bool,
-    is_extract_lemma: bool,
 }
 
 impl<'tcx, 'genv> HasTyCtxt<'tcx> for LemmaCtx<'tcx, 'genv> {
@@ -59,13 +58,12 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         did: DefId,
         temp_gen: &'genv mut TempGenerator,
         trusted: bool,
-        is_extract_lemma: bool,
     ) -> Self {
         Self {
             global_env,
             did,
             trusted,
-            is_extract_lemma,
+
             temp_gen,
         }
     }
@@ -88,9 +86,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
     pub(crate) fn compile(mut self) -> Lemma {
         let name = self.lemma_name();
         self.global_env_mut().mark_as_compiled(name.clone());
-        let lemma = if self.is_extract_lemma {
-            fatal!(self, "Extract lemma needs to be properly handled")
-        } else if self.trusted {
+        if self.trusted {
             let sig = self.sig();
 
             // We set temporary hyp and conclusion, which we be replaced later by the specs
@@ -123,8 +119,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
             let proof = ctx.build_lemma_proof(expr);
 
             self.compile_proof(proof)
-        };
-        lemma
+        }
     }
 
     fn compile_proof(&mut self, proof: Vec<ProofStep<'tcx>>) -> Lemma {

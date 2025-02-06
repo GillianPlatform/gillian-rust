@@ -160,8 +160,7 @@ impl<'tcx> AutoItem<'tcx> {
             Self::InnerPred(inner_pred) => inner_pred.add_to_prog(prog, global_env),
             Self::MonoLemma(param_env, instance) => {
                 let temp_gen = &mut temp_gen::TempGenerator::new();
-                let lemma =
-                    LemmaCtx::new(global_env, instance.def_id(), temp_gen, true, false).compile();
+                let lemma = LemmaCtx::new(global_env, instance.def_id(), temp_gen, true).compile();
                 prog.add_lemma(lemma);
             }
 

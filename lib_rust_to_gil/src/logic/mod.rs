@@ -37,20 +37,10 @@ pub fn compile_logic<'tcx, 'genv>(
             .compile_concrete();
 
         vec![LogicItem::Pred(pred)]
-    } else if is_lemma(did, tcx) || is_extract_lemma(did, tcx) {
-        let lemma = lemma::LemmaCtx::new(
-            global_env,
-            did,
-            temp_gen,
-            is_trusted(did, tcx),
-            is_extract_lemma(did, tcx),
-        )
-        .compile();
+    } else if is_lemma(did, tcx) {
+        let lemma = lemma::LemmaCtx::new(global_env, did, temp_gen, is_trusted(did, tcx)).compile();
         vec![LogicItem::Lemma(lemma)]
         // Has to b safe, because we know there is exactly one definition
-    } else if is_extract_lemma(did, tcx) {
-        log::debug!("Extract lemma needs to be properly handled");
-        vec![]
     } else if is_fold(did, tcx) || is_unfold(did, tcx) || is_specification(did, tcx) {
         vec![]
     } else {

@@ -1,12 +1,10 @@
 use super::auto_items::*;
-use crate::config::{Config, GillianArgs};
+use crate::config::Config;
 use crate::logic::gilsonite::{self, GilsoniteBuilder, SpecTerm};
 use crate::logic::traits::{resolve_candidate, ResolvedImpl};
 use crate::logic::utils::get_thir;
 use crate::metadata::{BinaryMetadata, Metadata};
-use crate::utils::attrs::{
-    get_attr, get_gillian_extract_lemma_name, get_gillian_spec_name, is_trusted,
-};
+use crate::utils::attrs::{get_attr, get_gillian_spec_name};
 use crate::{callbacks, prelude::*};
 use indexmap::IndexMap;
 use once_map::OnceMap;
