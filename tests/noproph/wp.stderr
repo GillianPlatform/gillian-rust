@@ -47,29 +47,29 @@ error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satis
    = note: this error originates in the attribute macro `with_freeze_lemma` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satisfied
-   --> ../tests/noproph/wp.rs:45:30
-    |
-45  | impl<T: Ownable> Ownable for WP<T> {
-    |                              ^^^^^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
-    |
-    = help: the following other types implement trait `gilogic::prophecies::Ownable`:
-              &mut T
-              ()
-              (T, U)
-              i128
-              i16
-              i32
-              i64
-              i8
-            and 8 others
+  --> ../tests/noproph/wp.rs:45:30
+   |
+45 | impl<T: Ownable> Ownable for WP<T> {
+   |                              ^^^^^ the trait `gilogic::prophecies::Ownable` is not implemented for `WP<T>`
+   |
+   = help: the following other types implement trait `gilogic::prophecies::Ownable`:
+             &mut T
+             ()
+             (T, U)
+             i128
+             i16
+             i32
+             i64
+             i8
+           and 8 others
 note: required by a bound in `gilogic::prophecies::FrozenOwn::mut_ref_own_frozen`
-   --> /Users/sacha/Prog/work/rust-to-gil/gilogic/src/prophecies.rs:78:61
-    |
-78  | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
-    |                                                             ^^^^^^^ required by this bound in `FrozenOwn::mut_ref_own_frozen`
+  --> /Users/sacha/Prog/gillian-rust/rust-to-gil/gilogic/src/prophecies.rs:52:61
+   |
+52 | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
+   |                                                             ^^^^^^^ required by this bound in `FrozenOwn::mut_ref_own_frozen`
 ...
-116 |     fn mut_ref_own_frozen(
-    |        ------------------ required by a bound in this associated function
+89 |     fn mut_ref_own_frozen(
+   |        ------------------ required by a bound in this associated function
 
 error: Predicate body failed to typecheck for DefId(0:28 ~ wp[e568]::wp_ref_mut_xy) ErrorGuaranteed(())
 

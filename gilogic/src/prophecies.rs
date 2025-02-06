@@ -13,16 +13,6 @@ macro_rules! unreachable {
     };
 }
 
-/*
-Here's an idea:
-I could have a trait MutBorrow, which can be opened, closed etc...
-And there would be functions between MutBorrows:
--> Splits which can split borrows in bits
--> pull, which can pull existentials from a borrow.
-
-Not sure how that would work, but it'd certainly be a nicer interface.
-*/
-
 #[allow(non_snake_case)]
 pub trait Ownable {
     #[rustc_diagnostic_item = "gillian::pcy::ownable::representation_ty"]
@@ -31,22 +21,6 @@ pub trait Ownable {
     #[rustc_diagnostic_item = "gillian::pcy::ownable::own"]
     #[gillian::decl::pred_ins = "0"]
     fn own(self, model: Self::RepresentationTy) -> RustAssertion;
-
-    // #[rustc_diagnostic_item = "gillian::pcy::ownable::ref_mut_inner"]
-    // #[gillian::decl::pred_ins = "0"]
-    // fn ref_mut_inner(&mut self) -> RustAssertion {
-    //     unreachable!("Implemented in GIL")
-    // }
-
-    // #[rustc_diagnostic_item = "gillian::unfold::pcy::ownable::ref_mut_inner"]
-    // fn ref_mut_inner_____unfold(&mut self) -> RustAssertion {
-    //     unreachable!("Implemented in GIL")
-    // }
-
-    // #[rustc_diagnostic_item = "gillian::fold::pcy::ownable::ref_mut_inner"]
-    // fn ref_mut_inner_____fold(&mut self) -> RustAssertion {
-    //     unreachable!("Implemented in GIL")
-    // }
 }
 
 macro_rules! own_int {
@@ -155,8 +129,6 @@ where
         unreachable!()
     }
 }
-
-// fn mut_ref_inner_proph<'a, U: Ownable>(this: &'a mut U) -> RustAssertion;
 
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
