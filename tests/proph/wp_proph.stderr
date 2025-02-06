@@ -19,12 +19,12 @@ warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
 warning: unused variable: `p`
-   --> ../tests/proph/wp_proph.rs:188:30
-    |
-188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
-    |
-    = note: `#[warn(unused_variables)]` on by default
+  --> ../tests/proph/wp_proph.rs:61:30
+   |
+61 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+   |
+   = note: `#[warn(unused_variables)]` on by default
 
 warning: fields `x` and `y` are never read
   --> ../tests/proph/wp_proph.rs:14:5
@@ -57,10 +57,10 @@ warning: variable `THIS` should have a snake case name
    = note: `#[warn(non_snake_case)]` on by default
 
 warning: function `extract_y___proof` should have a snake case name
-   --> ../tests/proph/wp_proph.rs:188:4
-    |
-188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
+  --> ../tests/proph/wp_proph.rs:61:4
+   |
+61 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
 
 warning: 6 warnings emitted
 

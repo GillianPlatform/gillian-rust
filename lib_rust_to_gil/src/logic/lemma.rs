@@ -1,5 +1,5 @@
 use super::gilsonite::{GilsoniteBuilder, ProofStep};
-use super::predicate::CallKind;
+use super::predicate::CallerKind;
 use super::utils::get_thir;
 use super::LogicItem;
 use crate::logic::gilsonite::{self, Assert};
@@ -163,14 +163,15 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         for s in proof {
             match s {
                 ProofStep::Package { pre, post } => {
-                    gil_proof.push(LCmd::SL(SLCmd::Package {
-                        lhs: pred_ctx.compile_call(pre, CallKind::Pred),
+                    let mut lhs = pred_ctx.compile_call(pre, CallerKind::Pred);
+                    let mut rhs = pred_ctx.compile_call(post, CallerKind::Pred);
+                    lhs.1 = lhs.1.into_iter().map(Expr::pvar_to_lvar).collect();
+                    rhs.1 = rhs.1.into_iter().map(Expr::pvar_to_lvar).collect();
 
-                        rhs: pred_ctx.compile_call(post, CallKind::Pred),
-                    }));
+                    gil_proof.push(LCmd::SL(SLCmd::Package { lhs, rhs }));
                 }
                 ProofStep::Unfold { pred } => {
-                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallKind::Pred);
+                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallerKind::Pred);
                     gil_proof.push(LCmd::SL(SLCmd::Unfold {
                         pred_name,
                         parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
@@ -179,7 +180,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                     }))
                 }
                 ProofStep::Fold { pred } => {
-                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallKind::Pred);
+                    let (pred_name, parameters) = pred_ctx.compile_call(pred, CallerKind::Pred);
                     gil_proof.push(LCmd::SL(SLCmd::Fold {
                         pred_name,
                         parameters: parameters.into_iter().map(|p| p.pvar_to_lvar()).collect(),
@@ -202,7 +203,7 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
                 }
                 ProofStep::Call { lemma_call } => {
                     let (lemma_name, parameters) =
-                        pred_ctx.compile_call(lemma_call, CallKind::Lemma);
+                        pred_ctx.compile_call(lemma_call, CallerKind::Lemma);
                     let parameters = parameters.into_iter().map(|p| p.pvar_to_lvar()).collect();
                     gil_proof.push(LCmd::SL(SLCmd::ApplyLem {
                         lemma_name,

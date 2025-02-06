@@ -370,16 +370,22 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
 
         let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
             let mut lvars = lvars.clone();
-            if let Some((_, model, _, _, _, new_model, _)) = &extract_lemma.models {
+            if let Some((_, model, _, _, _, _, _)) = &extract_lemma.models {
                 lvars.push(LvarDecl::from(model.clone()));
-                lvars.push(LvarDecl::from(new_model.clone()));
             }
             lvars.push(parse_quote! { #new_new_model});
 
-            let forall = quote! { #forall #lvars #dot };
+            // HACK: inputs is not properly interpolated here
+            let forall = quote! { #forall #inputs, #lvars #dot };
             Some(forall)
         } else {
             Some(quote! { forall #new_new_model .})
+        };
+
+        let exists = if let Some((_, _, _, _, _, new_model, _)) = &extract_lemma.models {
+            Some(quote! { exists #new_model . })
+        } else {
+            None
         };
 
         quote! {
@@ -390,6 +396,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
                         #assuming
                         gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#from_args)
                     }
+                    #exists
                     ensures {
                         gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#extract_args)
                         #prophecise_check
@@ -403,6 +410,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
                         )
                     }
             )]
+            #[gillian::args_deferred]
             #[gillian::timeless]
             fn #proof_name #generics (#inputs) {
                 // |#inputs| {

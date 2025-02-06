@@ -8,7 +8,7 @@ use rustc_hir::{def::DefKind, Unsafety};
 use rustc_middle::ty::{EarlyBinder, GenericArgsRef, ParamEnv, Ty, TyCtxt, TyKind};
 use rustc_span::{symbol, Symbol};
 
-use crate::utils::attrs::is_magic_closure;
+use crate::utils::attrs::{args_deferred, is_magic_closure};
 use crate::{
     codegen::typ_encoding::{lifetime_param_name, type_param_name},
     logic::{
@@ -272,15 +272,22 @@ pub fn build_signature<'tcx, 'genv>(
 
     let mut args = Vec::new();
     let (inputs, output) = inputs_and_output(tcx, id);
-    let inputs: Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
+    let mut inputs: Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
     // A "magic closure" is a closure used to define a gillian-rust item. In this case we drop the closure environment as a parameter since it's "fake".
     let magic_closure = is_magic_closure(id, tcx);
+
+    if args_deferred(id, tcx) {
+        let spec_id = global_env.specification_id(id);
+        let (spec_inputs, _) = inputs_and_output(tcx, spec_id.unwrap());
+        inputs = spec_inputs.skip(1).collect();
+    }
 
     let inputs = if magic_closure {
         inputs[1..].to_vec()
     } else {
         inputs.clone()
     };
+
     // let sig = tcx.fn_sig(id).instantiate(tcx, subst);
     let substsref = subst;
 
