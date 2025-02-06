@@ -375,7 +375,8 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
             }
             lvars.push(parse_quote! { #new_new_model});
 
-            let forall = quote! { #forall #lvars #dot };
+            // HACK: inputs is not properly interpolated here
+            let forall = quote! { #forall #inputs, #lvars #dot };
             Some(forall)
         } else {
             Some(quote! { forall #new_new_model .})
@@ -409,6 +410,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
                         )
                     }
             )]
+            #[gillian::args_deferred]
             #[gillian::timeless]
             fn #proof_name #generics (#inputs) {
                 // |#inputs| {

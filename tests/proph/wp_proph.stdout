@@ -191,7 +191,7 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this,
   * (this == #this);
 
 
-lemma "extract_x_2_proof::<T>"(pLft_erased, pty_T0, p, x, y, m, new_new_model)[[
+lemma "extract_y___proof::<T>"(pLft_erased, pty_T0, p, x, y, m, new_new_model)[[
   "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
 ]]
 [[
@@ -201,9 +201,9 @@ lemma "extract_x_2_proof::<T>"(pLft_erased, pty_T0, p, x, y, m, new_new_model)[[
     -* "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
 ]][*
 package (
-  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ #pty_T0 }} }} }} }}) }}, $l__null_prophecy }}, #new_new_model, {{  }})
+  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_erased, pty_T0, {{ {{ l-nth(#y, 0i), l+(l-nth(#y, 1i), {{ {{ "f", 0i, {{ "adt", "N", {{ pty_T0 }} }} }} }}) }}, $l__null_prophecy }}, #new_new_model, {{  }})
   -*
-  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
+  "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(pLft_erased, pty_T0, #p, {{ l-nth(#m, 0i), #new_new_model }}, {{ #x, #y }}))
 *]
 
 proc freeze_xy(pLft_a, pty_T0, x) {

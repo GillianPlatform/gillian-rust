@@ -1,8 +1,8 @@
-warning: unused imports: `Prophecised`, `extract_lemma`, `mutref_auto_resolve`, `specification`
-  --> ../tests/proph/wp_proph.rs:8:25
+warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
+  --> ../tests/proph/wp_proph.rs:8:51
    |
 8  |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
-   |                         ^^^^^^^^^^^^^             ^^^^^^^^^^^^^
+   |                                                   ^^^^^^^^^^^^^
 9  |     mutref_auto_resolve,
    |     ^^^^^^^^^^^^^^^^^^^
 10 |     prophecies::{Ownable, Prophecised, Prophecy},
@@ -10,41 +10,7 @@ warning: unused imports: `Prophecised`, `extract_lemma`, `mutref_auto_resolve`, 
    |
    = note: `#[warn(unused_imports)]` on by default
 
-warning: unnecessary parentheses around function argument
-   --> ../tests/proph/wp_proph.rs:325:49
-    |
-325 | ...                   ((__OLD_PROPH_VAL.0, __NEW_PROPH_VAL)),
-    |                       ^                                    ^
-    |
-    = note: `#[warn(unused_parens)]` on by default
-help: remove these parentheses
-    |
-325 -                                                 ((__OLD_PROPH_VAL.0, __NEW_PROPH_VAL)),
-325 +                                                 (__OLD_PROPH_VAL.0, __NEW_PROPH_VAL),
-    |
-
-warning: unnecessary parentheses around function argument
-   --> ../tests/proph/wp_proph.rs:328:49
-    |
-328 | ...                   ((__OLD_PROPH_VAL.0, __NEW_PROPH_OLD_VAL)),
-    |                       ^                                        ^
-    |
-help: remove these parentheses
-    |
-328 -                                                 ((__OLD_PROPH_VAL.0, __NEW_PROPH_OLD_VAL)),
-328 +                                                 (__OLD_PROPH_VAL.0, __NEW_PROPH_OLD_VAL),
-    |
-
-warning: unknown lint: `unsused_variables`
-   --> ../tests/proph/wp_proph.rs:349:9
-    |
-349 | #[allow(unsused_variables)]
-    |         ^^^^^^^^^^^^^^^^^ help: did you mean: `unused_variables`
-    |
-    = note: `#[warn(unknown_lints)]` on by default
-
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"core"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
@@ -52,30 +18,50 @@ warning: unknown lint: `unsused_variables`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-error[E0658]: use of unstable library feature 'panic_internals': internal details of the implementation of the `panic!` and related macros
-   --> ../tests/proph/wp_proph.rs:352:5
-    |
-352 |     ::core::panicking::panic("internal error: entered unreachable code")
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = help: add `#![feature(panic_internals)]` to the crate attributes to enable
-    = note: this compiler was built on 2024-05-09; consider upgrading it if it is out of date
-
 warning: unused variable: `p`
-   --> ../tests/proph/wp_proph.rs:208:38
+   --> ../tests/proph/wp_proph.rs:188:30
     |
-208 | fn extract_x_2_proof<'a, T: Ownable>(p: &'a mut WP<T>) {
-    |                                      ^ help: if this is intentional, prefix it with an underscore: `_p`
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
     |
     = note: `#[warn(unused_variables)]` on by default
 
-warning: unused variable: `p`
-   --> ../tests/proph/wp_proph.rs:351:30
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/wp_proph.rs:14:5
+   |
+13 | struct WP<T> {
+   |        -- fields in this struct
+14 |     x: *mut N<T>,
+   |     ^
+15 |     y: *mut N<T>,
+   |     ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `v` and `o` are never read
+  --> ../tests/proph/wp_proph.rs:19:5
+   |
+18 | struct N<T> {
+   |        - fields in this struct
+19 |     v: T,
+   |     ^
+20 |     o: *mut N<T>,
+   |     ^
+
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/wp_proph.rs:48:12
+   |
+48 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `this`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: function `extract_y___proof` should have a snake case name
+   --> ../tests/proph/wp_proph.rs:188:4
     |
-351 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {
-    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
 
-error: aborting due to 1 previous error; 6 warnings emitted
+warning: 6 warnings emitted
 
-For more information about this error, try `rustc --explain E0658`.
-[TIMESTAMP DEBUG rust_to_gil] Incorrect!
+[TIMESTAMP DEBUG rust_to_gil] Correct!
