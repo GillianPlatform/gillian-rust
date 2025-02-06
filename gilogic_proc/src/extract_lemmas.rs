@@ -7,7 +7,7 @@ use syn::{
     ExprPath, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type,
 };
 
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 
 use crate::{
     kw, subst::VarSubst, utils::peel_mut_ref, AsrtFragment, AsrtPredCall, Formula, LvarDecl,
@@ -297,24 +297,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         ReturnType::Type(_token, ty) => (**ty).clone(),
     };
 
-    let ref_ty: Type = match item.sig.inputs.first() {
-        Some(arg) => match arg {
-            syn::FnArg::Typed(pat) => *pat.ty.clone(),
-            _ => {
-                return syn::Error::new(arg.span(), "Extract lemma cannot use self")
-                    .to_compile_error()
-                    .into()
-            }
-        },
-        None => {
-            return syn::Error::new(item.sig.span(), "extract lemma needs at least one argument")
-                .to_compile_error()
-                .into()
-        }
-    };
-
-    let name = item.sig.ident.clone();
-
     let spec_id = uuid::Uuid::new_v4().to_string();
     let spec_name = {
         let ident = item.sig.ident.to_string();
@@ -325,6 +307,57 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let ins = format!("{}", item.sig.inputs.len());
 
     let mut inputs = item.sig.inputs.clone();
+    let generics = &item.sig.generics;
+
+    inputs.push(parse_quote! { ret : #ret_ty });
+
+    let spec = match extract_lemma
+        .make_spec(ret_ty)
+        .and_then(|spec| Specification::encode(&spec))
+    {
+        Ok(stream) => stream,
+        Err(error) => return error.to_compile_error().into(),
+    };
+
+    let sig = &item.sig;
+
+    let extract_lemma_term = if extract_lemma.prophecise.is_some() {
+        extract_lemma_term_proph(&extract_lemma, &item)
+    } else {
+        extract_lemma_noproph(&extract_lemma, &item)
+    };
+
+    let result = quote! {
+        #extract_lemma_term
+
+        #[cfg(gillian)]
+        #[rustc_diagnostic_item=#spec_name_string]
+        #[gillian::decl::specification]
+        #[gillian::decl::pred_ins=#ins]
+        fn #spec_name #generics (#inputs) -> gilogic::RustAssertion {
+            #spec
+        }
+
+        #(#item_attrs)*
+        #[gillian::spec=#spec_name_string]
+        #[allow(unsused_variables)]
+        #[gillian::trusted]
+        #sig {
+            unreachable!()
+        }
+    };
+
+    // panic!("{:?}", result.to_string());
+
+    result.into()
+}
+
+pub(crate) fn extract_lemma_term_proph(
+    extract_lemma: &ExtractLemma,
+    item: &TraitItemFn,
+) -> proc_macro2::TokenStream {
+    let name = item.sig.ident.clone();
+    let inputs = item.sig.inputs.clone();
     let generics = &item.sig.generics;
 
     // We need to build the extract lemma term before we add ret to the inputs.
@@ -339,7 +372,7 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
         }
 
         let new_new_model = format_ident!("new_new_model");
-        let new_model = extract_args[1].clone();
+        // let new_model = extract_args[1].clone();
 
         let mut wand_pre_args = extract_args.clone();
         wand_pre_args[1] = parse_quote! { #new_new_model };
@@ -402,10 +435,6 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
                         #prophecise_check
                         * gilogic::__stubs::wand(
                             gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
-                            // Ici dans from_args, il faut remplacer model par
-                            // prophecise[new_model / NEW_new_model]
-                            // Ownable::own(p, m, frozen)
-                            // => Ownable::own(p, m.tail().prepend(NEW_mh), frozen)
                             gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
                         )
                     }
@@ -413,49 +442,94 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
             #[gillian::args_deferred]
             #[gillian::timeless]
             fn #proof_name #generics (#inputs) {
-                // |#inputs| {
-                    ::gilogic :: package!(
-                      gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
-                    , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
-                    );
-                // };
+                ::gilogic :: package!(
+                  gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
+                , gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                );
             }
         }
     };
 
-    inputs.push(parse_quote! { ret : #ret_ty });
+    extract_lemma_term
+}
 
-    let spec = match extract_lemma
-        .make_spec(ret_ty)
-        .and_then(|spec| Specification::encode(&spec))
-    {
-        Ok(stream) => stream,
-        Err(error) => return error.to_compile_error().into(),
-    };
+pub(crate) fn extract_lemma_noproph(
+    extract_lemma: &ExtractLemma,
+    item: &TraitItemFn,
+) -> proc_macro2::TokenStream {
+    let name = item.sig.ident.clone();
+    let inputs = item.sig.inputs.clone();
+    let generics = &item.sig.generics;
 
-    let sig = &item.sig;
+    // We need to build the extract lemma term before we add ret to the inputs.
+    let extract_lemma_term = {
+        let proof_name = format_ident!("{}___proof", name);
+        let from_args = extract_lemma.from.1.args().clone();
 
-    let result = quote! {
-        #extract_lemma_term
-
-        #[cfg(gillian)]
-        #[rustc_diagnostic_item=#spec_name_string]
-        #[gillian::decl::specification]
-        #[gillian::decl::pred_ins=#ins]
-        fn #spec_name #generics (#inputs) -> gilogic::RustAssertion {
-            #spec
+        let mut extract_args = extract_lemma.extract.1.args().clone();
+        if extract_args.len() < 3 {
+            // It's an own predicate and not a frozen own predicate, we add the unit parameter.
+            extract_args.push(parse_quote!(()));
         }
 
-        #(#item_attrs)*
-        #[gillian::spec=#spec_name_string]
-        #[allow(unsused_variables)]
-        #[gillian::trusted]
-        #sig {
-            unreachable!()
+        // let new_model = extract_args[1].clone();
+
+        let wand_pre_args = extract_args.clone();
+
+        let assuming = if let Some((_, term)) = &extract_lemma.assuming {
+            Some(quote! { (#term) * })
+        } else {
+            None
+        };
+
+        let wand_post_args = from_args.clone();
+
+        let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
+            let mut lvars = lvars.clone();
+            if let Some((_, model, _, _, _, _, _)) = &extract_lemma.models {
+                lvars.push(LvarDecl::from(model.clone()));
+            }
+
+            // HACK: inputs is not properly interpolated here
+            let forall = quote! { #forall #inputs, #lvars #dot };
+            Some(forall)
+        } else {
+            None
+        };
+
+        let exists = if let Some((_, _, _, _, _, new_model, _)) = &extract_lemma.models {
+            Some(quote! { exists #new_model . })
+        } else {
+            None
+        };
+
+        quote! {
+            #[gilogic::macros::lemma]
+            #[gilogic::macros::specification(
+                    #forall
+                    requires {
+                        #assuming
+                        gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#from_args)
+                    }
+                    #exists
+                    ensures {
+                        gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#extract_args)
+                        * gilogic::__stubs::wand(
+                            gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#wand_pre_args),
+                            gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                        )
+                    }
+            )]
+            #[gillian::args_deferred]
+            #[gillian::timeless]
+            fn #proof_name #generics (#inputs) {
+                    ::gilogic :: package!(
+                      gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#wand_pre_args)
+                    , gilogic::ownable::FrozenOwn::just_ref_mut_points_to(#wand_post_args)
+                    );
+            }
         }
     };
 
-    // panic!("{:?}", result.to_string());
-
-    result.into()
+    extract_lemma_term
 }

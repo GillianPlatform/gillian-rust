@@ -5,11 +5,32 @@
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
 pred "<&mut i32 as gilogic::Ownable>::own"(+pLft_erased, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), "i32"; #v)
-  * "<i32 as gilogic::Ownable>::own"(#v)
+  "<i32 as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, #self, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self);
-guard: <lft>(pLft_erased; true);
+
+
+pred "<i32 as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +this, frozen):
+  "<i32 as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, #this, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
+
+pred "<i32 as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), "i32"; #v)
+  * "<i32 as gilogic::FrozenOwn<()>>::frozen_own"(#v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<i32 as gilogic::FrozenOwn<()>>::frozen_own"(+this, frozen):
+  "<i32 as gilogic::Ownable>::own"(#this) * (#frozen == {{  }})
+  * types(#this: Int)
+  * (frozen == #frozen)
+  * (this == #this);
+
 
 pred "<i32 as gilogic::Ownable>::own"(+self):
   (-2147483648i i<=# #self) * (#self i<=# 2147483647i) * types(#self: Int)

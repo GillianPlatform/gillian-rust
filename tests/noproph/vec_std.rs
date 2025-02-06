@@ -9,10 +9,7 @@ use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     iterated::no_prophecies::{all_own, all_own_swap},
-    macros::{
-        assertion, extract_lemma, predicate, no_prophecies::with_freeze_lemma_for_mutref,
-        specification, show_safety, lemma
-    },
+    macros::*,
     Ownable,
 };
 use std::alloc::{Allocator, Layout, LayoutError};
@@ -293,12 +290,12 @@ fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
 #[extract_lemma(
     forall ptr: Unique<T>, cap, len.
     assuming { ix < len }
-    from { vec_ref_mut_pcl(vec, ptr, cap, len) }
+    from { vec_ref_mut_pcl(vec, (ptr, cap, len)) }
     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix)))) }
 )]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
 
-#[with_freeze_lemma_for_mutref(
+#[with_freeze_lemma(
     lemma_name = freeze_pcl,
     predicate_name = vec_ref_mut_pcl,
     frozen_variables = [ptr, cap, len],

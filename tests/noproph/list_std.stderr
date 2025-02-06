@@ -1,29 +1,8 @@
-error: custom attribute panicked
-  --> ../tests/noproph/list_std.rs:57:1
-   |
-57 | / #[extract_lemma(
-58 | |     forall head, tail, len, p.
-59 | |     assuming { head == Some(p) }
-60 | |     from { list_ref_mut_htl(list, head, tail, len) }
-61 | |     extract { Ownable::own(&mut (*p.as_ptr()).element) }
-62 | | )]
-   | |__^
-   |
-   = help: message: need prophecise to be set
-
-error[E0432]: unresolved imports `gilogic::assert_bind`, `gilogic::macros::no_prophecies`
- --> ../tests/noproph/list_std.rs:5:5
-  |
-5 |     assert_bind,
-  |     ^^^^^^^^^^^ no `assert_bind` in the root
-6 |     macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-  |              ^^^^^^^^^^^^^ could not find `no_prophecies` in `macros`
-
 warning: unused import: `unfold`
- --> ../tests/noproph/list_std.rs:7:5
+ --> ../tests/noproph/list_std.rs:4:26
   |
-7 |     unfold, Ownable,
-  |     ^^^^^^
+4 | use gilogic::{macros::*, unfold, Ownable};
+  |                          ^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
@@ -40,23 +19,34 @@ warning: unused import: `unfold`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _7
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-error[E0425]: cannot find function `freeze_htl` in this scope
-   --> ../tests/noproph/list_std.rs:275:9
+warning: unused variable: `list`
+  --> ../tests/noproph/list_std.rs:59:29
+   |
+59 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
+   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `next`
+  --> ../tests/noproph/list_std.rs:92:5
+   |
+92 |     next: Option<NonNull<Node<T>>>,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
+
+warning: function `extract_head___proof` should have a snake case name
+  --> ../tests/noproph/list_std.rs:59:4
+   |
+59 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
+   |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: variable `THIS` should have a snake case name
+   --> ../tests/noproph/list_std.rs:136:12
     |
-275 |         freeze_htl(self);
-    |         ^^^^^^^^^^------
-    |         |
-    |         help: try calling `freeze_htl` as a method: `self.freeze_htl()`
+136 |     fn own(self) {
+    |            ^^^^ help: convert the identifier to snake case: `this`
 
-error[E0425]: cannot find function `extract_head` in this scope
-   --> ../tests/noproph/list_std.rs:280:17
-    |
-280 |                 extract_head(self);
-    |                 ^^^^^^^^^^^^------
-    |                 |
-    |                 help: try calling `extract_head` as a method: `self.extract_head()`
+warning: 5 warnings emitted
 
-error: aborting due to 4 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0425, E0432.
-For more information about an error, try `rustc --explain E0425`.
+[TIMESTAMP DEBUG rust_to_gil] Correct!

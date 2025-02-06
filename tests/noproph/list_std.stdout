@@ -4,6 +4,45 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
+axiomatic spec extract_head(pLft_0, pty_T0, list)
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, {{ #head, #tail, #len }})
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_0; true)
+  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_0; true) ]]
+normal
+
+axiomatic spec "gilogic::ownable::freeze_params::<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize), LinkedList<T>>"(pLft_0, pty_T0, p)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #p)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#p == {{ #lvar_0, #lvar_1 }})
+  * (p == #p)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::mut_ref_own_frozen"(#pLft_0, #pty_T0, #p, #frozen) ]]
+normal
+
+axiomatic spec "extract_head::<T>"(pLft_0, pty_T0, list)
+[[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, {{ #head, #tail, #len }})
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_0; true)
+  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_0; true) ]]
+normal
+
 pred "dll_seg::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
   (#head == #tail_next) * (#tail == #head_prev) * (#len == 0i)
   * types(#len: Int)
@@ -44,6 +83,23 @@ pred "dll_seg_r::<T>"(+pty_T0, +head, +tail_next, +tail, +head_prev, len):
   * (head == #head);
 
 
+pred "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::frozen_own"(+pty_T1, +THIS, G_2):
+  (#G_2 == {{ #head, #tail, #len }})
+  * (#THIS == {{ #head, #tail, #len, {{  }} }})
+  * "dll_seg::<T>"(pty_T1, #head, #p, #tail, #n, #len)
+  * (#p == {{ 0i, {{  }} }})
+  * (#n == {{ 0i, {{  }} }})
+  * (G_2 == #G_2)
+  * (THIS == #THIS);
+
+
+pred "list_ref_mut_htl::<T>"(+pLft_a, +pty_T0, +this, frozen):
+  "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::mut_ref_own_frozen"(pLft_a, pty_T0, #this, #frozen)
+  * types(#lvar_10: Obj, #lvar_11: List) * (#this == {{ #lvar_10, #lvar_11 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
 pred "<LinkedList<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   (#self == {{ #head, #tail, #len, {{  }} }})
   * "dll_seg::<T>"(pty_T0, #head, #p, #tail, #n, #len)
@@ -55,12 +111,40 @@ pred "<LinkedList<T> as gilogic::Ownable>::own"(+pty_T0, +self):
 abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
-pred "<&mut LinkedList<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
-  * "<LinkedList<T> as gilogic::Ownable>::own"(pty_T0, #v)
+pred "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), pty_T0; #v)
+  * "<T as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<&mut T as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
+  "<T as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self);
-guard: <lft>(pLft_erased; true);
+
+
+pred "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
+  "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
+
+pred "<&mut LinkedList<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
+  "<LinkedList<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
+  * (self == #self);
+
 
 pred "<std::option::Option<T> as gilogic::Ownable>::own"(+pty_T0, +self):
   (#self == {{ 0i, {{  }} }}) * (self == #self), (#self == {{ 1i, {{ #ax }} }})
@@ -78,12 +162,57 @@ pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty
   * (self == #self);
 
 
-pred "<&mut T as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), pty_T0; #v)
-  * "<T as gilogic::Ownable>::own"(pty_T0, #v)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
-  * (self == #self);
-guard: <lft>(pLft_erased; true);
+pred "<T as gilogic::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, frozen):
+  "<T as gilogic::Ownable>::own"(pty_T0, #this) * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<T as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
+  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
+
+pred "<LinkedList<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
+  "<LinkedList<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
+
+pred "<LinkedList<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "LinkedList", {{ pty_T0 }} }}; #v)
+  * "<LinkedList<T> as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<LinkedList<T> as gilogic::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, frozen):
+  "<LinkedList<T> as gilogic::Ownable>::own"(pty_T0, #this)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+lemma "extract_head___proof::<T>"(pLft_erased, pty_T0, list, head, tail, len, p)[[
+  (#head == {{ 1i, {{ #p }} }})
+  * "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }})
+]]
+[[
+  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_3, 0i), l+(l-nth(#lvar_3, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+  * ("<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_4, 0i), l+(l-nth(#lvar_4, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+    -* "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }}))
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_3)
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_4)
+]][*
+package (
+  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_2, 0i), l+(l-nth(#lvar_2, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+  -*
+  "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }}))
+*]
 
 lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
   (#x == {{ 1i, {{ #ptr }} }})
@@ -156,6 +285,27 @@ proc "Node::<T>::into_element"(pty_T0, self) {
         ret := g_5;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }});
+        return
+};
+
+proc freeze_htl(pLft_a, pty_T0, x) {
+        m_1x := x;
+        g_0 := m_1x;
+        m_1x := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, g_0);
+  bb0:  g_2 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_5 := l-nth(g_3, 0i);
+        m_2 := g_1;
+        g_4 := m_2;
+        g_5 := "gilogic::ownable::freeze_params::<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize), LinkedList<T>>"(pLft_a, pty_T0, g_4);
+        m_0 := g_5;
+        goto bb1;
+  bb1:  g_6 := m_0;
+        ret := g_6;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
         return
 };
 
@@ -883,8 +1033,84 @@ spec "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self)
 normal
 
 proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
-        m_1 := __debug__;
-  bb0:  fail [Unreachable]();
-  rlab: return
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, g_0);
+        m_4 := [alloc]({{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        m_7node := [alloc]({{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }});
+        m_10 := [alloc]({{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }});
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_14 := l-nth(g_3, 0i);
+        m_3 := g_1;
+        g_4 := m_3;
+        g_5 := "freeze_htl"(pLft_0, pty_T0, g_4);
+        m_2 := g_5;
+        goto bb1;
+  bb1:  g_7 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_6 := l-nth(g_7, 0i);
+        g_8 := [new_lft]();
+        pLft_16 := l-nth(g_8, 0i);
+        m_5 := {{ l-nth(g_6, 0i), l+(l-nth(g_6, 1i), {{ {{ "f", 0i, {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}) }};
+        g_9 := m_5;
+        g_10 := "std::option::Option::<T>::as_mut"(pLft_16, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_9);
+        u := [store_value](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }}, g_10);
+        goto bb2;
+  bb2:  g_12 := [load_discr](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        g_11 := l-nth(g_12, 0i);
+        m_6 := g_11;
+        g_13 := m_6;
+        goto [((g_13) = (0i))] bb4 sw0;
+  sw0:  goto [((g_13) = (1i))] bb5 sw1;
+  sw1:  goto bb3;
+  bb3:  fail [Unreachable]();
+  bb4:  goto bb6;
+  bb5:  g_15 := [load_value](l-nth(m_4, 0i), l+(l-nth(m_4, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }}, 1i }} }}), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, false);
+        g_14 := l-nth(g_15, 0i);
+        g_16 := [new_lft]();
+        pLft_17 := l-nth(g_16, 0i);
+        u := [store_value](l-nth(m_7node, 0i), l-nth(m_7node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, g_14);
+        g_18 := [load_value](l-nth(m_7node, 0i), l-nth(m_7node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, true);
+        g_17 := l-nth(g_18, 0i);
+        g_19 := [new_lft]();
+        pLft_21 := l-nth(g_19, 0i);
+        m_11 := g_17;
+        g_20 := [new_lft]();
+        pLft_20 := l-nth(g_20, 0i);
+        g_21 := m_11;
+        g_22 := "std::ptr::NonNull::<T>::as_mut"(pLft_17, pLft_20, {{ "adt", "Node", {{ pty_T0 }} }}, g_21);
+        u := [store_value](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, g_22);
+        goto bb7;
+  bb6:  m_0 := {{ 0i, {{  }} }};
+        goto bb9;
+  bb7:  g_24 := [load_value](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, true);
+        g_23 := l-nth(g_24, 0i);
+        g_25 := [new_lft]();
+        pLft_19 := l-nth(g_25, 0i);
+        m_9 := {{ l-nth(g_23, 0i), l+(l-nth(g_23, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ pty_T0 }} }} }} }}) }};
+        g_26 := m_9;
+        m_8ret := {{ 1i, {{ g_26 }} }};
+        g_28 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_27 := l-nth(g_28, 0i);
+        g_29 := [new_lft]();
+        pLft_22 := l-nth(g_29, 0i);
+        m_13 := g_27;
+        g_30 := m_13;
+        g_31 := "extract_head::<T>"(pLft_0, pty_T0, g_30);
+        m_12 := g_31;
+        goto bb8;
+  bb8:  g_32 := m_8ret;
+        m_0 := g_32;
+        goto bb9;
+  bb9:  g_33 := m_0;
+        ret := g_33;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        u := [free](l-nth(m_7node, 0i), l-nth(m_7node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }});
+        u := [free](l-nth(m_10, 0i), l-nth(m_10, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }});
+        return
 };
 
