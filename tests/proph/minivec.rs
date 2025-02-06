@@ -41,7 +41,7 @@ mod rralloc {
     }
 
     // RefinedRust does not actually verify this function.
-    // Instead it uses the following axiomatised shim in Coq that performs a typed allocation:
+    // Instead it uses the following axiomatised shim in Coq that performs a typed re-allocation:
     // Definition type_of_realloc_array `{!typeGS Σ} (T_rt : Type) (T_st : syn_type) :=
     //   fn(∀ () : 0 | (old_size, new_size, l, v) : (Z * Z * loc * val), (λ ϝ, []);
     //     old_size @ int usize_t, l @ alias_ptr_t, new_size @ int usize_t; λ π,
@@ -106,13 +106,11 @@ pub struct RawVec<T> {
     _marker: PhantomData<T>,
 }
 
-// #[with_freeze_lemma_for_mutref(
-//     lemma_name = freeze_pcl,
-//     predicate_name = vec_ref_mut_pcl,
-//     frozen_variables = [ptr, cap, len],
-//     inner_predicate_name = vec_ref_mut_inner_pcl,
-//     resolve_macro_name = auto_resolve_vec_ref_mut_pcl
-// )]
+#[with_freeze_lemma(
+    lemma_name = freeze_pcl,
+    predicate_name = vec_ref_mut_pcl,
+    frozen_variables = [ptr, cap, len],
+)]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
@@ -141,16 +139,16 @@ impl<T: Ownable> Ownable for Vec<T> {
     }
 }
 
-// #[extract_lemma(
-//     forall ptr, cap, len.
-//     model m.
-//     extract model mh.
-//     assuming { ix < len }
-//     from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
-//     extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
-//     prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
-// )]
-// fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+#[extract_lemma(
+    forall ptr, cap, len.
+    model m.
+    extract model mh.
+    assuming { ix < len }
+    from { vec_ref_mut_pcl(vec, m, (ptr, cap, len)) }
+    extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
+    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+)]
+fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
 
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -284,32 +282,32 @@ impl<T: Ownable> Vec<T> {
         res
     }
 
-    // #[creusillian::requires(index < (*self@).len())]
-    // #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).append((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
-    // pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-    //     freeze_pcl(self);
-    //     assert!(index < self.len);
-    //     unsafe {
-    //         let p = rrptr::mut_add(self.ptr(), index);
-    //         let ret = &mut *p;
-    //         let proph = extract_ith(self, index);
-    //         ret.with_prophecy(proph)
-    //     }
-    // }
+    #[creusillian::requires(index < (*self@).len())]
+    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).append((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
+    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+        freeze_pcl(self);
+        assert!(index < self.len);
+        unsafe {
+            let p = rrptr::mut_add(self.ptr(), index);
+            let ret = &mut *p;
+            let proph = extract_ith(self, index);
+            ret.with_prophecy(proph)
+        }
+    }
 
-    // #[creusillian::ensures(match ret@ {
-    //     None => (((*self@).len() <= index) && ((*self@) == (^self@))),
-    //     Some(r) =>
-    //         ((*self@).at(index) == (*r@)) &&
-    //         ((^self@).at(index) == (^r@)) &&
-    //         ((^self@) == (*self@).sub(0, index).append((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
-    // })]
-    // pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
-    //     if index < self.len() {
-    //         unsafe { Some(self.get_unchecked_mut(index)) }
-    //     } else {
-    //         mutref_auto_resolve!(self);
-    //         None
-    //     }
-    // }
+    #[creusillian::ensures(match ret@ {
+        None => (((*self@).len() <= index) && ((*self@) == (^self@))),
+        Some(r) =>
+            ((*self@).at(index) == (*r@)) &&
+            ((^self@).at(index) == (^r@)) &&
+            ((^self@) == (*self@).sub(0, index).append((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
+    })]
+    pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
+        if index < self.len() {
+            unsafe { Some(self.get_unchecked_mut(index)) }
+        } else {
+            mutref_auto_resolve!(self);
+            None
+        }
+    }
 }

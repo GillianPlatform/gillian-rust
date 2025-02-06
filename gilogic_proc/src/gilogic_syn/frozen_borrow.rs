@@ -291,6 +291,12 @@ impl ToTokens for frozen_borrow::FreezeOwn {
                 fn #macro_name #generics (x : &mut #self_ty) {
                     gilogic::mutref_auto_resolve!(x, #tuple_arg_ty);
                 }
+
+                macro_rules! #macro_name {
+                    ($x:expr) => {
+                        #macro_name($x)
+                    };
+                }
             });
         }
 

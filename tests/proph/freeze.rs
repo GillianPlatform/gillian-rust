@@ -15,7 +15,7 @@ struct A {
 #[with_freeze_lemma(
     lemma_name = freeze_x,
     predicate_name = a_ref_mut_x,
-    frozen_variables = [x,]
+    frozen_variables = [x]
 )]
 impl Ownable for A {
     type RepresentationTy = u64;

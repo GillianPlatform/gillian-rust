@@ -3,9 +3,9 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `foo`
-  --> ../tests/proph/my_box_proph.rs:26:20
+  --> ../tests/proph/my_box_proph.rs:25:20
    |
-26 |         exists rm, foo: T .
+25 |         exists rm, foo: T .
    |                    ^^^ help: if this is intentional, prefix it with an underscore: `_foo`
    |
    = note: `#[warn(unused_variables)]` on by default

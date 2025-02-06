@@ -19,7 +19,6 @@ impl<T: Ownable> Ownable for MyBox<T> {
 }
 
 impl<T: Ownable> MyBox<T> {
-
     #[specification(
         forall sm, vm .
             requires { self.own(sm) * v.own(vm) }
@@ -32,10 +31,4 @@ impl<T: Ownable> MyBox<T> {
         unsafe { *self.ptr = v };
         self
     }
-
-    // #[requires(|sm: (T::RepresentationTy, T::RepresentationTy), vm: T::RepresentationTy| self.own(sm) * v.own(vm))]
-    // #[ensures(|rm: T::RepresentationTy| $sm.1 == vm$ * $sm.0 == vm$)]
-    // fn update(&mut self, v: T) {
-    //     unsafe { *self.ptr = v };
-    // }
 }

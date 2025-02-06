@@ -78,8 +78,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
     }
 }
 
-
-
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
@@ -299,10 +297,8 @@ fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
     lemma_name = freeze_pcl,
     predicate_name = vec_ref_mut_pcl,
     frozen_variables = [ptr, cap, len],
-    // resolve_macro_name = auto_resolve_vec_ref_mut_pcl
 )]
 impl<T: Ownable> Ownable for Vec<T> {
-
     #[predicate]
     fn own(self) {
         // The specification for zsts is quite hard. We need a value like ZST::REPRESENTATIVE or something.
@@ -321,12 +317,19 @@ impl<T: Ownable> Ownable for Vec<T> {
         //         * (values.len() == model.len())
         // );
         assertion!(
-            |ptr: Unique<T>, cap: usize, len: usize, values, rest|
-              (std::mem::size_of::<T>() > 0) * (self == Vec { buf: RawVec { ptr, cap }, len })
-              * cap.own() * len.own() * (len <= cap)
-              * ptr.as_ptr().points_to_slice(len, values)
-              * (len == values.len()) * all_own(values)
-              * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+            |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
+                * (self
+                    == Vec {
+                        buf: RawVec { ptr, cap },
+                        len
+                    })
+                * cap.own()
+                * len.own()
+                * (len <= cap)
+                * ptr.as_ptr().points_to_slice(len, values)
+                * (len == values.len())
+                * all_own(values)
+                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
         )
     }
 }

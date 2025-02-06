@@ -373,7 +373,7 @@ impl<T: Ownable> LinkedList<T> {
         freeze_htl(self);
         match self.head.as_mut() {
             None => {
-                auto_resolve_list_ref_mut_htl(self);
+                auto_resolve_list_ref_mut_htl!(self);
                 None
             }
             Some(node) => unsafe {
