@@ -177,15 +177,155 @@ impl<T: Ownable> Ownable for WP<T> {
 //     unreachable!()
 // }
 
-#[extract_lemma(
-    forall x, y.
-    model m.
-    extract model mx.
-    from { wp_ref_mut_xy(p, m, (x, y)) }
-    extract { Ownable::own(&mut (*y).v, mx) }
-    prophecise { (m.0, mx) }
-)]
-fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+// #[extract_lemma(
+//     forall x, y.
+//     model m.
+//     extract model mx.
+//     from { wp_ref_mut_xy(p, m, (x, y)) }
+//     extract { Ownable::own(&mut (*y).v, mx) }
+//     prophecise { (m.0, mx) }
+// )]
+// fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+
+#[cfg(gillian)]
+#[gillian::timeless]
+#[gillian::decl::lemma]
+#[gillian::args_deferred]
+#[gillian::spec = "extract_y___proof_spec_fefa9588_4d38_4a47_ac0f_88a07cd5e88d"]
+fn extract_y___proof<'a, T: Ownable>(p: &'a mut WP<T>) {
+    gilogic::__stubs::instantiate_lvars(
+        #[gillian::no_translate]
+        |x, y, m, new_new_model| unsafe {
+            let omgomg = (#[gillian::no_translate]
+            #[gillian::item = "extract_y___proof_spec_fefa9588_4d38_4a47_ac0f_88a07cd5e88d"]
+            #[gillian::decl::specification]
+            #[gillian::decl::pred_ins = "1"]
+            #[gillian::magic_closure]
+            |p: &'a mut WP<T>, x, y, m, new_new_model| -> gilogic::RustAssertion {
+                unsafe {
+                    gilogic::__stubs::spec(
+                        gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(p, m, (x, y)),
+                        [{
+                            gilogic::__stubs::instantiate_lvars(
+                                #[gillian::no_translate]
+                                |mx| {
+                                    gilogic::__stubs::star(
+                                        gilogic::__stubs::star(
+                                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(
+                                                &mut (*y).v,
+                                                mx,
+                                                (),
+                                            ),
+                                            gilogic::__stubs::pure(gilogic::__stubs::equal(
+                                                m,
+                                                (m.0, mx),
+                                            )),
+                                        ),
+                                        gilogic::__stubs::wand(
+                                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(
+                                                &mut (*y).v,
+                                                new_new_model,
+                                                (),
+                                            ),
+                                            gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(
+                                                p,
+                                                (m.0, new_new_model),
+                                                (x, y),
+                                            ),
+                                        ),
+                                    )
+                                },
+                            )
+                        }],
+                    )
+                }
+            })(p, x, y, m, new_new_model);
+            gilogic::__stubs::package(
+                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(
+                    &mut (*y).v,
+                    new_new_model,
+                    (),
+                ),
+                gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(
+                    p,
+                    (m.0, new_new_model),
+                    (x, y),
+                ),
+            );
+        },
+    )
+}
+#[cfg(gillian)]
+#[rustc_diagnostic_item = "extract_y_spec_90fd0a4d_a5a3_4f5f_84da_70177e259d8d"]
+#[gillian::decl::specification]
+#[gillian::decl::pred_ins = "1"]
+fn extract_y_spec_90fd0a4d_a5a3_4f5f_84da_70177e259d8d<'a, T: Ownable>(
+    p: &'a mut WP<T>,
+    ret: Prophecy<T::RepresentationTy>,
+) -> gilogic::RustAssertion {
+    unsafe {
+        gilogic::__stubs::instantiate_lvars(
+            #[gillian::no_translate]
+            |x, y, m| {
+                gilogic::__stubs::spec(
+                    wp_ref_mut_xy(p, m, (x, y)),
+                    [{
+                        gilogic::__stubs::instantiate_lvars(
+                            #[gillian::no_translate]
+                            |mx: (T::RepresentationTy, T::RepresentationTy),
+                             __OLD_PROPH_VAL,
+                             __NEW_PROPH_VAL,
+                             __NEW_PROPH_OLD_VAL| {
+                                gilogic::__stubs::star(
+                                    gilogic::__stubs::star(
+                                        gilogic::__stubs::star(
+                                            gilogic::__stubs::star(
+                                                gilogic::__stubs::pure(gilogic::__stubs::equal(
+                                                    __OLD_PROPH_VAL,
+                                                    m.0,
+                                                )),
+                                                gilogic::__stubs::pure(gilogic::__stubs::equal(
+                                                    __NEW_PROPH_VAL,
+                                                    mx.1,
+                                                )),
+                                            ),
+                                            gilogic::__stubs::pure(gilogic::__stubs::equal(
+                                                __NEW_PROPH_OLD_VAL,
+                                                mx.0,
+                                            )),
+                                        ),
+                                        gilogic::__stubs::observation(
+                                            (gilogic::__stubs::expr_eq(
+                                                m.1,
+                                                ((__OLD_PROPH_VAL.0, __NEW_PROPH_VAL)),
+                                            )) && (gilogic::__stubs::expr_eq(
+                                                m.0,
+                                                ((__OLD_PROPH_VAL.0, __NEW_PROPH_OLD_VAL)),
+                                            )),
+                                        ),
+                                    ),
+                                    Ownable::own(
+                                        gilogic::prophecies::Prophecised::with_prophecy(
+                                            &mut (*y).v,
+                                            ret,
+                                        ),
+                                        mx,
+                                    ),
+                                )
+                            },
+                        )
+                    }],
+                )
+            },
+        )
+    }
+}
+#[gillian::spec = "extract_y_spec_90fd0a4d_a5a3_4f5f_84da_70177e259d8d"]
+#[allow(unsused_variables)]
+#[gillian::trusted]
+fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy> {
+    ::core::panicking::panic("internal error: entered unreachable code")
+}
 
 impl<T: Ownable> WP<T> {
     #[creusillian::ensures(((ret@).0 == x@) && ((ret@).1 == y@))]

@@ -191,7 +191,7 @@ pred "<WP<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this,
   * (this == #this);
 
 
-lemma "extract_y___proof::<T>"(pLft_erased, pty_T0, p, new_new_model)[[
+lemma "extract_y___proof::<T>"(pLft_erased, pty_T0, p, x, y, m, new_new_model)[[
   "<WP<T> as gilogic::prophecies::FrozenOwn<(*mut N<T>, *mut N<T>)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #p, #m, {{ #x, #y }})
 ]]
 [[
