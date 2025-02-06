@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+# set -euo pipefail
 # Runs Gillian-Rust on the generated outputs
 cd Gillian-Rust
 

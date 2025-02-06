@@ -4,18 +4,18 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
-axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_erased, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<usize as gilogic::Ownable>::own"(#ix)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#ix: Int)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (ix == #ix)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
 pred "<AllocInit as gilogic::Ownable>::own"(+self):
@@ -108,7 +108,7 @@ proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) 
   rlab: return
 };
 
-proc "TryReserveError::kind"(pLft_erased, self) {
+proc "TryReserveError::kind"(pLft_0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "TryReserveError", {{  }} }} }});
@@ -125,7 +125,7 @@ proc "TryReserveError::kind"(pLft_erased, self) {
         return
 };
 
-proc "<TryReserveErrorKind as std::clone::Clone>::clone"(pLft_erased, self) {
+proc "<TryReserveErrorKind as std::clone::Clone>::clone"(pLft_0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "TryReserveErrorKind", {{  }} }} }});
@@ -435,7 +435,7 @@ proc "RawVec::<T>::NEW"(pty_T0) {
   rlab: return
 };
 
-proc "RawVec::<T>::current_memory"(pLft_erased, pty_T0, self) {
+proc "RawVec::<T>::current_memory"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
@@ -666,7 +666,7 @@ proc "RawVec::<T>::allocate"(pty_T0, capacity, init) {
         return
 };
 
-proc "RawVec::<T>::ptr"(pLft_erased, pty_T0, self) {
+proc "RawVec::<T>::ptr"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
@@ -687,7 +687,7 @@ proc "RawVec::<T>::ptr"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "RawVec::<T>::grow_amortized"(pLft_erased, pty_T0, self, len, additional) {
+proc "RawVec::<T>::grow_amortized"(pLft_0, pty_T0, self, len, additional) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
@@ -839,7 +839,7 @@ proc "RawVec::<T>::grow_amortized"(pLft_erased, pty_T0, self, len, additional) {
         return
 };
 
-proc "RawVec::<T>::capacity"(pLft_erased, pty_T0, self) {
+proc "RawVec::<T>::capacity"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
@@ -864,7 +864,7 @@ proc "RawVec::<T>::capacity"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "RawVec::<T>::reserve_for_push"(pLft_erased, pty_T0, self, len) {
+proc "RawVec::<T>::reserve_for_push"(pLft_0, pty_T0, self, len) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "RawVec", {{ pty_T0 }} }} }});
@@ -1011,7 +1011,7 @@ proc "Vec::<T>::with_capacity"(pty_T0, capacity) {
   rlab: return
 };
 
-proc "Vec::<T>::as_ptr"(pLft_erased, pty_T0, self) {
+proc "Vec::<T>::as_ptr"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1034,7 +1034,7 @@ proc "Vec::<T>::as_ptr"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "Vec::<T>::as_mut_ptr"(pLft_erased, pty_T0, self) {
+proc "Vec::<T>::as_mut_ptr"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1055,7 +1055,7 @@ proc "Vec::<T>::as_mut_ptr"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "Vec::<T>::len"(pLft_erased, pty_T0, self) {
+proc "Vec::<T>::len"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1072,7 +1072,7 @@ proc "Vec::<T>::len"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "Vec::<T>::capacity"(pLft_erased, pty_T0, self) {
+proc "Vec::<T>::capacity"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", false, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1093,19 +1093,19 @@ proc "Vec::<T>::capacity"(pLft_erased, pty_T0, self) {
         return
 };
 
-spec "Vec::<T>::push"(pLft_erased, pty_T0, self, value)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "Vec::<T>::push"(pLft_0, pty_T0, self, value)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<T as gilogic::Ownable>::own"(#pty_T0, #value)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (value == #value)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
-proc "Vec::<T>::push"(pLft_erased, pty_T0, self, value) {
+proc "Vec::<T>::push"(pLft_0, pty_T0, self, value) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1202,7 +1202,7 @@ proc "Vec::<T>::push"(pLft_erased, pty_T0, self, value) {
         return
 };
 
-proc "Vec::<T>::swap"(pLft_erased, pty_T0, self, a, b) {
+proc "Vec::<T>::swap"(pLft_0, pty_T0, self, a, b) {
         m_1 := __debug__;
         m_2 := __debug__;
         m_3 := __debug__;
@@ -1210,18 +1210,18 @@ proc "Vec::<T>::swap"(pLft_erased, pty_T0, self, a, b) {
   rlab: return
 };
 
-spec "Vec::<T>::pop"(pLft_erased, pty_T0, self)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
-  * <lft>(#pLft_erased; true)
+spec "Vec::<T>::pop"(pLft_0, pty_T0, self)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
+  * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "Vec::<T>::pop"(pLft_erased, pty_T0, self) {
+proc "Vec::<T>::pop"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});
@@ -1343,63 +1343,63 @@ proc "Vec::<T>::pop"(pLft_erased, pty_T0, self) {
         return
 };
 
-spec "Vec::<T>::index_mut"(pLft_erased, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<usize as gilogic::Ownable>::own"(#ix)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#ix: Int)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (ix == #ix)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "Vec::<T>::index_mut"(pLft_erased, pty_T0, self, ix) {
+proc "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix) {
         m_1 := __debug__;
         m_2 := __debug__;
   bb0:  fail [Unreachable]();
   rlab: return
 };
 
-spec "Vec::<T>::get_unchecked_mut"(pLft_erased, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<usize as gilogic::Ownable>::own"(#ix)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#ix: Int)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (ix == #ix)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "Vec::<T>::get_unchecked_mut"(pLft_erased, pty_T0, self, ix) {
+proc "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix) {
         m_1 := __debug__;
         m_2 := __debug__;
   bb0:  fail [Unreachable]();
   rlab: return
 };
 
-spec "Vec::<T>::get_mut"(pLft_erased, pty_T0, self, ix)
-[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix)
+[[ "<&mut Vec<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<usize as gilogic::Ownable>::own"(#ix)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#ix: Int)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (ix == #ix)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "Vec::<T>::get_mut"(pLft_erased, pty_T0, self, ix) {
+proc "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "Vec", {{ pty_T0 }} }} }});

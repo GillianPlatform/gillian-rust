@@ -1,0 +1,33 @@
+warning: unused imports: `Prophecised`, `Prophecy`
+ --> ../tests/proph/freeze.rs:7:27
+  |
+7 |     prophecies::{Ownable, Prophecised, Prophecy},
+  |                           ^^^^^^^^^^^  ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+[TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/freeze.rs:11:5
+   |
+10 | struct A {
+   |        - fields in this struct
+11 |     x: u64,
+   |     ^
+12 |     y: u64,
+   |     ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: variable `THIS` should have a snake case name
+  --> ../tests/proph/freeze.rs:24:12
+   |
+24 |     fn own(self, model: Self::RepresentationTy) {
+   |            ^^^^ help: convert the identifier to snake case: `this`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: 3 warnings emitted
+
+[TIMESTAMP DEBUG rust_to_gil] Correct!

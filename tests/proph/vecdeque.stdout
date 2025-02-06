@@ -4,9 +4,9 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "gilogic::prophecies::prophecy_auto_update::<VecDeque<T>>"(pLft_0, pty_T0, p)
+axiomatic spec "gilogic::prophecies::prophecy_auto_update::<(), VecDeque<T>>"(pLft_0, pty_T0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v)
-  * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#pty_T0, #v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #a)
   * <pcy_controller>(l-nth(#p, 1i); #a)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -15,13 +15,13 @@ axiomatic spec "gilogic::prophecies::prophecy_auto_update::<VecDeque<T>>"(pLft_0
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "VecDeque", {{ #pty_T0 }} }}; #v)
-  * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, #v, #r)
+  * "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#pty_T0, #v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #r)
   * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
-axiomatic spec "gilogic::prophecies::prophecy_resolve::<VecDeque<T>>"(pLft_0, pty_T0, p)
-[[ "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #p, #m)
+axiomatic spec "gilogic::prophecies::prophecy_resolve::<(), VecDeque<T>>"(pLft_0, pty_T0, p)
+[[ "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(#pLft_0, #pty_T0, #p, #m, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
@@ -97,13 +97,9 @@ pred "gilogic::iterated::with_prophecies::all_own::<T>"(+pty_T0, +vs, reprs):
 
 
 pred "<&mut VecDeque<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<VecDeque<T>>"(pLft_erased, pty_T0, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
-  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (model == #model)
   * (self == #self);
 
@@ -124,14 +120,36 @@ pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +s
   * (self == #self);
 
 
-pred "gilogic::prophecies::mut_ref_inner_proph::<VecDeque<T>>"(+pLft_a, +pty_T0, +this):
+pred "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_0, pty_T0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
+  "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_0, +pty_T0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "VecDeque", {{ pty_T0 }} }}; #v)
-  * "<VecDeque<T> as gilogic::prophecies::Ownable>::own"(pty_T0, #v, #repr)
   * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * "<VecDeque<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #repr, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
   * (this == #this);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_0; true);
 
 proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) {
         m_1kind := kind;
@@ -1219,7 +1237,7 @@ proc "VecDeque::<T>::push_back"(pLft_0, pty_T0, self, value) {
         pLft_16 := l-nth(g_45, 0i);
         m_18 := g_43;
         g_46 := m_18;
-        g_47 := "gilogic::prophecies::prophecy_auto_update::<VecDeque<T>>"(pLft_0, pty_T0, g_46);
+        g_47 := "gilogic::prophecies::prophecy_auto_update::<(), VecDeque<T>>"(pLft_0, pty_T0, g_46);
         m_17 := g_47;
         goto bb11;
   bb11: g_49 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "VecDeque", {{ pty_T0 }} }} }}, true);
@@ -1228,7 +1246,7 @@ proc "VecDeque::<T>::push_back"(pLft_0, pty_T0, self, value) {
         pLft_17 := l-nth(g_50, 0i);
         m_20 := g_48;
         g_51 := m_20;
-        g_52 := "gilogic::prophecies::prophecy_resolve::<VecDeque<T>>"(pLft_0, pty_T0, g_51);
+        g_52 := "gilogic::prophecies::prophecy_resolve::<(), VecDeque<T>>"(pLft_0, pty_T0, g_51);
         m_19 := g_52;
         goto bb12;
   bb12: m_0 := {{}};
@@ -1830,7 +1848,7 @@ proc "VecDeque::<T>::pop_back"(pLft_0, pty_T0, self) {
         pLft_15 := l-nth(g_52, 0i);
         m_19 := g_50;
         g_53 := m_19;
-        g_54 := "gilogic::prophecies::prophecy_auto_update::<VecDeque<T>>"(pLft_0, pty_T0, g_53);
+        g_54 := "gilogic::prophecies::prophecy_auto_update::<(), VecDeque<T>>"(pLft_0, pty_T0, g_53);
         m_18 := g_54;
         goto bb13;
   bb13: g_56 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "VecDeque", {{ pty_T0 }} }} }}, true);
@@ -1839,7 +1857,7 @@ proc "VecDeque::<T>::pop_back"(pLft_0, pty_T0, self) {
         pLft_16 := l-nth(g_57, 0i);
         m_21 := g_55;
         g_58 := m_21;
-        g_59 := "gilogic::prophecies::prophecy_resolve::<VecDeque<T>>"(pLft_0, pty_T0, g_58);
+        g_59 := "gilogic::prophecies::prophecy_resolve::<(), VecDeque<T>>"(pLft_0, pty_T0, g_58);
         m_20 := g_59;
         goto bb14;
   bb14: g_60 := m_2res;

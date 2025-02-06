@@ -10,10 +10,7 @@ use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     iterated::with_prophecies::{all_own, all_own_swap},
-    macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
-    },
+    macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,

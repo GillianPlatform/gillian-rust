@@ -529,7 +529,7 @@ pub(crate) fn inputs_and_output<'tcx>(
     {
         TyKind::FnDef(..) => {
             let gen_sig = tcx.fn_sig(def_id).instantiate_identity();
-            let sig = tcx.normalize_erasing_late_bound_regions(tcx.param_env(def_id), gen_sig);
+            let sig = gen_sig.skip_binder();
             let iter = tcx
                 .fn_arg_names(def_id)
                 .iter()

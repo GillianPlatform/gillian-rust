@@ -1,51 +1,48 @@
-warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`, `extract_lemma`, `prophecies::with_freeze_lemma_for_mutref`
+warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`
   --> ../tests/proph/vecdeque.rs:12:42
    |
 12 |     iterated::with_prophecies::{all_own, all_own_swap},
    |                                          ^^^^^^^^^^^^
-13 |     macros::{
-14 |         assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-   |                    ^^^^^^^^^^^^^             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-18 |     prophecies::{Ownable, Prophecised, Prophecy},
+15 |     prophecies::{Ownable, Prophecised, Prophecy},
    |                           ^^^^^^^^^^^  ^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
 warning: unused import: `std::slice`
-  --> ../tests/proph/vecdeque.rs:24:5
+  --> ../tests/proph/vecdeque.rs:21:5
    |
-24 | use std::slice;
+21 | use std::slice;
    |     ^^^^^^^^^^
 
 warning: unnecessary parentheses around function argument
-   --> ../tests/proph/vecdeque.rs:372:23
+   --> ../tests/proph/vecdeque.rs:369:23
     |
-372 |             * (end == (head + len - cap))
+369 |             * (end == (head + len - cap))
     |                       ^                ^
     |
     = note: `#[warn(unused_parens)]` on by default
 help: remove these parentheses
     |
-372 -             * (end == (head + len - cap))
-372 +             * (end == head + len - cap)
+369 -             * (end == (head + len - cap))
+369 +             * (end == head + len - cap)
     |
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `off`
-   --> ../tests/proph/vecdeque.rs:454:39
+   --> ../tests/proph/vecdeque.rs:451:39
     |
-454 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
+451 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
     |                                       ^^^ help: if this is intentional, prefix it with an underscore: `_off`
     |
     = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `value`
-   --> ../tests/proph/vecdeque.rs:454:51
+   --> ../tests/proph/vecdeque.rs:451:51
     |
-454 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
+451 |     unsafe fn buffer_write(&mut self, off: usize, value: T) {
     |                                                   ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
 
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
@@ -60,66 +57,66 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: unnecessary `unsafe` block
-   --> ../tests/proph/vecdeque.rs:455:9
+   --> ../tests/proph/vecdeque.rs:452:9
     |
-455 |         unsafe {
+452 |         unsafe {
     |         ^^^^^^ unnecessary `unsafe` block
     |
     = note: `#[warn(unused_unsafe)]` on by default
 
 warning: field `kind` is never read
-  --> ../tests/proph/vecdeque.rs:35:5
+  --> ../tests/proph/vecdeque.rs:32:5
    |
-34 | pub struct TryReserveError {
+31 | pub struct TryReserveError {
    |            --------------- field in this struct
-35 |     kind: TryReserveErrorKind,
+32 |     kind: TryReserveErrorKind,
    |     ^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
 warning: method `kind` is never used
-  --> ../tests/proph/vecdeque.rs:45:8
+  --> ../tests/proph/vecdeque.rs:42:8
    |
-44 | impl TryReserveError {
+41 | impl TryReserveError {
    | -------------------- method in this implementation
-45 |     fn kind(&self) -> TryReserveErrorKind {
+42 |     fn kind(&self) -> TryReserveErrorKind {
    |        ^^^^
 
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vecdeque.rs:67:5
+  --> ../tests/proph/vecdeque.rs:64:5
    |
-63 | enum AllocInit {
+60 | enum AllocInit {
    |      --------- variant in this enum
 ...
-67 |     Zeroed,
+64 |     Zeroed,
    |     ^^^^^^
 
 warning: function `handle_reserve` is never used
-  --> ../tests/proph/vecdeque.rs:79:4
+  --> ../tests/proph/vecdeque.rs:76:4
    |
-79 | fn handle_reserve(result: Result<(), TryReserveError>) {
+76 | fn handle_reserve(result: Result<(), TryReserveError>) {
    |    ^^^^^^^^^^^^^^
 
 warning: method `reserve_for_push` is never used
-   --> ../tests/proph/vecdeque.rs:268:12
+   --> ../tests/proph/vecdeque.rs:265:12
     |
-152 | impl<T> RawVec<T> {
+149 | impl<T> RawVec<T> {
     | ----------------- method in this implementation
 ...
-268 |     pub fn reserve_for_push(&mut self, len: usize) {
+265 |     pub fn reserve_for_push(&mut self, len: usize) {
     |            ^^^^^^^^^^^^^^^^
 
 warning: unused `std::result::Result` that must be used
-   --> ../tests/proph/vecdeque.rs:444:9
+   --> ../tests/proph/vecdeque.rs:441:9
     |
-444 |         self.buf.grow_amortized(self.len, 1);
+441 |         self.buf.grow_amortized(self.len, 1);
     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: this `Result` may be an `Err` variant, which should be handled
     = note: `#[warn(unused_must_use)]` on by default
 help: use `let _ = ...` to ignore the resulting value
     |
-444 |         let _ = self.buf.grow_amortized(self.len, 1);
+441 |         let _ = self.buf.grow_amortized(self.len, 1);
     |         +++++++
 
 warning: 13 warnings emitted

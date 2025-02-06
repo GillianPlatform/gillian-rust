@@ -178,7 +178,7 @@ proc "LinkedList::<T>::new"(pty_T0) {
   rlab: return
 };
 
-proc "LinkedList::<T>::push_back_node"(pLft_erased, pty_T0, self, node) {
+proc "LinkedList::<T>::push_back_node"(pLft_0, pty_T0, self, node) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -292,7 +292,7 @@ proc "LinkedList::<T>::push_back_node"(pLft_erased, pty_T0, self, node) {
         return
 };
 
-proc "LinkedList::<T>::pop_back_node"(pLft_erased, pty_T0, self) {
+proc "LinkedList::<T>::pop_back_node"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -404,7 +404,7 @@ proc "LinkedList::<T>::pop_back_node"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "LinkedList::<T>::pop_front_node"(pLft_erased, pty_T0, self) {
+proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -516,18 +516,18 @@ proc "LinkedList::<T>::pop_front_node"(pLft_erased, pty_T0, self) {
         return
 };
 
-spec "LinkedList::<T>::pop_front"(pLft_erased, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
-  * <lft>(#pLft_erased; true)
+spec "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
+  * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "LinkedList::<T>::pop_front"(pLft_erased, pty_T0, self) {
+proc "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -552,7 +552,7 @@ proc "LinkedList::<T>::pop_front"(pLft_erased, pty_T0, self) {
         return
 };
 
-proc "LinkedList::<T>::push_front_node"(pLft_erased, pty_T0, self, node) {
+proc "LinkedList::<T>::push_front_node"(pLft_0, pty_T0, self, node) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -666,18 +666,18 @@ proc "LinkedList::<T>::push_front_node"(pLft_erased, pty_T0, self, node) {
         return
 };
 
-spec "LinkedList::<T>::pop_back"(pLft_erased, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
-  * <lft>(#pLft_erased; true)
+spec "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
+  * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::Ownable>::own"(#pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "LinkedList::<T>::pop_back"(pLft_erased, pty_T0, self) {
+proc "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -741,19 +741,19 @@ proc "LinkedList::<T>::pop_back"(pLft_erased, pty_T0, self) {
         return
 };
 
-spec "LinkedList::<T>::push_back"(pLft_erased, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<T as gilogic::Ownable>::own"(#pty_T0, #elt)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (elt == #elt)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
-proc "LinkedList::<T>::push_back"(pLft_erased, pty_T0, self, elt) {
+proc "LinkedList::<T>::push_back"(pLft_0, pty_T0, self, elt) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -824,19 +824,19 @@ proc "LinkedList::<T>::push_back"(pLft_erased, pty_T0, self, elt) {
         return
 };
 
-spec "LinkedList::<T>::push_front"(pLft_erased, pty_T0, self, elt)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<T as gilogic::Ownable>::own"(#pty_T0, #elt)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (elt == #elt)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
-proc "LinkedList::<T>::push_front"(pLft_erased, pty_T0, self, elt) {
+proc "LinkedList::<T>::push_front"(pLft_0, pty_T0, self, elt) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
@@ -871,18 +871,18 @@ proc "LinkedList::<T>::push_front"(pLft_erased, pty_T0, self, elt) {
         return
 };
 
-spec "LinkedList::<T>::front_mut"(pLft_erased, pty_T0, self)
-[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
-  * <lft>(#pLft_erased; true)
+spec "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self)
+[[ "<&mut LinkedList<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, ret)
-  * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, ret)
+  * <lft>(#pLft_0; true) ]]
 normal
 
-proc "LinkedList::<T>::front_mut"(pLft_erased, pty_T0, self) {
+proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
         m_1 := __debug__;
   bb0:  fail [Unreachable]();
   rlab: return

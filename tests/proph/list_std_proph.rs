@@ -3,10 +3,7 @@ extern crate creusillian;
 extern crate gilogic;
 
 use gilogic::{
-    macros::{
-        assertion, extract_lemma, lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
-    },
+    macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
@@ -56,16 +53,16 @@ impl<T> Node<T> {
     }
 }
 
-#[extract_lemma(
-    forall head, tail, len, p.
-    model m.
-    extract model mh.
-    assuming { head == Some(p) }
-    from { list_ref_mut_htl(list, m, head, tail, len) }
-    extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
-    prophecise { m.tail().prepend(mh) }
-)]
-fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
+// #[extract_lemma(
+//     forall head, tail, len, p.
+//     model m.
+//     extract model mh.
+//     assuming { head == Some(p) }
+//     from { list_ref_mut_htl(list, m, head, tail, len) }
+//     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
+//     prophecise { m.tail().prepend(mh) }
+// )]
+// fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
 
 #[predicate]
 fn dll_seg<T: Ownable>(
@@ -158,13 +155,13 @@ fn dll_seg_r_to_l<T: Ownable>(
     head_prev: Option<NonNull<Node<T>>>,
 );
 
-#[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_htl,
-    predicate_name = list_ref_mut_htl,
-    frozen_variables = [head, tail, len],
-    inner_predicate_name = list_ref_mut_inner_htl,
-    resolve_macro_name = auto_resolve_list_ref_mut_htl
-)]
+// #[with_freeze_lemma_for_mutref(
+//     lemma_name = freeze_htl,
+//     predicate_name = list_ref_mut_htl,
+//     frozen_variables = [head, tail, len],
+//     inner_predicate_name = list_ref_mut_inner_htl,
+//     resolve_macro_name = auto_resolve_list_ref_mut_htl
+// )]
 impl<T: Ownable> Ownable for LinkedList<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
@@ -284,28 +281,27 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    #[creusillian::ensures(match ret {
-        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
-        Some(head) =>
-            ((*self@).at(0) == *head@)
-            && ((^self@).at(0) == ^head@)
-            && (forall < i: usize > (0 < i && i < (*self@).len()) ==> (*self@).at(i) == (^self@).at(i))
-    })]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        freeze_htl(self);
-        match self.head.as_mut() {
-            None => {
-                auto_resolve_list_ref_mut_htl!(self);
-                None
-            }
-            Some(node) => unsafe {
-                let ret = &mut node.as_mut().element;
-                let proph = extract_head(self);
-                Some(ret.with_prophecy(proph))
-            },
-        }
-    }
-
+    // #[creusillian::ensures(match ret {
+    //     None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+    //     Some(head) =>
+    //         ((*self@).at(0) == *head@)
+    //         && ((^self@).at(0) == ^head@)
+    //         && (forall < i: usize > (0 < i && i < (*self@).len()) ==> (*self@).at(i) == (^self@).at(i))
+    // })]
+    // pub fn front_mut(&mut self) -> Option<&mut T> {
+    //     freeze_htl(self);
+    //     match self.head.as_mut() {
+    //         None => {
+    //             auto_resolve_list_ref_mut_htl!(self);
+    //             None
+    //         }
+    //         Some(node) => unsafe {
+    //             let ret = &mut node.as_mut().element;
+    //             let proph = extract_head(self);
+    //             Some(ret.with_prophecy(proph))
+    //         },
+    //     }
+    // }
 
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),

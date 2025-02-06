@@ -1,10 +1,19 @@
-warning: unused import: `all_own_swap`
+warning: unused imports: `Prophecised`, `Prophecy`, `all_own_swap`
   --> ../tests/proph/vec_std_proph.rs:12:42
    |
 12 |     iterated::with_prophecies::{all_own, all_own_swap},
    |                                          ^^^^^^^^^^^^
+...
+15 |     prophecies::{Ownable, Prophecised, Prophecy},
+   |                           ^^^^^^^^^^^  ^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::slice`
+  --> ../tests/proph/vec_std_proph.rs:21:5
+   |
+21 | use std::slice;
+   |     ^^^^^^^^^^
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
@@ -19,39 +28,17 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   |
   = note: `#[warn(stable_features)]` on by default
 
-warning: unused variable: `vec`
-   --> ../tests/proph/vec_std_proph.rs:295:32
-    |
-295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
-    |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
-    |
-    = note: `#[warn(unused_variables)]` on by default
-
-warning: unused variable: `ix`
-   --> ../tests/proph/vec_std_proph.rs:295:53
-    |
-295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
-    |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
-
 warning: variant `Zeroed` is never constructed
-  --> ../tests/proph/vec_std_proph.rs:67:5
+  --> ../tests/proph/vec_std_proph.rs:64:5
    |
-63 | enum AllocInit {
+60 | enum AllocInit {
    |      --------- variant in this enum
 ...
-67 |     Zeroed,
+64 |     Zeroed,
    |     ^^^^^^
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: variable `REFERENCE` should have a snake case name
-   --> ../tests/proph/vec_std_proph.rs:308:12
-    |
-308 |     fn own(self, model: Self::RepresentationTy) {
-    |            ^^^^ help: convert the identifier to snake case: `reference`
-    |
-    = note: `#[warn(non_snake_case)]` on by default
-
-warning: 6 warnings emitted
+warning: 4 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

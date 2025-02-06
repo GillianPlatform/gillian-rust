@@ -5,21 +5,16 @@ use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     iterated::with_prophecies::{all_own, all_own_swap},
-    macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
-    },
+    macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
 };
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
-
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
-
 
 /// This creates a wrapper around the Rust Alloc API that always fails on allocation failures.
 /// The methods will be fully replaced by shims that implement the same functionality in terms of
@@ -69,7 +64,6 @@ mod rralloc {
         new_ptr
     }
 
-
     pub unsafe fn dealloc_array<T>(len: usize, ptr: *mut T) {
         alloc::dealloc(ptr as *mut u8, Layout::array::<T>(len).unwrap());
     }
@@ -79,8 +73,7 @@ mod rralloc {
 mod rrptr {
     use std::ptr::NonNull;
 
-
-    pub fn dangling<T>() -> *mut T{
+    pub fn dangling<T>() -> *mut T {
         NonNull::dangling().as_ptr()
     }
 
@@ -101,9 +94,6 @@ mod rrptr {
     }
 }
 
-
-
-
 /// Represents an owned chunk of memory of which a prefix `xs` is filled with elements of type `T`,
 /// with a total capacity to hold `cap` elements of `T`.
 // Compared to the Rustonomicon implementation, we use *const T instead of NonNull<T>.
@@ -116,39 +106,51 @@ pub struct RawVec<T> {
     _marker: PhantomData<T>,
 }
 
-#[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_pcl,
-    predicate_name = vec_ref_mut_pcl,
-    frozen_variables = [ptr, cap, len],
-    inner_predicate_name = vec_ref_mut_inner_pcl,
-    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
-)]
+// #[with_freeze_lemma_for_mutref(
+//     lemma_name = freeze_pcl,
+//     predicate_name = vec_ref_mut_pcl,
+//     frozen_variables = [ptr, cap, len],
+//     inner_predicate_name = vec_ref_mut_inner_pcl,
+//     resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+// )]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
     #[predicate]
     fn own(self, model: Self::RepresentationTy) {
         assertion!(
-          |ptr: *const T, cap: usize, len: usize, values, rest|
-              (std::mem::size_of::<T>() > 0) * (self == Vec { buf: RawVec { ptr, cap, _marker: PhantomData }, len })
-              * cap.own(cap) * len.own(len) * (len <= cap)
-              * ptr.points_to_slice(len, values)
-              * (len == values.len()) * (values.len() == model.len())
-              * all_own(values, model) * ptr.add(len).many_maybe_uninits(cap - len, rest)
+            |ptr: *const T, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
+                * (self
+                    == Vec {
+                        buf: RawVec {
+                            ptr,
+                            cap,
+                            _marker: PhantomData
+                        },
+                        len
+                    })
+                * cap.own(cap)
+                * len.own(len)
+                * (len <= cap)
+                * ptr.points_to_slice(len, values)
+                * (len == values.len())
+                * (values.len() == model.len())
+                * all_own(values, model)
+                * ptr.add(len).many_maybe_uninits(cap - len, rest)
         )
     }
 }
 
-#[extract_lemma(
-    forall ptr, cap, len.
-    model m.
-    extract model mh.
-    assuming { ix < len }
-    from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
-    extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
-    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
-)]
-fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+// #[extract_lemma(
+//     forall ptr, cap, len.
+//     model m.
+//     extract model mh.
+//     assuming { ix < len }
+//     from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
+//     extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
+//     prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+// )]
+// fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
 
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -218,9 +220,7 @@ impl<T> RawVec<T> {
     }
 }
 
-impl<T : Ownable> Vec<T> {
-
-
+impl<T: Ownable> Vec<T> {
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
     }
@@ -228,7 +228,6 @@ impl<T : Ownable> Vec<T> {
     fn cap<'a>(&'a self) -> usize {
         self.buf.cap
     }
-
 
     pub fn len(&self) -> usize {
         self.len
@@ -285,36 +284,32 @@ impl<T : Ownable> Vec<T> {
         res
     }
 
+    // #[creusillian::requires(index < (*self@).len())]
+    // #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).append((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
+    // pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+    //     freeze_pcl(self);
+    //     assert!(index < self.len);
+    //     unsafe {
+    //         let p = rrptr::mut_add(self.ptr(), index);
+    //         let ret = &mut *p;
+    //         let proph = extract_ith(self, index);
+    //         ret.with_prophecy(proph)
+    //     }
+    // }
 
-
-    #[creusillian::requires(index < (*self@).len())]
-    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).append((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
-    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-        freeze_pcl(self);
-        assert!(index < self.len);
-        unsafe {
-            let p = rrptr::mut_add(self.ptr(), index);
-            let ret = &mut *p;
-            let proph = extract_ith(self, index);
-            ret.with_prophecy(proph)
-        }
-    }
-
-    
-    #[creusillian::ensures(match ret@ {
-        None => (((*self@).len() <= index) && ((*self@) == (^self@))),
-        Some(r) =>
-            ((*self@).at(index) == (*r@)) &&
-            ((^self@).at(index) == (^r@)) &&
-            ((^self@) == (*self@).sub(0, index).append((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
-    })]
-    pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
-        if index < self.len() {
-            unsafe { Some (self.get_unchecked_mut(index)) }
-        }
-        else {
-            mutref_auto_resolve!(self);
-            None
-        }
-    }
+    // #[creusillian::ensures(match ret@ {
+    //     None => (((*self@).len() <= index) && ((*self@) == (^self@))),
+    //     Some(r) =>
+    //         ((*self@).at(index) == (*r@)) &&
+    //         ((^self@).at(index) == (^r@)) &&
+    //         ((^self@) == (*self@).sub(0, index).append((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
+    // })]
+    // pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
+    //     if index < self.len() {
+    //         unsafe { Some(self.get_unchecked_mut(index)) }
+    //     } else {
+    //         mutref_auto_resolve!(self);
+    //         None
+    //     }
+    // }
 }

@@ -3,17 +3,14 @@
 #![feature(sized_type_properties)]
 #![feature(allocator_api)]
 #![feature(unchecked_math)]
-extern crate gilogic;
 extern crate creusillian;
+extern crate gilogic;
 
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
     iterated::with_prophecies::{all_own, all_own_swap},
-    macros::{
-        assertion, extract_lemma, predicate, prophecies::with_freeze_lemma_for_mutref,
-        specification,
-    },
+    macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
     Seq,
@@ -85,7 +82,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
         Ok(()) => { /* yay */ }
     }
 }
-
 
 pub(crate) struct RawVec<T> {
     ptr: Unique<T>,
@@ -283,24 +279,24 @@ pub struct Vec<T> {
     len: usize,
 }
 
-#[extract_lemma(
-    forall ptr: Unique<T>, cap, len.
-    model m.
-    extract model mh.
-    assuming { ix < len }
-    from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
-    extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
-    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
-)]
-fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+// #[extract_lemma(
+//     forall ptr: Unique<T>, cap, len.
+//     model m.
+//     extract model mh.
+//     assuming { ix < len }
+//     from { vec_ref_mut_pcl(vec, m, ptr, cap, len) }
+//     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
+//     prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+// )]
+// fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
 
-#[with_freeze_lemma_for_mutref(
-    lemma_name = freeze_pcl,
-    predicate_name = vec_ref_mut_pcl,
-    frozen_variables = [ptr, cap, len],
-    inner_predicate_name = vec_ref_mut_inner_pcl,
-    resolve_macro_name = auto_resolve_vec_ref_mut_pcl
-)]
+// #[with_freeze_lemma_for_mutref(
+//     lemma_name = freeze_pcl,
+//     predicate_name = vec_ref_mut_pcl,
+//     frozen_variables = [ptr, cap, len],
+//     inner_predicate_name = vec_ref_mut_inner_pcl,
+//     resolve_macro_name = auto_resolve_vec_ref_mut_pcl
+// )]
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
@@ -323,11 +319,19 @@ impl<T: Ownable> Ownable for Vec<T> {
         // );
         assertion!(
             |ptr: Unique<T>, cap: usize, len: usize, values, rest| (std::mem::size_of::<T>() > 0)
-                * (self == Vec { buf: RawVec { ptr, cap }, len })
-                * cap.own(cap) * len.own(len) * (len <= cap)
+                * (self
+                    == Vec {
+                        buf: RawVec { ptr, cap },
+                        len
+                    })
+                * cap.own(cap)
+                * len.own(len)
+                * (len <= cap)
                 * ptr.as_ptr().points_to_slice(len, values)
-                * (len == values.len()) * (values.len() == model.len())
-                * all_own(values, model) * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
+                * (len == values.len())
+                * (values.len() == model.len())
+                * all_own(values, model)
+                * ptr.as_ptr().add(len).many_maybe_uninits(cap - len, rest)
         )
     }
 }
@@ -396,27 +400,27 @@ impl<T: Ownable> Vec<T> {
     //         emp
     //     }
     // )]
-    pub fn swap(&mut self, a: usize, b: usize) {
-        // Some ghost code to keep track of the model.
-        freeze_pcl(self);
+    // pub fn swap(&mut self, a: usize, b: usize) {
+    //     // Some ghost code to keep track of the model.
+    //     freeze_pcl(self);
 
-        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
-        // Can't take two mutable loans from one vector, so instead use raw pointers.
-        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+    //     // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
+    //     // Can't take two mutable loans from one vector, so instead use raw pointers.
+    //     let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
 
-        let pa = std::ptr::addr_of_mut!(slice[a]);
-        let pb = std::ptr::addr_of_mut!(slice[b]);
-        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
-        // to elements in the slice and therefore are guaranteed to be valid and aligned.
-        // Note that accessing the elements behind `a` and `b` is checked and will
-        // panic when out of bounds.
-        unsafe {
-            std::ptr::swap(pa, pb);
-        }
-        // We need assert_bind to be able to talk about `curr`
-        // all_own_swap(curr, a, b);
-        auto_resolve_vec_ref_mut_pcl!(self);
-    }
+    //     let pa = std::ptr::addr_of_mut!(slice[a]);
+    //     let pb = std::ptr::addr_of_mut!(slice[b]);
+    //     // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
+    //     // to elements in the slice and therefore are guaranteed to be valid and aligned.
+    //     // Note that accessing the elements behind `a` and `b` is checked and will
+    //     // panic when out of bounds.
+    //     unsafe {
+    //         std::ptr::swap(pa, pb);
+    //     }
+    //     // We need assert_bind to be able to talk about `curr`
+    //     // all_own_swap(curr, a, b);
+    //     auto_resolve_vec_ref_mut_pcl!(self);
+    // }
 
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
@@ -437,57 +441,55 @@ impl<T: Ownable> Vec<T> {
         res
     }
 
+    // #[creusillian::requires(ix < (*self@).len())]
+    // #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
+    // pub fn index_mut(&mut self, ix: usize) -> &mut T {
+    //     freeze_pcl(self);
+    //     // from impl<T> ops::DerefMut for Vec<T>
+    //     let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
 
-    #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
-    pub fn index_mut(&mut self, ix: usize) -> &mut T {
-        freeze_pcl(self);
-        // from impl<T> ops::DerefMut for Vec<T>
-        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+    //     // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+    //     // which in turn is called by IndexMut<usize> for Vec<T>
+    //     let ret = &mut slice[ix];
 
-        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
-        // which in turn is called by IndexMut<usize> for Vec<T>
-        let ret = &mut slice[ix];
+    //     let proph = extract_ith(self, ix);
+    //     ret.with_prophecy(proph)
+    // }
 
-        let proph = extract_ith(self, ix);
-        ret.with_prophecy(proph)
-    }
+    // #[creusillian::requires(ix < (*self@).len())]
+    // #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
+    // pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
+    //     freeze_pcl(self);
+    //     // from impl<T> ops::DerefMut for Vec<T>
+    //     let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
 
-    #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).append((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
-    pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
-        freeze_pcl(self);
-        // from impl<T> ops::DerefMut for Vec<T>
-        let slice = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) };
+    //     //safety assert!
+    //     assert!(ix < self.len);
 
-        //safety assert!
-        assert!(ix < self.len);
+    //     // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
+    //     // which in turn is called by IndexMut<usize> for Vec<T>
+    //     let ret = &mut *slice.as_mut_ptr().add(ix);
+    //     let proph = extract_ith(self, ix);
+    //     ret.with_prophecy(proph)
+    // }
 
-        // from SliceIndex<[T]> for usize, which is directly called by IndexMut<usize> for [T],
-        // which in turn is called by IndexMut<usize> for Vec<T>
-        let ret = &mut *slice.as_mut_ptr().add(ix);
-        let proph = extract_ith(self, ix);
-        ret.with_prophecy(proph)
-    }
-
-
-    #[creusillian::ensures(match ret@ {
-        None => (((*self@).len() <= ix) && ((*self@) == (^self@))),
-        Some(r) =>
-            ((*self@).at(ix) == (*r@)) &&
-            ((^self@).at(ix) == (^r@)) &&
-            ((^self@) == (*self@).sub(0, ix).append((^r@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))
-    })]
-    fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
-        // SAFETY: `self` is checked to be in bounds.
-        if ix < self.len {
-            // Ignore specification to avoid having to manually reborrow
-            unsafe { Some(self.get_unchecked_mut(ix)) }
-        } else {
-            mutref_auto_resolve!(self);
-            None
-        }
-    }
+    // #[creusillian::ensures(match ret@ {
+    //     None => (((*self@).len() <= ix) && ((*self@) == (^self@))),
+    //     Some(r) =>
+    //         ((*self@).at(ix) == (*r@)) &&
+    //         ((^self@).at(ix) == (^r@)) &&
+    //         ((^self@) == (*self@).sub(0, ix).append((^r@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))
+    // })]
+    // fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
+    //     // SAFETY: `self` is checked to be in bounds.
+    //     if ix < self.len {
+    //         // Ignore specification to avoid having to manually reborrow
+    //         unsafe { Some(self.get_unchecked_mut(ix)) }
+    //     } else {
+    //         mutref_auto_resolve!(self);
+    //         None
+    //     }
+    // }
 }
 
 // We can't compile this at the moment because of poor_mans_unification...

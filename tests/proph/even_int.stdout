@@ -4,9 +4,9 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "gilogic::prophecies::prophecy_auto_update::<EvenInt>"(pLft_0, p)
+axiomatic spec "gilogic::prophecies::prophecy_auto_update::<(), EvenInt>"(pLft_0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "EvenInt", {{  }} }}; #v)
-  * "<EvenInt as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #a)
   * <pcy_controller>(l-nth(#p, 1i); #a)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -14,13 +14,13 @@ axiomatic spec "gilogic::prophecies::prophecy_auto_update::<EvenInt>"(pLft_0, p)
   * (p == #p)
   * (pLft_0 == #pLft_0) ]]
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "EvenInt", {{  }} }}; #v)
-  * "<EvenInt as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #r)
   * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
-axiomatic spec "gilogic::prophecies::prophecy_resolve::<EvenInt>"(pLft_0, p)
-[[ "<&mut EvenInt as gilogic::prophecies::Ownable>::own"(#pLft_0, #p, #m)
+axiomatic spec "gilogic::prophecies::prophecy_resolve::<(), EvenInt>"(pLft_0, p)
+[[ "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(#pLft_0, #p, #m, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
@@ -52,13 +52,9 @@ pred "<std::option::Option<EvenInt> as gilogic::prophecies::Ownable>::own"(+self
 
 
 pred "<&mut EvenInt as gilogic::prophecies::Ownable>::own"(+pLft_erased, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<EvenInt>"(pLft_erased, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
-  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (model == #model)
   * (self == #self);
 
@@ -67,14 +63,36 @@ pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
   (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
 
 
-pred "gilogic::prophecies::mut_ref_inner_proph::<EvenInt>"(+pLft_a, +this):
+pred "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+this, repr, frozen):
+  "<EvenInt as gilogic::prophecies::Ownable>::own"(#this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "EvenInt", {{  }} }}; #v)
-  * "<EvenInt as gilogic::prophecies::Ownable>::own"(#v, #repr)
   * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * "<EvenInt as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #repr, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
   * (this == #this);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_0; true);
 
 spec "EvenInt::new_2"(x)
 [[ "<i32 as gilogic::prophecies::Ownable>::own"(#x, #x_repr)
@@ -348,7 +366,7 @@ proc "EvenInt::add_two"(pLft_0, self) {
         pLft_10 := l-nth(g_18, 0i);
         m_10 := g_16;
         g_19 := m_10;
-        g_20 := "gilogic::prophecies::prophecy_auto_update::<EvenInt>"(pLft_0, g_19);
+        g_20 := "gilogic::prophecies::prophecy_auto_update::<(), EvenInt>"(pLft_0, g_19);
         m_9 := g_20;
         goto bb4;
   bb4:  g_22 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }}, true);
@@ -357,7 +375,7 @@ proc "EvenInt::add_two"(pLft_0, self) {
         pLft_11 := l-nth(g_23, 0i);
         m_12 := g_21;
         g_24 := m_12;
-        g_25 := "gilogic::prophecies::prophecy_resolve::<EvenInt>"(pLft_0, g_24);
+        g_25 := "gilogic::prophecies::prophecy_resolve::<(), EvenInt>"(pLft_0, g_24);
         m_11 := g_25;
         goto bb5;
   bb5:  m_0 := {{}};
