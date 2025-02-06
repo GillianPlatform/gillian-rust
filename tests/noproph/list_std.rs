@@ -1,11 +1,7 @@
 //@check-pass
 extern crate gilogic;
 
-use gilogic::{
-    assert_bind,
-    macros::{no_prophecies::with_freeze_lemma_for_mutref, *},
-    unfold, Ownable,
-};
+use gilogic::{macros::*, unfold, Ownable};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -57,7 +53,7 @@ fn dll_seg<T: Ownable>(
 #[extract_lemma(
     forall head, tail, len, p.
     assuming { head == Some(p) }
-    from { list_ref_mut_htl(list, head, tail, len) }
+    from { list_ref_mut_htl(list, (head, tail, len)) }
     extract { Ownable::own(&mut (*p.as_ptr()).element) }
 )]
 fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
@@ -134,7 +130,7 @@ fn dll_seg_r_to_l<T: Ownable>(
     head_prev: Option<NonNull<Node<T>>>,
 );
 
-#[with_freeze_lemma_for_mutref(lemma_name = freeze_htl, predicate_name = list_ref_mut_htl, frozen_variables = [head, tail, len])]
+#[with_freeze_lemma(lemma_name = freeze_htl, predicate_name = list_ref_mut_htl, frozen_variables = [head, tail, len])]
 impl<T: Ownable> Ownable for LinkedList<T> {
     #[predicate]
     fn own(self) {

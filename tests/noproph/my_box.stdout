@@ -14,14 +14,34 @@ abstract pred "<T as gilogic::Ownable>::own"(+pty_T0, +self);
 
 
 pred "<&mut MyBox<T> as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
-  <value>(l-nth(#self, 0i), l-nth(#self, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v)
-  * "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #v)
+  "<MyBox<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (self == #self);
-guard: <lft>(pLft_erased; true);
+
 
 pred "<() as gilogic::Ownable>::own"(+self):
   (#self == {{  }}) * (self == #self);
+
+
+pred "<MyBox<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
+  "<MyBox<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+guard: <lft>(pLft_0; true);
+
+pred "<MyBox<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "MyBox", {{ pty_T0 }} }}; #v)
+  * "<MyBox<T> as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<MyBox<T> as gilogic::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, frozen):
+  "<MyBox<T> as gilogic::Ownable>::own"(pty_T0, #this) * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (this == #this);
 
 
 spec "MyBox::<T>::write"(pty_T0, self, v)
