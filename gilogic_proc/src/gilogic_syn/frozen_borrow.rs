@@ -51,7 +51,7 @@ impl Parse for FreezeOwnArgs {
                 _ => {
                     return Err(syn::Error::new(
                         key.span(),
-                        "Unknown key in with_freeze_lemma_for_mutref",
+                        "Unknown key in with_freeze_lemma",
                     ));
                 }
             };
@@ -152,6 +152,7 @@ pub struct FreezeOwn {
     pub own_impl: ItemImpl,
     pub predicate: Predicate,
     pub args: FreezeOwnArgs,
+    pub prophecy_mode: bool,
 }
 
 impl FreezeOwn {
@@ -225,13 +226,13 @@ impl FreezeOwn {
         let segments = path.segments.last().ok_or_else(|| {
             syn::Error::new(
                 path.span(),
-                "with_freeze_lemma_for_mutref should only be applied to Ownable",
+                "with_freeze_lemma should only be applied to Ownable",
             )
         })?;
         if segments.ident != "Ownable" {
             return Err(syn::Error::new(
                 path.span(),
-                "with_freeze_lemma_for_mutref should only be applied to Ownable",
+                "with_freeze_lemma should only be applied to Ownable",
             ));
         }
         Ok(())
@@ -249,6 +250,7 @@ impl FreezeOwn {
                 _ => None,
             })
             .ok_or_else(|| syn::Error::new(own_impl.span(), "No own method found"))?;
+        let prophecy_mode = method.sig.inputs.len() == 2;
         let mut predicate = Predicate::concrete_of_method(method)?;
         Self::freeze_own(&mut predicate, &own_impl, &args);
         // panic!("OBTAINED PREDICATE: {}", predicate.to_token_stream());
@@ -256,6 +258,7 @@ impl FreezeOwn {
             predicate,
             args,
             own_impl,
+            prophecy_mode,
         })
     }
 }
@@ -294,24 +297,46 @@ impl ToTokens for frozen_borrow::FreezeOwn {
         let predicate_name = &self.args.predicate_name;
         generics.params.insert(0, parse_quote! { 'a });
 
+        let module_name = if self.prophecy_mode {
+            quote!(gilogic::prophecies)
+        } else {
+            quote!(gilogic::ownable)
+        };
+
+        let predicate_declaration = if self.prophecy_mode {
+            quote! {
+                #[predicate]
+                fn #predicate_name #generics (
+                    this: In<&'a mut #self_ty>,
+                    model: <&'a mut #self_ty as #module_name::Ownable>::RepresentationTy,
+                    frozen: #tuple_arg_ty
+                ) {
+                    <#self_ty as #module_name::FrozenOwn<#tuple_arg_ty>>::mut_ref_own_frozen(this, model, frozen)
+                }
+            }
+        } else {
+            quote! {
+                #[predicate]
+                fn #predicate_name #generics (
+                    this: In<&'a mut #self_ty>,
+                    frozen: #tuple_arg_ty
+                ) {
+                    <#self_ty as #module_name::FrozenOwn<#tuple_arg_ty>>::mut_ref_own_frozen(this, frozen)
+                }
+            }
+        };
+
         let result = quote! {
 
-            unsafe impl #generics gilogic::prophecies::FrozenOwn<#tuple_arg_ty> for #self_ty {
+            unsafe impl #generics #module_name::FrozenOwn<#tuple_arg_ty> for #self_ty {
                     #predicate
             }
 
             fn #lemma_name #generics (x: &'a mut #self_ty) {
-                gilogic::prophecies::freeze_params::<#tuple_arg_ty, #self_ty>(x)
+                #module_name::freeze_params::<#tuple_arg_ty, #self_ty>(x)
             }
 
-            #[predicate]
-            fn #predicate_name #generics (
-                this: In<&'a mut #self_ty>,
-                model: <&'a mut #self_ty as gilogic::prophecies::Ownable>::RepresentationTy,
-                frozen: #tuple_arg_ty
-            ) {
-                <#self_ty as gilogic::prophecies::FrozenOwn<#tuple_arg_ty>>::mut_ref_own_frozen(this, model, frozen)
-            }
+            #predicate_declaration
 
             #own_impl
         };

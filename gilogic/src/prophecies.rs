@@ -1,5 +1,3 @@
-use std::marker::{self, Tuple};
-
 use crate as gilogic;
 use crate::tys::RustAssertion;
 use gilogic::macros::*;
@@ -132,7 +130,6 @@ where
 
 impl<T: Ownable> Ownable for &mut T {
     type RepresentationTy = (T::RepresentationTy, T::RepresentationTy);
-    #[cfg(gillian)]
     #[predicate]
     fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) {
         assertion!(<T as FrozenOwn<()>>::mut_ref_own_frozen(self, model, ()))
@@ -232,7 +229,7 @@ where
 }
 )]
 #[gillian::timeless]
-pub fn prophecy_auto_update<A: Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
+pub fn prophecy_auto_update<A: core::marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     let _ = p;
     unreachable!();
 }
@@ -242,7 +239,7 @@ pub fn prophecy_auto_update<A: Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     ensures { $(m.0 == m.1)$ }
 )]
 #[gillian::timeless]
-pub fn prophecy_resolve<A: Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
+pub fn prophecy_resolve<A: core::marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     let _ = p;
     unreachable!()
 }
@@ -260,7 +257,7 @@ pub fn check_obs_sat() {
     ensures { T::mut_ref_own_frozen(p, m, frozen) }
 )]
 #[gillian::timeless]
-pub fn freeze_params<A: marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
+pub fn freeze_params<A: core::marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
     let _ = p;
     unreachable!()
 }

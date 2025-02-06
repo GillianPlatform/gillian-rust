@@ -18,16 +18,6 @@ pub trait Ownable {
     #[rustc_diagnostic_item = "gillian::ownable::own"]
     #[gillian::decl::pred_ins = "0"]
     fn own(self) -> RustAssertion;
-
-    #[rustc_diagnostic_item = "gillian::unfold::own::open"]
-    fn own_____unfold(&mut self) {
-        unreachable!("Implemented in GIL")
-    }
-
-    #[rustc_diagnostic_item = "gillian::fold::own::close"]
-    fn own_____fold(&mut self) -> RustAssertion {
-        unreachable!("Implemented in GIL")
-    }
 }
 
 macro_rules! int_ownable {
@@ -53,15 +43,57 @@ macro_rules! int_ownable {
     };
 }
 
-impl<T: Ownable> Ownable for &mut T {
-    #[gillian::borrow]
+/// # Safety
+/// Must only be derived by the Gillian-Rust provided macros!
+pub unsafe trait FrozenOwn<K: core::marker::Tuple + Sized>: Ownable + Sized {
+    #[gillian::decl::pred_ins = "0"]
+    fn frozen_own(this: Self, frozen: K) -> RustAssertion;
+
     #[predicate]
-    fn own(self) {
-        assertion!(|v| (self -> v) * v.own())
+    fn just_ref_mut_points_to(this: In<&mut Self>, frozen: K) {
+        assertion!(|v| (this -> v) * Self::frozen_own(v, frozen))
     }
 
     #[cfg(not(gillian))]
+    #[predicate]
+    fn just_ref_mut_points_to(_this: &mut Self, _frozen: K) -> RustAssertion {
+        unreachable!()
+    }
+
+    #[predicate]
     #[gillian::borrow]
+    fn mut_ref_own_frozen(this: In<&mut Self>, frozen: K) {
+        Self::just_ref_mut_points_to(this, frozen)
+    }
+
+    #[cfg(not(gillian))]
+    fn mut_ref_own_frozen(_this: &mut Self, _frozen: K) -> RustAssertion {
+        unreachable!()
+    }
+}
+
+unsafe impl<T> FrozenOwn<()> for T
+where
+    T: Ownable,
+{
+    #[predicate]
+    fn frozen_own(this: In<Self>, frozen: ()) -> RustAssertion {
+        assertion!(this.own() * (frozen == ()))
+    }
+
+    #[cfg(not(gillian))]
+    fn frozen_own(_this: Self, _frozen: ()) -> RustAssertion {
+        unreachable!()
+    }
+}
+
+impl<T: Ownable> Ownable for &mut T {
+    #[predicate]
+    fn own(self) {
+        assertion!(<T as FrozenOwn<()>>::mut_ref_own_frozen(self, ()))
+    }
+
+    #[cfg(not(gillian))]
     fn own(self) -> RustAssertion {
         unreachable!("")
     }
@@ -116,4 +148,15 @@ impl Ownable for () {
     fn own(self) -> RustAssertion {
         unreachable!("")
     }
+}
+
+#[specification(
+    requires { p.own() }
+    exists frozen.
+    ensures { T::mut_ref_own_frozen(p, frozen) }
+)]
+#[gillian::timeless]
+pub fn freeze_params<A: core::marker::Tuple, T: FrozenOwn<A> + Ownable>(p: &mut T) {
+    let _ = p;
+    unreachable!()
 }

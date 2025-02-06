@@ -28,8 +28,8 @@ pub mod macros {
 mod seq;
 pub use seq::Seq;
 
-mod ownable;
-pub use ownable::Ownable;
+pub mod ownable;
+pub use ownable::{FrozenOwn, Ownable};
 pub mod alloc;
 mod iterated_no_pcy;
 mod iterated_pcy;
