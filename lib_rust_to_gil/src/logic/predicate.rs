@@ -1,5 +1,5 @@
 use super::gilsonite::{self, Assert, Pattern, Predicate, SpecTerm};
-use super::is_borrow;
+use super::{is_borrow, is_lemma};
 use crate::logic::gilsonite::{AssertPredCall, SeqOp};
 use crate::signature::{build_signature, raw_ins, Signature};
 use crate::{
@@ -26,7 +26,7 @@ pub(crate) struct PredSig {
     name: String,
 }
 
-pub enum CallKind {
+pub enum CallerKind {
     Pred,
     Lemma,
 }
@@ -280,7 +280,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     pub fn compile_call(
         &mut self,
         call: gilsonite::AssertPredCall<'tcx>,
-        kind: CallKind,
+        _: CallerKind,
     ) -> (String, Vec<Expr>) {
         let AssertPredCall {
             def_id,
@@ -289,13 +289,12 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         } = call;
         let param_env = self.param_env;
 
-        let (name, def_id, substs) = match kind {
-            CallKind::Pred => self
-                .global_env_mut()
-                .resolve_predicate_param_env(param_env, def_id, substs),
-            CallKind::Lemma => self
-                .global_env_mut()
-                .resolve_lemma_param_env(param_env, def_id, substs),
+        let (name, def_id, substs) = if is_lemma(def_id, self.tcx()) {
+            self.global_env_mut()
+                .resolve_lemma_param_env(param_env, def_id, substs)
+        } else {
+            self.global_env_mut()
+                .resolve_predicate_param_env(param_env, def_id, substs)
         };
 
         let ty_params = param_collector::collect_params_on_args(substs)
@@ -337,7 +336,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 .star(self.compile_assertion_inner(*right)),
             AssertKind::Formula { formula } => Assertion::Pure(self.compile_formula(formula)),
             AssertKind::Call(call) => {
-                let (name, params) = self.compile_call(call, CallKind::Pred);
+                let (name, params) = self.compile_call(call, CallerKind::Pred);
                 Assertion::Pred { name, params }
             }
             AssertKind::PointsTo { src, tgt } => self.compile_points_to(src, tgt),
@@ -398,8 +397,8 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     fatal2!(self.global_env().tcx(), "rhs of wand needs to be call")
                 };
 
-                let lhs = self.compile_call(call, CallKind::Pred);
-                let rhs = self.compile_call(call2, CallKind::Pred);
+                let lhs = self.compile_call(call, CallerKind::Pred);
+                let rhs = self.compile_call(call2, CallerKind::Pred);
 
                 Assertion::wand(lhs, rhs)
             }
