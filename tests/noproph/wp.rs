@@ -23,46 +23,6 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
     )
 }
 
-// #[gilogic::macros::lemma]
-// #[gilogic::macros::specification(
-//     forall p: & mut WP<T>, x, y, m, new_new_model.
-//         requires {
-//             gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(p, m, (x, y))
-//         }
-//         exists mx.
-//         ensures  {
-//             gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(&mut (*y).v, mx, ())
-//             * (m == (m.0, mx))
-//             * gilogic::__stubs::wand(
-//                 gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(&mut (*y).v, new_new_model, ()),
-//                 gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(p, (m.0, new_new_model), (x, y),)
-//             )
-//         }
-// )]
-// #[gillian::args_deferred]
-// #[gillian::timeless]
-// fn extract_x_2_proof<'a, T: Ownable>(p: &'a mut WP<T>) {
-//     ::gilogic::package!(
-//         gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(&mut (*y).v, new_new_model, ()),
-//         gilogic::prophecies::FrozenOwn::just_ref_mut_points_to(p, (m.0, new_new_model), (x, y),)
-//     );
-// }
-
-// #[lemma]
-// #[specification(
-//     forall p x y.
-//     requires {
-//         no_proph::FrozenOwn::just_ref_mut_points_to(p, (x, y))
-//     }
-//     ensures {
-//         no_proph::FrozenOwn::just_ref_mut_points_to(&mut (*x).v, ())
-//         * wand(
-//             gilogic::no_proph::FrozenOwn::just_ref_mut_points_to(&mut (*x).v, ()),
-//             gilogic::no_proph::FrozenOwn::just_ref_mut_points_to(p, (x, y))
-//         )
-//     }
-// )]
-
 #[extract_lemma(
     forall x, y.
     from { wp_ref_mut_xy(p, (x, y)) }
@@ -86,5 +46,51 @@ impl<T: Ownable> Ownable for WP<T> {
     #[predicate]
     fn own(self) {
         assertion!(|x: *mut N<T>, y: *mut N<T>| wp(self, x, y))
+    }
+}
+
+impl<T: Ownable> WP<T> {
+    #[show_safety]
+    fn new(x: T, y: T) -> Self {
+        let null: *mut N<T> = std::ptr::null_mut();
+
+        let xbox = Box::new(N { v: x, o: null });
+        let ybox = Box::new(N { v: y, o: null });
+
+        let xptr = Box::leak(xbox) as *mut N<T>;
+        let yptr = Box::leak(ybox) as *mut N<T>;
+
+        unsafe {
+            (*yptr).o = xptr;
+            (*xptr).o = yptr;
+        }
+        WP { x: xptr, y: yptr }
+    }
+
+    #[show_safety]
+    fn assign_first(&mut self, x: T) {
+        unsafe {
+            (*self.x).v = x;
+        }
+    }
+
+    #[show_safety]
+    fn first_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            freeze_xy(self);
+            let ret = &mut (*self.x).v;
+            extract_x(self);
+            ret
+        }
+    }
+
+    #[show_safety]
+    fn second_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            freeze_xy(self);
+            let ret = &mut (*self.y).v;
+            extract_y(self);
+            ret
+        }
     }
 }
