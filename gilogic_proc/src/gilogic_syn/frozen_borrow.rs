@@ -2,8 +2,8 @@ use proc_macro::TokenStream as TokenStream_;
 use proc_macro2::{Span, TokenStream};
 use std::collections::HashMap;
 use syn::{
-    parse::Parse, parse_quote, spanned::Spanned, visit::Visit, visit_mut::VisitMut, FnArg, Ident,
-    ImplItem, ItemImpl, PatType, Path, Token, Type,
+    parse::Parse, parse_quote, spanned::Spanned, visit_mut::VisitMut, FnArg, Ident, ImplItem,
+    ItemImpl, PatType, Path, Token, Type,
 };
 
 use super::{subst::VarSubst, *};

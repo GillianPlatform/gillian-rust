@@ -1,9 +1,8 @@
 use indexmap::IndexMap;
 use pretty::{docs, DocAllocator, Pretty};
 
-use super::print_utils::separated_display;
 use super::{BiSpec, Lemma, Macro, Pred, Proc, Spec};
-use std::fmt::{self, Display};
+use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct Import {

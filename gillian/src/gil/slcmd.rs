@@ -4,10 +4,7 @@ use pretty::{docs, DocAllocator, Pretty};
 
 use crate::gil::print_utils;
 
-use super::{
-    print_utils::{separated_display, write_maybe_quoted},
-    Assertion, Expr,
-};
+use super::{Assertion, Expr};
 
 #[derive(Debug)]
 pub struct LogicBindings {

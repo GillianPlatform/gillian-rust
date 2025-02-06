@@ -1,41 +1,18 @@
 use std::collections::HashMap;
 
 use proc_macro::TokenStream as TokenStream_;
-use proc_macro2::{Ident, Span};
+use proc_macro2::Span;
 use syn::{
     braced, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned,
-    ExprPath, ImplItemFn, PatPath, ReturnType, Token, TraitItemFn, Type,
+    ReturnType, Token, TraitItemFn, Type,
 };
 
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 
 use crate::{
-    kw, subst::VarSubst, utils::peel_mut_ref, AsrtFragment, AsrtPredCall, Formula, LvarDecl,
-    Observation, SpecEnsures, Specification, Term, TermPath,
+    kw, subst::VarSubst, AsrtFragment, AsrtPredCall, Formula, LvarDecl, Observation, SpecEnsures,
+    Specification, Term,
 };
-
-fn term_ident(term: &Term) -> syn::Result<Ident> {
-    if let Term::Path(TermPath {
-        inner: ExprPath {
-            attrs,
-            qself: None,
-            path,
-        },
-    }) = term
-    {
-        if !attrs.is_empty()
-            || path.leading_colon.is_some()
-            || path.segments.len() != 1
-            || !path.segments[0].arguments.is_none()
-        {
-            return Err(syn::Error::new(term.span(), "Expected a path term"));
-        }
-
-        Ok(path.segments[0].ident.clone())
-    } else {
-        Err(syn::Error::new(term.span(), "Expected a path term"))
-    }
-}
 
 pub struct ExtractLemma {
     // forall x, y.
@@ -66,7 +43,7 @@ impl ExtractLemma {
             None => (None, Punctuated::new(), None),
         };
         if let Some((_, model, _, _, _, _, _)) = &self.models {
-            lvars.push(LvarDecl::from(model.clone()))
+            lvars.push(model.clone())
         };
         let (_, from_borrow) = &self.from;
         let from_borrow: AsrtPredCall = from_borrow.clone();
@@ -413,7 +390,7 @@ pub(crate) fn extract_lemma_term_proph(
         let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
             let mut lvars = lvars.clone();
             if let Some((_, model, _, _, _, _, _)) = &extract_lemma.models {
-                lvars.push(LvarDecl::from(model.clone()));
+                lvars.push(model.clone());
             }
             lvars.push(parse_quote! { #new_new_model});
 
@@ -496,7 +473,7 @@ pub(crate) fn extract_lemma_noproph(
         let forall = if let Some((forall, lvars, dot)) = &extract_lemma.forall {
             let mut lvars = lvars.clone();
             if let Some((_, model, _, _, _, _, _)) = &extract_lemma.models {
-                lvars.push(LvarDecl::from(model.clone()));
+                lvars.push(model.clone());
             }
 
             // HACK: inputs is not properly interpolated here

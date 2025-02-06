@@ -1,4 +1,4 @@
-use super::visitors::{self, GilVisitorMut};
+use super::visitors::GilVisitorMut;
 use super::{Literal, Type};
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
