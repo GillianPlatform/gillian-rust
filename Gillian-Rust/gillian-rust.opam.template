@@ -1,4 +1,4 @@
 pin-depends: [
-  [ "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#9f40f0ab04d16d23a2496140e58c487d5334d52d" ]
+  [ "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#500c8688868baab4e4ef31ed0410d2ff83a5379a" ]
   [ "simple_smt.~dev" "git+https://github.com/NatKarmios/simple-smt-ocaml#b88c4b0685f6ec989e8b4c911e296c4087768db8" ]
 ]
