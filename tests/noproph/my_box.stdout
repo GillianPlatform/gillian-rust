@@ -59,19 +59,19 @@ proc "MyBox::<T>::write"(pty_T0, self, v) {
         return
 };
 
-spec "MyBox::<T>::update"(pLft_erased, pty_T0, self, v)
-[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_erased, #pty_T0, #self)
+spec "MyBox::<T>::update"(pLft_0, pty_T0, self, v)
+[[ "<&mut MyBox<T> as gilogic::Ownable>::own"(#pLft_0, #pty_T0, #self)
   * "<T as gilogic::Ownable>::own"(#pty_T0, #v)
-  * <lft>(#pLft_erased; true)
+  * <lft>(#pLft_0; true)
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
   * (v == #v)
   * (self == #self)
   * (pty_T0 == #pty_T0)
-  * (pLft_erased == #pLft_erased) ]]
-[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_erased; true) ]]
+  * (pLft_0 == #pLft_0) ]]
+[[ "<() as gilogic::Ownable>::own"(ret) * <lft>(#pLft_0; true) ]]
 normal
 
-proc "MyBox::<T>::update"(pLft_erased, pty_T0, self, v) {
+proc "MyBox::<T>::update"(pLft_0, pty_T0, self, v) {
         m_1self := self;
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "MyBox", {{ pty_T0 }} }} }});

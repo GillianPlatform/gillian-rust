@@ -1,35 +1,23 @@
-warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
-  --> ../tests/proph/wp_proph.rs:8:51
+warning: unused imports: `Prophecised`, `Prophecy`, `extract_lemma`, `mutref_auto_resolve`, `specification`
+  --> ../tests/proph/wp_proph.rs:8:25
    |
 8  |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
-   |                                                   ^^^^^^^^^^^^^
+   |                         ^^^^^^^^^^^^^             ^^^^^^^^^^^^^
 9  |     mutref_auto_resolve,
    |     ^^^^^^^^^^^^^^^^^^^
 10 |     prophecies::{Ownable, Prophecised, Prophecy},
-   |                           ^^^^^^^^^^^
+   |                           ^^^^^^^^^^^  ^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-DefId(0:50 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) -[]-> {}
-DefId(0:46 ~ wp_proph[6031]::extract_y___proof) -[]-> {"x": *mut N<T/#0>, "y": *mut N<T/#0>, "m": (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), "mx": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), "new_new_model": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })}
-DefId(0:50 ~ wp_proph[6031]::extract_y___proof::{closure#0}::{closure#0}) -[]-> {}
-DefId(0:46 ~ wp_proph[6031]::extract_y___proof) -[]-> {"x": *mut N<T/#0>, "y": *mut N<T/#0>, "m": (Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })), "mx": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) }), "new_new_model": Alias(Projection, AliasTy { args: [T/#0], def_id: DefId(21:103 ~ gilogic[8e9c]::prophecies::Ownable::RepresentationTy) })}
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _10
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _8
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
-warning: unused variable: `p`
-   --> ../tests/proph/wp_proph.rs:188:30
-    |
-188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
-    |
-    = note: `#[warn(unused_variables)]` on by default
-
 warning: fields `x` and `y` are never read
   --> ../tests/proph/wp_proph.rs:14:5
    |
@@ -60,12 +48,6 @@ warning: variable `THIS` should have a snake case name
    |
    = note: `#[warn(non_snake_case)]` on by default
 
-warning: function `extract_y___proof` should have a snake case name
-   --> ../tests/proph/wp_proph.rs:188:4
-    |
-188 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
-    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
-
-warning: 6 warnings emitted
+warning: 4 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

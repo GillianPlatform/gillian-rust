@@ -4,9 +4,9 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_pcy.gil", "i__lang_pcy.gil";
 
-axiomatic spec "gilogic::prophecies::prophecy_auto_update::<u32>"(pLft_0, p)
+axiomatic spec "gilogic::prophecies::prophecy_auto_update::<(), u32>"(pLft_0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v)
-  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * "<u32 as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #a)
   * <pcy_controller>(l-nth(#p, 1i); #a)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -14,13 +14,13 @@ axiomatic spec "gilogic::prophecies::prophecy_auto_update::<u32>"(pLft_0, p)
   * (p == #p)
   * (pLft_0 == #pLft_0) ]]
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), "u32"; #v)
-  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #r)
+  * "<u32 as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #r, #frozen)
   * <value_observer>(l-nth(#p, 1i); #r)
   * <pcy_controller>(l-nth(#p, 1i); #r) ]]
 normal
 
-axiomatic spec "gilogic::prophecies::prophecy_resolve::<u32>"(pLft_0, p)
-[[ "<&mut u32 as gilogic::prophecies::Ownable>::own"(#pLft_0, #p, #m)
+axiomatic spec "gilogic::prophecies::prophecy_resolve::<(), u32>"(pLft_0, p)
+[[ "<u32 as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(#pLft_0, #p, #m, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#p == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (p == #p)
@@ -46,13 +46,9 @@ pred "<std::option::Option<u32> as gilogic::prophecies::Ownable>::own"(+self, mo
 
 
 pred "<&mut u32 as gilogic::prophecies::Ownable>::own"(+pLft_erased, +self, model):
-  (#model == {{ #a, #b }})
-  * "gilogic::prophecies::mut_ref_inner_proph::<u32>"(pLft_erased, #self)
-  * <value_observer>(l-nth(#self, 1i); #a)
-  * (#lvar_0 == #b)
-  * <pcy_value>(l-nth(#self, 1i); #lvar_0)
-  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
-  * (#self == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  "<u32 as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, #self, #model, {{  }})
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
   * (model == #model)
   * (self == #self);
 
@@ -61,14 +57,37 @@ pred "<() as gilogic::prophecies::Ownable>::own"(+self, model):
   (#self == {{  }}) * (#self == #model) * (model == #model) * (self == #self);
 
 
-pred "gilogic::prophecies::mut_ref_inner_proph::<u32>"(+pLft_a, +this):
+pred "<u32 as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +this, model, frozen):
+  (#model == {{ #a, #b }})
+  * "<u32 as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(pLft_0, #this, #frozen)
+  * <value_observer>(l-nth(#this, 1i); #a)
+  * (#lvar_0 == #b)
+  * <pcy_value>(l-nth(#this, 1i); #lvar_0)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#this == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (frozen == #frozen)
+  * (model == #model)
+  * (this == #this);
+
+
+pred "<u32 as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+this, repr, frozen):
+  "<u32 as gilogic::prophecies::Ownable>::own"(#this, #repr)
+  * (#frozen == {{  }})
+  * types(#this: Int)
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
+
+pred "<u32 as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLft_0, +this, frozen):
   <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), "u32"; #v)
-  * "<u32 as gilogic::prophecies::Ownable>::own"(#v, #repr)
   * <pcy_controller>(l-nth(#this, 1i); #repr)
+  * "<u32 as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#v, #repr, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
   * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (frozen == #frozen)
   * (this == #this);
-guard: <lft>(pLft_a; true);
+guard: <lft>(pLft_0; true);
 
 spec test()
 [[ emp ]]
@@ -163,7 +182,7 @@ proc write(pLft_0, x) {
         pLft_6 := l-nth(g_6, 0i);
         m_4 := g_4;
         g_7 := m_4;
-        g_8 := "gilogic::prophecies::prophecy_auto_update::<u32>"(pLft_0, g_7);
+        g_8 := "gilogic::prophecies::prophecy_auto_update::<(), u32>"(pLft_0, g_7);
         m_3 := g_8;
         goto bb2;
   bb2:  g_10 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
@@ -172,7 +191,7 @@ proc write(pLft_0, x) {
         pLft_7 := l-nth(g_11, 0i);
         m_6 := g_9;
         g_12 := m_6;
-        g_13 := "gilogic::prophecies::prophecy_resolve::<u32>"(pLft_0, g_12);
+        g_13 := "gilogic::prophecies::prophecy_resolve::<(), u32>"(pLft_0, g_12);
         m_5 := g_13;
         goto bb3;
   bb3:  m_0 := {{}};
@@ -213,7 +232,7 @@ proc write2(pLft_0, x) {
         pLft_6 := l-nth(g_6, 0i);
         m_4 := g_4;
         g_7 := m_4;
-        g_8 := "gilogic::prophecies::prophecy_auto_update::<u32>"(pLft_0, g_7);
+        g_8 := "gilogic::prophecies::prophecy_auto_update::<(), u32>"(pLft_0, g_7);
         m_3 := g_8;
         goto bb2;
   bb2:  g_10 := [load_value](l-nth(m_1x, 0i), l-nth(m_1x, 1i), {{ "ref", true, "u32" }}, true);
@@ -222,7 +241,7 @@ proc write2(pLft_0, x) {
         pLft_7 := l-nth(g_11, 0i);
         m_6 := g_9;
         g_12 := m_6;
-        g_13 := "gilogic::prophecies::prophecy_resolve::<u32>"(pLft_0, g_12);
+        g_13 := "gilogic::prophecies::prophecy_resolve::<(), u32>"(pLft_0, g_12);
         m_5 := g_13;
         goto bb3;
   bb3:  m_0 := {{}};

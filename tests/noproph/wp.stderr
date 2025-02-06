@@ -63,12 +63,12 @@ error[E0277]: the trait bound `WP<T>: gilogic::prophecies::Ownable` is not satis
               i8
             and 8 others
 note: required by a bound in `gilogic::prophecies::FrozenOwn::mut_ref_own_frozen`
-   --> /Users/sacha/Prog/work/rust-to-gil/gilogic/src/prophecies.rs:78:61
+   --> /Users/xavier/Code/rust-to-gil/gilogic/src/prophecies.rs:78:61
     |
 78  | pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
     |                                                             ^^^^^^^ required by this bound in `FrozenOwn::mut_ref_own_frozen`
 ...
-116 |     fn mut_ref_own_frozen(
+115 |     fn mut_ref_own_frozen(
     |        ------------------ required by a bound in this associated function
 
 error: Predicate body failed to typecheck for DefId(0:28 ~ wp[e568]::wp_ref_mut_xy) ErrorGuaranteed(())
