@@ -9,23 +9,23 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:31:30
+  --> ../tests/noproph/lp.rs:31:30
    |
-31 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
+31 | fn extract_x<'a, T: Ownable>(p: &'a mut LP<T>);
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `p`
-  --> ../tests/noproph/wp.rs:38:30
+  --> ../tests/noproph/lp.rs:38:30
    |
-38 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
+38 | fn extract_y<'a, T: Ownable>(p: &'a mut LP<T>);
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
 
 warning: fields `x` and `y` are never read
- --> ../tests/noproph/wp.rs:7:5
+ --> ../tests/noproph/lp.rs:7:5
   |
-6 | struct WP<T> {
+6 | struct LP<T> {
   |        -- fields in this struct
 7 |     x: *mut N<T>,
   |     ^
@@ -35,7 +35,7 @@ warning: fields `x` and `y` are never read
   = note: `#[warn(dead_code)]` on by default
 
 warning: fields `v` and `o` are never read
-  --> ../tests/noproph/wp.rs:12:5
+  --> ../tests/noproph/lp.rs:12:5
    |
 11 | struct N<T> {
    |        - fields in this struct
@@ -45,21 +45,21 @@ warning: fields `v` and `o` are never read
    |     ^
 
 warning: function `extract_x___proof` should have a snake case name
-  --> ../tests/noproph/wp.rs:31:4
+  --> ../tests/noproph/lp.rs:31:4
    |
-31 | fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
+31 | fn extract_x<'a, T: Ownable>(p: &'a mut LP<T>);
    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
 warning: function `extract_y___proof` should have a snake case name
-  --> ../tests/noproph/wp.rs:38:4
+  --> ../tests/noproph/lp.rs:38:4
    |
-38 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
+38 | fn extract_y<'a, T: Ownable>(p: &'a mut LP<T>);
    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
 
 warning: variable `THIS` should have a snake case name
-  --> ../tests/noproph/wp.rs:47:12
+  --> ../tests/noproph/lp.rs:47:12
    |
 47 |     fn own(self) {
    |            ^^^^ help: convert the identifier to snake case: `this`

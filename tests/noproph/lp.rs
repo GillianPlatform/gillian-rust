@@ -3,7 +3,7 @@ extern crate gilogic;
 
 use gilogic::{macros::*, Ownable};
 
-struct WP<T> {
+struct LP<T> {
     x: *mut N<T>,
     y: *mut N<T>,
 }
@@ -14,9 +14,9 @@ struct N<T> {
 }
 
 #[predicate]
-fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
+fn lp<T: Ownable>(lp: In<LP<T>>, x: *mut N<T>, y: *mut N<T>) {
     assertion!(|v_x, v_y|
-        (wp == WP { x, y }) *
+        (lp == LP { x, y }) *
         (x -> N { v: v_x, o: y }) *
         (y -> N { v: v_y, o: x }) *
         v_x.own() * v_y.own()
@@ -25,31 +25,31 @@ fn wp<T: Ownable>(wp: In<WP<T>>, x: *mut N<T>, y: *mut N<T>) {
 
 #[extract_lemma(
     forall x, y.
-    from { wp_ref_mut_xy(p, (x, y)) }
+    from { lp_ref_mut_xy(p, (x, y)) }
     extract { <&mut T as Ownable>::own(&mut (*x).v) }
 )]
-fn extract_x<'a, T: Ownable>(p: &'a mut WP<T>);
+fn extract_x<'a, T: Ownable>(p: &'a mut LP<T>);
 
 #[extract_lemma(
     forall x, y.
-    from { wp_ref_mut_xy(p, (x, y)) }
+    from { lp_ref_mut_xy(p, (x, y)) }
     extract { <&mut T as Ownable>::own(&mut (*y).v) }
 )]
-fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>);
+fn extract_y<'a, T: Ownable>(p: &'a mut LP<T>);
 
 #[with_freeze_lemma(
     lemma_name = freeze_xy,
-    predicate_name = wp_ref_mut_xy,
+    predicate_name = lp_ref_mut_xy,
     frozen_variables = [x, y],
 )]
-impl<T: Ownable> Ownable for WP<T> {
+impl<T: Ownable> Ownable for LP<T> {
     #[predicate]
     fn own(self) {
-        assertion!(|x: *mut N<T>, y: *mut N<T>| wp(self, x, y))
+        assertion!(|x: *mut N<T>, y: *mut N<T>| lp(self, x, y))
     }
 }
 
-impl<T: Ownable> WP<T> {
+impl<T: Ownable> LP<T> {
     #[show_safety]
     fn new(x: T, y: T) -> Self {
         let null: *mut N<T> = std::ptr::null_mut();
@@ -64,7 +64,7 @@ impl<T: Ownable> WP<T> {
             (*yptr).o = xptr;
             (*xptr).o = yptr;
         }
-        WP { x: xptr, y: yptr }
+        LP { x: xptr, y: yptr }
     }
 
     #[show_safety]

@@ -1,5 +1,5 @@
 warning: unused import: `specification`
- --> ../tests/proph/wp_proph.rs:8:51
+ --> ../tests/proph/lp_proph.rs:8:51
   |
 8 |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
   |                                                   ^^^^^^^^^^^^^
@@ -18,17 +18,23 @@ warning: unused import: `specification`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
-  --> ../tests/proph/wp_proph.rs:61:30
+  --> ../tests/proph/lp_proph.rs:61:30
    |
-61 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+61 | fn extract_x<'a, T: Ownable>(p: &'a mut LP<T>) -> Prophecy<T::RepresentationTy>;
    |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
    |
    = note: `#[warn(unused_variables)]` on by default
 
-warning: fields `x` and `y` are never read
-  --> ../tests/proph/wp_proph.rs:14:5
+warning: unused variable: `p`
+  --> ../tests/proph/lp_proph.rs:71:30
    |
-13 | struct WP<T> {
+71 | fn extract_y<'a, T: Ownable>(p: &'a mut LP<T>) -> Prophecy<T::RepresentationTy>;
+   |                              ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: fields `x` and `y` are never read
+  --> ../tests/proph/lp_proph.rs:14:5
+   |
+13 | struct LP<T> {
    |        -- fields in this struct
 14 |     x: *mut N<T>,
    |     ^
@@ -38,7 +44,7 @@ warning: fields `x` and `y` are never read
    = note: `#[warn(dead_code)]` on by default
 
 warning: fields `v` and `o` are never read
-  --> ../tests/proph/wp_proph.rs:19:5
+  --> ../tests/proph/lp_proph.rs:19:5
    |
 18 | struct N<T> {
    |        - fields in this struct
@@ -48,19 +54,25 @@ warning: fields `v` and `o` are never read
    |     ^
 
 warning: variable `THIS` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:48:12
+  --> ../tests/proph/lp_proph.rs:48:12
    |
 48 |     fn own(self, model: Self::RepresentationTy) {
    |            ^^^^ help: convert the identifier to snake case: `this`
    |
    = note: `#[warn(non_snake_case)]` on by default
 
-warning: function `extract_y___proof` should have a snake case name
-  --> ../tests/proph/wp_proph.rs:61:4
+warning: function `extract_x___proof` should have a snake case name
+  --> ../tests/proph/lp_proph.rs:61:4
    |
-61 | fn extract_y<'a, T: Ownable>(p: &'a mut WP<T>) -> Prophecy<T::RepresentationTy>;
+61 | fn extract_x<'a, T: Ownable>(p: &'a mut LP<T>) -> Prophecy<T::RepresentationTy>;
+   |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_x_proof`
+
+warning: function `extract_y___proof` should have a snake case name
+  --> ../tests/proph/lp_proph.rs:71:4
+   |
+71 | fn extract_y<'a, T: Ownable>(p: &'a mut LP<T>) -> Prophecy<T::RepresentationTy>;
    |    ^^^^^^^^^ help: convert the identifier to snake case: `extract_y_proof`
 
-warning: 6 warnings emitted
+warning: 8 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!
