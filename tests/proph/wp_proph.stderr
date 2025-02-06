@@ -1,14 +1,10 @@
-warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
-  --> ../tests/proph/wp_proph.rs:8:51
-   |
-8  |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
-   |                                                   ^^^^^^^^^^^^^
-9  |     mutref_auto_resolve,
-   |     ^^^^^^^^^^^^^^^^^^^
-10 |     prophecies::{Ownable, Prophecised, Prophecy},
-   |                           ^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
+warning: unused import: `specification`
+ --> ../tests/proph/wp_proph.rs:8:51
+  |
+8 |     macros::{assertion, extract_lemma, predicate, specification, with_freeze_lemma},
+  |                                                   ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
 
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"creusillian"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
@@ -18,6 +14,9 @@ warning: unused imports: `Prophecised`, `mutref_auto_resolve`, `specification`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _4
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _1
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: ((*((*_1).0: *mut N<T>)).0: T)
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `p`
   --> ../tests/proph/wp_proph.rs:61:30
    |

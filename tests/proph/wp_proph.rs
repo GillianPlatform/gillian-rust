@@ -78,13 +78,13 @@ impl<T: Ownable> WP<T> {
         WP { x: xptr, y: yptr }
     }
 
-    // #[creusillian::ensures(((^self@).0 == x@) && ((*self@).1 == (^self@).1))]
-    // fn assign_first(&mut self, x: T) {
-    //     unsafe {
-    //         (*self.x).v = x;
-    //         mutref_auto_resolve!(self);
-    //     }
-    // }
+    #[creusillian::ensures(((^self@).0 == x@) && ((*self@).1 == (^self@).1))]
+    fn assign_first(&mut self, x: T) {
+        unsafe {
+            (*self.x).v = x;
+            mutref_auto_resolve!(self);
+        }
+    }
 
     // #[creusillian::ensures(*ret == (*self@).0 && ^ret@ == (^self@).0 && (^self@).1 == (*self@).1)]
     // fn first_mut<'a>(&'a mut self) -> &'a mut T {
@@ -96,13 +96,13 @@ impl<T: Ownable> WP<T> {
     //     }
     // }
 
-    // #[creusillian::ensures(*ret == (*self@).1 && ^ret@ == (^self@).1 && (^self@).0 == (*self@).0)]
-    // fn second_mut<'a>(&'a mut self) -> &'a mut T {
-    //     unsafe {
-    //         freeze_xy(self);
-    //         let ret = &mut (*self.y).v;
-    //         let proph = extract_y(self);
-    //         ret.with_prophecy(proph)
-    //     }
-    // }
+    #[creusillian::ensures(*ret == (*self@).1 && ^ret@ == (^self@).1 && (^self@).0 == (*self@).0)]
+    fn second_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            freeze_xy(self);
+            let ret = &mut (*self.y).v;
+            let proph = extract_y(self);
+            ret.with_prophecy(proph)
+        }
+    }
 }
