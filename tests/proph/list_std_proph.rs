@@ -3,10 +3,11 @@ extern crate creusillian;
 extern crate gilogic;
 
 use gilogic::{
+    fold,
     macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
-    Seq,
+    unfold, Seq,
 };
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -101,7 +102,6 @@ fn dll_seg_r<T: Ownable>(
 }
 
 #[lemma]
-#[gillian::trusted]
 #[specification(
     forall ptr, next, prev, element, data, repr.
     requires {
@@ -120,7 +120,6 @@ fn dll_seg_r_appened_left<T: Ownable>(
 );
 
 #[lemma]
-#[gillian::trusted]
 #[specification(
      forall data.
      requires {
@@ -135,10 +134,81 @@ fn dll_seg_l_to_r<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-);
+) {
+    unfold!(dll_seg(head, tail_next, tail, head_prev, data));
+    if data.len() == 0 {
+        fold!(dll_seg_r(head, tail_next, tail, head_prev, data));
+    } else {
+        assert_bind!(hptr, head_next, head_prev, element |
+            (head == Some(hptr)) *
+            (hptr -> Node { next: head_next, prev: head_prev, element})
+        );
+        dll_seg_l_to_r(head_next, tail_next, tail, head);
+        dll_seg_r_append_left(head, head_next, tail_next, tail);
+    }
+}
 
 #[lemma]
-#[gillian::trusted]
+#[specification(
+    forall ptr, next, prev, element, data, m.
+    requires {
+        (x == Some(ptr)) * (ptr -> Node { next, prev, element }) * element.own(m) *
+        dll_seg_r(next, tail_next, tail, x, data)
+    }
+    ensures {
+        dll_seg_r(x, tail_next, tail, prev, data.prepend(m))
+    }
+)]
+fn dll_seg_r_append_left<T: Ownable>(
+    x: Option<NonNull<Node<T>>>,
+    next: Option<NonNull<Node<T>>>,
+    tail_next: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
+) {
+    unfold!(dll_seg_r(next, tail_next, tail, x, data));
+    if data.len() == 0 {
+        fold!(dll_seg_r(x, tail_next, tail, prev, data.prepend(m)));
+    } else {
+        assert_bind!(tptr, tail_prev, ep |
+            (tail == Some(tptr)) *
+            (tptr -> Node { next: tail_next, prev: tail_prev, element: ep })
+        );
+        dll_seg_r_append_left(x, next, tail, tail_prev);
+        fold!(dll_seg_r(x, tail_next, tail, prev, data.prepend(m)));
+    }
+}
+
+#[lemma]
+#[specification(
+    forall ptr, next, element, data, m.
+    requires {
+        dll_seg(head, tail_next, tail, head_prev, data) *
+        (tail_next == Some(ptr)) * (ptr -> Node { next, prev: tail, element }) * element.own(m)
+    }
+    ensures {
+        dll_seg(head, next, tail_next, head_prev, data.append(m))
+    }
+)]
+fn dll_seg_append_right<T: Ownable>(
+    head: Option<NonNull<Node<T>>>,
+    tail_next: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
+    head_prev: Option<NonNull<Node<T>>>,
+) {
+    unfold!(dll_seg(head, tail_next, tail, head_prev, data));
+    if data.len() == 0 {
+        fold!(dll_seg(head, next, tail_next, head_prev, data.append(m)));
+    } else {
+        assert_bind!(hptr, head_next, ep|
+            (head == Some(hptr)) *
+            (hptr -> Node { next: head_next, prev: head_prev, element: ep })
+        );
+        dll_seg_append_right(head_next, tail_next, tail, head);
+        fold!(dll_seg(head, next, tail_next, head_prev, data.append(m)));
+    }
+}
+
+#[lemma]
 #[specification(
      forall data.
      requires {
@@ -153,7 +223,19 @@ fn dll_seg_r_to_l<T: Ownable>(
     tail_next: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     head_prev: Option<NonNull<Node<T>>>,
-);
+) {
+    unfold!(dll_seg_r(head, tail_next, tail, head_prev, data));
+    if data.len() == 0 {
+        fold!(dll_seg(head, tail_next, tail, head_prev, data));
+    } else {
+        assert_bind!(tptr, tail_prev, ep |
+            (tail == Some(tptr)) *
+            (tptr -> Node { next: tail_next, prev: tail_prev, element: ep })
+        );
+        dll_seg_r_to_l(head, tail, tail_prev, head_prev);
+        dll_seg_append_right(head, tail, tail_prev, head_prev);
+    }
+}
 
 #[with_freeze_lemma(
     lemma_name = freeze_htl,

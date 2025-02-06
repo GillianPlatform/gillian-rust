@@ -30,6 +30,6 @@ build: [
 ]
 dev-repo: "git+https://github.com/GillianPlatform/rust-to-gil.git"
 pin-depends: [
-  [ "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#500c8688868baab4e4ef31ed0410d2ff83a5379a" ]
+  [ "gillian.~dev" "git+https://github.com/GillianPlatform/gillian.git#7aa8820ce374f4eee762d7f723018a0d52622a15" ]
   [ "simple_smt.~dev" "git+https://github.com/NatKarmios/simple-smt-ocaml#b88c4b0685f6ec989e8b4c911e296c4087768db8" ]
 ]

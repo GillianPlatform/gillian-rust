@@ -59,6 +59,25 @@ axiomatic spec "gilogic::prophecies::freeze_params::<(std::option::Option<std::p
 [[ "<LinkedList<T> as gilogic::prophecies::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::mut_ref_own_frozen"(#pLft_0, #pty_T0, #p, #m, #frozen) ]]
 normal
 
+axiomatic spec "extract_head::<T>"(pLft_a, pty_T0, list)
+[[ "list_ref_mut_htl::<T>"(#pLft_a, #pty_T0, #list, #m, {{ #head, #tail, #len }})
+  * (#head == {{ 1i, {{ #p }} }})
+  * <lft>(#pLft_a; true)
+  * types(#lvar_4: Obj, #lvar_5: List) * (#p == {{ {{ #lvar_4, #lvar_5 }} }})
+  * types(#len: Int)
+  * types(#lvar_1: Obj, #lvar_2: List, #lvar_3: Obj)
+  * (#list == {{ {{ #lvar_1, #lvar_2 }}, #lvar_3 }})
+  * (list == #list)
+  * (pty_T0 == #pty_T0)
+  * (pLft_a == #pLft_a) ]]
+[[ (#__OLD_PROPH_VAL == l-nth(#m, 0i)) * (#__NEW_PROPH_VAL == l-nth(#mh, 1i))
+  * (#__NEW_PROPH_OLD_VAL == l-nth(#mh, 0i))
+  * <observation>(((((l-nth(#m, 1i)) = (l+({{ #__NEW_PROPH_VAL }}, cdr #__OLD_PROPH_VAL)))) and (((l-nth(#m, 0i)) = (l+({{ #__NEW_PROPH_OLD_VAL }}, cdr #__OLD_PROPH_VAL))))); )
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_a, #pty_T0, {{ {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, ret }}, #mh)
+  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+  * <lft>(#pLft_a; true) ]]
+normal
+
 axiomatic spec "gilogic::prophecies::prophecy_auto_update::<(), LinkedList<T>>"(pLft_0, pty_T0, p)
 [[ <value>(l-nth(l-nth(#p, 0i), 0i), l-nth(l-nth(#p, 0i), 1i), {{ "adt", "LinkedList", {{ #pty_T0 }} }}; #v)
   * "<LinkedList<T> as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(#pty_T0, #v, #r, #frozen)
@@ -208,6 +227,15 @@ pred "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +
   * (self == #self);
 
 
+pred "<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
+  (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
+  * (self == #self), (#self == {{ 1i, {{ #ax }} }})
+  * "<&mut T as gilogic::prophecies::Ownable>::own"(pLft_erased, pty_T0, #ax, #repr)
+  * (#model == {{ 1i, {{ #repr }} }})
+  * (model == #model)
+  * (self == #self);
+
+
 pred "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(+pty_T0, +self, model):
   (#self == {{ 0i, {{  }} }}) * (#model == {{ 0i, {{  }} }}) * (model == #model)
   * (self == #self), (#self == {{ 1i, {{ #ax }} }})
@@ -330,23 +358,67 @@ lemma "dll_seg_r_appened_left::<T>"(pty_T0, x, next, tail_next, tail)[[
 
 lemma "dll_seg_l_to_r::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
   "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
-  * (head_prev == #head_prev)
-  * (tail == #tail)
-  * (tail_next == #tail_next)
-  * (head == #head)
-  * (pty_T0 == #pty_T0)
 ]]
-[[ "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) ]]
+[[
+  "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+]][*
+unfold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data);
+if (((l-len #data) = (0i))) then { fold "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) } else { sep_assert ((#head == {{ 1i, {{ #hptr }} }})
+  * types(#lvar_0: Obj, #lvar_1: List) * ({{ {{ #lvar_0, #lvar_1 }} }} == #hptr)
+  * <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #head_next, #head_prev, #element }})) [bind: #hptr, #head_next, #head_prev, #element];
+apply "dll_seg_l_to_r::<T>"(#pty_T0, #head_next, #tail_next, #tail, #head);
+apply "dll_seg_r_append_left::<T>"(#pty_T0, #head, #head_next, #tail_next, #tail) }
+*]
+
+lemma "dll_seg_r_append_left::<T>"(pty_T0, x, next, tail_next, tail)[[
+  (#x == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr)
+  * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #prev, #element }})
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #element, #m)
+  * "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #data)
+]]
+[[
+  "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, l+({{ #m }}, #data))
+]][*
+unfold "dll_seg_r::<T>"(#pty_T0, #next, #tail_next, #tail, #x, #data);
+if (((l-len #data) = (0i))) then { fold "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, l+({{ #m }}, #data)) } else { sep_assert ((#tail == {{ 1i, {{ #tptr }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * ({{ {{ #lvar_2, #lvar_3 }} }} == #tptr)
+  * <value>(#lvar_2, #lvar_3, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #tail_next, #tail_prev, #ep }})) [bind: #tptr, #tail_prev, #ep];
+apply "dll_seg_r_append_left::<T>"(#pty_T0, #x, #next, #tail, #tail_prev);
+fold "dll_seg_r::<T>"(#pty_T0, #x, #tail_next, #tail, #prev, l+({{ #m }}, #data)) }
+*]
+
+lemma "dll_seg_append_right::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+  * (#tail_next == {{ 1i, {{ #ptr }} }})
+  * types(#lvar_6: Obj, #lvar_7: List) * ({{ {{ #lvar_6, #lvar_7 }} }} == #ptr)
+  * <value>(#lvar_6, #lvar_7, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #next, #tail, #element }})
+  * "<T as gilogic::prophecies::Ownable>::own"(#pty_T0, #element, #m)
+]]
+[[
+  "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, l+(#data, {{ #m }}))
+]][*
+unfold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data);
+if (((l-len #data) = (0i))) then { fold "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, l+(#data, {{ #m }})) } else { sep_assert ((#head == {{ 1i, {{ #hptr }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * ({{ {{ #lvar_2, #lvar_3 }} }} == #hptr)
+  * <value>(#lvar_2, #lvar_3, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #head_next, #head_prev, #ep }})) [bind: #hptr, #head_next, #ep];
+apply "dll_seg_append_right::<T>"(#pty_T0, #head_next, #tail_next, #tail, #head);
+fold "dll_seg::<T>"(#pty_T0, #head, #next, #tail_next, #head_prev, l+(#data, {{ #m }})) }
+*]
 
 lemma "dll_seg_r_to_l::<T>"(pty_T0, head, tail_next, tail, head_prev)[[
   "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
-  * (head_prev == #head_prev)
-  * (tail == #tail)
-  * (tail_next == #tail_next)
-  * (head == #head)
-  * (pty_T0 == #pty_T0)
 ]]
-[[ "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) ]]
+[[
+  "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data)
+]][*
+unfold "dll_seg_r::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data);
+if (((l-len #data) = (0i))) then { fold "dll_seg::<T>"(#pty_T0, #head, #tail_next, #tail, #head_prev, #data) } else { sep_assert ((#tail == {{ 1i, {{ #tptr }} }})
+  * types(#lvar_0: Obj, #lvar_1: List) * ({{ {{ #lvar_0, #lvar_1 }} }} == #tptr)
+  * <value>(#lvar_0, #lvar_1, {{ "adt", "Node", {{ #pty_T0 }} }}; {{ #tail_next, #tail_prev, #ep }})) [bind: #tptr, #tail_prev, #ep];
+apply "dll_seg_r_to_l::<T>"(#pty_T0, #head, #tail, #tail_prev, #head_prev);
+apply "dll_seg_append_right::<T>"(#pty_T0, #head, #tail, #tail_prev, #head_prev) }
+*]
 
 proc "Node::<T>::new"(pty_T0, element) {
         m_1element := element;
@@ -908,6 +980,131 @@ proc "LinkedList::<T>::pop_front_node"(pLft_0, pty_T0, self) {
         u := [free](l-nth(m_4node, 0i), l-nth(m_4node, 1i), {{ "adt", "Box", {{ {{ "adt", "Node", {{ pty_T0 }} }}, {{ "adt", "Global", {{  }} }} }} }});
         u := [free](l-nth(m_13, 0i), l-nth(m_13, 1i), {{ "ptr", true, {{ "adt", "Node", {{ pty_T0 }} }} }});
         u := [free](l-nth(m_15, 0i), l-nth(m_15, 1i), {{ "tuple", {{ "usize", "bool" }} }});
+        return
+};
+
+spec "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self)
+[[ "<&mut LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, #self, #self_repr)
+  * <lft>(#pLft_0; true)
+  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
+  * (#self == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
+  * (self == #self)
+  * (pty_T0 == #pty_T0)
+  * (pLft_0 == #pLft_0) ]]
+[[ "<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head : List. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), 0i)) = (l-nth(#head, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), 0i)) = (l-nth(#head, 1i)))))) and (forall #i : Int. ((not ((((0i) i< (#i))) and (((#i) i< (l-len l-nth(#self_repr, 0i)))))) or (((l-nth(l-nth(#self_repr, 0i), #i)) = (l-nth(l-nth(#self_repr, 1i), #i))))))))))); )
+  * <lft>(#pLft_0; true) ]]
+normal
+
+proc "LinkedList::<T>::front_mut"(pLft_0, pty_T0, self) {
+        m_1self := self;
+        g_0 := m_1self;
+        m_1self := [alloc]({{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
+        u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, g_0);
+        m_4 := [alloc]({{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        m_9node := [alloc]({{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }});
+        m_10ret := [alloc]({{ "ref", true, pty_T0 }});
+        m_11 := [alloc]({{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }});
+        m_16 := [alloc]({{ "ref", true, pty_T0 }});
+  bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_1 := l-nth(g_2, 0i);
+        g_3 := [new_lft]();
+        pLft_18 := l-nth(g_3, 0i);
+        m_3 := g_1;
+        g_4 := m_3;
+        g_5 := "freeze_htl"(pLft_0, pty_T0, g_4);
+        m_2 := g_5;
+        goto bb1;
+  bb1:  g_7 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_6 := l-nth(g_7, 0i);
+        g_8 := [pcy_alloc]();
+        g_9 := [new_lft]();
+        pLft_20 := l-nth(g_9, 0i);
+        m_5 := {{ {{ l-nth(l-nth(g_6, 0i), 0i), l+(l-nth(l-nth(g_6, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "LinkedList", {{ pty_T0 }} }} }} }}) }}, l-nth(g_8, 0i) }};
+        g_10 := m_5;
+        g_11 := "std::option::Option::<T>::as_mut"(pLft_20, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }}, g_10);
+        u := [store_value](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }}, g_11);
+        goto bb2;
+  bb2:  g_13 := [load_discr](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        g_12 := l-nth(g_13, 0i);
+        m_6 := g_12;
+        g_14 := m_6;
+        goto [((g_14) = (0i))] bb4 sw0;
+  sw0:  goto [((g_14) = (1i))] bb5 sw1;
+  sw1:  goto bb3;
+  bb3:  fail [Unreachable]();
+  bb4:  goto bb6;
+  bb5:  g_16 := [load_value](l-nth(m_4, 0i), l+(l-nth(m_4, 1i), {{ {{ "vf", 0i, {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }}, 1i }} }}), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, false);
+        g_15 := l-nth(g_16, 0i);
+        g_17 := [new_lft]();
+        pLft_22 := l-nth(g_17, 0i);
+        u := [store_value](l-nth(m_9node, 0i), l-nth(m_9node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, g_15);
+        g_19 := [load_value](l-nth(m_9node, 0i), l-nth(m_9node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }}, true);
+        g_18 := l-nth(g_19, 0i);
+        g_20 := [new_lft]();
+        pLft_25 := l-nth(g_20, 0i);
+        m_12 := g_18;
+        g_21 := [new_lft]();
+        pLft_24 := l-nth(g_21, 0i);
+        g_22 := m_12;
+        g_23 := "std::ptr::NonNull::<T>::as_mut"(pLft_22, pLft_24, {{ "adt", "Node", {{ pty_T0 }} }}, g_22);
+        u := [store_value](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, g_23);
+        goto bb8;
+  bb6:  g_25 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_24 := l-nth(g_25, 0i);
+        g_26 := [new_lft]();
+        pLft_21 := l-nth(g_26, 0i);
+        m_8 := g_24;
+        g_27 := m_8;
+        g_28 := "auto_resolve_list_ref_mut_htl"(pLft_0, pty_T0, g_27);
+        m_7 := g_28;
+        goto bb7;
+  bb7:  m_0 := {{ 0i, {{  }} }};
+        goto bb11;
+  bb8:  g_30 := [load_value](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }}, true);
+        g_29 := l-nth(g_30, 0i);
+        g_31 := [pcy_alloc]();
+        g_32 := [new_lft]();
+        pLft_23 := l-nth(g_32, 0i);
+        u := [store_value](l-nth(m_10ret, 0i), l-nth(m_10ret, 1i), {{ "ref", true, pty_T0 }}, {{ {{ l-nth(l-nth(g_29, 0i), 0i), l+(l-nth(l-nth(g_29, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ pty_T0 }} }} }} }}) }}, l-nth(g_31, 0i) }});
+        g_34 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }}, true);
+        g_33 := l-nth(g_34, 0i);
+        g_35 := [new_lft]();
+        pLft_26 := l-nth(g_35, 0i);
+        m_14 := g_33;
+        g_36 := m_14;
+        g_37 := "extract_head::<T>"(pLft_0, pty_T0, g_36);
+        m_13proph := g_37;
+        goto bb9;
+  bb9:  g_39 := [load_value](l-nth(m_10ret, 0i), l-nth(m_10ret, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_38 := l-nth(g_39, 0i);
+        g_40 := [new_lft]();
+        pLft_29 := l-nth(g_40, 0i);
+        m_17 := g_38;
+        g_41 := m_13proph;
+        m_18 := g_41;
+        g_42 := m_17;
+        g_43 := m_18;
+        g_44 := "gilogic::prophecies::Prophecised::with_prophecy"(pLft_23, {{ "ref", true, pty_T0 }}, {{ "proj", "RepresentationTy", {{ pty_T0 }} }}, g_42, g_43);
+        u := [store_value](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, pty_T0 }}, g_44);
+        goto bb10;
+  bb10: g_46 := [load_value](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, pty_T0 }}, true);
+        g_45 := l-nth(g_46, 0i);
+        g_47 := [new_lft]();
+        pLft_27 := l-nth(g_47, 0i);
+        m_15 := g_45;
+        g_48 := m_15;
+        m_0 := {{ 1i, {{ g_48 }} }};
+        goto bb11;
+  bb11: g_49 := m_0;
+        ret := g_49;
+        goto rlab;
+  rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "LinkedList", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_4, 0i), l-nth(m_4, 1i), {{ "adt", "Option", {{ {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }} }} }});
+        u := [free](l-nth(m_9node, 0i), l-nth(m_9node, 1i), {{ "ref", true, {{ "adt", "NonNull", {{ {{ "adt", "Node", {{ pty_T0 }} }} }} }} }});
+        u := [free](l-nth(m_10ret, 0i), l-nth(m_10ret, 1i), {{ "ref", true, pty_T0 }});
+        u := [free](l-nth(m_11, 0i), l-nth(m_11, 1i), {{ "ref", true, {{ "adt", "Node", {{ pty_T0 }} }} }});
+        u := [free](l-nth(m_16, 0i), l-nth(m_16, 1i), {{ "ref", true, pty_T0 }});
         return
 };
 
