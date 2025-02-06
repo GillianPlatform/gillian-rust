@@ -14,17 +14,17 @@ warning: unused imports: `all_own_swap`, `alloc::GillianAllocator`
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _6
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `vec`
-   --> ../tests/proph/minivec.rs:151:32
+   --> ../tests/proph/minivec.rs:152:32
     |
-151 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+152 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
     |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
     |
     = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `ix`
-   --> ../tests/proph/minivec.rs:151:53
+   --> ../tests/proph/minivec.rs:152:53
     |
-151 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
+152 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
     |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
 
 warning: function `dealloc_array` is never used
@@ -61,12 +61,6 @@ warning: variable `THIS` should have a snake case name
     |
     = note: `#[warn(non_snake_case)]` on by default
 
-warning: function `extract_ith___proof` should have a snake case name
-   --> ../tests/proph/minivec.rs:151:4
-    |
-151 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
-    |    ^^^^^^^^^^^ help: convert the identifier to snake case: `extract_ith_proof`
-
-warning: 9 warnings emitted
+warning: 8 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

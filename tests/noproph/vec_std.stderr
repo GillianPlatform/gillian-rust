@@ -18,17 +18,17 @@ warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer
   = note: `#[warn(stable_features)]` on by default
 
 warning: unused variable: `vec`
-   --> ../tests/noproph/vec_std.rs:294:32
+   --> ../tests/noproph/vec_std.rs:295:32
     |
-294 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
+295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
     |                                ^^^ help: if this is intentional, prefix it with an underscore: `_vec`
     |
     = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `ix`
-   --> ../tests/noproph/vec_std.rs:294:53
+   --> ../tests/noproph/vec_std.rs:295:53
     |
-294 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
+295 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
     |                                                     ^^ help: if this is intentional, prefix it with an underscore: `_ix`
 
 warning: variant `Zeroed` is never constructed
@@ -42,20 +42,14 @@ warning: variant `Zeroed` is never constructed
    |
    = note: `#[warn(dead_code)]` on by default
 
-warning: function `extract_ith___proof` should have a snake case name
-   --> ../tests/noproph/vec_std.rs:294:4
+warning: variable `THIS` should have a snake case name
+   --> ../tests/noproph/vec_std.rs:304:12
     |
-294 | fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
-    |    ^^^^^^^^^^^ help: convert the identifier to snake case: `extract_ith_proof`
+304 |     fn own(self) {
+    |            ^^^^ help: convert the identifier to snake case: `this`
     |
     = note: `#[warn(non_snake_case)]` on by default
 
-warning: variable `THIS` should have a snake case name
-   --> ../tests/noproph/vec_std.rs:303:12
-    |
-303 |     fn own(self) {
-    |            ^^^^ help: convert the identifier to snake case: `this`
-
-warning: 7 warnings emitted
+warning: 6 warnings emitted
 
 [TIMESTAMP DEBUG rust_to_gil] Correct!

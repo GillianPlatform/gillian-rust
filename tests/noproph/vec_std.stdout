@@ -119,22 +119,6 @@ pred "gilogic::iterated::no_prophecies::all_own::<T>"(+pty_T0, +vs):
   * (vs == #vs);
 
 
-pred "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
-  <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
-  * "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::frozen_own"(pty_T0, #v, #frozen)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
-  * (frozen == #frozen)
-  * (this == #this);
-
-
-pred "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
-  <value>(l-nth(#this, 0i), l-nth(#this, 1i), pty_T0; #v)
-  * "<T as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
-  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
-  * (frozen == #frozen)
-  * (this == #this);
-
-
 pred "<&mut T as gilogic::Ownable>::own"(+pLft_erased, +pty_T0, +self):
   "<T as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List) * (#self == {{ #lvar_0, #lvar_1 }})
@@ -178,18 +162,20 @@ pred "<std::option::Option<&mut T> as gilogic::Ownable>::own"(+pLft_erased, +pty
   * (self == #self);
 
 
-pred "<T as gilogic::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, frozen):
-  "<T as gilogic::Ownable>::own"(pty_T0, #this) * (#frozen == {{  }})
-  * (frozen == #frozen)
-  * (this == #this);
-
-
 pred "<T as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
   "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
   * (frozen == #frozen)
   * (this == #this);
 guard: <lft>(pLft_0; true);
+
+pred "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
+  * "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
 
 pred "<Vec<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, frozen):
   "<Vec<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(pLft_0, pty_T0, #this, #frozen)
@@ -198,10 +184,24 @@ pred "<Vec<T> as gilogic::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, 
   * (this == #this);
 guard: <lft>(pLft_0; true);
 
+pred "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
+  <value>(l-nth(#this, 0i), l-nth(#this, 1i), pty_T0; #v)
+  * "<T as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
+  * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
 pred "<Vec<T> as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, frozen):
   <value>(l-nth(#this, 0i), l-nth(#this, 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
   * "<Vec<T> as gilogic::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #frozen)
   * types(#lvar_0: Obj, #lvar_1: List) * (#this == {{ #lvar_0, #lvar_1 }})
+  * (frozen == #frozen)
+  * (this == #this);
+
+
+pred "<T as gilogic::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, frozen):
+  "<T as gilogic::Ownable>::own"(pty_T0, #this) * (#frozen == {{  }})
   * (frozen == #frozen)
   * (this == #this);
 
@@ -225,25 +225,6 @@ lemma "assert_correct_vs::<T>"(pty_T0, p, len)[[
   <value>(l-nth(#p, 0i), l-nth(#p, 1i), {{ "array", #pty_T0, #len }}; #values)
   * "gilogic::iterated::no_prophecies::all_own::<T>"(#pty_T0, #values)
 ]]
-
-lemma "extract_ith___proof::<T>"(pLft_erased, pty_T0, vec, ix, ptr, cap, len)[[
-  (#ix i<# #len)
-  * "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, {{ #ptr, #cap, #len }})
-]]
-[[
-  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #lvar_7, {{  }})
-  * ("<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #lvar_9, {{  }})
-    -* "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, {{ #ptr, #cap, #len }}))
-  * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_6)
-  * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_6, #ix, #lvar_7)
-  * "std::ptr::Unique::<T>::as_ptr"(#pty_T0, #ptr, #lvar_8)
-  * "std::ptr::mut_ptr::<impl *mut T>::add"(#pty_T0, #lvar_8, #ix, #lvar_9)
-]][*
-package (
-  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #lvar_5, {{  }})
-  -*
-  "<Vec<T> as gilogic::FrozenOwn<(std::ptr::Unique<T>, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, {{ #ptr, #cap, #len }}))
-*]
 
 proc "<TryReserveError as std::convert::From<TryReserveErrorKind>>::from"(kind) {
         m_1kind := kind;

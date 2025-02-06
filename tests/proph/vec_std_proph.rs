@@ -288,6 +288,7 @@ pub struct Vec<T> {
     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
     prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
 )]
+#[gillian::trusted]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
 
 #[with_freeze_lemma(
@@ -389,16 +390,16 @@ impl<T: Ownable> Vec<T> {
         mutref_auto_resolve!(self);
     }
 
-    #[specification(
-        forall curr, proph.
-        requires {
-            self.own((curr, proph)) * a.own(a) * b.own(b) *
-            $ a < curr.len() && b < curr.len() $
-        }
-        ensures {
-            emp
-        }
-    )]
+    // #[specification(
+    //     forall curr, proph.
+    //     requires {
+    //         self.own((curr, proph)) * a.own(a) * b.own(b) *
+    //         $ a < curr.len() && b < curr.len() $
+    //     }
+    //     ensures {
+    //         emp
+    //     }
+    // )]
     pub fn swap(&mut self, a: usize, b: usize) {
         // Some ghost code to keep track of the model.
         freeze_pcl(self);

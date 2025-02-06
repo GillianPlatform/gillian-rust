@@ -292,6 +292,13 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
     let item_attrs = std::mem::take(&mut item.attrs);
     let extract_lemma = parse_macro_input!(args as ExtractLemma);
 
+    let is_trusted = item_attrs.iter().any(|attr| {
+        attr.path().is_ident("trusted")
+            || (attr.path().segments.len() == 2
+                && attr.path().segments[0].ident == "gillian"
+                && attr.path().segments[1].ident == "trusted")
+    });
+
     let ret_ty: Type = match &item.sig.output {
         ReturnType::Default => parse_quote! { () },
         ReturnType::Type(_token, ty) => (**ty).clone(),
@@ -321,10 +328,12 @@ pub(crate) fn extract_lemma(args: TokenStream_, input: TokenStream_) -> TokenStr
 
     let sig = &item.sig;
 
-    let extract_lemma_term = if extract_lemma.prophecise.is_some() {
-        extract_lemma_term_proph(&extract_lemma, &item)
+    let extract_lemma_term = if is_trusted {
+        None
+    } else if extract_lemma.prophecise.is_some() {
+        Some(extract_lemma_term_proph(&extract_lemma, &item))
     } else {
-        extract_lemma_noproph(&extract_lemma, &item)
+        Some(extract_lemma_noproph(&extract_lemma, &item))
     };
 
     let result = quote! {

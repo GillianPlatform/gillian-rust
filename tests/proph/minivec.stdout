@@ -176,26 +176,6 @@ pred "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::mut_
   * (this == #this);
 
 
-pred "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, model, frozen):
-  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), {{ "adt", "Vec", {{ pty_T0 }} }}; #v)
-  * "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::frozen_own"(pty_T0, #v, #model, #frozen)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (frozen == #frozen)
-  * (model == #model)
-  * (this == #this);
-
-
-pred "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(+pLft_0, +pty_T0, +this, model, frozen):
-  <value>(l-nth(l-nth(#this, 0i), 0i), l-nth(l-nth(#this, 0i), 1i), pty_T0; #v)
-  * "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(pty_T0, #v, #model, #frozen)
-  * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
-  * (#this == {{ {{ #lvar_0, #lvar_1 }}, #lvar_2 }})
-  * (frozen == #frozen)
-  * (model == #model)
-  * (this == #this);
-
-
 pred "<&mut T as gilogic::prophecies::Ownable>::own"(+pLft_erased, +pty_T0, +self, model):
   "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(pLft_erased, pty_T0, #self, #model, {{  }})
   * types(#lvar_0: Obj, #lvar_1: List, #lvar_2: Obj)
@@ -242,14 +222,6 @@ pred "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::mut_
   * (frozen == #frozen)
   * (this == #this);
 guard: <lft>(pLft_0; true);
-
-pred "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
-  "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
-  * (#frozen == {{  }})
-  * (frozen == #frozen)
-  * (repr == #repr)
-  * (this == #this);
-
 
 pred "<T as gilogic::prophecies::FrozenOwn<()>>::mut_ref_own_frozen"(+pLft_0, +pty_T0, +this, model, frozen):
   (#model == {{ #a, #b }})
@@ -305,23 +277,13 @@ pred "<Vec<T> as gilogic::prophecies::FrozenOwn<()>>::mut_ref_inner_frozen"(+pLf
   * (this == #this);
 guard: <lft>(pLft_0; true);
 
-lemma "extract_ith___proof::<T>"(pLft_erased, pty_T0, vec, ix, ptr, cap, len, m, new_new_model)[[
-  (#ix i<# #len)
-  * "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, #m, {{ #ptr, #cap, #len }})
-]]
-[[
-  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ #lvar_3, $l__null_prophecy }}, #mh, {{  }})
-  * (#m == l+(l+(l-sub(#m, 0i, #ix), {{ #mh }}), l-sub(#m, ((#ix) i+ (1i)), ((((#len) i- (#ix))) i- (1i)))))
-  * ("<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ #lvar_4, $l__null_prophecy }}, #new_new_model, {{  }})
-    -* "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, l+(l+(l-sub(#m, 0i, #ix), {{ #new_new_model }}), l-sub(#m, ((#ix) i+ (1i)), ((((#len) i- (#ix))) i- (1i)))), {{ #ptr, #cap, #len }}))
-  * "std::ptr::const_ptr::<impl *const T>::add"(#pty_T0, #ptr, #ix, #lvar_3)
-  * "std::ptr::const_ptr::<impl *const T>::add"(#pty_T0, #ptr, #ix, #lvar_4)
-]][*
-package (
-  "<T as gilogic::prophecies::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ #lvar_2, $l__null_prophecy }}, #new_new_model, {{  }})
-  -*
-  "<Vec<T> as gilogic::prophecies::FrozenOwn<(*const T, usize, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #vec, l+(l+(l-sub(#m, 0i, #ix), {{ #new_new_model }}), l-sub(#m, ((#ix) i+ (1i)), ((((#len) i- (#ix))) i- (1i)))), {{ #ptr, #cap, #len }}))
-*]
+pred "<T as gilogic::prophecies::FrozenOwn<()>>::frozen_own"(+pty_T0, +this, repr, frozen):
+  "<T as gilogic::prophecies::Ownable>::own"(pty_T0, #this, #repr)
+  * (#frozen == {{  }})
+  * (frozen == #frozen)
+  * (repr == #repr)
+  * (this == #this);
+
 
 proc "rralloc::alloc_array"(pty_T0, len) {
         m_1len := len;

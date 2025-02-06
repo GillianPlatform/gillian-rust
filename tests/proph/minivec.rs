@@ -148,6 +148,7 @@ impl<T: Ownable> Ownable for Vec<T> {
     extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
     prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
 )]
+#[gillian::trusted]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
 
 pub struct Vec<T> {

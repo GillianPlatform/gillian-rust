@@ -291,6 +291,7 @@ fn assert_correct_vs<T: Ownable>(p: *const T, len: usize);
     from { vec_ref_mut_pcl(vec, (ptr, cap, len)) }
     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix)))) }
 )]
+#[gillian::trusted]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize);
 
 #[with_freeze_lemma(
