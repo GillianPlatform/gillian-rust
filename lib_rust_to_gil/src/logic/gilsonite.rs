@@ -422,61 +422,6 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
         Self { thir, tcx }
     }
 
-    pub(crate) fn build_extract_lemma(&self, expr: ExprId) -> ExtractLemmaTerm<'tcx> {
-        let (uni, (assuming, from, extract, proph_model, prophecise)) =
-            self.peel_lvar_bindings(expr, |this, expr| {
-                this.peel_lvar_bindings(expr, |this, expr| {
-                    let expr = this.peel_scope(expr);
-                    let thir::ExprKind::Call {
-                        ty, fun: _, args, ..
-                    } = &this.thir[expr].kind
-                    else {
-                        unreachable!("ill formed extract lemma block {:?}", this.thir[expr])
-                    };
-
-                    let Some(LogicStubs::ExtractLemma) = this.get_stub(*ty) else {
-                        unreachable!("ill formed extract lemma block")
-                    };
-
-                    let assuming = this.build_formula(args[0]);
-                    let AssertKind::Call(from) = this.build_assert_kind(args[1]) else {
-                        unreachable!(
-                        "ill formed extract lemma block, second argument must be a predicate call"
-                    )
-                    };
-                    let AssertKind::Call(extract) = this.build_assert_kind(args[2]) else {
-                        unreachable!(
-                        "ill formed extract lemma block, third argument must be a predicate call"
-                    )
-                    };
-
-                    // In no-proph mode, this will always be unit, but it's easier than to construct it.
-                    let mut prophecise = this.peel_lvar_bindings(args[3], |this, expr| {
-                        let expr = this.peel_scope(expr);
-                        this.build_expression(expr)
-                    });
-                    assert!(prophecise.0.len() == 0 || prophecise.0.len() == 2);
-                    let proph_model = if prophecise.0.len() == 2 {
-                        Some((prophecise.0.remove(0), prophecise.0.remove(0)))
-                    } else {
-                        None
-                    };
-
-                    (assuming, from, extract, proph_model, prophecise.1)
-                })
-                .1
-            });
-        ExtractLemmaTerm {
-            uni,
-            models: None,
-            assuming,
-            from,
-            extract,
-            proph_model,
-            prophecise,
-        }
-    }
-
     pub(crate) fn build_lemma_proof(&self, expr: ExprId) -> Vec<ProofStep<'tcx>> {
         let expr = self.peel_scope(expr);
         let (_, steps) = self.peel_lvar_bindings(expr, |this, expr| {

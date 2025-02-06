@@ -221,8 +221,4 @@ impl<'tcx, 'genv> LemmaCtx<'tcx, 'genv> {
         }
         gil_proof
     }
-
-    fn compile_extract_lemma(&mut self, _: String, id: DefId) -> Vec<LogicItem> {
-        unreachable!()
-    }
 }

@@ -136,7 +136,6 @@ impl LogicStubs {
                 "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
                 "gillian::asrt::spec" => Some(Self::Spec),
-                "gillian::asrt::extract_lemma" => Some(Self::ExtractLemma),
                 "gillian::proof::package" => Some(Self::Package),
                 "gillian::proof::unfold" => Some(Self::Unfold),
                 "gillian::proof::fold" => Some(Self::Fold),
