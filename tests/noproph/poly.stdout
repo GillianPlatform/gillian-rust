@@ -4,9 +4,8 @@
 
 import "i__binop.gil", "i__lang.gil", "i__std_shims.gil", "i__prophecies.gil", "i__std_shims_no_pcy.gil", "i__lang_no_pcy.gil";
 
-axiomatic spec "test::<i32>"(pty_T0, x)
-[[ "<std::boxed::Box<i32> as gilogic::Ownable>::own"(#x) * (x == #x)
-  * (pty_T0 == #pty_T0) ]]
+axiomatic spec "test::<i32>"(x)
+[[ "<std::boxed::Box<i32> as gilogic::Ownable>::own"(#x) * (x == #x) ]]
 [[ "<i32 as gilogic::Ownable>::own"(ret) ]]
 normal
 

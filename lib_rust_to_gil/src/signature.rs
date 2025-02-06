@@ -273,6 +273,7 @@ pub fn build_signature<'tcx, 'genv>(
     let mut args = Vec::new();
     let (inputs, output) = inputs_and_output(tcx, id);
     let mut inputs: Vec<_> = EarlyBinder::bind(inputs.collect()).instantiate(tcx, subst);
+    let output = EarlyBinder::bind(output).instantiate(tcx, subst);
     // A "magic closure" is a closure used to define a gillian-rust item. In this case we drop the closure environment as a parameter since it's "fake".
     let magic_closure = is_magic_closure(id, tcx);
 
