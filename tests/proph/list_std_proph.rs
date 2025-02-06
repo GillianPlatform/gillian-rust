@@ -280,27 +280,27 @@ impl<T: Ownable> LinkedList<T> {
         }
     }
 
-    // #[creusillian::ensures(match ret {
-    //     None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
-    //     Some(head) =>
-    //         ((*self@).at(0) == *head@)
-    //         && ((^self@).at(0) == ^head@)
-    //         && (forall < i: usize > (0 < i && i < (*self@).len()) ==> (*self@).at(i) == (^self@).at(i))
-    // })]
-    // pub fn front_mut(&mut self) -> Option<&mut T> {
-    //     freeze_htl(self);
-    //     match self.head.as_mut() {
-    //         None => {
-    //             auto_resolve_list_ref_mut_htl!(self);
-    //             None
-    //         }
-    //         Some(node) => unsafe {
-    //             let ret = &mut node.as_mut().element;
-    //             let proph = extract_head(self);
-    //             Some(ret.with_prophecy(proph))
-    //         },
-    //     }
-    // }
+    #[creusillian::ensures(match ret {
+        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+        Some(head) =>
+            ((*self@).at(0) == *head@)
+            && ((^self@).at(0) == ^head@)
+            && (forall < i: usize > (0 < i && i < (*self@).len()) ==> (*self@).at(i) == (^self@).at(i))
+    })]
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        freeze_htl(self);
+        match self.head.as_mut() {
+            None => {
+                auto_resolve_list_ref_mut_htl(self);
+                None
+            }
+            Some(node) => unsafe {
+                let ret = &mut node.as_mut().element;
+                let proph = extract_head(self);
+                Some(ret.with_prophecy(proph))
+            },
+        }
+    }
 
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
