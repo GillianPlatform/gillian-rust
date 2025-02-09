@@ -57,16 +57,8 @@ pub(crate) enum LogicStubs {
     SeqAt,
     SeqSub,
     SeqRepeat,
-    // The following are actually part of gilogic and would disappear
-    // as soon as we support cross-crate compilation.
-    OwnPred,
-    MutRefOwnPred,
-    // OptionOwnPred,
-    TupleOwnPred,
-    RefMutInner,
     InstantiateLVars,
     Spec,
-    ExtractLemma,
     ExprExists,
     ExprForall,
     ExprEq,
@@ -126,14 +118,6 @@ impl LogicStubs {
                 "gillian::seq::at" => Some(Self::SeqAt),
                 "gillian::seq::sub" => Some(Self::SeqSub),
                 "gillian::seq::repeat" => Some(Self::SeqRepeat),
-                "gillian::ownable::own" | "gillian::pcy::ownable::own" => Some(Self::OwnPred),
-                "gillian::ownable::mut_ref_own" | "gillian::pcy::ownable::mut_ref_own" => {
-                    Some(Self::MutRefOwnPred)
-                }
-                "gillian::ownable::tuple_own" | "gillian::pcy::ownable::tuple_own" => {
-                    Some(Self::TupleOwnPred)
-                }
-                "gillian::pcy::ownable::ref_mut_inner" => Some(Self::RefMutInner),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
                 "gillian::asrt::spec" => Some(Self::Spec),
                 "gillian::proof::package" => Some(Self::Package),

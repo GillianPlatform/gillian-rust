@@ -80,7 +80,6 @@ pub struct GlobalEnv<'tcx> {
 
     pub(super) item_queue: QueueOnce<String, AutoItem<'tcx>>,
     // Borrow preds for which an $$inner version should be derived.
-    pub(super) inner_preds: IndexMap<String, String>,
 
     // Mapping from item -> specification
     spec_map: HashMap<DefId, DefId>,
@@ -145,7 +144,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             spec_map,
             metadata,
             gillian_items,
-            inner_preds: Default::default(),
             bodies: Default::default(),
             assertions: Default::default(),
             spec_terms: Default::default(),
@@ -169,10 +167,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             }
         }
         spec_map
-    }
-
-    pub fn prophecies_enabled(&self) -> bool {
-        self.config.prophecies
     }
 
     pub fn just_def_name_with_args(&self, did: DefId, args: GenericArgsRef<'tcx>) -> String {
@@ -254,17 +248,6 @@ impl<'tcx> GlobalEnv<'tcx> {
             ResolvedImpl::Param => None,
             ResolvedImpl::Impl(instance) => Some((instance.def_id(), instance.args)),
         }
-    }
-
-    pub(crate) fn resolve_inner_pred(
-        &mut self,
-        outer: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> String {
-        let name = self.tcx().def_path_str_with_args(outer, args) + "$$inner";
-        let auto_item = AutoItem::InnerPred(InnerPred::new(name.clone(), outer, args));
-        self.item_queue.push(name.clone(), auto_item);
-        name
     }
 
     pub fn register_mono_spec(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> String {

@@ -21,11 +21,6 @@ fn null_prophecy() -> Expr {
     Expr::Lit(Literal::Loc(NULL_PROPHECY_NAME.to_owned()))
 }
 
-/// Vestigial signature type
-pub(crate) struct PredSig {
-    name: String,
-}
-
 pub enum CallerKind {
     Pred,
     Lemma,
@@ -300,7 +295,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         let ty_params = param_collector::collect_params_on_args(substs)
             .with_consider_arguments(args.iter().map(|id| id.ty));
         let mut params = Vec::new();
-        let has_regions = build_signature(self.global_env, def_id, substs, &mut self.sig.temp_gen)
+        let has_regions = build_signature(self.global_env, def_id, substs, self.sig.temp_gen)
             .lifetimes()
             .count()
             > 0;
@@ -352,7 +347,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 super::core_preds::controller(prophecy, model)
             }
             AssertKind::ProphecyObserver { prophecy, model } => {
-                self.assert_prophecies_enabled("using prophecy::controller");
+                self.assert_prophecies_enabled("using prophecy::observer");
                 let prophecy = self.compile_expression(prophecy);
                 let model = self.compile_expression(model);
                 super::core_preds::observer(prophecy, model)

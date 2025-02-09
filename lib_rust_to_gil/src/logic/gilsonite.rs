@@ -5,13 +5,12 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::{
     mir::{self, interpret::Scalar, BorrowKind, ConstValue, UnOp},
-    query::Key,
-    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, StmtId, Thir},
-    ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
+    thir::{self, AdtExpr, BlockId, ClosureExpr, ExprId, LogicalOp, Pat, Thir},
+    ty::{self, GenericArgsRef, Ty, TyCtxt, TyKind, UpvarArgs},
 };
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::{sym::panic_misaligned_pointer_dereference, Symbol};
+use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::{
@@ -20,7 +19,7 @@ use crate::{
     signature::{anonymous_param_symbol, inputs_and_output},
 };
 
-use super::{builtins::LogicStubs, fatal2, utils::get_thir};
+use super::{builtins::LogicStubs, fatal2};
 
 #[derive(Debug, Clone)]
 pub struct EncDeBigInt(pub BigInt);
@@ -350,17 +349,6 @@ pub struct SpecTerm<'tcx> {
     pub pre: Assert<'tcx>,
     pub posts: Vec<(Vec<(Symbol, Ty<'tcx>)>, Assert<'tcx>)>,
     pub trusted: bool,
-}
-
-#[derive(Debug)]
-pub struct ExtractLemmaTerm<'tcx> {
-    pub uni: Vec<(Symbol, Ty<'tcx>)>,
-    pub models: Option<((Symbol, Ty<'tcx>), (Symbol, Ty<'tcx>))>,
-    pub assuming: Formula<'tcx>,
-    pub from: AssertPredCall<'tcx>,
-    pub extract: AssertPredCall<'tcx>,
-    pub proph_model: Option<((Symbol, Ty<'tcx>), (Symbol, Ty<'tcx>))>,
-    pub prophecise: Expr<'tcx>,
 }
 
 impl<'tcx> Assert<'tcx> {
@@ -891,7 +879,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         let model = self.build_expression(args[1]);
                         AssertKind::ProphecyController { prophecy, model }
                     }
-                    Some(LogicStubs::OwnPred) | None => {
+                    None => {
                         let ty::FnDef(def_id, substs) = *ty.kind() else {
                             unreachable!()
                         };
