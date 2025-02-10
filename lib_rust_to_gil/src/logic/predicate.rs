@@ -599,6 +599,21 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
         }
     }
 
+    fn shimmed_expr_call(
+        &mut self,
+        def_id: DefId,
+        _substs: GenericArgsRef,
+        args: &[Expr],
+    ) -> Option<Expr> {
+        match self.tcx().def_path_str(def_id).as_str() {
+            "std::ptr::NonNull::<T>::as_ptr" => {
+                let ptr = args[0].clone();
+                Some(ptr.lnth(0))
+            }
+            _ => None,
+        }
+    }
+
     pub fn compile_expression(&mut self, body: gilsonite::Expr<'tcx>) -> GExpr {
         use gilsonite::{BinOp, ExprKind};
         match body.kind {
@@ -612,12 +627,20 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                     .filter_map(|x| self.encode_generic_arg(x))
                     .map(|x| x.into())
                     .collect();
+                let len_poly = params.len();
+
                 params.extend(args.into_iter().map(|e| self.compile_expression(e)));
+
+                if let Some(e) = self.shimmed_expr_call(def_id, substs, &params[len_poly..]) {
+                    return e;
+                }
 
                 let fn_sig = self.tcx().fn_sig(def_id).skip_binder();
                 let out = fn_sig.output().skip_binder();
                 let out_var = self.temp_lvar(out);
                 params.push(out_var.clone());
+
+                dbg!(self.tcx().def_path_str(def_id));
 
                 let pred_call = Assertion::Pred {
                     name: self.tcx().def_path_str(def_id),

@@ -8,14 +8,13 @@ axiomatic spec extract_head(pLft_0, pty_T0, list)
 [[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, {{ #head, #tail, #len }})
   * (#head == {{ 1i, {{ #p }} }})
   * <lft>(#pLft_0; true)
-  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * (#p == {{ {{ #lvar_2, #lvar_3 }} }})
   * types(#len: Int)
-  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * types(#lvar_0: Obj, #lvar_1: List) * (#list == {{ #lvar_0, #lvar_1 }})
   * (list == #list)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
-  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(l-nth(#p, 0i), 0i), l+(l-nth(l-nth(#p, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -32,14 +31,13 @@ axiomatic spec "extract_head::<T>"(pLft_0, pty_T0, list)
 [[ "list_ref_mut_htl::<T>"(#pLft_0, #pty_T0, #list, {{ #head, #tail, #len }})
   * (#head == {{ 1i, {{ #p }} }})
   * <lft>(#pLft_0; true)
-  * types(#lvar_3: Obj, #lvar_4: List) * (#p == {{ {{ #lvar_3, #lvar_4 }} }})
+  * types(#lvar_2: Obj, #lvar_3: List) * (#p == {{ {{ #lvar_2, #lvar_3 }} }})
   * types(#len: Int)
-  * types(#lvar_1: Obj, #lvar_2: List) * (#list == {{ #lvar_1, #lvar_2 }})
+  * types(#lvar_0: Obj, #lvar_1: List) * (#list == {{ #lvar_0, #lvar_1 }})
   * (list == #list)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
-[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(#lvar_0, 0i), l+(l-nth(#lvar_0, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
-  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_0)
+[[ "<&mut T as gilogic::Ownable>::own"(#pLft_0, #pty_T0, {{ l-nth(l-nth(#p, 0i), 0i), l+(l-nth(l-nth(#p, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }})
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -204,14 +202,12 @@ lemma "extract_head___proof::<T>"(pLft_erased, pty_T0, list, head, tail, len, p)
   * "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }})
 ]]
 [[
-  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_3, 0i), l+(l-nth(#lvar_3, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
-  * ("<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_4, 0i), l+(l-nth(#lvar_4, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(l-nth(#p, 0i), 0i), l+(l-nth(l-nth(#p, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+  * ("<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(l-nth(#p, 0i), 0i), l+(l-nth(l-nth(#p, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
     -* "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }}))
-  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_3)
-  * "std::ptr::NonNull::<T>::as_ptr"({{ "adt", "Node", {{ #pty_T0 }} }}, #p, #lvar_4)
 ]][*
 package (
-  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(#lvar_2, 0i), l+(l-nth(#lvar_2, 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
+  "<T as gilogic::FrozenOwn<()>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, {{ l-nth(l-nth(#p, 0i), 0i), l+(l-nth(l-nth(#p, 0i), 1i), {{ {{ "f", 2i, {{ "adt", "Node", {{ #pty_T0 }} }} }} }}) }}, {{  }})
   -*
   "<LinkedList<T> as gilogic::FrozenOwn<(std::option::Option<std::ptr::NonNull<Node<T>>>, std::option::Option<std::ptr::NonNull<Node<T>>>, usize)>>::just_ref_mut_points_to"(#pLft_erased, #pty_T0, #list, {{ #head, #tail, #len }}))
 *]
