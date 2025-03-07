@@ -640,8 +640,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
                 let out_var = self.temp_lvar(out);
                 params.push(out_var.clone());
 
-                dbg!(self.tcx().def_path_str(def_id));
-
                 let pred_call = Assertion::Pred {
                     name: self.tcx().def_path_str(def_id),
                     params,
