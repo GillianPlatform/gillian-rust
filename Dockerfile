@@ -30,12 +30,12 @@ RUN ARCH=$(uname -m) && \
     \
     # Get latest Z3 release
     LATEST_Z3_VERSION=$(curl -s https://api.github.com/repos/Z3Prover/z3/releases/latest | grep "tag_name" | cut -d '"' -f 4) && \
-    curl -L -o z3.zip "https://github.com/Z3Prover/z3/releases/download/z3-4.14.0/z3-4.14.0-$Z3_ARCH.zip" && \
+    curl -L -o z3.zip "https://github.com/Z3Prover/z3/releases/download/z3-4.12.4/z3-4.12.4-$Z3_ARCH.zip" && \
     unzip z3.zip -d /opt/z3 && \
     rm z3.zip && \
     echo $Z3_ARCH && \
     ls /opt/z3 && \
-    ln -s /opt/z3/z3-4.14.0-$Z3_ARCH/bin/z3 /usr/local/bin/z3
+    ln -s /opt/z3/z3-4.12.4-$Z3_ARCH/bin/z3 /usr/local/bin/z3
 
 RUN z3 --version
 
