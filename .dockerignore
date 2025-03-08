@@ -1,0 +1,14 @@
+**/target
+**/*.rs.bk
+*.DS_Store
+output
+lib
+rustc-ice-*
+open_doc.sh
+*.rmeta
+*.gmeta
+*.rlib
+*.log
+Gillian-Rust/_opam
+Gillian-Rust/_build
+Gillian-Rust/.gillian
