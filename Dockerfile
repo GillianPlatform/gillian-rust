@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     autoconf \
     zlib1g-dev \
+    libzmq3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(uname -m) && \
