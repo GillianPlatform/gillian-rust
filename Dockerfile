@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     libzmq3-dev \
     libgtk-3-dev \
     libexpat1-dev \
+    libgtksourceview-3.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(uname -m) && \
