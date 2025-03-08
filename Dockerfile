@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libsqlite3-dev \
     autoconf \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(uname -m) && \
@@ -34,6 +35,13 @@ RUN ARCH=$(uname -m) && \
 
 RUN z3 --version
 
+# Install Creusot
+RUN git clone https://github.com/creusot-rs/creusot
+WORKDIR /creusot
+RUN git checkout tags/v0.4.0
+RUN echo "--external z3" > INSTALL.opts
+RUN ./INSTALL
+
 # Install OPAM and OCaml
 RUN opam init -a --disable-sandboxing --bare
 RUN opam switch create gillian-rust --packages=ocaml-variants.5.2.1+options,ocaml-option-flambda
@@ -49,13 +57,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Verify installations
 RUN opam --version && rustc --version
-
-# Install Creusot
-RUN git clone https://github.com/creusot-rs/creusot
-WORKDIR /creusot
-RUN git checkout tags/v0.4.0
-RUN echo "--external z3" > INSTALL.opts
-RUN ./INSTALL
 
 # Set the working directory
 WORKDIR /app
