@@ -35,12 +35,6 @@ RUN ARCH=$(uname -m) && \
 
 RUN z3 --version
 
-# Install Creusot
-RUN git clone https://github.com/creusot-rs/creusot
-WORKDIR /creusot
-RUN git checkout tags/v0.4.0
-RUN echo "--external z3" > INSTALL.opts
-RUN ./INSTALL
 
 # Install OPAM and OCaml
 RUN opam init -a --disable-sandboxing --bare
@@ -57,6 +51,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Verify installations
 RUN opam --version && rustc --version
+
+# Install Creusot
+RUN git clone https://github.com/creusot-rs/creusot
+WORKDIR /creusot
+RUN git checkout tags/v0.4.0
+RUN echo "--external z3" > INSTALL.opts
+RUN ./INSTALL
 
 # Set the working directory
 WORKDIR /app
