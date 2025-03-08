@@ -18,6 +18,8 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     zlib1g-dev \
     libzmq3-dev \
+    libgtk-3-dev \
+    libexpat1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(uname -m) && \
