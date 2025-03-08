@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     libgmp-dev \
     pkg-config \
     libsqlite3-dev \
+    autoconf \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(uname -m) && \
@@ -34,10 +35,9 @@ RUN ARCH=$(uname -m) && \
 RUN z3 --version
 
 # Install OPAM and OCaml
-RUN eval $(opam env)
 RUN opam init -a --disable-sandboxing --bare
 RUN opam switch create gillian-rust --packages=ocaml-variants.5.2.1+options,ocaml-option-flambda
-RUN eval $(opam env --set-switch=gillian-rust)
+RUN eval $(opam env --switch=gillian-rust)
 
 # Install Rust with the specified toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
