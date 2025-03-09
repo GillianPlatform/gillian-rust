@@ -7,4 +7,7 @@ edition = "2021"
 
 creusillian = { version = "*", path = "../../creusillian" }
 gilogic = { version = "*", path = "../../gilogic" }
-creusot-contracts = { version = "0.1.1" }
+creusot-contracts = { version = "0.4.0" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(gillian)', 'cfg(creusot)'] }

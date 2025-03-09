@@ -7,9 +7,9 @@
 #![cfg_attr(gillian, register_tool(gillian))]
 
 use creusillian::*;
+use creusot_contracts::logic::ops::IndexLogic;
 use gilogic::{macros::*, prophecies::*, RustAssertion, Seq};
 use std::marker::PhantomData;
-use creusot_contracts::logic::IndexLogic;
 
 #[creusot_contracts::trusted]
 pub struct Vec<T> {
@@ -18,17 +18,17 @@ pub struct Vec<T> {
 
 #[cfg(creusot)]
 mod creusot_defs {
-	// In a module to deal with imports
-	use creusot_contracts::*;
-    impl<T> ShallowModel for super::Vec<T> {
-        type ShallowModelTy = Seq<T>;
+    // In a module to deal with imports
+    use creusot_contracts::*;
+    impl<T> View for super::Vec<T> {
+        type ViewTy = Seq<T>;
 
         #[trusted]
         #[logic]
         #[open]
         #[ensures(result.len() <= usize::MAX@)]
-        fn shallow_model(self) -> Self::ShallowModelTy {
-            pearlite! { absurd }
+        fn view(self) -> Self::ViewTy {
+            pearlite! { dead }
         }
     }
 }
@@ -61,7 +61,7 @@ impl<T: Ownable> Vec<T> {
 
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
-    #[creusillian::ensures((^self)@ == (*self)@.push(e))]
+    #[creusillian::ensures((^self)@ == (*self)@.push_back(e))]
     pub fn push(&mut self, e: T) {
         todo!()
     }
@@ -89,14 +89,17 @@ impl<T: Ownable> Vec<T> {
     Some(r) =>
         ((*self)@[ix@] == (*r)) &&
         ((^self)@[ix@] == (^r)) &&
-        ((^self)@ == (*self)@.subsequence(0, ix@).push((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len() - ix@ - 1)))
+        ((^self)@ == (*self)@.subsequence(0, ix@).push_back((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len() - ix@ - 1)))
     })]
-    pub fn get_mut(&mut self, ix: usize) -> Option<&mut T> { todo!() }
+    pub fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
+        todo!()
+    }
 
     #[creusillian::ensures(result@ == creusot_contracts::Seq::EMPTY)]
-    pub const fn new() -> Self { todo!() }
+    pub const fn new() -> Self {
+        todo!()
+    }
 }
-
 
 #[creusot_contracts::trusted]
 pub struct LinkedList<T> {
@@ -112,11 +115,10 @@ impl<T> LinkedList<T> {
     //     Some(a) => creusot_contracts::Seq::singleton(a).concat((^self)@) == (*self)@
     //     // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
     // })]
-
     #[creusillian::ensures(
         forall<x : _> result == Some(x) ==> creusot_contracts::Seq::singleton(x).concat((^self)@) == (*self)@)]
     #[creusillian::ensures(result == None ==> ^self == *self && self@.len() == 0)]
-    // #[creusillian::ensures((*self)@ == (^self).push(e))]
+    // #[creusillian::ensures((*self)@ == (^self).push_back(e))]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()
     }
@@ -131,7 +133,7 @@ impl<T> LinkedList<T> {
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    #[creusillian::ensures((*self)@.push(e) == (^self)@)]
+    #[creusillian::ensures((*self)@.push_back(e) == (^self)@)]
     pub fn push_back(&mut self, e: T) {
         todo!()
     }
@@ -157,15 +159,14 @@ impl<T> LinkedList<T> {
 mod creusot_defs2 {
     // In a module to deal with imports
     use creusot_contracts::*;
-    impl<T> ShallowModel
-     for super::LinkedList<T> {
-        type ShallowModelTy = Seq<T>;
+    impl<T> View for super::LinkedList<T> {
+        type ViewTy = Seq<T>;
 
         #[trusted]
         #[logic]
         #[open(self)]
-        fn shallow_model(self) -> Self::ShallowModelTy {
-            pearlite! { absurd }
+        fn view(self) -> Self::ViewTy {
+            pearlite! { dead }
         }
     }
 }
