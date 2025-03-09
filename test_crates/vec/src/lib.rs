@@ -42,6 +42,7 @@ impl<T: Ownable> Ownable for Vec<T> {
     }
 
     #[cfg(not(gillian))]
+    #[creusot_contracts::trusted]
     fn own(self, repr: Seq<T::RepresentationTy>) -> RustAssertion {
         unreachable!("")
     }
@@ -95,6 +96,7 @@ impl<T: Ownable> Vec<T> {
         todo!()
     }
 
+    #[creusot_contracts::trusted]
     #[creusillian::ensures(result@ == creusot_contracts::Seq::EMPTY)]
     pub const fn new() -> Self {
         todo!()
