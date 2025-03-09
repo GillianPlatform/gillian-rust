@@ -84,10 +84,9 @@ fn merge_aux(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>, out: &mut LinkedL
         Some(x) => sorted(r@),
         None => true,
     });
+
     snapshot!(permut_frame_app::<i32>);
     snapshot!(permut_app::<i32>);
-    snapshot!(permut_app2::<i32>);
-    snapshot!(permut_push::<i32>);
 
     match (a, b) {
         (Some(a), Some(b)) => {
@@ -100,10 +99,7 @@ fn merge_aux(l: &mut LinkedList<i32>, r: &mut LinkedList<i32>, out: &mut LinkedL
                 proof_assert!(forall<i : _> 0 <= i && i < r@.len() ==> b <= r@[i]);
                 out.push_back(b);
                 l.push_front(a);
-                // proof_assert!(l@.ext_eq(old_l@));
                 merge_aux(r, l, out);
-                proof_assert!(old_out@.concat(old_r@.concat(old_l@)).permutation_of(old_out@.concat(old_r@).concat(old_l@)));
-                proof_assert!(out@.permutation_of(old_out@.concat(old_l@).concat(old_r@)));
             }
         }
         (None, Some(b)) => {
@@ -160,56 +156,13 @@ pub fn permut_frame_app<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>) {}
 
 #[logic]
 #[open(self)]
-#[requires(s.permutation_of(t))]
-#[ensures(s.concat(q).permutation_of(t.concat(q)))]
-pub fn permut_frame_app_l<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>) {}
-
-#[logic]
-#[open(self)]
 #[ensures(s.concat(t).permutation_of(t.concat(s)))]
 pub fn permut_app<T>(s: Seq<T>, t: Seq<T>) {}
-
-#[logic]
-#[open(self)]
-#[requires(s.permutation_of(t))]
-#[ensures(s.push_back(q).permutation_of(t.push_back(q)))]
-pub fn permut_push<T>(s: Seq<T>, t: Seq<T>, q: T) {}
-
-#[logic]
-#[open(self)]
-#[requires(s.permutation_of(t))]
-#[ensures(t.permutation_of(s))]
-pub fn permut_sym<T>(s: Seq<T>, t: Seq<T>) {}
-
-#[logic]
-#[open(self)]
-#[requires(s.permutation_of(t))]
-#[requires(q.permutation_of(r))]
-#[ensures(s.concat(q).permutation_of(t.concat(r)))]
-pub fn permut_app2<T>(s: Seq<T>, t: Seq<T>, q: Seq<T>, r: Seq<T>) {}
-
-#[logic]
-#[requires(s.permutation_of(t.concat(r)))]
-#[ensures(s.push_back(e).permutation_of(Seq::singleton(e).concat(t).concat(r)))]
-fn perm_left<T>(s: Seq<T>, t: Seq<T>, r: Seq<T>, e: T) {
-    let _ = permut_push::<T>;
-    let _ = permut_sym::<T>;
-    let _ = permut_app2::<T>;
-    let _ = snoc_def::<T>;
-
-    proof_assert!(Seq::singleton(e)
-        .concat(t)
-        .concat(r)
-        .permutation_of(t.concat(r).push_back(e)));
-}
 
 #[logic]
 #[requires(s.permutation_of(t.concat(r)))]
 #[ensures(s.push_back(e).permutation_of(t.concat(Seq::singleton(e).concat(r))))]
 fn perm_right<T>(s: Seq<T>, t: Seq<T>, r: Seq<T>, e: T) {
-    let _ = permut_push::<T>;
-    let _ = permut_sym::<T>;
-    let _ = permut_app2::<T>;
     let _ = snoc_def::<T>;
 
     proof_assert!(t
@@ -231,7 +184,6 @@ fn split(inp: &mut LinkedList<i32>) -> (LinkedList<i32>, LinkedList<i32>) {
     while let Some(i) = inp.pop_front() {
         popped = snapshot! { popped.push_back(i)};
         snapshot!(perm_right::<i32>);
-        snapshot!(perm_left::<i32>);
 
         if push_left {
             left.push_front(i);
