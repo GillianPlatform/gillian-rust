@@ -118,9 +118,9 @@ impl<T> LinkedList<T> {
     //     // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
     // })]
     #[creusillian::ensures(
-        forall<x : _> result == Some(x) ==> creusot_contracts::Seq::singleton(x).concat((^self)@) == (*self)@)]
+        forall<x : _> result == Some(x) ==> ((^self)@).push_front(x) == (*self)@)]
     #[creusillian::ensures(result == None ==> ^self == *self && self@.len() == 0)]
-    // #[creusillian::ensures((*self)@ == (^self).push_back(e))]
+    // #[creusillian::ensures((*self)@ == (^self)@.push_back(e))]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()
     }

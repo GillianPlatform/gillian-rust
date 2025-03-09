@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 gilogic_proc = { path = "../gilogic_proc" }
+
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(gillian)', 'cfg(creusot)'] }
