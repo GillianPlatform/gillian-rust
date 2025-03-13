@@ -127,7 +127,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     fn temp_lvar(&mut self, ty: Ty<'tcx>) -> GExpr {
         let name = self.new_temp();
 
-        // HACK(xavier): Fix this later once the `mk_wf_asrt` is removed;
         self.lvars.insert(Symbol::intern(&name), ty);
         Expr::LVar(name)
     }

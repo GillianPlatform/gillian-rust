@@ -345,16 +345,8 @@ impl<'tcx, 'body> GilCtxt<'tcx, 'body> {
                             vec![].into(),
                         ]);
                     }
-                    // TODO(xavier): FIXME HACK TODO FIX
+
                     Expr::null()
-                    // fatal!(
-                    //     self,
-                    //     "Can't encode unevaluated promoted constants yet: {:?} {:?} {:?} {:?}",
-                    //     self.tcx().def_path_str_with_args(def, args),
-                    //     constant.span,
-                    //     promoted,
-                    //     ty
-                    // )
                 }
             },
         }

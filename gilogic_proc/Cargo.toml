@@ -2,7 +2,7 @@
 name = "gilogic_proc"
 version = "0.1.0"
 edition = "2021"
-authors = ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
+authors = ["Anonymous"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,6 +11,11 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1.0.76"
-syn = { version = "2.0.15", features = ["full", "visit", "visit-mut", "extra-traits"] }
+syn = { version = "2.0.15", features = [
+  "full",
+  "visit",
+  "visit-mut",
+  "extra-traits",
+] }
 quote = "1.0.21"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }

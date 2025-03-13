@@ -16,7 +16,7 @@ fn main() {
 
     std::env::set_var("RUST_BACKTRACE", "1");
     // TODO: Custom ICE hook
-    rustc_driver::install_ice_hook("https://github.com/GillianPlatform/rust-to-gil", |_| ());
+    rustc_driver::install_ice_hook("https://github.com/anonymous/anonymous", |_| ());
 
     rustc_driver::init_rustc_env_logger(&handler);
 

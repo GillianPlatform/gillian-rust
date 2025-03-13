@@ -251,7 +251,6 @@ pub enum AssertKind<'tcx> {
     Call(AssertPredCall<'tcx>),
     /// Rust Points to predicate
     PointsTo {
-        // TODO(xavier): Should probably be a Place, but that requires building the places first.
         src: Expr<'tcx>,
         tgt: Expr<'tcx>,
     },

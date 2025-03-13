@@ -117,7 +117,7 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
         wfs
     }
 
-    /// Asserts that inputs equal their respective lvars. Something to do with the 'mutable store' according to sacha
+    /// Asserts that inputs equal their respective lvars.
     pub fn store_eq_var(&self) -> Vec<Assertion> {
         let mut wfs = Vec::new();
 
@@ -128,7 +128,7 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
         wfs
     }
 
-    /// Asserts that inputs equal their respective lvars. Something to do with the 'mutable store' according to sacha
+    /// Asserts that inputs equal their respective lvars.
     pub fn store_eq_all(&self) -> Vec<Assertion> {
         let mut wfs = Vec::new();
 
@@ -168,8 +168,6 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
         let lv = self.store_eq_all();
         let contract = self.contract.as_ref()?;
         let mut pre = contract.pre.clone();
-        // HACK(xavier): substitute program vars for their lvars here. Doing it elsewhere
-        // would require first refactoring all of `predicate.rs` which... lets wait for another day
 
         let var_map = self
             .args
@@ -195,7 +193,6 @@ impl<'tcx, 'genv> Signature<'tcx, 'genv> {
         Some((full_pre, contract.trusted))
     }
 
-    // TODO(xavier): Use `user_post` here to avoid hygiene issues!!!!!!
     fn full_post(&self) -> Vec<Assertion> {
         let mut wf = Vec::new();
         let timeless = match self.contract.as_ref() {
