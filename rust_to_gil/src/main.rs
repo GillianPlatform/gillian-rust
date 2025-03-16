@@ -13,6 +13,21 @@ use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
 struct DefaultCallbacks;
 impl rustc_driver::Callbacks for DefaultCallbacks {}
 
+pub const GILLIAN_RUSTC_ARGS: &[&str] = &[
+    "-Cpanic=abort",
+    "-Zmir-opt-level=0",
+    "-Coverflow-checks=off",
+    "-Zcrate-attr=feature(register_tool)",
+    "-Zcrate-attr=register_tool(gillian)",
+    "-Zcrate-attr=feature(stmt_expr_attributes)",
+    "-Zcrate-attr=feature(proc_macro_hygiene)",
+    "-Zcrate-attr=feature(rustc_attrs)",
+    "-Zcrate-attr=feature(unsized_fn_params)",
+    "--allow=internal_features",
+    "--cfg",
+    "gillian",
+];
+
 fn main() {
     let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
@@ -61,10 +76,9 @@ fn main() {
             all_args.gillian
         };
 
-        args.push("-Cpanic=abort".to_owned());
-        args.push("-Zmir-opt-level=0".to_owned());
-        // args.push("--crate-type=lib".to_owned());
-        args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
+        for &arg in GILLIAN_RUSTC_ARGS {
+            args.push(arg.to_owned());
+        }
 
         // eprintln!("final fainl {args:?}");
         utils::init();

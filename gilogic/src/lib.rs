@@ -1,12 +1,9 @@
 #![allow(internal_features)]
-#![feature(rustc_attrs)]
 #![feature(never_type)]
-#![feature(register_tool)]
 #![feature(ptr_internals)]
 #![feature(allocator_api)]
 #![feature(tuple_trait, unboxed_closures)]
-#![feature(stmt_expr_attributes, proc_macro_hygiene)]
-#![register_tool(gillian)]
+#![cfg_attr(not(gillian), feature(stmt_expr_attributes, proc_macro_hygiene))]
 
 mod tys;
 
