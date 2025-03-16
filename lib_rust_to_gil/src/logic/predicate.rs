@@ -550,6 +550,7 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     pub fn compile_formula(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
+        eprintln!("{formula:?}");
         assert!(formula.bound_vars.is_empty());
 
         self.compile_formula_body(formula.body)

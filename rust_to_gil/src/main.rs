@@ -43,7 +43,6 @@ fn main() {
         .any(|arg| arg == "gilogic" || arg.contains("gilogic="));
 
     // Did the user ask to compile this crate? Either they explicitly invoked `creusot-rustc` or this is a primary package.
-    let user_asked_for = !is_wrapper || primary_package;
 
     if normal_rustc || !(has_contracts) {
         eprintln!("DOING NORMAL RUST STUFF ");
@@ -52,7 +51,7 @@ fn main() {
             .unwrap();
     } else {
         let in_ui_test = std::env::var("IN_UI_TEST").is_ok();
-        let gillian_args: GillianArgs = if is_wrapper || in_ui_test {
+        let gillian_args: GillianArgs = if true {
             serde_json::from_str(&std::env::var("GILLIAN_ARGS").unwrap()).unwrap_or_else(|err| {
                 panic!("{err} args: {}", std::env::var("GILLIAN_ARGS").unwrap())
             })
@@ -62,10 +61,9 @@ fn main() {
             use lib_rtg::config::Parser;
             let all_args = crate::config::Args::parse_from(&args);
             args = all_args.rust_flags;
+            args.insert(0, "rust_to_gil".to_owned());
             all_args.gillian
         };
-
-        args.insert(0, "rust_to_gil".to_owned());
 
         args.push("-Cpanic=abort".to_owned());
         args.push("-Zmir-opt-level=0".to_owned());
