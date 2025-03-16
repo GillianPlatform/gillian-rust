@@ -43,7 +43,7 @@ warning: unused variable: `value`
     |                                                   ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
 
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _3
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _12
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _11
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
  --> ../tests/proph/vecdeque.rs:6:12
