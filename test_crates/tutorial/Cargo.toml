@@ -1,0 +1,18 @@
+[package]
+name = "tutorial"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+creusillian = { version = "*", path = "../../creusillian" }
+gilogic = { version = "*", path = "../../gilogic" }
+
+[profile.creusot]
+inherits = "dev"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(gillian)',
+  'cfg(creusot)',
+] }

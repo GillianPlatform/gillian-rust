@@ -9,10 +9,8 @@ members = [
   "gilogic_proc",
   "gilogic",
   "creusillian",
-  "tests", "cargo-gillian", 
+  "tests",
+  "cargo-gillian",
 ]
 
-exclude = [
-  "test_crates/vec", 
-  "test_crates/sort" 
-] 
+exclude = ["test_crates/vec", "test_crates/sort", "test_crates/tutorial"]
