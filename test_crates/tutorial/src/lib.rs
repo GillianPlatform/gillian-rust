@@ -1,3 +1,11 @@
+#![allow(internal_features)]
+#![feature(ptr_internals)]
+#![cfg_attr(
+    gillian,
+    feature(register_tool, rustc_attrs, stmt_expr_attributes, proc_macro_hygiene)
+)]
+#![cfg_attr(gillian, register_tool(gillian))]
+
 use gilogic::macros::{assertion, predicate};
 use gilogic::mutref_auto_resolve;
 use gilogic::prophecies::{Ownable, Prophecised};
