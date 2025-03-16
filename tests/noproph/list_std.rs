@@ -7,6 +7,15 @@ use gilogic::{fold, macros::*, unfold, Ownable};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
+// Difference with the paper:
+// This file (list_std.rs) is executed in "noproph" mode, which corresponds to the verification of "type safety" only, not functional correctness
+// (which requires prophecies to be enabled).
+// In this mode, the `Ownable` trait does not require a second parameter which corresponds to the "pure representation" of the type.
+// The existence of a noproph mode is mostly for demonstration purposes, and for legacy reasons.
+// Please take a look at `tests/proph/list_std_proph.rs` for a version with prophecies (and representations) enabled (though with less comments).
+
+// Structure definitions
+
 // 0 modification on the structure definition, although since we copied it, the allocator API was added
 pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
