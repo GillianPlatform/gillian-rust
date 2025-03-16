@@ -16,7 +16,7 @@ pub struct GillianArgs {
     #[clap(group = "output", long)]
     pub stdout: bool,
 
-    #[clap(long, required = true)]
+    #[clap(long)]
     pub prophecies: bool,
 
     /// Print to a file.
