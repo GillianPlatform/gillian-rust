@@ -74,7 +74,6 @@ impl Callbacks for ToGil {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            eprintln!("Compiling {:?}", tcx.crate_name(LOCAL_CRATE));
             let mut global_env = GlobalEnv::new(tcx, self.opts.clone());
             let (prog, metadata) = ProgCtx::compile_prog(tcx, &mut global_env, self.opts.clone());
 

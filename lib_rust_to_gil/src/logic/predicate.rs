@@ -302,7 +302,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         if has_regions {
             if self.sig.lifetimes().next().is_none() {
-                eprintln!("{:?}", self.sig);
                 fatal!(
                             self,
                             "predicate calling ({:?}, {:?}) another one ({:?}, {:?}), it has a lifetime param but not self?", self.body_id, self.args, def_id, substs
@@ -550,7 +549,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
     }
 
     pub fn compile_formula(&mut self, formula: gilsonite::Formula<'tcx>) -> Formula {
-        eprintln!("{formula:?}");
         assert!(formula.bound_vars.is_empty());
 
         self.compile_formula_body(formula.body)
