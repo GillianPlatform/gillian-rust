@@ -64,8 +64,8 @@ impl<T: Ownable> Vec<T> {
 
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
-    #[requires(i@ < self@.len())]
-    #[requires(j@ < self@.len())]
+    #[requires(i@ < (*self)@.len())]
+    #[requires(j@ < (*self)@.len())]
     #[ensures((^self)@.exchange(self@, i@, j@))]
     pub fn swap(&mut self, i: usize, j: usize) {
         todo!()

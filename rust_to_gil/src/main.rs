@@ -16,7 +16,6 @@ impl rustc_driver::Callbacks for DefaultCallbacks {}
 pub const GILLIAN_RUSTC_ARGS: &[&str] = &[
     "-Cpanic=abort",
     "-Zmir-opt-level=0",
-    "-Coverflow-checks=off",
     "-Zcrate-attr=feature(register_tool)",
     "-Zcrate-attr=register_tool(gillian)",
     "-Zcrate-attr=feature(stmt_expr_attributes)",
