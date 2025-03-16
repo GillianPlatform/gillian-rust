@@ -301,7 +301,6 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
         if has_regions {
             if self.sig.lifetimes().next().is_none() {
-                eprintln!("{:?}", self.sig);
                 fatal!(
                             self,
                             "predicate calling ({:?}, {:?}) another one ({:?}, {:?}), it has a lifetime param but not self?", self.body_id, self.args, def_id, substs

@@ -16,7 +16,7 @@ pub struct GillianArgs {
     #[clap(group = "output", long)]
     pub stdout: bool,
 
-    #[clap(long, required = true)]
+    #[clap(long)]
     pub prophecies: bool,
 
     /// Print to a file.
@@ -71,7 +71,7 @@ fn main() {
     cmd.arg(format!("+{toolchain}"))
         .arg(cargo_cmd)
         .args(args.rust_flags)
-        .env("RUSTC_WRAPPER", gillian_rustc_path)
+        .env("RUSTC", gillian_rustc_path)
         .env("CARGO_GILLIAN", "1");
 
     cmd.env(

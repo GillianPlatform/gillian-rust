@@ -4,6 +4,8 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_session;
 
+use std::process::Command;
+
 use lib_rtg::{config::GillianArgs, *};
 use rustc_driver::RunCompiler;
 use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
@@ -27,25 +29,26 @@ fn main() {
     if is_wrapper {
         args.remove(1);
     }
+
+    let sysroot = sysroot_path();
+    args.push(format!("--sysroot={}", sysroot));
+
     let normal_rustc = args
         .iter()
         .any(|arg| arg.starts_with("--print") || arg.starts_with("-vV"));
-    let primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
     let has_contracts = args
         .iter()
         .any(|arg| arg == "gilogic" || arg.contains("gilogic="));
 
     // Did the user ask to compile this crate? Either they explicitly invoked `creusot-rustc` or this is a primary package.
-    let user_asked_for = !is_wrapper || primary_package;
 
-    if normal_rustc || !(user_asked_for || has_contracts) {
+    if normal_rustc || !(has_contracts) {
         return RunCompiler::new(&args, &mut DefaultCallbacks {})
             .run()
             .unwrap();
     } else {
-        let in_ui_test = std::env::var("IN_UI_TEST").is_ok();
-        let gillian_args: GillianArgs = if is_wrapper || in_ui_test {
+        let gillian_args: GillianArgs = if true {
             serde_json::from_str(&std::env::var("GILLIAN_ARGS").unwrap()).unwrap_or_else(|err| {
                 panic!("{err} args: {}", std::env::var("GILLIAN_ARGS").unwrap())
             })
@@ -54,6 +57,7 @@ fn main() {
             use lib_rtg::config::Parser;
             let all_args = crate::config::Args::parse_from(&args);
             args = all_args.rust_flags;
+            args.insert(0, "rust_to_gil".to_owned());
             all_args.gillian
         };
 
@@ -62,6 +66,7 @@ fn main() {
         // args.push("--crate-type=lib".to_owned());
         args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
 
+        // eprintln!("final fainl {args:?}");
         utils::init();
         let mut to_gil = callbacks::ToGil::new(gillian_args.into_config());
 
@@ -70,4 +75,20 @@ fn main() {
             Err(_) => log::debug!("Incorrect!"),
         }
     }
+}
+
+fn sysroot_path() -> String {
+    let toolchain: toml::Value = toml::from_str(include_str!("../../rust-toolchain.toml")).unwrap();
+    let channel = toolchain["toolchain"]["channel"].as_str().unwrap();
+
+    let output = Command::new("rustup")
+        .arg("run")
+        .arg(channel)
+        .arg("rustc")
+        .arg("--print")
+        .arg("sysroot")
+        .output()
+        .unwrap();
+
+    String::from_utf8(output.stdout).unwrap().trim().to_owned()
 }
