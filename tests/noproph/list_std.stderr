@@ -12,91 +12,91 @@
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
 warning: unused variable: `list`
-  --> ../tests/noproph/list_std.rs:60:29
-   |
-60 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
-   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
-   |
-   = note: `#[warn(unused_variables)]` on by default
+   --> ../tests/noproph/list_std.rs:108:29
+    |
+108 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
+    |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_list`
+    |
+    = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `next`
-  --> ../tests/noproph/list_std.rs:93:5
-   |
-93 |     next: Option<NonNull<Node<T>>>,
-   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
+   --> ../tests/noproph/list_std.rs:141:5
+    |
+141 |     next: Option<NonNull<Node<T>>>,
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
 
 warning: unused variable: `hptr`
-   --> ../tests/noproph/list_std.rs:118:22
+   --> ../tests/noproph/list_std.rs:166:22
     |
-118 |         assert_bind!(hptr, head_next, head_prev, element |
+166 |         assert_bind!(hptr, head_next, head_prev, element |
     |                      ^^^^ help: if this is intentional, prefix it with an underscore: `_hptr`
 
 warning: unused variable: `head_prev`
-   --> ../tests/noproph/list_std.rs:118:39
+   --> ../tests/noproph/list_std.rs:166:39
     |
-118 |         assert_bind!(hptr, head_next, head_prev, element |
+166 |         assert_bind!(hptr, head_next, head_prev, element |
     |                                       ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_head_prev`
 
 warning: unused variable: `element`
-   --> ../tests/noproph/list_std.rs:118:50
+   --> ../tests/noproph/list_std.rs:166:50
     |
-118 |         assert_bind!(hptr, head_next, head_prev, element |
+166 |         assert_bind!(hptr, head_next, head_prev, element |
     |                                                  ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_element`
 
 warning: unused variable: `next`
-   --> ../tests/noproph/list_std.rs:140:5
+   --> ../tests/noproph/list_std.rs:188:5
     |
-140 |     next: Option<NonNull<Node<T>>>,
+188 |     next: Option<NonNull<Node<T>>>,
     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_next`
 
 warning: unused variable: `tptr`
-   --> ../tests/noproph/list_std.rs:148:22
+   --> ../tests/noproph/list_std.rs:196:22
     |
-148 |         assert_bind!(tptr, tail_prev, ep |
+196 |         assert_bind!(tptr, tail_prev, ep |
     |                      ^^^^ help: if this is intentional, prefix it with an underscore: `_tptr`
 
 warning: unused variable: `ep`
-   --> ../tests/noproph/list_std.rs:148:39
+   --> ../tests/noproph/list_std.rs:196:39
     |
-148 |         assert_bind!(tptr, tail_prev, ep |
+196 |         assert_bind!(tptr, tail_prev, ep |
     |                                       ^^ help: if this is intentional, prefix it with an underscore: `_ep`
 
 warning: unused variable: `hptr`
-   --> ../tests/noproph/list_std.rs:178:22
+   --> ../tests/noproph/list_std.rs:226:22
     |
-178 |         assert_bind!(hptr, head_next, ep|
+226 |         assert_bind!(hptr, head_next, ep|
     |                      ^^^^ help: if this is intentional, prefix it with an underscore: `_hptr`
 
 warning: unused variable: `ep`
-   --> ../tests/noproph/list_std.rs:178:39
+   --> ../tests/noproph/list_std.rs:226:39
     |
-178 |         assert_bind!(hptr, head_next, ep|
+226 |         assert_bind!(hptr, head_next, ep|
     |                                       ^^ help: if this is intentional, prefix it with an underscore: `_ep`
 
 warning: unused variable: `tptr`
-   --> ../tests/noproph/list_std.rs:207:22
+   --> ../tests/noproph/list_std.rs:255:22
     |
-207 |         assert_bind!(tptr, tail_prev, ep |
+255 |         assert_bind!(tptr, tail_prev, ep |
     |                      ^^^^ help: if this is intentional, prefix it with an underscore: `_tptr`
 
 warning: unused variable: `ep`
-   --> ../tests/noproph/list_std.rs:207:39
+   --> ../tests/noproph/list_std.rs:255:39
     |
-207 |         assert_bind!(tptr, tail_prev, ep |
+255 |         assert_bind!(tptr, tail_prev, ep |
     |                                       ^^ help: if this is intentional, prefix it with an underscore: `_ep`
 
 warning: function `extract_head___proof` should have a snake case name
-  --> ../tests/noproph/list_std.rs:60:4
-   |
-60 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>) {}
-   |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
-   |
-   = note: `#[warn(non_snake_case)]` on by default
+   --> ../tests/noproph/list_std.rs:108:4
+    |
+108 | fn extract_head<T: Ownable>(list: &mut LinkedList<T>);
+    |    ^^^^^^^^^^^^ help: convert the identifier to snake case: `extract_head_proof`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
 
 warning: variable `THIS` should have a snake case name
-   --> ../tests/noproph/list_std.rs:219:12
+   --> ../tests/noproph/list_std.rs:267:12
     |
-219 |     fn own(self) {
+267 |     fn own(self) {
     |            ^^^^ help: convert the identifier to snake case: `this`
 
 warning: 14 warnings emitted
