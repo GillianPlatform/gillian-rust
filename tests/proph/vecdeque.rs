@@ -9,7 +9,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    iterated::with_prophecies::{all_own, all_own_swap},
+    iterated::with_prophecies::all_own,
     macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},
@@ -423,7 +423,7 @@ impl<T: Ownable> VecDeque<T> {
     }
 
     #[creusillian::requires((*self)@.len() < 1000 )]
-    #[creusillian::ensures((^self)@ == (*self)@.append(value))]
+    #[creusillian::ensures((^self)@ == (*self)@.push_back(value))]
     pub fn push_back(&mut self, value: T) {
         if self.is_full() {
             self.grow();

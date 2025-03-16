@@ -1,6 +1,6 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
 [TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _2
-[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _17
+[TIMESTAMP WARN  lib_rtg::codegen::block] Not handling drop properly yet: _18
 warning: the feature `unchecked_math` has been stable since 1.79.0 and no longer requires an attribute to enable
  --> ../tests/noproph/vec_std.rs:5:12
   |

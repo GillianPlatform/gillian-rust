@@ -4,7 +4,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    iterated::with_prophecies::{all_own, all_own_swap},
+    iterated::with_prophecies::all_own,
     macros::*,
     mutref_auto_resolve,
     prophecies::{Ownable, Prophecised, Prophecy},

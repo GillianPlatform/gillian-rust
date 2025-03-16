@@ -1,10 +1,8 @@
-warning: unused imports: `all_own_swap`, `alloc::GillianAllocator`
+warning: unused import: `alloc::GillianAllocator`
  --> ../tests/proph/minivec.rs:6:5
   |
 6 |     alloc::GillianAllocator,
   |     ^^^^^^^^^^^^^^^^^^^^^^^
-7 |     iterated::with_prophecies::{all_own, all_own_swap},
-  |                                          ^^^^^^^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default
 
