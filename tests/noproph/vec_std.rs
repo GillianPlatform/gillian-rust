@@ -8,7 +8,7 @@ extern crate gilogic;
 use gilogic::{
     __stubs::{PointsToMaybeUninit, PointsToSlice},
     alloc::GillianAllocator,
-    iterated::no_prophecies::{all_own, all_own_swap},
+    iterated::no_prophecies::all_own,
     macros::*,
     Ownable,
 };

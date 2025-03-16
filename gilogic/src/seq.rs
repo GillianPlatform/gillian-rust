@@ -29,7 +29,7 @@ impl<T> Seq<T> {
     #[gillian::builtin]
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::append"]
-    pub fn append(self, _: T) -> Self {
+    pub fn push_back(self, _: T) -> Self {
         unreachable!()
     }
 

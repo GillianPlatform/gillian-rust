@@ -146,7 +146,7 @@ impl<T: Ownable> Ownable for Vec<T> {
     assuming { ix < len }
     from { vec_ref_mut_pcl(vec, m, (ptr, cap, len)) }
     extract { Ownable::own(&mut (*(ptr.add(ix))), mh) }
-    prophecise { m.sub(0, ix).append(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+    prophecise { m.sub(0, ix).push_back(mh).concat(m.sub(ix + 1, len - ix - 1)) }
 )]
 #[gillian::trusted]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
@@ -249,7 +249,7 @@ impl<T: Ownable> Vec<T> {
             elem.own(v_repr)
         }
         ensures {
-            $future == current.append(v_repr)$
+            $future == current.push_back(v_repr)$
         }
     )]
     pub fn push(&mut self, elem: T) {
@@ -284,7 +284,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(index < (*self@).len())]
-    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).append((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
+    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).sub(0, index).push_back((^ret@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))]
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         freeze_pcl(self);
         assert!(index < self.len);
@@ -301,7 +301,7 @@ impl<T: Ownable> Vec<T> {
         Some(r) =>
             ((*self@).at(index) == (*r@)) &&
             ((^self@).at(index) == (^r@)) &&
-            ((^self@) == (*self@).sub(0, index).append((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
+            ((^self@) == (*self@).sub(0, index).push_back((^r@)).concat((*self@).sub(index + 1, (*self@).len() - index - 1)))
     })]
     pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
         if index < self.len() {

@@ -96,7 +96,7 @@ fn dll_seg_r<T: Ownable>(
         (tail == Some(tptr)) *
         (tptr -> Node { next: tail_next, prev: tail_prev, element }) *
         element.own(e_repr) *
-        (data == rest.append(e_repr)) *
+        (data == rest.push_back(e_repr)) *
         dll_seg_r(head, tail, tail_prev, head_prev, rest)
     )
 }
@@ -186,7 +186,7 @@ fn dll_seg_r_append_left<T: Ownable>(
         (tail_next == Some(ptr)) * (ptr -> Node { next, prev: tail, element }) * element.own(m)
     }
     ensures {
-        dll_seg(head, next, tail_next, head_prev, data.append(m))
+        dll_seg(head, next, tail_next, head_prev, data.push_back(m))
     }
 )]
 fn dll_seg_append_right<T: Ownable>(
@@ -197,14 +197,14 @@ fn dll_seg_append_right<T: Ownable>(
 ) {
     unfold!(dll_seg(head, tail_next, tail, head_prev, data));
     if data.len() == 0 {
-        fold!(dll_seg(head, next, tail_next, head_prev, data.append(m)));
+        fold!(dll_seg(head, next, tail_next, head_prev, data.push_back(m)));
     } else {
         assert_bind!(hptr, head_next, ep|
             (head == Some(hptr)) *
             (hptr -> Node { next: head_next, prev: head_prev, element: ep })
         );
         dll_seg_append_right(head_next, tail_next, tail, head);
-        fold!(dll_seg(head, next, tail_next, head_prev, data.append(m)));
+        fold!(dll_seg(head, next, tail_next, head_prev, data.push_back(m)));
     }
 }
 
@@ -418,7 +418,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::requires((*self@).len() < usize::MAX@)]
-    #[creusillian::ensures((^self@) == (*self@).append(elt_repr))]
+    #[creusillian::ensures((^self@) == (*self@).push_back(elt_repr))]
     pub fn push_back(&mut self, elt: T) {
         dll_seg_l_to_r(self.head, None, self.tail, None);
         self.push_back_node(Box::new(Node::new(elt)));

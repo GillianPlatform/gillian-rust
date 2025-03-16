@@ -9,10 +9,10 @@ pub fn all_own<T: Ownable>(vs: In<Seq<T>>, reprs: Seq<T::RepresentationTy>) {
     assertion!(|x: T,
                 x_repr: T::RepresentationTy,
                 rest: Seq<T>,
-                rest_repr: Seq<T::RepresentationTy>| (vs == rest.append(x))
+                rest_repr: Seq<T::RepresentationTy>| (vs == rest.push_back(x))
         * x.own(x_repr)
         * all_own(rest, rest_repr)
-        * (reprs == rest_repr.append(x_repr)))
+        * (reprs == rest_repr.push_back(x_repr)))
 }
 
 // #[lemma]

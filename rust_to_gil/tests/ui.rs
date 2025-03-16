@@ -53,24 +53,24 @@ fn build_config(path: PathBuf, prophecies: bool) -> Config {
     //     "--extern".into(),
     //     "creusillian=../target/debug/libcreusillian.rlib".into(),
     // ]);
-    program
-        .args
-        .push("-Zcrate-attr=feature(register_tool)".into());
-    program
-        .args
-        .push("-Zcrate-attr=register_tool(gillian)".into());
-    program
-        .args
-        .push("-Zcrate-attr=feature(rustc_attrs)".into());
-    program
-        .args
-        .push("-Zcrate-attr=allow(internal_features)".into());
-    program
-        .args
-        .push("-Zcrate-attr=feature(stmt_expr_attributes)".into());
-    program
-        .args
-        .push("-Zcrate-attr=feature(proc_macro_hygiene)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=feature(register_tool)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=register_tool(gillian)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=feature(rustc_attrs)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=allow(internal_features)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=feature(stmt_expr_attributes)".into());
+    // program
+    //     .args
+    //     .push("-Zcrate-attr=feature(proc_macro_hygiene)".into());
     program.envs.push(("IN_UI_TEST".into(), Some("1".into())));
 
     if prophecies {
