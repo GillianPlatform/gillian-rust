@@ -4,6 +4,8 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_session;
 
+use std::process::Command;
+
 use lib_rtg::{config::GillianArgs, *};
 use rustc_driver::RunCompiler;
 use rustc_session::{config::ErrorOutputType, EarlyDiagCtxt};
@@ -27,6 +29,10 @@ fn main() {
     if is_wrapper {
         args.remove(1);
     }
+
+    let sysroot = sysroot_path();
+    args.push(format!("--sysroot={}", sysroot));
+
     let normal_rustc = args
         .iter()
         .any(|arg| arg.starts_with("--print") || arg.starts_with("-vV"));
@@ -39,7 +45,8 @@ fn main() {
     // Did the user ask to compile this crate? Either they explicitly invoked `creusot-rustc` or this is a primary package.
     let user_asked_for = !is_wrapper || primary_package;
 
-    if normal_rustc || !(user_asked_for || has_contracts) {
+    if normal_rustc || !(has_contracts) {
+        eprintln!("DOING NORMAL RUST STUFF ");
         return RunCompiler::new(&args, &mut DefaultCallbacks {})
             .run()
             .unwrap();
@@ -50,6 +57,7 @@ fn main() {
                 panic!("{err} args: {}", std::env::var("GILLIAN_ARGS").unwrap())
             })
         } else {
+            eprintln!("Doing it for real");
             // panic!("NOT NORMALRUSTC {is_wrapper:?} {:?}", std::env::args());
             use lib_rtg::config::Parser;
             let all_args = crate::config::Args::parse_from(&args);
@@ -57,11 +65,14 @@ fn main() {
             all_args.gillian
         };
 
+        args.insert(0, "rust_to_gil".to_owned());
+
         args.push("-Cpanic=abort".to_owned());
         args.push("-Zmir-opt-level=0".to_owned());
         // args.push("--crate-type=lib".to_owned());
         args.extend(["--cfg", "gillian"].iter().map(|x| (*x).to_owned()));
 
+        // eprintln!("final fainl {args:?}");
         utils::init();
         let mut to_gil = callbacks::ToGil::new(gillian_args.into_config());
 
@@ -70,4 +81,20 @@ fn main() {
             Err(_) => log::debug!("Incorrect!"),
         }
     }
+}
+
+fn sysroot_path() -> String {
+    let toolchain: toml::Value = toml::from_str(include_str!("../../rust-toolchain.toml")).unwrap();
+    let channel = toolchain["toolchain"]["channel"].as_str().unwrap();
+
+    let output = Command::new("rustup")
+        .arg("run")
+        .arg(channel)
+        .arg("rustc")
+        .arg("--print")
+        .arg("sysroot")
+        .output()
+        .unwrap();
+
+    String::from_utf8(output.stdout).unwrap().trim().to_owned()
 }

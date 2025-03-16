@@ -71,7 +71,7 @@ fn main() {
     cmd.arg(format!("+{toolchain}"))
         .arg(cargo_cmd)
         .args(args.rust_flags)
-        .env("RUSTC_WRAPPER", gillian_rustc_path)
+        .env("RUSTC", gillian_rustc_path)
         .env("CARGO_GILLIAN", "1");
 
     cmd.env(
