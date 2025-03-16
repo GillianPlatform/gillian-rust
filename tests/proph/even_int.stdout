@@ -105,8 +105,6 @@ normal
 
 proc "EvenInt::new_2"(x) {
         m_1x := x;
-        m_14 := [alloc]({{ "tuple", {{ "i32", "bool" }} }});
-        m_17 := [alloc]({{ "tuple", {{ "i32", "bool" }} }});
   bb0:  m_4 := m_1x;
         m_5 := ((2i) = (0i));
         g_0 := m_5;
@@ -129,45 +127,31 @@ proc "EvenInt::new_2"(x) {
   bb3:  m_9 := m_1x;
         g_7 := m_9;
         m_0 := {{ g_7 }};
-        goto bb10;
+        goto bb8;
   bb4:  m_11 := m_1x;
         g_8 := m_11;
         m_10 := ((g_8) i< (1000i));
         g_9 := m_10;
-        goto [g_9] bb5 bb7;
+        goto [g_9] bb5 bb6;
   bb5:  m_13 := m_1x;
-        g_10 := "i__binop_checked_add"(m_13, 1i, 2147483647i);
-        u := [store_value](l-nth(m_14, 0i), l-nth(m_14, 1i), {{ "tuple", {{ "i32", "bool" }} }}, g_10);
-        g_12 := [load_value](l-nth(m_14, 0i), l+(l-nth(m_14, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "bool", false);
-        g_11 := l-nth(g_12, 0i);
-        u := "i__lang_assert"(not g_11, "overflow check failed");
-        goto bb6;
-  bb6:  g_14 := [load_value](l-nth(m_14, 0i), l+(l-nth(m_14, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "i32", false);
-        g_13 := l-nth(g_14, 0i);
-        m_12 := g_13;
-        g_15 := m_12;
+        g_10 := m_13;
+        g_11 := "i__binop_checked_add"(g_10, 1i, 2147483647i);
+        m_12 := g_11;
+        g_12 := m_12;
+        m_0 := {{ g_12 }};
+        goto bb7;
+  bb6:  m_15 := m_1x;
+        g_13 := m_15;
+        g_14 := "i__binop_checked_sub"(g_13, 1i);
+        m_14 := g_14;
+        g_15 := m_14;
         m_0 := {{ g_15 }};
-        goto bb9;
-  bb7:  m_16 := m_1x;
-        g_16 := "i__binop_checked_sub"(m_16, 1i);
-        u := [store_value](l-nth(m_17, 0i), l-nth(m_17, 1i), {{ "tuple", {{ "i32", "bool" }} }}, g_16);
-        g_18 := [load_value](l-nth(m_17, 0i), l+(l-nth(m_17, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "bool", false);
-        g_17 := l-nth(g_18, 0i);
-        u := "i__lang_assert"(not g_17, "overflow check failed");
-        goto bb8;
-  bb8:  g_20 := [load_value](l-nth(m_17, 0i), l+(l-nth(m_17, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "i32", false);
-        g_19 := l-nth(g_20, 0i);
-        m_15 := g_19;
-        g_21 := m_15;
-        m_0 := {{ g_21 }};
-        goto bb9;
-  bb9:  goto bb10;
-  bb10: g_22 := m_0;
-        ret := g_22;
+        goto bb7;
+  bb7:  goto bb8;
+  bb8:  g_16 := m_0;
+        ret := g_16;
         goto rlab;
-  rlab: u := [free](l-nth(m_14, 0i), l-nth(m_14, 1i), {{ "tuple", {{ "i32", "bool" }} }});
-        u := [free](l-nth(m_17, 0i), l-nth(m_17, 1i), {{ "tuple", {{ "i32", "bool" }} }});
-        return
+  rlab: return
 };
 
 proc "EvenInt::new"(x) {
@@ -234,28 +218,19 @@ proc "EvenInt::add"(pLft_0, self) {
         g_0 := m_1self;
         m_1self := [alloc]({{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }});
         u := [store_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }}, g_0);
-        m_2 := [alloc]({{ "tuple", {{ "i32", "bool" }} }});
   bb0:  g_2 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }}, true);
         g_1 := l-nth(g_2, 0i);
         g_4 := [load_value](l-nth(l-nth(g_1, 0i), 0i), l+(l-nth(l-nth(g_1, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "EvenInt", {{  }} }} }} }}), "i32", true);
         g_3 := l-nth(g_4, 0i);
         g_5 := "i__binop_checked_add"(g_3, 1i, 2147483647i);
-        u := [store_value](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "tuple", {{ "i32", "bool" }} }}, g_5);
-        g_7 := [load_value](l-nth(m_2, 0i), l+(l-nth(m_2, 1i), {{ {{ "f", 1i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "bool", false);
+        g_7 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }}, true);
         g_6 := l-nth(g_7, 0i);
-        u := "i__lang_assert"(not g_6, "overflow check failed");
-        goto bb1;
-  bb1:  g_9 := [load_value](l-nth(m_2, 0i), l+(l-nth(m_2, 1i), {{ {{ "f", 0i, {{ "tuple", {{ "i32", "bool" }} }} }} }}), "i32", false);
-        g_8 := l-nth(g_9, 0i);
-        g_11 := [load_value](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }}, true);
-        g_10 := l-nth(g_11, 0i);
-        u := [store_value](l-nth(l-nth(g_10, 0i), 0i), l+(l-nth(l-nth(g_10, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "EvenInt", {{  }} }} }} }}), "i32", g_8);
+        u := [store_value](l-nth(l-nth(g_6, 0i), 0i), l+(l-nth(l-nth(g_6, 0i), 1i), {{ {{ "f", 0i, {{ "adt", "EvenInt", {{  }} }} }} }}), "i32", g_5);
         m_0 := {{}};
-        g_12 := m_0;
-        ret := g_12;
+        g_8 := m_0;
+        ret := g_8;
         goto rlab;
   rlab: u := [free](l-nth(m_1self, 0i), l-nth(m_1self, 1i), {{ "ref", true, {{ "adt", "EvenInt", {{  }} }} }});
-        u := [free](l-nth(m_2, 0i), l-nth(m_2, 1i), {{ "tuple", {{ "i32", "bool" }} }});
         return
 };
 
