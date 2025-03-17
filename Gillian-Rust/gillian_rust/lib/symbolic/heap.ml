@@ -763,8 +763,6 @@ module TreeBlock = struct
     { offset = Expr.EList []; root }
 
   let semi_concretize ~variant ty expr =
-    (* FIXME: this assumes the values are initialized? Not entirely sure...
-       I think we `Symbolic` means "initialized and symbolic!" *)
     Logging.tmi (fun m ->
         m "semi_concretize %a with ty %a and variant: %a" Expr.pp expr Ty.pp ty
           (Fmt.Dump.option Fmt.int) variant);
@@ -785,7 +783,6 @@ module TreeBlock = struct
           in
           DR.ok (Structural { ty; content = Fields fields })
         else too_symbolic expr
-          (* FIXME: This is probably not the right error? *)
     | Array { length = Expr.Lit (Int length_i) as length; ty = ty' }
       when Z.(length_i < of_int 1000) ->
         if%sat (is_list expr) #&& (has_length length expr) then
@@ -1626,7 +1623,6 @@ module TreeBlock = struct
               ((v, block), lk)
           | Plus (_, i, ty') :: rest, _ ->
               let return_and_update' t ~lk =
-                (* TODO: I need to pass the lk too here, but I'll do this when I make the right monad transformer *)
                 aux ~lk t rest
               in
               frame_slice ~lk ~can_extend:false

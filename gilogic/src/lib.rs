@@ -4,6 +4,9 @@
 #![feature(allocator_api)]
 #![feature(tuple_trait, unboxed_closures)]
 #![cfg_attr(not(gillian), feature(stmt_expr_attributes, proc_macro_hygiene))]
+#![cfg_attr(not(gillian), feature(rustc_attrs))]
+#![cfg_attr(not(gillian), feature(register_tool))]
+#![cfg_attr(not(gillian), register_tool(gillian))]
 
 mod tys;
 

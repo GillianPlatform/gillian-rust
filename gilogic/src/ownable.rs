@@ -29,11 +29,6 @@ macro_rules! int_ownable {
                 assertion!(($t::MIN <= self) * (self <= $t::MAX))
             }
 
-            #[cfg(not(gillian))]
-            fn own(self) -> RustAssertion {
-                unreachable!("")
-            }
-
         }
     };
 
@@ -54,21 +49,10 @@ pub unsafe trait FrozenOwn<K: core::marker::Tuple + Sized>: Ownable + Sized {
         assertion!(|v| (this -> v) * Self::frozen_own(v, frozen))
     }
 
-    #[cfg(not(gillian))]
-    #[predicate]
-    fn just_ref_mut_points_to(_this: &mut Self, _frozen: K) -> RustAssertion {
-        unreachable!()
-    }
-
     #[predicate]
     #[gillian::borrow]
     fn mut_ref_own_frozen(this: In<&mut Self>, frozen: K) {
         Self::just_ref_mut_points_to(this, frozen)
-    }
-
-    #[cfg(not(gillian))]
-    fn mut_ref_own_frozen(_this: &mut Self, _frozen: K) -> RustAssertion {
-        unreachable!()
     }
 }
 
@@ -80,22 +64,12 @@ where
     fn frozen_own(this: In<Self>, frozen: ()) -> RustAssertion {
         assertion!(this.own() * (frozen == ()))
     }
-
-    #[cfg(not(gillian))]
-    fn frozen_own(_this: Self, _frozen: ()) -> RustAssertion {
-        unreachable!()
-    }
 }
 
 impl<T: Ownable> Ownable for &mut T {
     #[predicate]
     fn own(self) {
         assertion!(<T as FrozenOwn<()>>::mut_ref_own_frozen(self, ()))
-    }
-
-    #[cfg(not(gillian))]
-    fn own(self) -> RustAssertion {
-        unreachable!("")
     }
 }
 
@@ -106,11 +80,6 @@ impl<T: Ownable, U: Ownable> Ownable for (T, U) {
     fn own(self) {
         assertion!(self.0.own() * self.1.own())
     }
-
-    #[cfg(not(gillian))]
-    fn own(self) -> RustAssertion {
-        unreachable!("")
-    }
 }
 
 impl<T: Ownable> Ownable for Option<T> {
@@ -119,11 +88,6 @@ impl<T: Ownable> Ownable for Option<T> {
         assertion!((self == None));
         assertion!(|ax: T| (self == Some(ax)) * <T as Ownable>::own(ax))
     }
-
-    #[cfg(not(gillian))]
-    fn own(self) -> RustAssertion {
-        unreachable!("")
-    }
 }
 
 impl<T: Ownable> Ownable for Box<T> {
@@ -131,22 +95,12 @@ impl<T: Ownable> Ownable for Box<T> {
     fn own(self) {
         assertion!(|v| (self -> v) * v.own())
     }
-
-    #[cfg(not(gillian))]
-    fn own(self) -> RustAssertion {
-        unreachable!("")
-    }
 }
 
 impl Ownable for () {
     #[predicate]
     fn own(self) {
         assertion!((self == ()))
-    }
-
-    #[cfg(not(gillian))]
-    fn own(self) -> RustAssertion {
-        unreachable!("")
     }
 }
 

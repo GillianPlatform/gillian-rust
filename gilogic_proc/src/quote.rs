@@ -556,6 +556,12 @@ impl ToTokens for Predicate {
         } = &self;
         match body {
             None => tokens.extend(quote! {
+              #[cfg(not(gillian))]
+              #(#attributes)*
+              #vis fn #name #generics (#args) -> gilogic::RustAssertion {
+                unreachable!()
+              }
+
               #[cfg(gillian)]
               #[gillian::decl::abstract_predicate]
               #[gillian::decl::pred_ins=#ins]
@@ -581,6 +587,12 @@ impl ToTokens for Predicate {
 
                 let brace_token = body.brace_token;
                 tokens.extend(quote! {
+                  #[cfg(not(gillian))]
+                  #(#attributes)*
+                  #vis fn #name #generics (#args) -> gilogic::RustAssertion {
+                    unreachable!()
+                  }
+
                   #[cfg(gillian)]
                   #[gillian::decl::predicate]
                   #[gillian::decl::pred_ins=#ins]

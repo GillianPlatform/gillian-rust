@@ -61,26 +61,12 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
         assertion!(|v| (this -> v) * Self::frozen_own(v, model, frozen))
     }
 
-    #[cfg(not(gillian))]
-    fn just_ref_mut_points_to(
-        _this: &mut Self,
-        _model: Self::RepresentationTy,
-        _frozen: T,
-    ) -> RustAssertion {
-        unreachable!()
-    }
-
     #[predicate]
     #[gillian::borrow]
     fn mut_ref_inner_frozen(this: In<&mut Self>, frozen: T) -> RustAssertion {
         assertion!(
             |v, repr| (this -> v) * controller(this.prophecy(), repr) * Self::frozen_own(v, repr, frozen)
         )
-    }
-
-    #[cfg(not(gillian))]
-    fn mut_ref_inner_frozen(_this: &mut Self, _frozen: T) -> RustAssertion {
-        unreachable!();
     }
 
     #[predicate]
@@ -93,15 +79,6 @@ pub unsafe trait FrozenOwn<T: core::marker::Tuple + Sized>: Ownable + Sized {
             * Self::mut_ref_inner_frozen(this, frozen)
             * observer(this.prophecy(), a)
             * (this.prophecy().value() == b))
-    }
-
-    #[cfg(not(gillian))]
-    fn mut_ref_own_frozen(
-        _this: &mut Self,
-        _model: (Self::RepresentationTy, Self::RepresentationTy),
-        _frozen: T,
-    ) -> RustAssertion {
-        unreachable!()
     }
 }
 
@@ -117,15 +94,6 @@ where
     ) -> RustAssertion {
         assertion!(this.own(repr) * (frozen == ()))
     }
-
-    #[cfg(not(gillian))]
-    fn frozen_own(
-        _this: Self,
-        _repr: <Self as Ownable>::RepresentationTy,
-        _frozen: (),
-    ) -> RustAssertion {
-        unreachable!()
-    }
 }
 
 impl<T: Ownable> Ownable for &mut T {
@@ -133,11 +101,6 @@ impl<T: Ownable> Ownable for &mut T {
     #[predicate]
     fn own(self, model: (T::RepresentationTy, T::RepresentationTy)) {
         assertion!(<T as FrozenOwn<()>>::mut_ref_own_frozen(self, model, ()))
-    }
-
-    #[cfg(not(gillian))]
-    fn own(self, _model: (T::RepresentationTy, T::RepresentationTy)) -> RustAssertion {
-        unreachable!("")
     }
 }
 
