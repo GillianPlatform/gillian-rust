@@ -76,6 +76,8 @@ WORKDIR /app/Gillian-Rust
 RUN opam install . -y
 
 WORKDIR /app
+RUN cargo install --path rust_to_gil
+RUN cargo install --path cargo-gillian
 
 # Command to run your application (modify as needed)
 CMD ["bash", "-i"]

@@ -227,6 +227,18 @@ fn requires_inner(args: TokenStream_, input: TokenStream_) -> syn::Result<TokenS
 }
 
 #[proc_macro_attribute]
+pub fn show_safety(_args: TokenStream_, input: TokenStream_) -> TokenStream_ {
+    let t: TokenStream = input.into();
+
+    let res = quote! {
+        #[::creusillian::ensures(true)]
+        #t
+    };
+
+    res.into()
+}
+
+#[proc_macro_attribute]
 pub fn ensures(args: TokenStream_, input: TokenStream_) -> TokenStream_ {
     match ensures_inner(args, input) {
         Ok(e) => e.into(),

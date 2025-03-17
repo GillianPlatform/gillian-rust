@@ -82,6 +82,11 @@ proc "std::ptr::null_mut"(T) {
      return
 };
 
+proc "std::ptr::null"(T) {
+     ret := {{ $l_null, {{ }} }};
+     return
+};
+
 proc "std::ptr::Unique::<T>::dangling"(T) {
      ret := {{ {{ {{ $l_dangling, {{ }} }} }}, {{ }} }};
      return

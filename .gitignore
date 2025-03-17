@@ -9,3 +9,5 @@ open_doc.sh
 *.rmeta
 *.gmeta
 *.rlib
+*.log
+**/.gillian
