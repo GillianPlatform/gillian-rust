@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 
-vec = { version = "*", path = "../vec" }
+proven = { version = "*", path = "../proven" }
 creusillian = { version = "*", path = "../../creusillian" }
 gilogic = { version = "*", path = "../../gilogic" }
 creusot-contracts = { version = "0.4.0" }
@@ -14,4 +14,7 @@ creusot-contracts = { version = "0.4.0" }
 inherits = "dev"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(gillian)', 'cfg(creusot)'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(gillian)',
+  'cfg(creusot)',
+] }

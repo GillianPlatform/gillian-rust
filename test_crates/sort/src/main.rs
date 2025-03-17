@@ -1,5 +1,5 @@
 use creusot_contracts::*;
-use vec::{LinkedList, Vec};
+use proven::{LinkedList, Vec};
 
 use gilogic::prophecies::Ownable;
 use {logic::ops::IndexLogic, snapshot, Snapshot};

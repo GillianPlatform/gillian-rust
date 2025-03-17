@@ -31,15 +31,10 @@ mod creusot_defs {
 impl<T: Ownable> Ownable for Vec<T> {
     type RepresentationTy = Seq<T::RepresentationTy>;
 
+    #[creusot_contracts::trusted]
     #[predicate]
     fn own(self, repr: Seq<T::RepresentationTy>) -> RustAssertion {
         assertion!(emp)
-    }
-
-    #[cfg(not(gillian))]
-    #[creusot_contracts::trusted]
-    fn own(self, repr: Seq<T::RepresentationTy>) -> RustAssertion {
-        unreachable!("")
     }
 }
 

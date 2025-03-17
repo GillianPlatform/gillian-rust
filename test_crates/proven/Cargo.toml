@@ -1,5 +1,5 @@
 [package]
-name = "vec"
+name = "proven"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,4 +10,7 @@ gilogic = { version = "*", path = "../../gilogic" }
 creusot-contracts = { version = "0.4.0" }
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(gillian)', 'cfg(creusot)'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(gillian)',
+  'cfg(creusot)',
+] }
