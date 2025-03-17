@@ -1,2 +1,2 @@
 [TIMESTAMP WARN  lib_rtg::metadata] could not read metadata for crate `"std"`: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+[TIMESTAMP INFO  rust_to_gil] Compiled!

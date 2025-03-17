@@ -75,4 +75,4 @@ warning: function `extract_y___proof` should have a snake case name
 
 warning: 8 warnings emitted
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+[TIMESTAMP INFO  rust_to_gil] Compiled!

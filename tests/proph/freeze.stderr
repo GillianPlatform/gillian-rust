@@ -30,4 +30,4 @@ warning: variable `THIS` should have a snake case name
 
 warning: 3 warnings emitted
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+[TIMESTAMP INFO  rust_to_gil] Compiled!

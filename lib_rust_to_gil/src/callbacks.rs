@@ -100,21 +100,23 @@ impl Callbacks for ToGil {
     }
 }
 
-fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
-    if let Some(path) = &config.output_file {
-        return PathBuf::from(path);
-    }
-    let outputs = tcx.output_filenames(());
-    let crate_name = tcx.crate_name(LOCAL_CRATE);
+pub fn output_file(config: &Config, tcx: TyCtxt<'_>) -> PathBuf {
+    let res = if let Some(path) = &config.output_file {
+        PathBuf::from(path)
+    } else {
+        let outputs = tcx.output_filenames(());
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    let libname = format!("{}-{}.gil", crate_name.as_str(), tcx.crate_types()[0]);
+        let libname = format!("{}-{}.gil", crate_name.as_str(), tcx.crate_types()[0]);
 
-    let mut directory: PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
-    directory.pop();
-    directory.pop();
+        let mut directory: PathBuf = outputs.path(OutputType::Object).as_path().to_path_buf();
+        directory.pop();
+        directory.pop();
 
-    directory.join(libname)
-    // Box::new(std::io::BufWriter::new(File::create(out_path)?))
+        directory.join(libname)
+    };
+    println!(">> Compiling to: {}", res.to_string_lossy());
+    res
 }
 
 /// Trys to retrieve the promoted MIR for a body from a thread local cache.

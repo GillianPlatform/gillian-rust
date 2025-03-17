@@ -81,11 +81,12 @@ fn main() {
 
         // eprintln!("final fainl {args:?}");
         utils::init();
-        let mut to_gil = callbacks::ToGil::new(gillian_args.into_config());
+        let config = gillian_args.into_config();
+        let mut to_gil = callbacks::ToGil::new(config);
 
         match rustc_driver::RunCompiler::new(&args, &mut to_gil).run() {
-            Ok(_) => log::debug!("Correct!"),
-            Err(_) => log::debug!("Incorrect!"),
+            Ok(_) => log::info!("Compiled!"),
+            Err(_) => log::info!("Failed to compile!"),
         }
     }
 }

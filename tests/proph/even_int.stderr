@@ -18,4 +18,4 @@ warning: struct `EvenInt` is never constructed
 
 warning: 2 warnings emitted
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+[TIMESTAMP INFO  rust_to_gil] Compiled!

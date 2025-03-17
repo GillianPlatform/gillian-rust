@@ -31,4 +31,4 @@ warning: function `test` is never used
 
 warning: 4 warnings emitted
 
-[TIMESTAMP DEBUG rust_to_gil] Correct!
+[TIMESTAMP INFO  rust_to_gil] Compiled!
