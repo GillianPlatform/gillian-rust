@@ -8,15 +8,14 @@ open Delayed_utils
 
 type prophecy = {
   value : Expr.t;
-  observer : Expr.t option;
-  controller : Expr.t option;
+  obs_ctl : Expr.t;
+  observer : bool;
+  controller : bool;
 }
 
 let prophecy_lvars prophecy =
   let open Utils.Containers in
-  Expr.lvars prophecy.value
-  |> SS.union (Option.fold ~none:SS.empty ~some:Expr.lvars prophecy.observer)
-  |> SS.union (Option.fold ~none:SS.empty ~some:Expr.lvars prophecy.controller)
+  SS.union (Expr.lvars prophecy.obs_ctl) (Expr.lvars prophecy.value)
 
 let pp_prophecy =
   let open Fmt in
@@ -24,15 +23,15 @@ let pp_prophecy =
   @@ record ~sep:semi
        [
          field "value" (fun x -> x.value) Expr.pp;
-         field "observer" (fun x -> x.observer) (Fmt.Dump.option Expr.pp);
-         field "controller" (fun x -> x.controller) (Fmt.Dump.option Expr.pp);
+         field "obs_ctl" (fun x -> x.obs_ctl) Expr.pp;
+         field "observer" (fun x -> x.observer) Fmt.bool;
+         field "controller" (fun x -> x.controller) Fmt.bool;
        ]
 
 type t = prophecy MemMap.t
 
 let sure_is_nonempty =
-  MemMap.exists (fun _ { observer; controller; _ } ->
-      Option.is_some observer || Option.is_some controller)
+  MemMap.exists (fun _ { observer; controller; _ } -> observer || controller)
 
 let assertions (pcies : t) =
   let cps loc pcy =
@@ -45,17 +44,17 @@ let assertions (pcies : t) =
     in
     let controller =
       match pcy.controller with
-      | None -> []
-      | Some v ->
+      | false -> []
+      | true ->
           let cp = Actions.cp_to_name Pcy_controller in
-          [ Asrt.GA (cp, [ loc ], [ v ]) ]
+          [ Asrt.GA (cp, [ loc ], [ pcy.obs_ctl ]) ]
     in
     let observer =
       match pcy.observer with
-      | None -> []
-      | Some v ->
+      | false -> []
+      | true ->
           let cp = Actions.cp_to_name Value_observer in
-          [ Asrt.GA (cp, [ loc ], [ v ]) ]
+          [ Asrt.GA (cp, [ loc ], [ pcy.obs_ctl ]) ]
     in
     value :: (controller @ observer)
   in
@@ -69,157 +68,131 @@ let empty = MemMap.empty
 let to_yojson _ = `Null
 let of_yojson _ = Error "Heap.of_yojson: Not implemented"
 
-let merge old_proph new_proph =
-  let open Formula.Infix in
-  let value_eq = old_proph.value #== new_proph.value in
-  let controller =
-    if Option.is_some new_proph.controller then new_proph.controller
-    else old_proph.controller
-  in
-  let observer =
-    if Option.is_some new_proph.observer then new_proph.observer
-    else old_proph.observer
-  in
-  let ct_obs_eq =
-    match (controller, observer) with
-    | Some c, Some o -> [ c #== o ]
-    | _ -> []
-  in
-  let learned = value_eq :: ct_obs_eq in
-  DR.ok ~learned { value = new_proph.value; observer; controller }
-
-let with_observer_block pcy_id pcy_env f =
-  let open DR.Syntax in
-  match MemMap.find_opt pcy_id pcy_env with
-  | Some pcy ->
-      let++ value, new_observer = f pcy.observer in
-      let new_pcymap =
-        MemMap.add pcy_id { pcy with observer = new_observer } pcy_env
-      in
-      (value, new_pcymap)
-  | None -> DR.error (Err.Missing_pcy pcy_id)
-
-let with_controller_block pcy_id pcy_env f =
-  let open DR.Syntax in
-  match MemMap.find_opt pcy_id pcy_env with
-  | Some pcy ->
-      let++ value, new_controller = f pcy.controller in
-      let new_pcymap =
-        MemMap.add pcy_id { pcy with controller = new_controller } pcy_env
-      in
-      (value, new_pcymap)
-  | None -> DR.error (Err.Missing_pcy pcy_id)
-
 let cons_value_obs pcy_env pcy_var =
-  with_observer_block pcy_var pcy_env @@ function
-  | Some obs -> DR.ok (obs, None)
-  | None -> DR.error (Err.Missing_observer pcy_var)
+  match MemMap.find_opt pcy_var pcy_env with
+  | Some ({ observer = true; obs_ctl; _ } as pcy) ->
+      (* We consume the pcy *)
+      let new_pcy_env =
+        MemMap.add pcy_var { pcy with observer = false } pcy_env
+      in
+      DR.ok (obs_ctl, new_pcy_env)
+  | Some { observer = false; _ } -> DR.error (Err.Missing_observer pcy_var)
+  | None -> DR.error (Err.Missing_pcy pcy_var)
 
 let prod_value_obs pcy_env pcy_id obs_value =
   let+ new_block =
     match MemMap.find_opt pcy_id pcy_env with
-    | Some { observer = Some _; _ } -> Delayed.vanish ()
-    | Some { value; observer = None; controller = Some ctl } ->
-        let learned = [ Formula.Infix.( #== ) obs_value ctl ] in
+    | Some { observer = true; _ } -> Delayed.vanish () (* Duplicated resource *)
+    | Some { value; obs_ctl; observer = false; controller = true } ->
+        (* We already have a controller, we learn equality *)
+        let learned = [ Formula.Infix.( #== ) obs_value obs_ctl ] in
         Delayed.return ~learned
-          { value; observer = Some obs_value; controller = Some ctl }
-    | Some { value; observer = None; controller = None } ->
-        Delayed.return { value; observer = Some obs_value; controller = None }
+          { value; observer = true; controller = true; obs_ctl }
+    | Some { value; observer = false; controller = false; obs_ctl = _ } ->
+        (* We have neither the controller nor the observer, the obs_ctl value is irrelevant *)
+        Delayed.return
+          { value; observer = true; controller = false; obs_ctl = obs_value }
     | None ->
         Delayed.return
           {
             value = Expr.LVar (LVar.alloc ());
-            observer = Some obs_value;
-            controller = None;
+            obs_ctl = obs_value;
+            observer = true;
+            controller = false;
           }
   in
   MemMap.add pcy_id new_block pcy_env
 
 let cons_controller pcy_env pcy_var =
-  with_controller_block pcy_var pcy_env @@ function
-  | Some ctl -> DR.ok (ctl, None)
-  | None -> DR.error (Err.Missing_controller pcy_var)
+  match MemMap.find_opt pcy_var pcy_env with
+  | Some ({ controller = true; obs_ctl; _ } as pcy) ->
+      (* We consume the pcy *)
+      let new_pcy_env =
+        MemMap.add pcy_var { pcy with controller = false } pcy_env
+      in
+      DR.ok (obs_ctl, new_pcy_env)
+  | Some { controller = false; _ } -> DR.error (Err.Missing_controller pcy_var)
+  | None -> DR.error (Err.Missing_pcy pcy_var)
 
 let prod_controller pcy_env pcy_id ctl_value =
   let+ new_block =
     match MemMap.find_opt pcy_id pcy_env with
-    | Some { controller = Some _; _ } -> Delayed.vanish ()
-    | Some { value; observer = Some obs_value; controller = None } ->
-        let learned = [ Formula.Infix.( #== ) obs_value ctl_value ] in
+    | Some { controller = true; _ } ->
+        Delayed.vanish () (* Duplicated resource *)
+    | Some { value; obs_ctl; observer = true; controller = false } ->
+        (* We already have an observer, we learn equality *)
+        let learned = [ Formula.Infix.( #== ) ctl_value obs_ctl ] in
         Delayed.return ~learned
-          { value; observer = Some obs_value; controller = Some ctl_value }
-    | Some { value; observer = None; controller = None } ->
-        Delayed.return { value; controller = Some ctl_value; observer = None }
+          { value; observer = true; controller = true; obs_ctl }
+    | Some { value; observer = false; controller = false; obs_ctl = _ } ->
+        (* We have neither the controller nor the observer, the obs_ctl value is irrelevant *)
+        Delayed.return
+          { value; observer = false; controller = true; obs_ctl = ctl_value }
     | None ->
         Delayed.return
           {
             value = Expr.LVar (LVar.alloc ());
-            controller = Some ctl_value;
-            observer = None;
+            obs_ctl = ctl_value;
+            observer = false;
+            controller = true;
           }
   in
   MemMap.add pcy_id new_block pcy_env
 
 let cons_value pcy_env pcy_id =
+  (* The value is persistent information, it doesn't get consumed *)
   match MemMap.find_opt pcy_id pcy_env with
   | Some { value; _ } -> (value, pcy_env)
   | None ->
+      (* If not there, we simply create it, and now we know its value. *)
       let value = Expr.LVar (LVar.alloc ()) in
       ( value,
-        MemMap.add pcy_id { value; observer = None; controller = None } pcy_env
-      )
+        MemMap.add pcy_id
+          {
+            value;
+            observer = false;
+            controller = false;
+            obs_ctl = Expr.Lit Null;
+            (* The obs_ctl we assign is irrelevant, since we have neither observer nor controller *)
+          }
+          pcy_env )
 
 let prod_value pcy_env pcy_id new_value =
   match MemMap.find_opt pcy_id pcy_env with
   | Some pcy ->
+      (* `value` is a function, so if we already know its value, we now that whatever we have is equal *)
       Delayed.return
         ~learned:[ Formula.Infix.( #== ) pcy.value new_value ]
         pcy_env
   | None ->
-      let block = { value = new_value; observer = None; controller = None } in
+      (* The obs_ctl we assign is irrelevant, since we have neither observer nor controller *)
+      let block =
+        {
+          value = new_value;
+          observer = false;
+          controller = false;
+          obs_ctl = Expr.Lit Null;
+        }
+      in
       Delayed.return (MemMap.add pcy_id block pcy_env)
 
-let resolve obs_ctx pcy_env pcy_var =
-  match MemMap.find_opt pcy_var pcy_env with
-  | None -> DR.error (Err.Missing_pcy pcy_var)
-  | Some { controller = None; _ } -> DR.error (Err.Missing_controller pcy_var)
-  | Some { observer = None; _ } -> DR.error (Err.Missing_observer pcy_var)
-  | Some { value; controller = Some ctl; observer = Some _obs } ->
-      (* Learning equality with controller is sufficient,
-         since controller must already be equal to observer *)
-      let* obs_ctx =
-        Obs_ctx.prod_observation obs_ctx (Formula.Infix.( #== ) value ctl)
-      in
-      let new_pcies =
-        MemMap.add pcy_var { value; controller = None; observer = None } pcy_env
-      in
-      DR.ok (new_pcies, obs_ctx)
-
 let assign pcy_env pcy_var assigned =
+  (* In order to assign an obs_ctl value, we need *both* the controller and observer at the same time. *)
   match MemMap.find_opt pcy_var pcy_env with
   | None -> DR.error (Err.Missing_pcy pcy_var)
-  | Some { controller = None; _ } -> DR.error (Err.Missing_controller pcy_var)
-  | Some { observer = None; _ } -> DR.error (Err.Missing_observer pcy_var)
-  | Some { value; controller = Some _; observer = Some _ } ->
-      (* We need both and need to write in both the controller and observer at once *)
+  | Some { controller = false; _ } -> DR.error (Err.Missing_controller pcy_var)
+  | Some { observer = false; _ } -> DR.error (Err.Missing_observer pcy_var)
+  | Some ({ controller = true; observer = true; _ } as pcy) ->
       let new_pcies =
-        MemMap.add pcy_var
-          { value; controller = Some assigned; observer = Some assigned }
-          pcy_env
+        MemMap.add pcy_var { pcy with obs_ctl = assigned } pcy_env
       in
       DR.ok new_pcies
 
 let alloc pcy_env =
   let pcy_id = ALoc.alloc () in
-  let pcy_value = Expr.LVar (LVar.alloc ()) in
-  let obs_ctl_value = Expr.LVar (LVar.alloc ()) in
-  let block =
-    {
-      value = pcy_value;
-      observer = Some obs_ctl_value;
-      controller = Some obs_ctl_value;
-    }
-  in
+  let value = Expr.LVar (LVar.alloc ()) in
+  let obs_ctl = Expr.LVar (LVar.alloc ()) in
+  let block = { value; obs_ctl; observer = true; controller = true } in
   let updated_env = MemMap.add pcy_id block pcy_env in
   (Expr.ALoc pcy_id, updated_env)
 
@@ -228,6 +201,33 @@ let pp ft t =
   pf ft "@[<v 2>Prophecies:@,%a@]"
     (iter_bindings MemMap.iter (pair ~sep:(any " -> ") string pp_prophecy))
     t
+
+let merge old_proph new_proph =
+  let open Formula.Infix in
+  let value_eq = old_proph.value #== new_proph.value in
+  let controller = new_proph.controller || old_proph.controller in
+  let observer = new_proph.observer || old_proph.observer in
+  let obs_ctl, ctl_obs_eq =
+    match
+      ( old_proph.controller || old_proph.observer,
+        new_proph.controller || new_proph.observer )
+    with
+    | true, true ->
+        (* Both obs_ctl are relevant *)
+        let ctl_obs_eq = [ old_proph.obs_ctl #== new_proph.obs_ctl ] in
+        (new_proph.obs_ctl, ctl_obs_eq)
+    | true, false ->
+        (* Only old obs_ctl is relevant *)
+        (old_proph.obs_ctl, [])
+    | false, true ->
+        (* Only new obs_ctl is relevant *)
+        (new_proph.obs_ctl, [])
+    | false, false ->
+        (* Both obs_ctl are irrelevant *)
+        (Expr.Lit Null, [])
+  in
+  let learned = value_eq :: ctl_obs_eq in
+  DR.ok ~learned { value = new_proph.value; obs_ctl; observer; controller }
 
 let substitution pcy_env subst =
   let open Gillian.Symbolic in
@@ -246,9 +246,10 @@ let substitution pcy_env subst =
       MemMap.map
         (fun block ->
           let value = subst_expr block.value in
-          let controller = Option.map subst_expr block.controller in
-          let observer = Option.map subst_expr block.observer in
-          { value; controller; observer })
+          let obs_ctl = subst_expr block.obs_ctl in
+          let controller = block.controller in
+          let observer = block.observer in
+          { value; obs_ctl; controller; observer })
         pcy_env
     in
     List.fold_left

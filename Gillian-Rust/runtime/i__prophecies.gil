@@ -16,12 +16,6 @@ proc "gilogic::prophecies::Prophecy::<T>::assign"(ty, pcy, value) {
   return
 };
 
-proc "gilogic::prophecies::Prophecy::<T>::resolve"(ty, pcy) {
-  u := [pcy_resolve](pcy);
-  ret := {{ }};
-  return
-};
-
 proc "gilogic::prophecies::check_obs_sat"() {
   u := [check_obs_sat]();
   ret := {{ }};

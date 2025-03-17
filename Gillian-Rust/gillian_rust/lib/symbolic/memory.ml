@@ -336,16 +336,6 @@ let execute_prod_pcy_controller mem args =
       { mem with pcies = new_pcies }
   | _ -> Fmt.failwith "Invalid arguments for set_pcy_controller"
 
-let execute_pcy_resolve mem args =
-  match args with
-  | [ pcy_id ] ->
-      let** pcy_id = resolve_loc_result pcy_id in
-      let++ new_pcies, obs_ctx =
-        Prophecies.resolve mem.obs_ctx mem.pcies pcy_id
-      in
-      make_branch ~mem:{ mem with pcies = new_pcies; obs_ctx } ()
-  | _ -> Fmt.failwith "Invalid arguments for pcy_resolve"
-
 let execute_pcy_assign mem args =
   let { pcies; _ } = mem in
   match args with
@@ -496,7 +486,6 @@ let execute_action ~action_name mem args =
     | Size_of -> execute_size_of mem args
     (* | Is_zst -> execute_is_zst mem args *)
     | Pcy_alloc -> execute_pcy_alloc mem args
-    | Pcy_resolve -> execute_pcy_resolve mem args
     | Pcy_assign -> execute_pcy_assign mem args
     | Ty_is_unsized -> execute_ty_is_unsized mem args
     | Check_obs_sat -> execute_check_obs_sat mem args

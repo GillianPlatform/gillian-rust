@@ -18,7 +18,6 @@ type t =
   (* Prophecies *)
   | Pcy_alloc
   | Pcy_assign
-  | Pcy_resolve
   (* Observations *)
   | Check_obs_sat
 
@@ -50,7 +49,6 @@ let of_name = function
   | "load_discr" -> Load_discr
   | "pcy_alloc" -> Pcy_alloc
   | "pcy_assign" -> Pcy_assign
-  | "pcy_resolve" -> Pcy_resolve
   | "check_obs_sat" -> Check_obs_sat
   | _ -> failwith "incorrect compilation: unknown action"
 
@@ -69,7 +67,6 @@ let to_name = function
   | Load_discr -> "load_discr"
   | Pcy_alloc -> "pcy_alloc"
   | Pcy_assign -> "pcy_assign"
-  | Pcy_resolve -> "pcy_resolve"
   | Check_obs_sat -> "check_obs_sat"
 
 let cp_to_name = function
