@@ -1,7 +1,10 @@
 [package]
 name = "rust_to_gil"
 version = "0.1.0"
-authors = ["Anonymous"]
+authors = [
+  "Sacha-Élie Ayoun <sachaayoun@gmail.com>",
+  "Xavier Denis <research@xav.io>",
+]
 description = "Library of a compiler from Rust to GIL, for analysis with Gillian"
 edition = "2021"
 
