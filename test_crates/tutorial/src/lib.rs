@@ -1,6 +1,3 @@
-#![allow(internal_features)]
-#![feature(ptr_internals)]
-
 use gilogic::macros::{assertion, predicate};
 use gilogic::mutref_auto_resolve;
 use gilogic::prophecies::{Ownable, Prophecised};
@@ -26,27 +23,14 @@ impl EvenInt {
         }
     }
 
-    // TODO
-    pub fn new_2(x: i32) -> Self {
-        if x % 2 == 0 {
-            Self { num: x }
-        } else {
-            if x < 1000 {
-                Self { num: x + 1 }
-            } else {
-                Self { num: x - 1 }
-            }
-        }
-    }
-
-    pub unsafe fn new(x: i32) -> Self {
-        Self { num: x }
+    unsafe fn new_unchecked(num: i32) -> Self {
+        EvenInt { num }
     }
 
     // TODO
-    pub fn new_3(x: i32) -> Option<Self> {
+    pub fn new(x: i32) -> Option<Self> {
         if x % 2 == 0 {
-            let y = unsafe { Self::new(x) };
+            let y = unsafe { Self::new_unchecked(x) };
             Some(y)
         } else {
             None
@@ -65,5 +49,11 @@ impl EvenInt {
             self.add();
             self.add();
         }
+        mutref_auto_resolve!(self);
+    }
+
+    // TODO
+    pub fn add_even(&mut self, other: EvenInt) {
+        self.num += other.num;
     }
 }
