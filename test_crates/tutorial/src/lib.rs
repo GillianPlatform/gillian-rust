@@ -14,7 +14,7 @@ impl Ownable for EvenInt {
     #[predicate]
     fn own(self, model: i32) {
         // TODO
-        assertion!((self == EvenInt { num: model }) * (model % 2 == 0));
+        assertion!((self == EvenInt { num: model }));
     }
 }
 
@@ -22,7 +22,7 @@ impl EvenInt {
     #[creusillian::show_safety]
     pub fn test(&mut self) {
         if self.num % 2 != 0 {
-            *std::ptr::null::<i32>();
+            unsafe { *std::ptr::null::<i32>() };
         }
     }
 
