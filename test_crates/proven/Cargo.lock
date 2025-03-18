@@ -193,6 +193,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "proven"
+version = "0.1.0"
+dependencies = [
+ "creusillian",
+ "creusot-contracts",
+ "gilogic",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -256,15 +265,6 @@ checksum = "e0f540e3240398cce6128b64ba83fdbdd86129c16a3aa1a3a252efd66eb3d587"
 dependencies = [
  "getrandom",
  "rand",
-]
-
-[[package]]
-name = "vec"
-version = "0.1.0"
-dependencies = [
- "creusillian",
- "creusot-contracts",
- "gilogic",
 ]
 
 [[package]]

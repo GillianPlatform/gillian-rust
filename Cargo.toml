@@ -13,4 +13,4 @@ members = [
   "cargo-gillian",
 ]
 
-exclude = ["test_crates/vec", "test_crates/sort", "test_crates/tutorial"]
+exclude = ["test_crates/proven", "test_crates/vec", "test_crates/sort", "test_crates/tutorial"]
