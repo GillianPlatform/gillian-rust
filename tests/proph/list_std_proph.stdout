@@ -510,7 +510,7 @@ proc freeze_htl(pLft_a, pty_T0, x) {
 spec "LinkedList::<T>::new"(pty_T0)
 [[ (pty_T0 == #pty_T0) ]]
 [[ "<LinkedList<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
-  * <observation>(((#ret_repr) = ({{  }})); ) ]]
+  * <observation>(((l-len #ret_repr) = (0i)); ) ]]
 normal
 
 proc "LinkedList::<T>::new"(pty_T0) {
