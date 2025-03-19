@@ -3,7 +3,8 @@
 
 use creusillian::*;
 use creusot_contracts::logic::ops::IndexLogic;
-use gilogic::{macros::*, prophecies::*, RustAssertion, Seq};
+use creusot_contracts::Seq;
+use gilogic::{macros::*, prophecies::*, RustAssertion};
 use std::marker::PhantomData;
 
 #[creusot_contracts::trusted]
@@ -43,7 +44,7 @@ impl<T: Ownable> Vec<T> {
     #[creusillian::ensures(*result == (*self)@[ix@])]
     #[creusillian::ensures(^result == (^self)@[ix@])]
     #[creusillian::ensures((*self)@.len() == (^self)@.len())]
-    #[creusillian::ensures(forall<i : _> 0 <= i && i != ix@ && i < (*self)@.len() ==> (*self)@[i] == (^self)@[i])]
+    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).push_back((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
@@ -87,7 +88,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusot_contracts::trusted]
-    #[creusillian::ensures(result@ == creusot_contracts::Seq::EMPTY)]
+    #[creusillian::ensures(result@ == Seq::EMPTY)]
     pub const fn new() -> Self {
         todo!()
     }
@@ -102,22 +103,18 @@ impl<T> LinkedList<T> {
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    // #[creusillian::ensures(match result {
-    //     None => ^self == *self && self@.len() == 0,
-    //     Some(a) => creusot_contracts::Seq::singleton(a).concat((^self)@) == (*self)@
-    //     // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
-    // })]
-    #[creusillian::ensures(
-        forall<x : _> result == Some(x) ==> ((^self)@).push_front(x) == (*self)@)]
-    #[creusillian::ensures(result == None ==> ^self == *self && self@.len() == 0)]
-    // #[creusillian::ensures((*self)@ == (^self)@.push_back(e))]
+    #[creusillian::ensures(match result {
+        None => ^self == *self && self@.len() == 0,
+        Some(a) =>(^self)@.push_front(a) == (*self)@
+        // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
+    })]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()
     }
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
-    #[creusillian::ensures(creusot_contracts::Seq::singleton(e).concat((*self)@) == (^self)@)]
+    #[creusillian::ensures((*self)@.push_front(e) == (^self)@)]
     pub fn push_front(&mut self, e: T) {
         todo!()
     }

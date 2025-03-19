@@ -476,8 +476,8 @@ impl<T: Ownable> Vec<T> {
     #[creusillian::ensures(match ret@ {
         None => (((*self@).len() <= ix) && ((*self@) == (^self@))),
         Some(r) =>
-            ((*self@).at(ix) == (*r@)) &&
-            ((^self@).at(ix) == (^r@)) &&
+            ((*self)@[ix@] == (*r)) &&
+            ((^self)@[ix@] == (^r)) &&
             ((^self@) == (*self@).sub(0, ix).push_back((^r@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))
     })]
     fn get_mut(&mut self, ix: usize) -> Option<&mut T> {

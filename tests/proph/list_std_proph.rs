@@ -272,7 +272,7 @@ impl<T: Ownable> ShallowModel for LinkedList<T> {
 }
 
 impl<T: Ownable> LinkedList<T> {
-    #[creusillian::ensures(ret@ == Seq::nil())]
+    #[creusillian::ensures(ret@ == Seq::EMPTY)]
     fn new() -> Self {
         Self {
             head: None,
@@ -363,7 +363,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::ensures(match ret {
-        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+        None => ((*self@) == Seq::EMPTY) && ((^self@) == Seq::EMPTY),
         Some(head) =>
             ((*self@).at(0) == *head@)
             && ((^self@).at(0) == ^head@)
@@ -385,7 +385,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::ensures(match ret {
-        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+        None => ((*self@) == Seq::EMPTY) && ((^self@) == Seq::EMPTY),
         Some(head) => ((^self@) == (*self@).tail()) && ((*self@).at(0) == head@)
     })]
     pub fn pop_front(&mut self) -> Option<T> {
@@ -406,7 +406,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::ensures(match ret {
-        None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
+        None => ((*self@) == Seq::EMPTY) && ((^self@) == Seq::EMPTY),
         Some(last) => ((^self@) == (*self@).sub(0, (*self@).len() - 1)) && ((*self@).last() == last@)
      })]
     pub fn pop_back(&mut self) -> Option<T> {

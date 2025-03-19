@@ -284,6 +284,10 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
                 Err(Error::new(inner.span(), "unsupported path"))?;
             };
 
+            if inner == parse_quote! { Seq::EMPTY } {
+                return Ok(CoreTerm::Call(parse_quote!(gilogic::Seq::nil), vec![]));
+            };
+
             let Some(id) = inner.path.get_ident() else {
                 return Ok(CoreTerm::Path(inner.path));
             };
