@@ -31,11 +31,19 @@ pub fn gnome_sort(v: &mut Vec<i32>) {
     let old_v = snapshot! { v };
     let mut i = 0;
 
+    proof_assert!(forall< s : Seq<i32>, e : i32, ix : Int,  t : Seq<i32>>
+        0 <= ix && ix < s.len() ==>
+        t == s.subsequence(0, ix).push_back(e).concat(s.subsequence(ix + 1, s.len())) ==>
+        (forall<i : _> 0 <= i && i != ix && i < t.len() ==> s[i] == t[i])
+    );
+
+    let _ = snapshot!(free_monoid::<i32>);
     #[invariant(sorted_range(v@, 0, i@))]
     #[invariant(v@.permutation_of(old_v@))]
     while i < v.len() {
         let old_v = snapshot! { v };
         if i == 0 || *v.index_mut(i - 1) <= *v.index_mut(i) {
+            proof_assert!(old_v@ == v@);
             i += 1;
         } else {
             proof_assert!(old_v@ == v@);
