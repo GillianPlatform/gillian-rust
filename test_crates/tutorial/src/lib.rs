@@ -49,7 +49,6 @@ impl EvenInt {
             self.add();
             self.add();
         }
-        mutref_auto_resolve!(self);
     }
 
     // TODO
