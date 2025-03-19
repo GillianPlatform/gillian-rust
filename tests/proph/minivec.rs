@@ -284,7 +284,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(index < (*self@).len())]
-    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).subsequence(0, index).push_back((^ret@)).concat((*self@).subsequence(index + 1, (*self@).len() - index - 1)))]
+    #[creusillian::ensures((*self@).at(index) == (*ret@) && (^self@) == (*self@).subsequence(0, index).push_back((^ret@)).concat((*self@).subsequence(index + 1, (*self@).len())))]
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         freeze_pcl(self);
         assert!(index < self.len);
@@ -301,7 +301,7 @@ impl<T: Ownable> Vec<T> {
         Some(r) =>
             ((*self@).at(index) == (*r@)) &&
             ((^self@).at(index) == (^r@)) &&
-            ((^self@) == (*self@).subsequence(0, index).push_back((^r@)).concat((*self@).subsequence(index + 1, (*self@).len() - index - 1)))
+            ((^self@) == (*self@).subsequence(0, index).push_back((^r@)).concat((*self@).subsequence(index + 1, (*self@).len())))
     })]
     pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
         if index < self.len() {

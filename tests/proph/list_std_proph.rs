@@ -399,7 +399,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::requires((*self@).len() < usize::MAX@)]
-    #[creusillian::ensures((^self@) == (*self@).push_front(elt_repr))]
+    #[creusillian::ensures((^self)@ == (*self)@.push_front(elt))]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
         mutref_auto_resolve!(self); // <- Unique thing added
@@ -417,8 +417,8 @@ impl<T: Ownable> LinkedList<T> {
         res
     }
 
-    #[creusillian::requires((*self@).len() < usize::MAX@)]
-    #[creusillian::ensures((^self@) == (*self@).push_back(elt_repr))]
+    #[creusillian::requires((*self)@.len() < usize::MAX@)]
+    #[creusillian::ensures((^self)@ == (*self)@.push_back(elt))]
     pub fn push_back(&mut self, elt: T) {
         dll_seg_l_to_r(self.head, None, self.tail, None);
         self.push_back_node(Box::new(Node::new(elt)));

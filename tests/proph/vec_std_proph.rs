@@ -442,7 +442,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self)@[ix@] == *result && (^self)@ == (*self)@.subsequence(0, ix@).push_back(^result).concat((*self)@).subsequence(ix@ + 1, (*self)@.len()))]
+    #[creusillian::ensures((*self)@.at(ix) == (*ret)@ && (^self)@ == (*self)@.subsequence(0, ix).push_back((^ret)@).concat((*self)@.subsequence(ix + 1, (*self@).len())))]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -459,7 +459,7 @@ impl<T: Ownable> Vec<T> {
     #[creusillian::requires(ix < (*self@).len())]
     #[creusillian::ensures(
         (*result == (*self)@[ix@]) &&
-        (^self@) == (*self@).subsequence(0, ix).push_back((^ret@)).concat((*self@).subsequence(ix + 1, (*self@).len() - ix - 1))
+        (^self)@ == (*self)@.subsequence(0, ix).push_back((^ret)@).concat((*self)@.subsequence(ix + 1, (*self)@.len()))
     )]
     pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
@@ -481,7 +481,7 @@ impl<T: Ownable> Vec<T> {
         Some(r) =>
             ((*self)@[ix@] == (*r)) &&
             ((^self)@[ix@] == (^r)) &&
-            ((^self)@ == (*self)@.subsequence(0, ix@).push_back((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len() - ix@ - 1)))
+            ((^self)@ == (*self)@.subsequence(0, ix@).push_back((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len())))
     })]
     fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
         // SAFETY: `self` is checked to be in bounds.

@@ -1271,7 +1271,7 @@ spec "LinkedList::<T>::pop_back"(pLft_0, pty_T0, self)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
-  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((l-len l-nth(#self_repr, 0i)) i- (1i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); )
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((((l-len l-nth(#self_repr, 0i)) i- (1i))) i- (0i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 

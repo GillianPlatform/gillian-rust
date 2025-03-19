@@ -128,7 +128,7 @@ axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
+  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, ((#ix_repr) i- (0i))), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((l-len l-nth(#self_repr, 0i)) i- (((#ix_repr) i+ (1i)))))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -1621,7 +1621,7 @@ spec "Vec::<T>::pop"(pLft_0, pty_T0, self)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
-  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((l-len l-nth(#self_repr, 0i)) i- (1i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); )
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #last. ((((#ret_repr) = ({{ 1i, {{ #last }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-sub(l-nth(#self_repr, 0i), 0i, ((((l-len l-nth(#self_repr, 0i)) i- (1i))) i- (0i)))))) and (((l-nth(l-nth(#self_repr, 0i), ((l-len l-nth(#self_repr, 0i)) i- (1i)))) = (#last)))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -1754,7 +1754,7 @@ spec "Vec::<T>::index_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
+  * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, ((#ix_repr) i- (0i))), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((l-len l-nth(#self_repr, 0i)) i- (((#ix_repr) i+ (1i)))))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -1877,7 +1877,7 @@ spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
+  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, ((#ix_repr) i- (0i))), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((l-len l-nth(#self_repr, 0i)) i- (((#ix_repr) i+ (1i)))))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -2024,7 +2024,7 @@ spec "Vec::<T>::get_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<&mut T> as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-len l-nth(#self_repr, 0i)) i<= (#ix_repr))) and (((l-nth(#self_repr, 0i)) = (l-nth(#self_repr, 1i)))))))) or (exists #r : List. ((((#ret_repr) = ({{ 1i, {{ #r }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#r, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), #ix_repr)) = (l-nth(#r, 1i)))))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#r, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))))))); )
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-len l-nth(#self_repr, 0i)) i<= (#ix_repr))) and (((l-nth(#self_repr, 0i)) = (l-nth(#self_repr, 1i)))))))) or (exists #r : List. ((((#ret_repr) = ({{ 1i, {{ #r }} }}))) and (((((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#r, 0i)))) and (((l-nth(l-nth(#self_repr, 1i), #ix_repr)) = (l-nth(#r, 1i)))))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, ((#ix_repr) i- (0i))), {{ l-nth(#r, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((l-len l-nth(#self_repr, 0i)) i- (((#ix_repr) i+ (1i)))))))))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
