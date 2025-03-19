@@ -46,6 +46,7 @@ pub(crate) enum LogicStubs {
     ProphecyGetValue,
     ProphecyObserver,
     ProphecyController,
+    // Sequences
     SeqNil,
     SeqAppend,
     SeqPrepend,
@@ -56,7 +57,9 @@ pub(crate) enum LogicStubs {
     SeqLen,
     SeqAt,
     SeqSub,
+    SeqExchange,
     SeqRepeat,
+    // Logic
     InstantiateLVars,
     Spec,
     ExprExists,
@@ -117,6 +120,7 @@ impl LogicStubs {
                 "gillian::seq::len" => Some(Self::SeqLen),
                 "gillian::seq::at" => Some(Self::SeqAt),
                 "gillian::seq::sub" => Some(Self::SeqSub),
+                "gillian::seq::exchange" => Some(Self::SeqExchange),
                 "gillian::seq::repeat" => Some(Self::SeqRepeat),
                 "gillian::asrt::instantiate_lvars" => Some(Self::InstantiateLVars),
                 "gillian::asrt::spec" => Some(Self::Spec),

@@ -407,7 +407,7 @@ impl<T: Ownable> LinkedList<T> {
 
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
-        Some(last) => ((^self@) == (*self@).sub(0, (*self@).len() - 1)) && ((*self@).last() == last@)
+        Some(last) => ((^self@) == (*self@).subsequence(0, (*self@).len() - 1)) && ((*self@).last() == last@)
      })]
     pub fn pop_back(&mut self) -> Option<T> {
         dll_seg_l_to_r(self.head, None, self.tail, None);

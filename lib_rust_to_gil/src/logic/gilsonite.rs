@@ -184,6 +184,7 @@ pub enum SeqOp {
     Len,
     At,
     Sub,
+    Exchange,
     Repeat,
 }
 
@@ -1423,6 +1424,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                         | LogicStubs::SeqLen
                         | LogicStubs::SeqAt
                         | LogicStubs::SeqSub
+                        | LogicStubs::SeqExchange
                         | LogicStubs::SeqRepeat),
                     ) => {
                         let args = args.iter().map(|a| self.build_expression(*a)).collect();
@@ -1436,6 +1438,7 @@ impl<'tcx> GilsoniteBuilder<'tcx> {
                             LogicStubs::SeqLen => SeqOp::Len,
                             LogicStubs::SeqAt => SeqOp::At,
                             LogicStubs::SeqSub => SeqOp::Sub,
+                            LogicStubs::SeqExchange => SeqOp::Exchange,
                             LogicStubs::SeqRepeat => SeqOp::Repeat,
                             _ => unreachable!(),
                         };

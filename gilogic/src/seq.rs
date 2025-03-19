@@ -35,6 +35,13 @@ impl<T> Seq<T> {
 
     #[gillian::builtin]
     #[gillian::no_translate]
+    #[rustc_diagnostic_item = "gillian::seq::exchange"]
+    pub fn exchange(self, _: Seq<T>, _: usize, _: usize) -> Self {
+        unreachable!()
+    }
+
+    #[gillian::builtin]
+    #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::concat"]
     pub fn concat(self, _: Self) -> Self {
         unreachable!()
@@ -79,7 +86,7 @@ impl<T> Seq<T> {
     #[gillian::builtin]
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::sub"]
-    pub fn sub(self, _start: usize, _size: usize) -> Self {
+    pub fn subsequence(self, _start: usize, _size: usize) -> Self {
         unreachable!()
     }
 

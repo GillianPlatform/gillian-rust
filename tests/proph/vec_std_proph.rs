@@ -286,7 +286,7 @@ pub struct Vec<T> {
     assuming { ix < len }
     from { vec_ref_mut_pcl(vec, m, (ptr, cap, len)) }
     extract { Ownable::own(&mut (*(ptr.as_ptr().add(ix))), mh) }
-    prophecise { m.sub(0, ix).push_back(mh).concat(m.sub(ix + 1, len - ix - 1)) }
+    prophecise { m.subsequence(0, ix).push_back(mh).concat(m.subsequence(ix + 1, len - ix - 1)) }
 )]
 #[gillian::trusted]
 fn extract_ith<'a, T: Ownable>(vec: &'a mut Vec<T>, ix: usize) -> Prophecy<T::RepresentationTy>;
@@ -424,7 +424,7 @@ impl<T: Ownable> Vec<T> {
 
     #[creusillian::ensures(match ret {
         None => ((*self@) == Seq::empty()) && ((^self@) == Seq::empty()),
-        Some(last) => ((^self@) == (*self@).sub(0, (*self@).len() - 1)) && ((*self@).last() == last@)
+        Some(last) => ((^self@) == (*self@).subsequence(0, (*self@).len() - 1)) && ((*self@).last() == last@)
      })]
     pub fn pop(&mut self) -> Option<T> {
         let res = if self.len == 0 {
@@ -442,7 +442,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).push_back((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
+    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).subsequence(0, ix).push_back((^ret@)).concat((*self@).subsequence(ix + 1, (*self@).len() - ix - 1)))]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -457,7 +457,10 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).sub(0, ix).push_back((^ret@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))]
+    #[creusillian::ensures(
+        (*result == (*self)@[ix@]) &&
+        (^self@) == (*self@).subsequence(0, ix).push_back((^ret@)).concat((*self@).subsequence(ix + 1, (*self@).len() - ix - 1))
+    )]
     pub unsafe fn get_unchecked_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
@@ -473,12 +476,12 @@ impl<T: Ownable> Vec<T> {
         ret.with_prophecy(proph)
     }
 
-    #[creusillian::ensures(match ret@ {
-        None => (((*self@).len() <= ix) && ((*self@) == (^self@))),
+    #[creusillian::ensures(match result {
+        None => (((*self)@.len() <= ix@) && (*self == ^self)),
         Some(r) =>
-            ((*self@).at(ix) == (*r@)) &&
-            ((^self@).at(ix) == (^r@)) &&
-            ((^self@) == (*self@).sub(0, ix).push_back((^r@)).concat((*self@).sub(ix + 1, (*self@).len() - ix - 1)))
+            ((*self)@[ix@] == (*r)) &&
+            ((^self)@[ix@] == (^r)) &&
+            ((^self)@ == (*self)@.subsequence(0, ix@).push_back((^r)).concat((*self)@.subsequence(ix@ + 1, (*self)@.len() - ix@ - 1)))
     })]
     fn get_mut(&mut self, ix: usize) -> Option<&mut T> {
         // SAFETY: `self` is checked to be in bounds.

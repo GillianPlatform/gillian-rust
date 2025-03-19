@@ -31,6 +31,11 @@ pub enum Expr {
         start: Box<Expr>,
         length: Box<Expr>,
     },
+    LstSwap {
+        list: Box<Expr>,
+        i: Box<Expr>,
+        j: Box<Expr>,
+    },
     EList(Vec<Expr>),
     ESet(Vec<Expr>),
     EExists(Vec<(String, Option<Type>)>, Box<Expr>),
@@ -685,6 +690,14 @@ impl Expr {
         }
     }
 
+    pub fn lst_swap_e(self, i: Expr, j: Expr) -> Self {
+        Self::LstSwap {
+            list: Box::new(self),
+            i: Box::new(i),
+            j: Box::new(j),
+        }
+    }
+
     pub fn lst_sub<I, J>(self, start: I, length: J) -> Self
     where
         I: Into<BigInt> + Clone,
@@ -733,10 +746,10 @@ impl Expr {
         }
     }
 
-    pub fn eq_expr(e1: Expr, e2: Expr) -> Self {
+    pub fn eq_expr(self, e2: Expr) -> Self {
         Expr::BinOp {
             operator: BinOp::Equal,
-            left_operand: Box::new(e1),
+            left_operand: Box::new(self),
             right_operand: Box::new(e2),
         }
     }
@@ -958,6 +971,9 @@ where
                     .intersperse([&**list, &**start, &**length], ", ")
                     .parens(),
             ),
+            Expr::LstSwap { list, i, j } => alloc
+                .text("l-swap")
+                .append(alloc.intersperse([&**list, &**i, &**j], ", ").parens()),
             Expr::EList(vec) => docs![
                 alloc,
                 alloc.space(),

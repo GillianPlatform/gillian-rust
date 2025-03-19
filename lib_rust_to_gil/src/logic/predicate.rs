@@ -825,6 +825,9 @@ impl<'tcx: 'genv, 'genv> PredCtx<'tcx, 'genv> {
 
                     SeqOp::At => args.remove(0).lnth_e(args.remove(0)),
                     SeqOp::Sub => args.remove(0).lst_sub_e(args.remove(0), args.remove(0)),
+                    SeqOp::Exchange => args
+                        .remove(0)
+                        .eq_expr(args.remove(0).lst_swap_e(args.remove(0), args.remove(0))),
                     SeqOp::Repeat => args.remove(0).repeat(args.remove(0)),
                 }
             }

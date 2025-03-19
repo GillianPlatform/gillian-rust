@@ -256,10 +256,10 @@ macro_rules! make_gil_visitor {
                 self.visit_expr(operand);
               }
             }
-            Expr::LstSub { list, start, length } => {
+            Expr::LstSub { list, start: i, length: j } | Expr::LstSwap { list, i, j }=> {
               self.visit_expr(list);
-              self.visit_expr(start);
-              self.visit_expr(length);
+              self.visit_expr(i);
+              self.visit_expr(j);
             }
             Expr::EList(exprs) | Expr::ESet(exprs) => {
               for expr in exprs {

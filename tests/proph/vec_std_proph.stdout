@@ -128,7 +128,7 @@ axiomatic spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
+  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
@@ -1877,7 +1877,7 @@ spec "Vec::<T>::get_unchecked_mut"(pLft_0, pty_T0, self, ix)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<&mut T as gilogic::prophecies::Ownable>::own"(#pLft_0, #pty_T0, ret, #ret_repr)
-  * <observation>(((((l-nth(l-nth(#self_repr, 0i), #ix_repr)) = (l-nth(#ret_repr, 0i)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
+  * <observation>(((((l-nth(#ret_repr, 0i)) = (l-nth(l-nth(#self_repr, 0i), #ix_repr)))) and (((l-nth(#self_repr, 1i)) = (l+(l+(l-sub(l-nth(#self_repr, 0i), 0i, #ix_repr), {{ l-nth(#ret_repr, 1i) }}), l-sub(l-nth(#self_repr, 0i), ((#ix_repr) i+ (1i)), ((((l-len l-nth(#self_repr, 0i)) i- (#ix_repr))) i- (1i)))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
