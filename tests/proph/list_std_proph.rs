@@ -272,7 +272,7 @@ impl<T: Ownable> ShallowModel for LinkedList<T> {
 }
 
 impl<T: Ownable> LinkedList<T> {
-    #[creusillian::ensures(ret@ == Seq::EMPTY)]
+    #[creusillian::ensures(result@.len() == 0)]
     fn new() -> Self {
         Self {
             head: None,
