@@ -109,17 +109,17 @@ impl<T> LinkedList<T> {
     }
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
-    #[creusillian::requires(true)]
-    #[creusillian::ensures((*self)@.push_front(e) == (^self)@)]
-    pub fn push_front(&mut self, e: T) {
+    #[creusillian::requires((*self)@.len() < usize::MAX@)]
+    #[creusillian::ensures((^self)@ == (*self)@.push_front(elt))]
+    pub fn push_front(&mut self, elt: T) {
         todo!()
     }
 
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
-    #[creusillian::requires(true)]
-    #[creusillian::ensures((*self)@.push_back(e) == (^self)@)]
-    pub fn push_back(&mut self, e: T) {
+    #[creusillian::requires((*self)@.len() < usize::MAX@)]
+    #[creusillian::ensures((^self)@ == (*self)@.push_back(elt))]
+    pub fn push_back(&mut self, elt: T) {
         todo!()
     }
 
@@ -149,6 +149,7 @@ mod creusot_defs2 {
 
         #[trusted]
         #[logic]
+        #[ensures(result.len() < usize::MAX@)]
         #[open(self)]
         fn view(self) -> Self::ViewTy {
             pearlite! { dead }
