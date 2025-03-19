@@ -41,7 +41,7 @@ impl<T: Ownable> Ownable for Vec<T> {
 
 impl<T: Ownable> Vec<T> {
     #[creusillian::requires(ix@ < (*self)@.len())]
-    #[creusillian::ensures((self@)[ix@] == *result && (^self)@ == (self@).subsequence(0, ix@).push_back(^result).concat((self@).subsequence(ix@ + 1, (self@).len())))]
+    #[creusillian::ensures((*self)@[ix@] == *result && (^self)@ == (*self)@.subsequence(0, ix@).push_back(^result).concat((*self)@.subsequence(ix@ + 1, (*self)@.len())))]
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
