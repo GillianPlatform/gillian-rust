@@ -243,6 +243,7 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
             let Term::Path(TermPath { inner }) = *func else {
                 return Err(Error::new(func.span(), "Expected path"));
             };
+
             Ok(CoreTerm::Call(
                 inner,
                 args.into_iter()
@@ -255,13 +256,38 @@ pub(crate) fn term_to_core(t: Term) -> syn::Result<CoreTerm> {
             method,
             args,
             ..
-        }) => Ok(CoreTerm::MethodCall(
-            Box::new(term_to_core(*receiver)?),
-            method,
-            args.into_iter()
-                .map(term_to_core)
-                .collect::<syn::Result<_>>()?,
-        )),
+        }) => {
+            if method == "subsequence" {
+                assert_eq!(args.len(), 2);
+
+                let mut args: Vec<_> = args
+                    .into_iter()
+                    .map(term_to_core)
+                    .collect::<syn::Result<_>>()?;
+
+                let start = args.remove(0);
+                let end = args.remove(0);
+
+                let end = CoreTerm::BinOp(
+                    Box::new(end),
+                    BinOp::Sub(Default::default()),
+                    Box::new(start.clone()),
+                );
+                return Ok(CoreTerm::MethodCall(
+                    Box::new(term_to_core(*receiver)?),
+                    method,
+                    vec![start, end],
+                ));
+            };
+
+            Ok(CoreTerm::MethodCall(
+                Box::new(term_to_core(*receiver)?),
+                method,
+                args.into_iter()
+                    .map(term_to_core)
+                    .collect::<syn::Result<_>>()?,
+            ))
+        }
         Term::Binary(TermBinary { left, op, right }) => Ok(CoreTerm::BinOp(
             Box::new(term_to_core(*left)?),
             op,

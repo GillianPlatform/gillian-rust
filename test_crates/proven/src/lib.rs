@@ -41,10 +41,6 @@ impl<T: Ownable> Ownable for Vec<T> {
 
 impl<T: Ownable> Vec<T> {
     #[creusillian::requires(ix@ < (*self)@.len())]
-    // #[creusillian::ensures(*result == (*self)@[ix@])]
-    // #[creusillian::ensures(^result == (^self)@[ix@])]
-    // #[creusillian::ensures((*self)@.len() == (^self)@.len())]
-    // #[creusillian::ensures(forall<i : _> 0 <= i && i != ix@ && i < (*self)@.len() ==> (*self)@[i] == (^self)@[i])]
     #[creusillian::ensures((self@)[ix@] == *result && (^self)@ == (self@).subsequence(0, ix@).push_back(^result).concat((self@).subsequence(ix@ + 1, (self@).len())))]
     #[cfg_attr(gillian, gillian::trusted)]
     #[creusot_contracts::trusted]

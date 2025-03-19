@@ -442,7 +442,7 @@ impl<T: Ownable> Vec<T> {
     }
 
     #[creusillian::requires(ix < (*self@).len())]
-    #[creusillian::ensures((*self@).at(ix) == (*ret@) && (^self@) == (*self@).subsequence(0, ix).push_back((^ret@)).concat((*self@).subsequence(ix + 1, (*self@).len() - ix - 1)))]
+    #[creusillian::ensures((*self)@[ix@] == *result && (^self)@ == (*self)@.subsequence(0, ix@).push_back(^result).concat((*self)@).subsequence(ix@ + 1, (*self)@.len()))]
     pub fn index_mut(&mut self, ix: usize) -> &mut T {
         freeze_pcl(self);
         // from impl<T> ops::DerefMut for Vec<T>
