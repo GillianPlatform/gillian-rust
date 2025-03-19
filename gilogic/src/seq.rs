@@ -22,7 +22,7 @@ impl<T> Seq<T> {
     #[gillian::builtin]
     #[gillian::no_translate]
     #[rustc_diagnostic_item = "gillian::seq::prepend"]
-    pub fn prepend(self, _: T) -> Self {
+    pub fn push_front(self, _: T) -> Self {
         unreachable!()
     }
 

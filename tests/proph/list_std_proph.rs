@@ -61,7 +61,7 @@ impl<T> Node<T> {
     assuming { head == Some(p) }
     from { list_ref_mut_htl(list, m, (head, tail, len)) }
     extract { Ownable::own(&mut (*p.as_ptr()).element, mh) }
-    prophecise { m.tail().prepend(mh) }
+    prophecise { m.tail().push_front(mh) }
 )]
 fn extract_head<'a, T: Ownable>(list: &'a mut LinkedList<T>) -> Prophecy<T::RepresentationTy>;
 
@@ -78,7 +78,7 @@ fn dll_seg<T: Ownable>(
         (head == Some(hptr)) *
         (hptr -> Node { next: head_next, prev: head_prev, element }) *
         element.own(e_repr) *
-        (data == rest.prepend(e_repr)) *
+        (data == rest.push_front(e_repr)) *
         dll_seg(head_next, tail_next, tail, head, rest)
     )
 }
@@ -109,7 +109,7 @@ fn dll_seg_r<T: Ownable>(
         dll_seg_r(next, tail_next, tail, x, data)
     }
     ensures {
-        dll_seg_r(x, tail_next, tail, prev, data.prepend(repr))
+        dll_seg_r(x, tail_next, tail, prev, data.push_front(repr))
     }
 )]
 fn dll_seg_r_appened_left<T: Ownable>(
@@ -156,7 +156,7 @@ fn dll_seg_l_to_r<T: Ownable>(
         dll_seg_r(next, tail_next, tail, x, data)
     }
     ensures {
-        dll_seg_r(x, tail_next, tail, prev, data.prepend(m))
+        dll_seg_r(x, tail_next, tail, prev, data.push_front(m))
     }
 )]
 fn dll_seg_r_append_left<T: Ownable>(
@@ -167,14 +167,14 @@ fn dll_seg_r_append_left<T: Ownable>(
 ) {
     unfold!(dll_seg_r(next, tail_next, tail, x, data));
     if data.len() == 0 {
-        fold!(dll_seg_r(x, tail_next, tail, prev, data.prepend(m)));
+        fold!(dll_seg_r(x, tail_next, tail, prev, data.push_front(m)));
     } else {
         assert_bind!(tptr, tail_prev, ep |
             (tail == Some(tptr)) *
             (tptr -> Node { next: tail_next, prev: tail_prev, element: ep })
         );
         dll_seg_r_append_left(x, next, tail, tail_prev);
-        fold!(dll_seg_r(x, tail_next, tail, prev, data.prepend(m)));
+        fold!(dll_seg_r(x, tail_next, tail, prev, data.push_front(m)));
     }
 }
 
@@ -385,8 +385,8 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::ensures(match ret {
-        None => ((*self@) == Seq::EMPTY) && ((^self@) == Seq::EMPTY),
-        Some(head) => ((^self@) == (*self@).tail()) && ((*self@).at(0) == head@)
+        None => ^self == *self && (*self)@.len() == 0,
+        Some(a) =>(^self)@.push_front(a) == (*self)@
     })]
     pub fn pop_front(&mut self) -> Option<T> {
         // Original implementation uses map
@@ -399,7 +399,7 @@ impl<T: Ownable> LinkedList<T> {
     }
 
     #[creusillian::requires((*self@).len() < usize::MAX@)]
-    #[creusillian::ensures((^self@) == (*self@).prepend(elt_repr))]
+    #[creusillian::ensures((^self@) == (*self@).push_front(elt_repr))]
     pub fn push_front(&mut self, elt: T) {
         self.push_front_node(Box::new(Node::new(elt)));
         mutref_auto_resolve!(self); // <- Unique thing added

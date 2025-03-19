@@ -374,8 +374,8 @@ impl<T: Ownable> Vec<T> {
         self.buf.capacity()
     }
 
-    #[creusillian::requires((*self@).len() < (usize::MAX / 2))]
-    #[creusillian::ensures((^self@) == (*self@).push_back(value@))]
+    #[creusillian::requires((*self)@.len() < (usize::MAX@ / 2))]
+    #[creusillian::ensures((^self)@ == (*self)@.push_back(value))]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.

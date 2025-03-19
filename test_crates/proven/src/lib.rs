@@ -105,9 +105,8 @@ impl<T> LinkedList<T> {
     #[creusot_contracts::trusted]
     #[creusillian::requires(true)]
     #[creusillian::ensures(match result {
-        None => ^self == *self && self@.len() == 0,
+        None => ^self == *self && (*self)@.len() == 0,
         Some(a) =>(^self)@.push_front(a) == (*self)@
-        // Some(a) => (^self)@ == (*self)@.tail() && self@[0] == a
     })]
     pub fn pop_front(&mut self) -> Option<T> {
         todo!()

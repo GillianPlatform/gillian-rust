@@ -1113,7 +1113,7 @@ spec "LinkedList::<T>::pop_front"(pLft_0, pty_T0, self)
   * (pty_T0 == #pty_T0)
   * (pLft_0 == #pLft_0) ]]
 [[ "<std::option::Option<T> as gilogic::prophecies::Ownable>::own"(#pty_T0, ret, #ret_repr)
-  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 0i)) = ({{  }}))) and (((l-nth(#self_repr, 1i)) = ({{  }}))))))) or (exists #head. ((((#ret_repr) = ({{ 1i, {{ #head }} }}))) and (((((l-nth(#self_repr, 1i)) = (cdr l-nth(#self_repr, 0i)))) and (((l-nth(l-nth(#self_repr, 0i), 0i)) = (#head)))))))); )
+  * <observation>(((((((#ret_repr) = ({{ 0i, {{  }} }}))) and (((((l-nth(#self_repr, 1i)) = (l-nth(#self_repr, 0i)))) and (((l-len l-nth(#self_repr, 0i)) = (0i))))))) or (exists #a. ((((#ret_repr) = ({{ 1i, {{ #a }} }}))) and (((l+({{ #a }}, l-nth(#self_repr, 1i))) = (l-nth(#self_repr, 0i))))))); )
   * <lft>(#pLft_0; true) ]]
 normal
 
