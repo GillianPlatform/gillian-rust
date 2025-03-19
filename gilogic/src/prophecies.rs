@@ -132,6 +132,15 @@ impl Ownable for () {
     }
 }
 
+impl Ownable for bool {
+    type RepresentationTy = bool;
+
+    #[predicate]
+    fn own(self, model: bool) -> RustAssertion {
+        assertion!((self == model))
+    }
+}
+
 pub trait Prophecised<P> {
     #[gillian::no_translate]
     #[gillian::builtin]

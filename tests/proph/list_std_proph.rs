@@ -272,7 +272,8 @@ impl<T: Ownable> ShallowModel for LinkedList<T> {
 }
 
 impl<T: Ownable> LinkedList<T> {
-    #[creusillian::ensures(ret@ == Seq::EMPTY)]
+    #[creusillian::requires(true)]
+    #[creusillian::ensures(result@.len() == 0)]
     fn new() -> Self {
         Self {
             head: None,
@@ -360,6 +361,16 @@ impl<T: Ownable> LinkedList<T> {
                 Some(node)
             },
         }
+    }
+
+    #[creusillian::ensures(
+        result == ((*self)@.len() == 0)
+        && (*self)@ == (^self)@
+    )]
+    pub fn is_empty(&mut self) -> bool {
+        let ret = self.len == 0;
+        mutref_auto_resolve!(self);
+        ret
     }
 
     #[creusillian::ensures(match ret {
