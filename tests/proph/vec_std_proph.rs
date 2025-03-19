@@ -337,7 +337,7 @@ impl<T: Ownable> Ownable for Vec<T> {
 }
 
 impl<T: Ownable> Vec<T> {
-    #[creusillian::ensures(ret@ == Seq::empty())]
+    #[creusillian::ensures(result@ == Seq::EMPTY)]
     pub const fn new() -> Self {
         branch!(T::IS_ZST);
         Vec {
