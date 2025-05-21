@@ -1,5 +1,10 @@
 # Gillian-Rust
 
+> [!IMPORTANT]
+> Gillian-Rust is a prototype to demonstrate the feasibility of [Hybrid Verification for Rust](https://doi.org/10.1145/3729289). It is unstable and will provide unclear error messages. For easy installation and experimentation, we recommend taking a look at [our PLDI25 artifact](https://zenodo.org/records/15231378).
+We also provide [ARTIFACT.pdf](./ARTIFACT.pdf) in this repo, though the instructions may be slightly out of sync with this repo.
+
+
 ## Build instructions
 
 To build this project, you need to build:
