@@ -1,5 +1,5 @@
 # Use an official Ubuntu as a parent image
-FROM debian:bookworm-slim
+FROM debian:stable-slim
 
 # Set environment variables for non-interactive install
 ENV DEBIAN_FRONTEND=noninteractive
@@ -21,7 +21,9 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-dev \
     libexpat1-dev \
     libgtksourceview-3.0-dev \
-    && rm -rf /var/lib/apt/lists/*
+    vim \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt clean
 
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then Z3_ARCH="x64-glibc-2.35"; \
@@ -44,6 +46,7 @@ RUN z3 --version
 RUN opam init -a --disable-sandboxing --bare
 RUN opam switch create gillian-rust --packages=ocaml-variants.5.2.1+options,ocaml-option-flambda
 RUN eval $(opam env --switch=gillian-rust)
+RUN echo "eval \$(opam env --switch=gillian-rust)" >> ~/.bashrc
 
 # Install Rust with the specified toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
@@ -62,6 +65,8 @@ WORKDIR /creusot
 RUN git checkout tags/v0.4.0
 RUN echo "--external z3" > INSTALL.opts
 RUN ./INSTALL
+# Cleanup Creusot code
+RUN rm -rf /creusot
 
 # Set the working directory
 WORKDIR /app
@@ -69,15 +74,13 @@ WORKDIR /app
 # Copy your application code to the container
 COPY . /app
 
-RUN cargo build
-RUN cargo test --test ui -- --bless
+# Build everything
+RUN ./build_all_docker.sh --init
 
-WORKDIR /app/Gillian-Rust
-RUN opam install . -y
-
-WORKDIR /app
-RUN cargo install --path rust_to_gil
-RUN cargo install --path cargo-gillian
+# Slim down the image
+# Removing also dune and cargo build artifacts would substantially reduce the image size.
+# However, once compressed, there is no difference in size, so we don't do it.
+RUN opam clean -a
 
 # Command to run your application (modify as needed)
 CMD ["bash", "-i"]
